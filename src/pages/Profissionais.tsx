@@ -48,6 +48,7 @@ interface Profissional {
   comissao_padrao: number;
   cor_agenda: string;
   foto_url: string | null;
+  especialidade: string | null;
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -273,8 +274,9 @@ const Profissionais = () => {
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead className="hidden md:table-cell">Comissão</TableHead>
+                  <TableHead>Especialidade</TableHead>
+                  <TableHead className="hidden md:table-cell">Telefone</TableHead>
+                  <TableHead className="hidden lg:table-cell">Comissão</TableHead>
                   <TableHead className="hidden lg:table-cell">Cor</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -297,8 +299,13 @@ const Profissionais = () => {
                     <TableCell>
                       <p className="font-medium">{profissional.nome}</p>
                     </TableCell>
-                    <TableCell>{formatPhone(profissional.telefone)}</TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell>
+                      <Badge variant="secondary" className="bg-primary/10 text-primary">
+                        {profissional.especialidade || "Cabelereira"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{formatPhone(profissional.telefone)}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <span className="font-semibold">{Number(profissional.comissao_padrao)}%</span>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">

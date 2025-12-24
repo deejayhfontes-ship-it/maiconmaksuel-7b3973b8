@@ -17,6 +17,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -35,11 +42,22 @@ const coresAgenda = [
   { nome: "Amarelo", valor: "#eab308" },
 ];
 
+const especialidades = [
+  "Cabelereira",
+  "Colorista",
+  "Manicure",
+  "Pedicure",
+  "Designer de Sobrancelhas",
+  "Maquiadora",
+  "Esteticista",
+];
+
 const profissionalSchema = z.object({
   nome: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   telefone: z.string().optional(),
   cpf: z.string().optional(),
   data_admissao: z.string().optional(),
+  especialidade: z.string().min(1, "Selecione uma especialidade"),
   comissao_padrao: z.number().min(0, "Mínimo 0%").max(100, "Máximo 100%"),
   cor_agenda: z.string(),
   ativo: z.boolean(),
@@ -53,6 +71,7 @@ interface Profissional {
   telefone: string | null;
   cpf: string | null;
   data_admissao: string | null;
+  especialidade: string | null;
   comissao_padrao: number;
   cor_agenda: string;
   foto_url: string | null;
@@ -95,6 +114,7 @@ export default function ProfissionalFormDialog({
       telefone: "",
       cpf: "",
       data_admissao: "",
+      especialidade: "Cabelereira",
       comissao_padrao: 30,
       cor_agenda: "#3b82f6",
       ativo: true,
@@ -108,6 +128,7 @@ export default function ProfissionalFormDialog({
         telefone: profissional.telefone || "",
         cpf: profissional.cpf || "",
         data_admissao: profissional.data_admissao || "",
+        especialidade: profissional.especialidade || "Cabelereira",
         comissao_padrao: Number(profissional.comissao_padrao),
         cor_agenda: profissional.cor_agenda,
         ativo: profissional.ativo,
@@ -119,6 +140,7 @@ export default function ProfissionalFormDialog({
         telefone: "",
         cpf: "",
         data_admissao: "",
+        especialidade: "Cabelereira",
         comissao_padrao: 30,
         cor_agenda: "#3b82f6",
         ativo: true,
@@ -195,6 +217,7 @@ export default function ProfissionalFormDialog({
         telefone: data.telefone || null,
         cpf: data.cpf || null,
         data_admissao: data.data_admissao || null,
+        especialidade: data.especialidade,
         comissao_padrao: data.comissao_padrao,
         cor_agenda: data.cor_agenda,
         ativo: data.ativo,
@@ -320,6 +343,29 @@ export default function ProfissionalFormDialog({
                     <FormControl>
                       <Input placeholder="Nome completo" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="especialidade"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Especialidade *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {especialidades.map((esp) => (
+                          <SelectItem key={esp} value={esp}>{esp}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
