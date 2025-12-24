@@ -187,17 +187,16 @@ export default function Usuarios() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Usuários</h1>
-          <p className="text-sm text-muted-foreground">
-            Gerencie os usuários e níveis de acesso do sistema
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {usuarios.length} usuário{usuarios.length !== 1 ? "s" : ""}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+            <ShieldCheck className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Usuários</h1>
+            <p className="text-muted-foreground">
+              {usuarios.length} usuário{usuarios.length !== 1 ? "s" : ""} • Gestão de acessos
+            </p>
+          </div>
         </div>
       </div>
 

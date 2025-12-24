@@ -250,17 +250,17 @@ const Dashboard = () => {
       {/* Header com Logo, Relógio e Mensagem Motivacional */}
       <div className="flex flex-col gap-4 lg:gap-6">
         {/* Logo e título */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-xl bg-card shadow-md p-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
             <img 
               src={iconeMaicon} 
               alt="Ícone" 
-              className="h-8 w-8 md:h-10 md:w-10 object-contain dark:invert"
+              className="h-6 w-6 object-contain dark:invert"
             />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Início</h1>
-            <p className="text-sm md:text-base text-muted-foreground">Visão geral do seu salão</p>
+            <h1 className="text-3xl font-bold text-foreground">Início</h1>
+            <p className="text-muted-foreground">Visão geral do seu salão</p>
           </div>
         </div>
         
