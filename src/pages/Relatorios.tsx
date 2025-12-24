@@ -1440,10 +1440,10 @@ const Relatorios = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex gap-4">
-      {/* Sidebar de categorias */}
-      <div className="w-64 flex-shrink-0">
-        <Card className="h-full">
+    <div className="flex flex-col lg:flex-row gap-4 min-h-[calc(100vh-6rem)]">
+      {/* Sidebar de categorias - Mobile: horizontal scroll, Desktop: sidebar */}
+      <div className="lg:w-64 lg:flex-shrink-0">
+        <Card className="lg:h-full">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
@@ -1451,46 +1451,75 @@ const Relatorios = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-2">
-            <ScrollArea className="h-[calc(100vh-12rem)]">
-              <div className="space-y-1">
-                {(Object.keys(menuItems) as ReportCategory[]).map((cat) => (
-                  <div key={cat}>
-                    <button
-                      className={cn(
-                        "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                        expandedCategories.includes(cat) ? "bg-muted" : "hover:bg-muted/50"
-                      )}
-                      onClick={() => toggleCategory(cat)}
+            {/* Mobile: horizontal scroll */}
+            <div className="lg:hidden">
+              <ScrollArea className="w-full">
+                <div className="flex gap-2 pb-2">
+                  {(Object.keys(menuItems) as ReportCategory[]).map((cat) => (
+                    <Select
+                      key={cat}
+                      value={category === cat ? reportType : ""}
+                      onValueChange={(value) => selectReport(cat, value as ReportType)}
                     >
-                      <span>{categoryLabels[cat]}</span>
-                      <ChevronRight className={cn("h-4 w-4 transition-transform", expandedCategories.includes(cat) && "rotate-90")} />
-                    </button>
-                    {expandedCategories.includes(cat) && (
-                      <div className="ml-2 mt-1 space-y-1">
-                        {menuItems[cat].map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <button
-                              key={item.id}
-                              className={cn(
-                                "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
-                                category === cat && reportType === item.id
-                                  ? "bg-primary text-primary-foreground"
-                                  : "hover:bg-muted"
-                              )}
-                              onClick={() => selectReport(cat, item.id as ReportType)}
-                            >
-                              <Icon className="h-4 w-4" />
-                              {item.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+                      <SelectTrigger className="w-[140px] flex-shrink-0">
+                        <SelectValue placeholder={categoryLabels[cat]} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {menuItems[cat].map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+            
+            {/* Desktop: sidebar menu */}
+            <div className="hidden lg:block">
+              <ScrollArea className="h-[calc(100vh-12rem)]">
+                <div className="space-y-1">
+                  {(Object.keys(menuItems) as ReportCategory[]).map((cat) => (
+                    <div key={cat}>
+                      <button
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                          expandedCategories.includes(cat) ? "bg-muted" : "hover:bg-muted/50"
+                        )}
+                        onClick={() => toggleCategory(cat)}
+                      >
+                        <span>{categoryLabels[cat]}</span>
+                        <ChevronRight className={cn("h-4 w-4 transition-transform", expandedCategories.includes(cat) && "rotate-90")} />
+                      </button>
+                      {expandedCategories.includes(cat) && (
+                        <div className="ml-2 mt-1 space-y-1">
+                          {menuItems[cat].map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.id}
+                                className={cn(
+                                  "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
+                                  category === cat && reportType === item.id
+                                    ? "bg-primary text-primary-foreground"
+                                    : "hover:bg-muted"
+                                )}
+                                onClick={() => selectReport(cat, item.id as ReportType)}
+                              >
+                                <Icon className="h-4 w-4" />
+                                {item.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -1498,23 +1527,49 @@ const Relatorios = () => {
       {/* Conteúdo principal */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Filtros globais */}
-        <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            {periodPresets.map((preset) => (
-              <Button
-                key={preset.label}
-                variant="outline"
-                size="sm"
-                onClick={() => applyPreset(preset)}
-              >
-                {preset.label}
-              </Button>
-            ))}
+            {/* Mobile: apenas alguns presets */}
+            <div className="hidden sm:flex items-center gap-2 flex-wrap">
+              {periodPresets.map((preset) => (
+                <Button
+                  key={preset.label}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset(preset)}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+            {/* Mobile: select para presets */}
+            <div className="sm:hidden">
+              <Select onValueChange={(value) => {
+                const preset = periodPresets.find(p => p.label === value);
+                if (preset) applyPreset(preset);
+              }}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periodPresets.map((preset) => (
+                    <SelectItem key={preset.label} value={preset.label}>
+                      {preset.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <CalendarIcon className="h-4 w-4" />
-                  {format(dateRange.from, "dd/MM/yy")} - {format(dateRange.to, "dd/MM/yy")}
+                  <span className="hidden sm:inline">
+                    {format(dateRange.from, "dd/MM/yy")} - {format(dateRange.to, "dd/MM/yy")}
+                  </span>
+                  <span className="sm:hidden">
+                    {format(dateRange.from, "dd/MM")} - {format(dateRange.to, "dd/MM")}
+                  </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -1527,14 +1582,15 @@ const Relatorios = () => {
                     }
                   }}
                   locale={ptBR}
-                  numberOfMonths={2}
+                  numberOfMonths={1}
+                  className="max-w-[280px] sm:max-w-none"
                 />
               </PopoverContent>
             </Popover>
           </div>
-          <Button onClick={fetchData} disabled={loading}>
+          <Button onClick={fetchData} disabled={loading} size="sm">
             <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-            Atualizar
+            <span className="hidden sm:inline">Atualizar</span>
           </Button>
         </div>
 
