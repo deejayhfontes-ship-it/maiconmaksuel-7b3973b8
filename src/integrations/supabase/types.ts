@@ -231,6 +231,102 @@ export type Database = {
           },
         ]
       }
+      caixa: {
+        Row: {
+          created_at: string
+          data_abertura: string
+          data_fechamento: string | null
+          diferenca: number | null
+          id: string
+          observacoes_abertura: string | null
+          observacoes_fechamento: string | null
+          status: string
+          updated_at: string
+          valor_esperado: number | null
+          valor_final: number | null
+          valor_inicial: number
+        }
+        Insert: {
+          created_at?: string
+          data_abertura?: string
+          data_fechamento?: string | null
+          diferenca?: number | null
+          id?: string
+          observacoes_abertura?: string | null
+          observacoes_fechamento?: string | null
+          status?: string
+          updated_at?: string
+          valor_esperado?: number | null
+          valor_final?: number | null
+          valor_inicial?: number
+        }
+        Update: {
+          created_at?: string
+          data_abertura?: string
+          data_fechamento?: string | null
+          diferenca?: number | null
+          id?: string
+          observacoes_abertura?: string | null
+          observacoes_fechamento?: string | null
+          status?: string
+          updated_at?: string
+          valor_esperado?: number | null
+          valor_final?: number | null
+          valor_inicial?: number
+        }
+        Relationships: []
+      }
+      caixa_movimentacoes: {
+        Row: {
+          atendimento_id: string | null
+          caixa_id: string
+          categoria: string | null
+          data_hora: string
+          descricao: string
+          forma_pagamento: string | null
+          id: string
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          atendimento_id?: string | null
+          caixa_id: string
+          categoria?: string | null
+          data_hora?: string
+          descricao: string
+          forma_pagamento?: string | null
+          id?: string
+          tipo: string
+          valor: number
+        }
+        Update: {
+          atendimento_id?: string | null
+          caixa_id?: string
+          categoria?: string | null
+          data_hora?: string
+          descricao?: string
+          forma_pagamento?: string | null
+          id?: string
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caixa_movimentacoes_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caixa_movimentacoes_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           ativo: boolean
@@ -302,6 +398,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      despesas_rapidas: {
+        Row: {
+          caixa_id: string | null
+          categoria: string
+          data_hora: string
+          descricao: string
+          id: string
+          observacoes: string | null
+          pago_por: string
+          valor: number
+        }
+        Insert: {
+          caixa_id?: string | null
+          categoria: string
+          data_hora?: string
+          descricao: string
+          id?: string
+          observacoes?: string | null
+          pago_por?: string
+          valor: number
+        }
+        Update: {
+          caixa_id?: string | null
+          categoria?: string
+          data_hora?: string
+          descricao?: string
+          id?: string
+          observacoes?: string | null
+          pago_por?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "despesas_rapidas_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixa"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pagamentos: {
         Row: {
