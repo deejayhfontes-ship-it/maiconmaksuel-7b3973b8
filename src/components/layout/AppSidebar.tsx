@@ -22,12 +22,12 @@ import { useEffect, useState } from "react";
 
 const menuItems = [
   { title: "Início", icon: Home, path: "/dashboard" },
-  { title: "Clientes", icon: Users, path: "/clientes" },
-  { title: "Profissionais", icon: UserCheck, path: "/profissionais" },
-  { title: "Serviços", icon: Scissors, path: "/servicos" },
-  { title: "Produtos", icon: Package, path: "/produtos" },
   { title: "Agenda", icon: Calendar, path: "/agenda" },
   { title: "Atendimentos", icon: ClipboardList, path: "/atendimentos" },
+  { title: "Serviços", icon: Scissors, path: "/servicos" },
+  { title: "Profissionais", icon: UserCheck, path: "/profissionais" },
+  { title: "Produtos", icon: Package, path: "/produtos" },
+  { title: "Clientes", icon: Users, path: "/clientes" },
   { title: "Caixa", icon: DollarSign, path: "/caixa" },
   { title: "Financeiro", icon: TrendingUp, path: "/financeiro" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
