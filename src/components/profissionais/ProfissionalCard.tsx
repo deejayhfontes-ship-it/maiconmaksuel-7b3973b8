@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DualProgressCard } from "./ProgressBar";
-import { Eye, Pencil, ShoppingCart, Trash2, Target } from "lucide-react";
+import { Pencil, ShoppingCart, Trash2, Target } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -30,7 +30,6 @@ interface Profissional {
 interface ProfissionalCardProps {
   profissional: Profissional;
   mesReferencia: string;
-  onView: (id: string) => void;
   onEdit: (profissional: Profissional) => void;
   onVendas: (id: string) => void;
   onDelete: (id: string) => void;
@@ -39,7 +38,6 @@ interface ProfissionalCardProps {
 export function ProfissionalCard({ 
   profissional, 
   mesReferencia,
-  onView, 
   onEdit, 
   onVendas, 
   onDelete 
@@ -130,17 +128,10 @@ export function ProfissionalCard({
             variant="outline" 
             size="sm" 
             className="flex-1"
-            onClick={() => onView(profissional.id)}
-          >
-            <Eye className="h-4 w-4 mr-1" />
-            Ver Detalhes
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
             onClick={() => onEdit(profissional)}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-4 w-4 mr-1" />
+            Editar
           </Button>
           {profissional.pode_vender_produtos && (
             <Button 
