@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* BeautyPro Design System */
-    --background: 210 40% 98%; /* slate-50 */
+    --background: 210 40% 98%;
     --foreground: 222 47% 11%;
     
     --card: 0 0% 100%;
@@ -17,7 +17,7 @@
     --popover-foreground: 222 47% 11%;
     
     /* Primary: Indigo */
-    --primary: 239 84% 67%; /* indigo-600 */
+    --primary: 239 84% 67%;
     --primary-foreground: 0 0% 100%;
     
     --secondary: 210 40% 96%;
@@ -30,14 +30,25 @@
     --accent-foreground: 0 0% 100%;
     
     /* Status Colors */
-    --success: 160 84% 39%; /* emerald-500 */
+    --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
+    --success-bg: 160 76% 95%;
+    --success-text: 160 84% 30%;
     
-    --warning: 38 92% 50%; /* amber-500 */
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+    --warning-bg: 38 92% 95%;
+    --warning-text: 38 92% 35%;
     
-    --destructive: 0 84% 60%; /* red-500 */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+    --destructive-bg: 0 84% 95%;
+    --destructive-text: 0 84% 40%;
+    
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --info-bg: 217 91% 95%;
+    --info-text: 217 91% 40%;
     
     --border: 214 32% 91%;
     --input: 214 32% 91%;
@@ -54,6 +65,11 @@
     --sidebar-accent-foreground: 239 84% 67%;
     --sidebar-border: 214 32% 91%;
     --sidebar-ring: 239 84% 67%;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 
   .dark {
@@ -80,12 +96,23 @@
     
     --success: 160 84% 39%;
     --success-foreground: 0 0% 100%;
+    --success-bg: 160 84% 15%;
+    --success-text: 160 84% 65%;
     
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+    --warning-bg: 38 92% 15%;
+    --warning-text: 38 92% 65%;
     
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
+    --destructive-bg: 0 63% 15%;
+    --destructive-text: 0 63% 65%;
+    
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --info-bg: 217 91% 15%;
+    --info-text: 217 91% 70%;
     
     --border: 217 33% 17%;
     --input: 217 33% 17%;
@@ -99,12 +126,20 @@
     --sidebar-accent-foreground: 239 84% 67%;
     --sidebar-border: 217 33% 17%;
     --sidebar-ring: 239 84% 67%;
+    
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
@@ -114,7 +149,115 @@
 }
 
 @layer utilities {
+  /* Transitions */
   .sidebar-transition {
     @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .theme-transition {
+    @apply transition-colors duration-300 ease-in-out;
+  }
+  
+  /* Focus Ring */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+  
+  /* Card Hover Effect */
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+  
+  /* Ripple Effect for Buttons */
+  .ripple {
+    @apply relative overflow-hidden;
+  }
+  
+  .ripple::after {
+    content: '';
+    @apply absolute inset-0 pointer-events-none;
+    background: radial-gradient(circle, hsl(var(--foreground) / 0.1) 10%, transparent 10.01%);
+    background-size: 1000%;
+    background-position: center;
+    transition: background-size 0.3s ease-out, opacity 0.3s ease-out;
+    opacity: 0;
+  }
+  
+  .ripple:active::after {
+    background-size: 100%;
+    opacity: 1;
+    transition: background-size 0s, opacity 0s;
+  }
+  
+  /* Page Fade In Animation */
+  .page-enter {
+    @apply animate-fade-in;
+  }
+  
+  /* Staggered Children Animation */
+  .stagger-children > * {
+    @apply animate-fade-in;
+    animation-fill-mode: backwards;
+  }
+  
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+  .stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+  .stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+  .stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+  
+  /* Skeleton Loading */
+  .skeleton {
+    @apply bg-muted animate-pulse rounded-lg;
+  }
+  
+  /* Checkbox Animation */
+  .checkbox-animated {
+    @apply transition-all duration-200 ease-out;
+  }
+  
+  .checkbox-animated[data-state="checked"] {
+    @apply scale-100;
+    animation: checkbox-pop 0.2s ease-out;
+  }
+  
+  @keyframes checkbox-pop {
+    0% { transform: scale(0.8); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+}
+
+@layer components {
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+  
+  /* Table Mobile Responsive */
+  @media (max-width: 768px) {
+    .table-responsive {
+      @apply block overflow-x-auto;
+    }
+    
+    .table-responsive table {
+      @apply min-w-full;
+    }
   }
 }
