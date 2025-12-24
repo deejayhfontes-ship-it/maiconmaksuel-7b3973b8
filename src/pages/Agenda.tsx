@@ -497,7 +497,7 @@ const Agenda = () => {
 
         {/* Grid principal */}
         <Card className="flex-1 overflow-hidden min-h-0">
-          <ScrollArea className="h-full w-full">
+          <div className="h-full overflow-auto">
             <div className="min-w-max">
               {/* Header com profissionais */}
               <div className="flex sticky top-0 bg-card z-10 border-b">
@@ -685,7 +685,7 @@ const Agenda = () => {
                 ))}
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </Card>
       </div>
 

@@ -14,7 +14,6 @@ import {
   ChevronRight,
   X,
   ShieldCheck,
-  Type,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,18 +39,12 @@ const adminItems = [
   { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
 ];
 
-const fontSizes = [
-  { label: "1x", value: "text-sm", root: "14px" },
-  { label: "2x", value: "text-base", root: "16px" },
-  { label: "3x", value: "text-lg", root: "18px" },
-];
 
 export function AppSidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebarContext();
   const { role } = useAuth();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
-  const [fontSizeIndex, setFontSizeIndex] = useState(1); // Default 2x (16px)
   
   const allMenuItems = role === "admin" 
     ? [...menuItems, ...adminItems] 
@@ -63,26 +56,6 @@ export function AppSidebar() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
-
-  // Load saved font size
-  useEffect(() => {
-    const saved = localStorage.getItem("app-font-size");
-    if (saved) {
-      const index = parseInt(saved, 10);
-      if (index >= 0 && index < fontSizes.length) {
-        setFontSizeIndex(index);
-        document.documentElement.style.fontSize = fontSizes[index].root;
-      }
-    }
-  }, []);
-
-  // Apply font size
-  const handleFontSizeChange = () => {
-    const nextIndex = (fontSizeIndex + 1) % fontSizes.length;
-    setFontSizeIndex(nextIndex);
-    document.documentElement.style.fontSize = fontSizes[nextIndex].root;
-    localStorage.setItem("app-font-size", nextIndex.toString());
-  };
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -171,23 +144,6 @@ export function AppSidebar() {
           })}
         </nav>
 
-        {/* Font Size Toggle */}
-        <div className={cn(
-          "px-3 mb-2",
-          isMobile ? "block" : "absolute bottom-16 left-0 right-0"
-        )}>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleFontSizeChange}
-            className="w-full justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-ios-lg gap-2"
-          >
-            <Type className="h-4 w-4" />
-            {!collapsed && (
-              <span>Fonte: {fontSizes[fontSizeIndex].label}</span>
-            )}
-          </Button>
-        </div>
 
         {/* Collapse Toggle - Desktop only */}
         {!isMobile && (

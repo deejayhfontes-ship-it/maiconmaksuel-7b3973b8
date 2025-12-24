@@ -1,4 +1,4 @@
-import { Search, Bell, Moon, Sun, Menu, User, Settings, LogOut } from "lucide-react";
+import { Search, Bell, Moon, Sun, Menu, User, Settings, LogOut, Type, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTheme } from "@/components/ThemeProvider";
 import { useSidebarContext } from "./MainLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,12 +19,38 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const fontSizes = [
+  { label: "1x", root: "14px" },
+  { label: "2x", root: "16px" },
+  { label: "3x", root: "18px" },
+];
+
 export function Topbar() {
   const { resolvedTheme, setTheme } = useTheme();
   const { collapsed, mobileOpen, setMobileOpen } = useSidebarContext();
   const { profile, role, signOut } = useAuth();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
+  const [fontSizeIndex, setFontSizeIndex] = useState(1);
+
+  // Load saved font size on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("app-font-size");
+    if (saved) {
+      const index = parseInt(saved, 10);
+      if (index >= 0 && index < fontSizes.length) {
+        setFontSizeIndex(index);
+        document.documentElement.style.fontSize = fontSizes[index].root;
+      }
+    }
+  }, []);
+
+  const handleFontSizeChange = () => {
+    const nextIndex = (fontSizeIndex + 1) % fontSizes.length;
+    setFontSizeIndex(nextIndex);
+    document.documentElement.style.fontSize = fontSizes[nextIndex].root;
+    localStorage.setItem("app-font-size", nextIndex.toString());
+  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -119,6 +146,24 @@ export function Topbar() {
               <Moon className="h-5 w-5 text-muted-foreground" />
             )}
           </Button>
+
+          {/* Font Size Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleFontSizeChange}
+                className="ios-icon-button relative"
+              >
+                <Type className="h-5 w-5 text-muted-foreground" />
+                <Plus className="h-2.5 w-2.5 absolute -top-0.5 -right-0.5 text-primary" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Fonte: {fontSizes[fontSizeIndex].label}</p>
+            </TooltipContent>
+          </Tooltip>
 
           {/* User Menu */}
           <DropdownMenu>
