@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Users, Plus, Search, Edit, Trash2, Eye } from "lucide-react";
+import { Users, Plus, Search, Edit, Trash2, Eye, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -30,6 +30,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
@@ -56,6 +61,7 @@ interface Cliente {
   foto_url: string | null;
   ativo: boolean;
   ultima_visita: string | null;
+  total_visitas: number;
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +93,25 @@ const getAvatarColor = (name: string) => {
 
 const formatPhone = (phone: string) => {
   return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+};
+
+const cleanPhoneForWhatsApp = (phone: string) => {
+  const cleaned = phone.replace(/\D/g, "");
+  // Adiciona 55 (Brasil) se não tiver
+  return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
+};
+
+const getFrequencyBadge = (totalVisitas: number) => {
+  if (totalVisitas >= 20) {
+    return { label: "VIP", color: "bg-purple-500/10 text-purple-500" };
+  } else if (totalVisitas >= 10) {
+    return { label: "Frequente", color: "bg-success/10 text-success" };
+  } else if (totalVisitas >= 5) {
+    return { label: "Regular", color: "bg-primary/10 text-primary" };
+  } else if (totalVisitas >= 1) {
+    return { label: "Novo", color: "bg-warning/10 text-warning" };
+  }
+  return { label: "Prospect", color: "bg-muted text-muted-foreground" };
 };
 
 const Clientes = () => {
@@ -305,77 +330,112 @@ const Clientes = () => {
                   <TableHead className="w-12"></TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Celular</TableHead>
-                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead className="hidden md:table-cell">Visitas</TableHead>
                   <TableHead className="hidden lg:table-cell">Última Visita</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Frequência</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedClientes.map((cliente) => (
-                  <TableRow key={cliente.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={cliente.foto_url || undefined} />
-                        <AvatarFallback
-                          className={`${getAvatarColor(cliente.nome)} text-white`}
-                        >
-                          {getInitials(cliente.nome)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell className="font-medium">{cliente.nome}</TableCell>
-                    <TableCell>{formatPhone(cliente.celular)}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {cliente.email || "-"}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">
-                      {cliente.ultima_visita
-                        ? formatDistanceToNow(new Date(cliente.ultima_visita), {
-                            addSuffix: true,
-                            locale: ptBR,
-                          })
-                        : "Nunca"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={cliente.ativo ? "default" : "secondary"}
-                        className={
-                          cliente.ativo
-                            ? "bg-success/10 text-success hover:bg-success/20"
-                            : "bg-muted text-muted-foreground"
-                        }
-                      >
-                        {cliente.ativo ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleView(cliente)}
-                        >
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(cliente)}
-                        >
-                          <Edit className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(cliente)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {paginatedClientes.map((cliente) => {
+                  const frequency = getFrequencyBadge(cliente.total_visitas);
+                  return (
+                    <TableRow key={cliente.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={cliente.foto_url || undefined} />
+                          <AvatarFallback
+                            className={`${getAvatarColor(cliente.nome)} text-white`}
+                          >
+                            {getInitials(cliente.nome)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{cliente.nome}</p>
+                          <p className="text-xs text-muted-foreground hidden md:block">
+                            {cliente.email || "-"}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatPhone(cliente.celular)}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <span className="font-semibold">{cliente.total_visitas}</span>
+                        <span className="text-muted-foreground text-sm"> visitas</span>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">
+                        {cliente.ultima_visita
+                          ? formatDistanceToNow(new Date(cliente.ultima_visita), {
+                              addSuffix: true,
+                              locale: ptBR,
+                            })
+                          : "Nunca"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={frequency.color}>
+                          {frequency.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const phone = cleanPhoneForWhatsApp(cliente.celular);
+                                  window.open(`https://wa.me/${phone}`, "_blank");
+                                }}
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>WhatsApp</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleView(cliente)}
+                              >
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Ver detalhes</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(cliente)}
+                              >
+                                <Edit className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Editar</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(cliente)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Excluir</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

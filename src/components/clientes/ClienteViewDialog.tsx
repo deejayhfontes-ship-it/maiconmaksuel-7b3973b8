@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Mail, MapPin, Calendar, FileText } from "lucide-react";
+import { Phone, Mail, MapPin, Calendar, FileText, MessageCircle, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Cliente {
   id: string;
@@ -29,9 +30,28 @@ interface Cliente {
   foto_url: string | null;
   ativo: boolean;
   ultima_visita: string | null;
+  total_visitas?: number;
   created_at: string;
   updated_at: string;
 }
+
+const cleanPhoneForWhatsApp = (phone: string) => {
+  const cleaned = phone.replace(/\D/g, "");
+  return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
+};
+
+const getFrequencyBadge = (totalVisitas: number) => {
+  if (totalVisitas >= 20) {
+    return { label: "VIP", color: "bg-purple-500/10 text-purple-500" };
+  } else if (totalVisitas >= 10) {
+    return { label: "Frequente", color: "bg-success/10 text-success" };
+  } else if (totalVisitas >= 5) {
+    return { label: "Regular", color: "bg-primary/10 text-primary" };
+  } else if (totalVisitas >= 1) {
+    return { label: "Novo", color: "bg-warning/10 text-warning" };
+  }
+  return { label: "Prospect", color: "bg-muted text-muted-foreground" };
+};
 
 interface ClienteViewDialogProps {
   open: boolean;
@@ -98,9 +118,9 @@ export default function ClienteViewDialog({
                 {getInitials(cliente.nome)}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="flex-1">
               <h3 className="text-xl font-semibold">{cliente.nome}</h3>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Badge
                   variant={cliente.ativo ? "default" : "secondary"}
                   className={
@@ -111,14 +131,38 @@ export default function ClienteViewDialog({
                 >
                   {cliente.ativo ? "Ativo" : "Inativo"}
                 </Badge>
-                {cliente.cpf && (
-                  <span className="text-sm text-muted-foreground">
-                    CPF: {cliente.cpf}
-                  </span>
+                {cliente.total_visitas !== undefined && (
+                  <Badge className={getFrequencyBadge(cliente.total_visitas).color}>
+                    {getFrequencyBadge(cliente.total_visitas).label}
+                  </Badge>
                 )}
               </div>
             </div>
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => {
+                const phone = cleanPhoneForWhatsApp(cliente.celular);
+                window.open(`https://wa.me/${phone}`, "_blank");
+              }}
+            >
+              <MessageCircle className="h-4 w-4 mr-1" />
+              WhatsApp
+            </Button>
           </div>
+
+          {/* Estatísticas de visitas */}
+          {cliente.total_visitas !== undefined && (
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-2xl font-bold">{cliente.total_visitas}</p>
+                  <p className="text-sm text-muted-foreground">visitas realizadas</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Contato */}
           <div className="space-y-3">
@@ -126,20 +170,27 @@ export default function ClienteViewDialog({
               Contato
             </h4>
             <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{cliente.celular}</span>
-                {cliente.telefone && (
-                  <span className="text-muted-foreground">
-                    / {cliente.telefone}
-                  </span>
-                )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>{cliente.celular}</span>
+                  {cliente.telefone && (
+                    <span className="text-muted-foreground">
+                      / {cliente.telefone}
+                    </span>
+                  )}
+                </div>
               </div>
               {cliente.email && (
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <span>{cliente.email}</span>
                 </div>
+              )}
+              {cliente.cpf && (
+                <p className="text-sm text-muted-foreground pl-7">
+                  CPF: {cliente.cpf}
+                </p>
               )}
             </div>
           </div>
