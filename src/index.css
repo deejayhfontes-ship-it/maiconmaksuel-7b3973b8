@@ -458,12 +458,20 @@
   }
 
   .ios-button-primary {
-    @apply ios-button bg-primary text-primary-foreground;
-    box-shadow: var(--shadow-primary);
+    @apply ios-button text-primary-foreground;
+    background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+    box-shadow: 
+      0 1px 3px rgba(0, 122, 255, 0.12),
+      0 4px 12px rgba(0, 122, 255, 0.2),
+      0 8px 24px rgba(0, 122, 255, 0.15);
   }
 
   .ios-button-primary:hover {
-    @apply bg-primary/90;
+    background: linear-gradient(135deg, #0A84FF 0%, #0066CC 100%);
+    box-shadow: 
+      0 2px 6px rgba(0, 122, 255, 0.15),
+      0 8px 24px rgba(0, 122, 255, 0.25),
+      0 16px 32px rgba(0, 122, 255, 0.2);
   }
 
   .ios-button-secondary {
@@ -483,8 +491,124 @@
   }
 
   .ios-button-destructive {
-    @apply ios-button bg-destructive text-destructive-foreground;
-    box-shadow: var(--shadow-destructive);
+    @apply ios-button text-destructive-foreground;
+    background: linear-gradient(135deg, #FF3B30 0%, #D32F2F 100%);
+    box-shadow: 
+      0 1px 3px rgba(255, 59, 48, 0.12),
+      0 4px 12px rgba(255, 59, 48, 0.2),
+      0 8px 24px rgba(255, 59, 48, 0.15);
+  }
+
+  .ios-button-success {
+    @apply ios-button text-success-foreground;
+    background: linear-gradient(135deg, #34C759 0%, #28A745 100%);
+    box-shadow: 
+      0 1px 3px rgba(52, 199, 89, 0.12),
+      0 4px 12px rgba(52, 199, 89, 0.2),
+      0 8px 24px rgba(52, 199, 89, 0.15);
+  }
+
+  /* iOS Header/Topbar with Glassmorphism */
+  .ios-header {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.7) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 
+      0 1px 3px rgba(0, 0, 0, 0.02),
+      0 4px 12px rgba(0, 0, 0, 0.04);
+  }
+
+  .dark .ios-header {
+    background: linear-gradient(135deg, rgba(28, 28, 30, 0.85) 0%, rgba(28, 28, 30, 0.7) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* iOS Sidebar with Glassmorphism */
+  .ios-sidebar {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-right: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 
+      1px 0 3px rgba(0, 0, 0, 0.02),
+      4px 0 12px rgba(0, 0, 0, 0.04);
+  }
+
+  .dark .ios-sidebar {
+    background: linear-gradient(180deg, rgba(28, 28, 30, 0.95) 0%, rgba(28, 28, 30, 0.85) 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* iOS Navigation Item */
+  .ios-nav-item {
+    @apply bg-transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .ios-nav-item:hover {
+    background: rgba(0, 122, 255, 0.08);
+  }
+
+  .ios-nav-item-active {
+    background: linear-gradient(135deg, rgba(0, 122, 255, 0.12) 0%, rgba(0, 122, 255, 0.08) 100%);
+    color: hsl(var(--primary));
+    border-left: 3px solid hsl(var(--primary));
+  }
+
+  .dark .ios-nav-item:hover {
+    background: rgba(10, 132, 255, 0.12);
+  }
+
+  .dark .ios-nav-item-active {
+    background: linear-gradient(135deg, rgba(10, 132, 255, 0.15) 0%, rgba(10, 132, 255, 0.1) 100%);
+  }
+
+  /* iOS Icon Button */
+  .ios-icon-button {
+    @apply rounded-xl;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .ios-icon-button:hover {
+    background: rgba(0, 122, 255, 0.08);
+  }
+
+  .ios-icon-button:active {
+    transform: scale(0.95);
+  }
+
+  /* iOS Notification Badge */
+  .ios-notification-badge {
+    background: linear-gradient(135deg, #FF3B30 0%, #FF453A 100%);
+    color: white;
+    border: 2px solid hsl(var(--card));
+    box-shadow: 0 2px 6px rgba(255, 59, 48, 0.3);
+  }
+
+  /* iOS Avatar Gradient */
+  .ios-avatar-gradient {
+    background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+  }
+
+  /* iOS Dropdown */
+  .ios-dropdown {
+    @apply rounded-ios-xl border-0 p-2;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 
+      0 1px 3px rgba(0, 0, 0, 0.04),
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      0 16px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark .ios-dropdown {
+    background: linear-gradient(135deg, rgba(44, 44, 46, 0.98) 0%, rgba(44, 44, 46, 0.95) 100%);
+    box-shadow: 
+      0 1px 3px rgba(0, 0, 0, 0.2),
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      0 16px 24px rgba(0, 0, 0, 0.25);
   }
 
   /* iOS Input Styles */
@@ -511,15 +635,41 @@
   }
 
   .ios-switch[data-state="checked"] {
-    @apply bg-success;
+    background: linear-gradient(90deg, #34C759 0%, #30D158 100%);
   }
 
   .ios-switch-thumb {
     width: 27px;
     height: 27px;
     @apply bg-white rounded-full;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 
+      0 1px 3px rgba(0, 0, 0, 0.1),
+      0 3px 8px rgba(0, 0, 0, 0.15);
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* iOS Progress Bar */
+  .ios-progress-bar {
+    @apply h-2 rounded-full overflow-hidden;
+    background: hsl(var(--secondary));
+  }
+
+  .ios-progress-bar-fill {
+    @apply h-full rounded-full;
+    background: linear-gradient(90deg, #007AFF 0%, #5856D6 100%);
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .ios-progress-bar-success .ios-progress-bar-fill {
+    background: linear-gradient(90deg, #34C759 0%, #30D158 100%);
+  }
+
+  .ios-progress-bar-warning .ios-progress-bar-fill {
+    background: linear-gradient(90deg, #FF9500 0%, #FF9F0A 100%);
+  }
+
+  .ios-progress-bar-destructive .ios-progress-bar-fill {
+    background: linear-gradient(90deg, #FF3B30 0%, #FF453A 100%);
   }
   
   /* Table Mobile Responsive */
@@ -543,7 +693,10 @@
   /* iOS Modal Container */
   .ios-modal {
     @apply bg-card rounded-[20px] p-8;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      0 16px 48px rgba(0, 0, 0, 0.15),
+      0 32px 64px rgba(0, 0, 0, 0.1);
     animation: ios-modal-enter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -561,18 +714,123 @@
   /* iOS Table Header */
   .ios-table-header {
     @apply bg-secondary/50 px-4 py-3 text-[13px] font-semibold uppercase tracking-wider text-muted-foreground sticky top-0;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   /* iOS Table Row */
   .ios-table-row {
-    @apply px-4 py-4 border-b border-border transition-colors duration-150;
+    @apply px-4 py-4 border-b border-border transition-all duration-150;
   }
 
   .ios-table-row:hover {
     @apply bg-secondary/50 cursor-pointer;
+    transform: translateX(2px);
   }
 
   .ios-table-row.selected {
-    @apply bg-primary/10 border-l-[3px] border-l-primary;
+    background: linear-gradient(90deg, rgba(0, 122, 255, 0.08) 0%, transparent 100%);
+    border-left: 3px solid hsl(var(--primary));
+  }
+
+  /* iOS Status Badge */
+  .ios-badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-lg text-[12px] font-semibold;
+    border: 1px solid transparent;
+  }
+
+  .ios-badge-success {
+    background: rgba(52, 199, 89, 0.12);
+    color: #34C759;
+    border-color: rgba(52, 199, 89, 0.2);
+  }
+
+  .ios-badge-warning {
+    background: rgba(255, 149, 0, 0.12);
+    color: #FF9500;
+    border-color: rgba(255, 149, 0, 0.2);
+  }
+
+  .ios-badge-destructive {
+    background: rgba(255, 59, 48, 0.12);
+    color: #FF3B30;
+    border-color: rgba(255, 59, 48, 0.2);
+  }
+
+  .ios-badge-info {
+    background: rgba(0, 122, 255, 0.12);
+    color: #007AFF;
+    border-color: rgba(0, 122, 255, 0.2);
+  }
+
+  .ios-badge-neutral {
+    background: rgba(142, 142, 147, 0.12);
+    color: #8E8E93;
+    border-color: rgba(142, 142, 147, 0.2);
+  }
+
+  .dark .ios-badge-success {
+    background: rgba(48, 209, 88, 0.15);
+    color: #30D158;
+    border-color: rgba(48, 209, 88, 0.25);
+  }
+
+  .dark .ios-badge-warning {
+    background: rgba(255, 159, 10, 0.15);
+    color: #FF9F0A;
+    border-color: rgba(255, 159, 10, 0.25);
+  }
+
+  .dark .ios-badge-destructive {
+    background: rgba(255, 69, 58, 0.15);
+    color: #FF453A;
+    border-color: rgba(255, 69, 58, 0.25);
+  }
+
+  .dark .ios-badge-info {
+    background: rgba(10, 132, 255, 0.15);
+    color: #0A84FF;
+    border-color: rgba(10, 132, 255, 0.25);
+  }
+
+  /* iOS Stats Card */
+  .ios-stats-card {
+    @apply rounded-ios-xl p-5;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 
+      0 1px 3px rgba(0, 0, 0, 0.04),
+      0 4px 12px rgba(0, 0, 0, 0.06),
+      0 16px 24px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .ios-stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.8) 50%, transparent 100%);
+  }
+
+  .ios-stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 2px 6px rgba(0, 0, 0, 0.06),
+      0 8px 24px rgba(0, 0, 0, 0.1),
+      0 24px 32px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark .ios-stats-card {
+    background: linear-gradient(135deg, rgba(28, 28, 30, 0.9) 0%, rgba(28, 28, 30, 0.7) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .dark .ios-stats-card::before {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
   }
 }
