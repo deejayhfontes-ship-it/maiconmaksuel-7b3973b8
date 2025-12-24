@@ -54,35 +54,35 @@ export function ProfissionalCard({
   };
 
   return (
-    <Card className="overflow-hidden animate-fade-in">
-      <CardContent className="p-6 space-y-4">
+    <Card className="overflow-hidden animate-fade-in h-full">
+      <CardContent className="p-5 flex flex-col h-full">
         {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-14 w-14 border-2" style={{ borderColor: profissional.cor_agenda }}>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <Avatar className="h-12 w-12 flex-shrink-0 border-2" style={{ borderColor: profissional.cor_agenda }}>
               {profissional.foto_url ? (
                 <AvatarImage src={profissional.foto_url} alt={profissional.nome} />
               ) : null}
               <AvatarFallback 
-                className="text-lg font-semibold"
+                className="text-base font-semibold"
                 style={{ backgroundColor: profissional.cor_agenda, color: 'white' }}
               >
                 {getInitials(profissional.nome)}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <h3 className="font-semibold text-lg">{profissional.nome}</h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-base truncate">{profissional.nome}</h3>
+              <p className="text-sm text-muted-foreground truncate">
                 {profissional.telefone || 'Sem telefone'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant={profissional.ativo ? "success" : "destructive"}>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Badge variant={profissional.ativo ? "success" : "destructive"} className="text-xs">
               {profissional.ativo ? "Ativo" : "Inativo"}
             </Badge>
             <div 
-              className="h-4 w-4 rounded-full border-2 border-border"
+              className="h-4 w-4 rounded-full border-2 border-border flex-shrink-0"
               style={{ backgroundColor: profissional.cor_agenda }}
               title="Cor da agenda"
             />
@@ -90,14 +90,14 @@ export function ProfissionalCard({
         </div>
 
         {/* Comissões */}
-        <div className="text-sm text-muted-foreground border-t border-b border-border py-2">
+        <div className="text-sm text-muted-foreground border-t border-b border-border py-3 mb-4 text-center">
           Comissões: Serviços {profissional.comissao_servicos}% | Produtos {profissional.comissao_produtos}%
         </div>
 
         {/* Toggle Metas */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <Target className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <Label htmlFor={`metas-${profissional.id}`} className="text-sm font-medium cursor-pointer">
               Metas do Mês
             </Label>
@@ -111,7 +111,7 @@ export function ProfissionalCard({
 
         {/* Metas */}
         {showMetas && (
-          <div className="animate-fade-in">
+          <div className="animate-fade-in mb-4">
             <DualProgressCard
               metaServicos={profissional.meta_servicos_mes}
               realizadoServicos={profissional.realizado_servicos || 0}
@@ -122,15 +122,18 @@ export function ProfissionalCard({
           </div>
         )}
 
+        {/* Spacer para empurrar ações para baixo */}
+        <div className="flex-1" />
+
         {/* Ações */}
-        <div className="flex items-center gap-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-2 pt-3 border-t border-border">
           <Button 
             variant="outline" 
             size="sm" 
             className="flex-1"
             onClick={() => onEdit(profissional)}
           >
-            <Pencil className="h-4 w-4 mr-1" />
+            <Pencil className="h-4 w-4 mr-2" />
             Editar
           </Button>
           {profissional.pode_vender_produtos && (
