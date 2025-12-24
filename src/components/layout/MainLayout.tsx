@@ -2,7 +2,9 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
+import { NotificationPermissionBanner } from "./NotificationPermissionBanner";
 import { cn } from "@/lib/utils";
+import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 
 interface SidebarContextType {
   collapsed: boolean;
@@ -45,6 +47,9 @@ export function MainLayout() {
     }
   }, []);
 
+  // Inicializar hook de notificações do navegador
+  useBrowserNotifications();
+
   return (
     <SidebarContext.Provider value={{ collapsed, setCollapsed, mobileOpen, setMobileOpen }}>
       <div className="min-h-screen bg-background theme-transition">
@@ -69,6 +74,9 @@ export function MainLayout() {
             <Outlet />
           </div>
         </main>
+
+        {/* Banner de permissão de notificações */}
+        <NotificationPermissionBanner />
       </div>
     </SidebarContext.Provider>
   );

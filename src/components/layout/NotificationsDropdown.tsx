@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Bell, Calendar, Package, Cake, Check, X } from "lucide-react";
+import { Bell, Calendar, Package, Cake, Settings, Volume2, VolumeX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,10 +8,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isToday, isTomorrow, differenceInDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 
 interface Notification {
   id: string;
@@ -26,6 +30,26 @@ export function NotificationsDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const { permission, requestPermission, playNotificationSound } = useBrowserNotifications();
+
+  // Carregar preferência de som
+  useEffect(() => {
+    const savedSound = localStorage.getItem("notification-sound-enabled");
+    if (savedSound !== null) {
+      setSoundEnabled(savedSound === "true");
+    }
+  }, []);
+
+  const toggleSound = () => {
+    const newValue = !soundEnabled;
+    setSoundEnabled(newValue);
+    localStorage.setItem("notification-sound-enabled", String(newValue));
+    if (newValue) {
+      playNotificationSound();
+    }
+  };
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
@@ -192,17 +216,66 @@ export function NotificationsDropdown() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-semibold">Notificações</h3>
-          {unreadCount > 0 && (
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-primary h-auto py-1 px-2"
+                onClick={markAllAsRead}
+              >
+                Marcar lidas
+              </Button>
+            )}
             <Button
               variant="ghost"
-              size="sm"
-              className="text-xs text-primary h-auto py-1"
-              onClick={markAllAsRead}
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setShowSettings(!showSettings)}
             >
-              Marcar todas como lidas
+              <Settings className="h-4 w-4 text-muted-foreground" />
             </Button>
-          )}
+          </div>
         </div>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="p-4 border-b bg-muted/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {soundEnabled ? (
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <VolumeX className="h-4 w-4 text-muted-foreground" />
+                )}
+                <Label className="text-sm">Som de notificação</Label>
+              </div>
+              <Switch checked={soundEnabled} onCheckedChange={toggleSound} />
+            </div>
+            
+            <Separator />
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm">Push do navegador</Label>
+              </div>
+              {permission === "granted" ? (
+                <Badge variant="success" className="text-xs">Ativo</Badge>
+              ) : permission === "denied" ? (
+                <Badge variant="destructive" className="text-xs">Bloqueado</Badge>
+              ) : (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={requestPermission}>
+                  Ativar
+                </Button>
+              )}
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              Receba alertas 15 e 5 minutos antes dos agendamentos.
+            </p>
+          </div>
+        )}
 
         {/* Content */}
         <ScrollArea className="h-[400px]">
