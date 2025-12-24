@@ -86,6 +86,48 @@ export type Database = {
         }
         Relationships: []
       }
+      profissionais: {
+        Row: {
+          ativo: boolean
+          comissao_padrao: number
+          cor_agenda: string
+          cpf: string | null
+          created_at: string
+          data_admissao: string | null
+          foto_url: string | null
+          id: string
+          nome: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          comissao_padrao?: number
+          cor_agenda?: string
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          foto_url?: string | null
+          id?: string
+          nome: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          comissao_padrao?: number
+          cor_agenda?: string
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          foto_url?: string | null
+          id?: string
+          nome?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
