@@ -385,7 +385,7 @@ const Profissionais = () => {
           </CardContent>
         </Card>
       ) : viewMode === "cards" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredProfissionais.map((prof) => (
             <ProfissionalCard
               key={prof.id}
