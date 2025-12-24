@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DualProgressCard } from "./ProgressBar";
-import { Eye, Pencil, ShoppingCart, Trash2, Target, TargetIcon } from "lucide-react";
+import { Eye, Pencil, ShoppingCart, Trash2, Target } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
