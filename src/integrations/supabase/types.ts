@@ -34,6 +34,7 @@ export type Database = {
           numero: string | null
           observacoes: string | null
           telefone: string | null
+          total_visitas: number
           ultima_visita: string | null
           updated_at: string
         }
@@ -56,6 +57,7 @@ export type Database = {
           numero?: string | null
           observacoes?: string | null
           telefone?: string | null
+          total_visitas?: number
           ultima_visita?: string | null
           updated_at?: string
         }
@@ -78,6 +80,7 @@ export type Database = {
           numero?: string | null
           observacoes?: string | null
           telefone?: string | null
+          total_visitas?: number
           ultima_visita?: string | null
           updated_at?: string
         }
