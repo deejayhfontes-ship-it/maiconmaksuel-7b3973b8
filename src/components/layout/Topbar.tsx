@@ -1,4 +1,4 @@
-import { Search, Bell, Moon, Sun, Menu, User, Settings, LogOut, Type, Plus } from "lucide-react";
+import { Search, Moon, Sun, Menu, User, Settings, LogOut, Type, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 
 const fontSizes = [
   { label: "1x", root: "14px" },
@@ -126,12 +127,7 @@ export function Topbar() {
         {/* Actions */}
         <div className="flex items-center gap-1 md:gap-3">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative ios-icon-button">
-            <Bell className="h-5 w-5 text-muted-foreground" />
-            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center ios-notification-badge text-[11px] font-semibold rounded-full">
-              3
-            </span>
-          </Button>
+          <NotificationsDropdown />
 
           {/* Theme Toggle */}
           <Button 
