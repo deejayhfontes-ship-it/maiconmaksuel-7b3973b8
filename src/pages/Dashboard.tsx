@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles } from "lucide-react";
+import logoMaicon from "@/assets/logo-maicon.jpg";
 import {
   LineChart,
   Line,
@@ -245,27 +246,37 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header com Relógio e Mensagem Motivacional */}
+      {/* Header com Logo, Relógio e Mensagem Motivacional */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Visão geral do seu salão</p>
+        <div className="flex items-center gap-4">
+          <img 
+            src={logoMaicon} 
+            alt="Logo" 
+            className="h-14 w-14 rounded-xl object-cover shadow-md"
+          />
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Início</h1>
+            <p className="text-muted-foreground">Visão geral do seu salão</p>
+          </div>
         </div>
         
         {/* Relógio Grande Minimalista */}
         <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
           <CardContent className="p-6 flex items-center gap-6">
-            <div className="text-center">
-              <p className="text-5xl font-light tracking-tight text-foreground tabular-nums">
+            <div className="flex items-baseline gap-1">
+              <p className="text-5xl font-bold tracking-tight text-foreground tabular-nums">
                 {format(currentTime, "HH:mm")}
               </p>
-              <p className="text-lg text-muted-foreground">
-                {format(currentTime, ":ss", { locale: ptBR })}
+              <p className="text-2xl font-light text-muted-foreground tabular-nums">
+                {format(currentTime, ":ss")}
               </p>
             </div>
             <div className="h-16 w-px bg-border" />
             <div className="max-w-xs">
-              <p className="text-lg font-semibold text-foreground">
+              <p className="text-sm font-medium text-muted-foreground capitalize">
+                {format(currentTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </p>
+              <p className="text-lg font-semibold text-foreground mt-1">
                 {getGreeting()}! 👋
               </p>
               <div className="flex items-start gap-2 mt-1">
