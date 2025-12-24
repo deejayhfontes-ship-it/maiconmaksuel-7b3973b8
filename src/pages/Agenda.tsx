@@ -315,24 +315,41 @@ const Agenda = () => {
   const adjustedDayIndex = currentDayIndex === 0 ? 6 : currentDayIndex - 1;
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-6rem)] gap-4">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] gap-4 overflow-hidden">
       {/* Coluna Esquerda - Mini Calendário */}
-      <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4">
-        {/* Botão Agendar - Mobile inline, Desktop maior */}
-        <Button
-          size="lg"
-          className="w-full gap-2 lg:h-14 lg:text-lg"
-          onClick={() => {
-            setFormInitialDate(selectedDate);
-            setFormInitialTime(undefined);
-            setFormInitialProfissionalId(undefined);
-            setSelectedAgendamento(null);
-            setIsFormOpen(true);
-          }}
-        >
-          <Plus className="h-5 w-5" />
-          Agendar
-        </Button>
+      <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4 overflow-auto">
+        {/* Botões Agendar e Encaixe */}
+        <div className="flex gap-2">
+          <Button
+            size="lg"
+            className="flex-1 gap-2 lg:h-14 lg:text-lg"
+            onClick={() => {
+              setFormInitialDate(selectedDate);
+              setFormInitialTime(undefined);
+              setFormInitialProfissionalId(undefined);
+              setSelectedAgendamento(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <Plus className="h-5 w-5" />
+            Agendar
+          </Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="flex-1 gap-2 lg:h-14 lg:text-lg"
+            onClick={() => {
+              setFormInitialDate(selectedDate);
+              setFormInitialTime(undefined);
+              setFormInitialProfissionalId(undefined);
+              setSelectedAgendamento(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <CalendarDays className="h-5 w-5" />
+            Encaixe
+          </Button>
+        </div>
 
         {/* Mini calendário - Hidden on mobile */}
         <Card className="p-2 hidden lg:block">
@@ -479,8 +496,8 @@ const Agenda = () => {
         </div>
 
         {/* Grid principal */}
-        <Card className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
+        <Card className="flex-1 overflow-hidden min-h-0">
+          <ScrollArea className="h-full w-full">
             <div className="min-w-max">
               {/* Header com profissionais */}
               <div className="flex sticky top-0 bg-card z-10 border-b">
@@ -490,11 +507,12 @@ const Agenda = () => {
                 {displayedProfissionais.map((prof) => (
                   <div
                     key={prof.id}
-                    className="flex-1 min-w-[160px] px-3 py-3 text-center font-semibold border-r"
+                    className="flex-1 min-w-[180px] px-3 py-3 text-center font-semibold border-r truncate"
                     style={{ 
                       backgroundColor: `${prof.cor_agenda}30`,
                       borderBottom: `3px solid ${prof.cor_agenda}`
                     }}
+                    title={prof.nome}
                   >
                     {prof.nome}
                   </div>

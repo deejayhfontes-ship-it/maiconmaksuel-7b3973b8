@@ -84,25 +84,30 @@ export function AppSidebar() {
           isMobile && mobileOpen && "translate-x-0 animate-slide-in-left"
         )}
       >
-        {/* Logo */}
+        {/* Logo com efeito gradiente Apple */}
         <div className={cn(
-          "flex items-center justify-between px-3 transition-all duration-300",
-          collapsed ? "h-16" : "h-32 lg:h-48"
+          "flex items-center justify-center px-4 transition-all duration-300 relative",
+          collapsed ? "h-16" : "h-36 lg:h-52"
         )}>
-          <img 
-            src={logoMaicon} 
-            alt="Maicon Concept" 
-            className={cn(
-              "object-contain transition-all duration-300 dark:brightness-0 dark:invert",
-              collapsed ? "h-10 w-10" : "h-24 lg:h-40 max-w-[200px]"
-            )}
-          />
+          <div className="relative flex items-center justify-center w-full">
+            <img 
+              src={logoMaicon} 
+              alt="Maicon Concept" 
+              className={cn(
+                "object-contain transition-all duration-300",
+                "dark:brightness-0 dark:invert",
+                "[mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)]",
+                "[-webkit-mask-image:linear-gradient(to_bottom,black_60%,transparent_100%)]",
+                collapsed ? "h-10 w-10" : "h-28 lg:h-44 w-auto max-w-[220px]"
+              )}
+            />
+          </div>
           {isMobile && mobileOpen && (
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMobileOpen(false)}
-              className="lg:hidden"
+              className="lg:hidden absolute top-3 right-3"
             >
               <X className="h-5 w-5" />
             </Button>
