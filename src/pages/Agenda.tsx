@@ -1,25 +1,69 @@
-import { useState } from "react";
-import { Calendar } from "@/components/ui/calendar";
+import { useState, useEffect, useMemo } from "react";
+import { Calendar as CalendarIcon } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Plus,
-  CalendarPlus,
-} from "lucide-react";
-import { format, addDays, subDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Calendar,
+  Check,
+  X,
+  Edit,
+  Clock,
+  User,
+  Scissors,
+} from "lucide-react";
+import { format, addDays, subDays, startOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import AgendamentoFormDialog from "@/components/agenda/AgendamentoFormDialog";
 
-// Horários do dia (30 em 30 min)
+interface Profissional {
+  id: string;
+  nome: string;
+  cor_agenda: string;
+}
+
+interface AgendamentoCompleto {
+  id: string;
+  cliente_id: string;
+  profissional_id: string;
+  servico_id: string;
+  data_hora: string;
+  duracao_minutos: number;
+  status: string;
+  observacoes: string | null;
+  cliente: { nome: string };
+  profissional: { nome: string; cor_agenda: string };
+  servico: { nome: string; preco: number };
+}
+
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
   "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
@@ -27,248 +71,456 @@ const timeSlots = [
   "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
 ];
 
-// Profissionais de exemplo
-const professionals = [
-  { id: 1, name: "Maria" },
-  { id: 2, name: "Juliana" },
-  { id: 3, name: "Daniela" },
-  { id: 4, name: "Patricia" },
-];
+const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
+  agendado: { label: "Agendado", color: "text-amber-600", bgColor: "bg-amber-500/10" },
+  confirmado: { label: "Confirmado", color: "text-green-600", bgColor: "bg-green-500/10" },
+  atendido: { label: "Atendido", color: "text-blue-600", bgColor: "bg-blue-500/10" },
+  cancelado: { label: "Cancelado", color: "text-red-600", bgColor: "bg-red-500/10" },
+  faltou: { label: "Faltou", color: "text-gray-600", bgColor: "bg-gray-500/10" },
+};
 
-// Agendamentos de exemplo
-const sampleAppointments = [
-  {
-    id: 1,
-    professionalId: 1,
-    clientName: "Lúcia Correa",
-    phone: "9999-1234",
-    service: "Corte Feminino",
-    startTime: "10:30",
-    endTime: "11:30",
-    isBirthday: false,
-  },
-  {
-    id: 2,
-    professionalId: 2,
-    clientName: "Priscila Lopes",
-    phone: "3333-0238",
-    service: "Escova",
-    startTime: "10:00",
-    endTime: "11:30",
-    isBirthday: true,
-  },
-  {
-    id: 3,
-    professionalId: 1,
-    clientName: "Amanda Freitas",
-    phone: "9988-5566",
-    service: "Manicure",
-    startTime: "11:30",
-    endTime: "12:30",
-    isBirthday: false,
-  },
-  {
-    id: 4,
-    professionalId: 2,
-    clientName: "Denise Silva",
-    phone: "9977-4455",
-    service: "Pedicure",
-    startTime: "11:30",
-    endTime: "12:30",
-    isBirthday: false,
-  },
-  {
-    id: 5,
-    professionalId: 3,
-    clientName: "Carla Mendes",
-    phone: "9966-3344",
-    service: "Coloração",
-    startTime: "14:00",
-    endTime: "16:00",
-    isBirthday: false,
-  },
-];
+type ViewMode = "dia" | "semana";
 
 const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>("dia");
+  const [profissionalFilter, setProfissionalFilter] = useState<string>("todos");
+  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [agendamentos, setAgendamentos] = useState<AgendamentoCompleto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoCompleto | null>(null);
+  const [formInitialDate, setFormInitialDate] = useState<Date | undefined>();
+  const [formInitialTime, setFormInitialTime] = useState<string | undefined>();
+  const [formInitialProfissionalId, setFormInitialProfissionalId] = useState<string | undefined>();
+  const { toast } = useToast();
+
+  const fetchProfissionais = async () => {
+    const { data } = await supabase
+      .from("profissionais")
+      .select("id, nome, cor_agenda")
+      .eq("ativo", true)
+      .order("nome");
+    if (data) setProfissionais(data);
+  };
+
+  const fetchAgendamentos = async () => {
+    setLoading(true);
+    
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (viewMode === "dia") {
+      startDate = new Date(selectedDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(selectedDate);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      startDate = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      startDate.setHours(0, 0, 0, 0);
+      endDate = addDays(startDate, 6);
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    let query = supabase
+      .from("agendamentos")
+      .select(`
+        *,
+        cliente:clientes(nome),
+        profissional:profissionais(nome, cor_agenda),
+        servico:servicos(nome, preco)
+      `)
+      .gte("data_hora", startDate.toISOString())
+      .lte("data_hora", endDate.toISOString())
+      .order("data_hora");
+
+    if (profissionalFilter !== "todos") {
+      query = query.eq("profissional_id", profissionalFilter);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      toast({
+        title: "Erro ao carregar agendamentos",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setAgendamentos(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchProfissionais();
+  }, []);
+
+  useEffect(() => {
+    fetchAgendamentos();
+  }, [selectedDate, viewMode, profissionalFilter]);
 
   const goToToday = () => setSelectedDate(new Date());
-  const goToPrevDay = () => setSelectedDate(subDays(selectedDate, 1));
-  const goToNextDay = () => setSelectedDate(addDays(selectedDate, 1));
-  const goToPrevWeek = () => setSelectedDate(subDays(selectedDate, 7));
-  const goToNextWeek = () => setSelectedDate(addDays(selectedDate, 7));
+  const goToPrev = () => setSelectedDate(viewMode === "dia" ? subDays(selectedDate, 1) : subWeeks(selectedDate, 1));
+  const goToNext = () => setSelectedDate(viewMode === "dia" ? addDays(selectedDate, 1) : addWeeks(selectedDate, 1));
 
-  const getAppointmentStyle = (startTime: string, endTime: string) => {
-    const startIndex = timeSlots.indexOf(startTime);
-    const endIndex = timeSlots.indexOf(endTime);
-    const slots = endIndex - startIndex;
-    return {
-      top: `${startIndex * 40}px`,
-      height: `${slots * 40 - 2}px`,
-    };
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  }, [selectedDate]);
+
+  const displayedProfissionais = useMemo(() => {
+    if (profissionalFilter === "todos") return profissionais;
+    return profissionais.filter(p => p.id === profissionalFilter);
+  }, [profissionais, profissionalFilter]);
+
+  const getAgendamentosForSlot = (date: Date, time: string, profissionalId: string) => {
+    return agendamentos.filter(ag => {
+      const agDate = new Date(ag.data_hora);
+      const agTime = format(agDate, "HH:mm");
+      return (
+        isSameDay(agDate, date) &&
+        agTime === time &&
+        ag.profissional_id === profissionalId
+      );
+    });
   };
 
-  const getAppointmentsForProfessional = (professionalId: number) => {
-    return sampleAppointments.filter((apt) => apt.professionalId === professionalId);
+  const getAppointmentStyle = (duracao: number) => {
+    const slots = Math.ceil(duracao / 30);
+    return { height: `${slots * 40 - 2}px` };
   };
 
-  return (
-    <div className="flex gap-4 h-[calc(100vh-7rem)]">
-      {/* Sidebar com calendário */}
-      <div className="w-72 flex-shrink-0 space-y-4">
-        <Card className="p-4">
-          {/* Data atual */}
-          <div className="text-center mb-4">
-            <h2 className="text-2xl font-bold text-foreground capitalize">
-              {format(selectedDate, "EEEE", { locale: ptBR })}
-            </h2>
-            <p className="text-muted-foreground">
-              ({format(selectedDate, "dd / MMM / yyyy", { locale: ptBR })})
-            </p>
-          </div>
+  const handleSlotClick = (date: Date, time: string, profissionalId: string) => {
+    setFormInitialDate(date);
+    setFormInitialTime(time);
+    setFormInitialProfissionalId(profissionalId);
+    setSelectedAgendamento(null);
+    setIsFormOpen(true);
+  };
 
-          {/* Navegação */}
-          <div className="flex items-center justify-center gap-1 mb-4">
-            <Button variant="outline" size="icon" onClick={goToPrevWeek}>
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={goToPrevDay}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={goToToday}>
-              Hoje
-            </Button>
-            <Button variant="outline" size="icon" onClick={goToNextDay}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={goToNextWeek}>
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
-          </div>
+  const handleAgendamentoClick = (ag: AgendamentoCompleto) => {
+    setSelectedAgendamento(ag);
+    setFormInitialDate(undefined);
+    setFormInitialTime(undefined);
+    setFormInitialProfissionalId(undefined);
+    setIsFormOpen(true);
+  };
 
-          {/* Mini calendário */}
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => date && setSelectedDate(date)}
-            locale={ptBR}
-            className="rounded-md border pointer-events-auto"
-          />
-        </Card>
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    const { error } = await supabase
+      .from("agendamentos")
+      .update({ status: newStatus })
+      .eq("id", id);
 
-        {/* Botões de ação */}
-        <Card className="p-4 space-y-2">
-          <Button className="w-full justify-start gap-2" variant="default">
-            <Plus className="h-4 w-4" />
-            Agendar
-          </Button>
-          <Button className="w-full justify-start gap-2" variant="outline">
-            <CalendarPlus className="h-4 w-4" />
-            Encaixar
-          </Button>
-        </Card>
+    if (error) {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: `Status atualizado para ${statusConfig[newStatus].label}` });
+      fetchAgendamentos();
+    }
+  };
 
-        {/* Legenda */}
-        <Card className="p-4 space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🎂</span>
-            <span className="text-muted-foreground">= Faz aniversário hoje</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-4 bg-warning/20 border border-warning rounded" />
-            <span className="text-muted-foreground">= Cadastro incompleto</span>
-          </div>
-        </Card>
-      </div>
+  const handleDeleteClick = (ag: AgendamentoCompleto) => {
+    setSelectedAgendamento(ag);
+    setIsDeleteOpen(true);
+  };
 
-      {/* Grade de horários */}
-      <Card className="flex-1 overflow-hidden">
-        <div className="h-full overflow-auto">
-          <div className="min-w-max">
-            {/* Header com profissionais */}
-            <div className="flex sticky top-0 bg-card z-10 border-b">
-              <div className="w-16 flex-shrink-0 p-2 border-r bg-muted/50" />
-              {professionals.map((prof) => (
-                <div
-                  key={prof.id}
-                  className="w-40 flex-shrink-0 p-3 text-center font-semibold border-r bg-muted/50"
-                >
-                  {prof.name}
-                </div>
-              ))}
-            </div>
+  const handleDelete = async () => {
+    if (!selectedAgendamento) return;
 
-            {/* Grid de horários */}
-            <div className="flex">
-              {/* Coluna de horários */}
-              <div className="w-16 flex-shrink-0 border-r">
-                {timeSlots.map((time) => (
+    const { error } = await supabase
+      .from("agendamentos")
+      .delete()
+      .eq("id", selectedAgendamento.id);
+
+    if (error) {
+      toast({
+        title: "Erro ao excluir",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: "Agendamento excluído" });
+      fetchAgendamentos();
+    }
+    setIsDeleteOpen(false);
+    setSelectedAgendamento(null);
+  };
+
+  const handleFormClose = (refresh?: boolean) => {
+    setIsFormOpen(false);
+    setSelectedAgendamento(null);
+    setFormInitialDate(undefined);
+    setFormInitialTime(undefined);
+    setFormInitialProfissionalId(undefined);
+    if (refresh) fetchAgendamentos();
+  };
+
+  const renderCalendarGrid = (dates: Date[]) => (
+    <div className="flex-1 overflow-auto">
+      <div className="min-w-max">
+        {/* Header */}
+        <div className="flex sticky top-0 bg-card z-10 border-b">
+          <div className="w-16 flex-shrink-0 p-2 border-r bg-muted/50" />
+          {dates.map((date) => (
+            <div key={date.toISOString()} className="flex-1 min-w-[140px]">
+              <div className="text-center py-2 border-r bg-muted/50">
+                <p className="text-xs text-muted-foreground capitalize">
+                  {format(date, "EEE", { locale: ptBR })}
+                </p>
+                <p className={cn(
+                  "text-lg font-semibold",
+                  isSameDay(date, new Date()) && "text-primary"
+                )}>
+                  {format(date, "dd")}
+                </p>
+              </div>
+              {/* Colunas de profissionais */}
+              <div className="flex border-b bg-muted/30">
+                {displayedProfissionais.map((prof) => (
                   <div
-                    key={time}
-                    className="h-10 px-2 flex items-center justify-end text-xs text-muted-foreground border-b"
+                    key={prof.id}
+                    className="flex-1 min-w-[120px] px-2 py-1 text-center text-xs font-medium border-r truncate"
+                    style={{ borderTopColor: prof.cor_agenda, borderTopWidth: 3 }}
                   >
-                    {time}
+                    {prof.nome}
                   </div>
                 ))}
               </div>
+            </div>
+          ))}
+        </div>
 
-              {/* Colunas dos profissionais */}
-              {professionals.map((prof) => (
+        {/* Grid */}
+        <div className="flex">
+          {/* Coluna de horários */}
+          <div className="w-16 flex-shrink-0 border-r">
+            {timeSlots.map((time) => (
+              <div
+                key={time}
+                className="h-10 px-2 flex items-center justify-end text-xs text-muted-foreground border-b"
+              >
+                {time}
+              </div>
+            ))}
+          </div>
+
+          {/* Dias */}
+          {dates.map((date) => (
+            <div key={date.toISOString()} className="flex flex-1 min-w-[140px]">
+              {displayedProfissionais.map((prof) => (
                 <div
                   key={prof.id}
-                  className="w-40 flex-shrink-0 border-r relative"
+                  className="flex-1 min-w-[120px] border-r relative"
                 >
-                  {/* Linhas de horário */}
-                  {timeSlots.map((time) => (
-                    <div
-                      key={time}
-                      className="h-10 border-b hover:bg-muted/30 cursor-pointer transition-colors"
-                    />
-                  ))}
-
-                  {/* Agendamentos */}
-                  {getAppointmentsForProfessional(prof.id).map((apt) => (
-                    <Tooltip key={apt.id}>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "absolute left-1 right-1 rounded px-2 py-1 cursor-pointer transition-all hover:shadow-md",
-                            "bg-primary/20 border-l-4 border-primary text-foreground"
-                          )}
-                          style={getAppointmentStyle(apt.startTime, apt.endTime)}
-                        >
-                          <div className="flex items-center gap-1 text-xs font-medium truncate">
-                            {apt.clientName}
-                            {apt.isBirthday && <span>🎂</span>}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground truncate">
-                            {apt.service}
-                          </div>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="p-3">
-                        <div className="space-y-1">
-                          <p className="font-semibold">
-                            {apt.clientName}{" "}
-                            <span className="font-normal text-muted-foreground">
-                              ({apt.startTime} às {apt.endTime})
-                            </span>
-                          </p>
-                          <p className="text-sm">{apt.phone}</p>
-                          <p className="text-sm text-muted-foreground">{apt.service}</p>
-                          {apt.isBirthday && (
-                            <p className="text-sm text-warning">🎂 Aniversário hoje!</p>
-                          )}
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
+                  {timeSlots.map((time) => {
+                    const ags = getAgendamentosForSlot(date, time, prof.id);
+                    return (
+                      <div
+                        key={time}
+                        className="h-10 border-b hover:bg-muted/30 cursor-pointer transition-colors relative"
+                        onClick={() => ags.length === 0 && handleSlotClick(date, time, prof.id)}
+                      >
+                        {ags.map((ag) => (
+                          <Tooltip key={ag.id}>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={cn(
+                                  "absolute left-0.5 right-0.5 rounded px-1.5 py-0.5 cursor-pointer transition-all hover:shadow-md z-10 overflow-hidden",
+                                  "border-l-4"
+                                )}
+                                style={{
+                                  ...getAppointmentStyle(ag.duracao_minutos),
+                                  backgroundColor: `${ag.profissional.cor_agenda}20`,
+                                  borderLeftColor: ag.profissional.cor_agenda,
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAgendamentoClick(ag);
+                                }}
+                              >
+                                <div className="text-xs font-medium truncate">
+                                  {ag.cliente.nome}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground truncate">
+                                  {ag.servico.nome}
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="p-3 space-y-2 max-w-xs">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <User className="h-3 w-3" />
+                                  <span className="font-semibold">{ag.cliente.nome}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Scissors className="h-3 w-3" />
+                                  <span>{ag.servico.nome}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{format(new Date(ag.data_hora), "HH:mm")} - {ag.duracao_minutos}min</span>
+                                </div>
+                                <Badge className={cn("text-xs", statusConfig[ag.status].bgColor, statusConfig[ag.status].color)}>
+                                  {statusConfig[ag.status].label}
+                                </Badge>
+                              </div>
+                              <div className="flex gap-1 pt-2 border-t">
+                                {ag.status === "agendado" && (
+                                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(ag.id, "confirmado"); }}>
+                                    <Check className="h-3 w-3 mr-1" /> Confirmar
+                                  </Button>
+                                )}
+                                {ag.status === "confirmado" && (
+                                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(ag.id, "atendido"); }}>
+                                    <Check className="h-3 w-3 mr-1" /> Atendido
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); handleAgendamentoClick(ag); }}>
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(ag.id, "cancelado"); }}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4 h-[calc(100vh-7rem)]">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+            <Calendar className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Agenda</h1>
+            <p className="text-muted-foreground">
+              {viewMode === "dia" 
+                ? format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                : `Semana de ${format(weekDays[0], "dd/MM")} a ${format(weekDays[6], "dd/MM/yyyy")}`
+              }
+            </p>
           </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={profissionalFilter} onValueChange={setProfissionalFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Profissional" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos profissionais</SelectItem>
+              {profissionais.map((prof) => (
+                <SelectItem key={prof.id} value={prof.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: prof.cor_agenda }} />
+                    {prof.nome}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="flex rounded-lg border overflow-hidden">
+            <Button
+              variant={viewMode === "dia" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("dia")}
+              className="rounded-none"
+            >
+              Dia
+            </Button>
+            <Button
+              variant={viewMode === "semana" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("semana")}
+              className="rounded-none"
+            >
+              Semana
+            </Button>
+          </div>
+
+          <Button onClick={() => { setSelectedAgendamento(null); setIsFormOpen(true); }} className="bg-success hover:bg-success/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Agendamento
+          </Button>
+        </div>
+      </div>
+
+      {/* Navegação */}
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="icon" onClick={goToPrev}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={goToToday}>
+          Hoje
+        </Button>
+        <Button variant="outline" size="icon" onClick={goToNext}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Calendário */}
+      <Card className="flex-1 overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-muted-foreground">
+            Carregando agendamentos...
+          </div>
+        ) : (
+          renderCalendarGrid(viewMode === "dia" ? [selectedDate] : weekDays)
+        )}
       </Card>
+
+      {/* Dialogs */}
+      <AgendamentoFormDialog
+        open={isFormOpen}
+        onClose={handleFormClose}
+        agendamento={selectedAgendamento}
+        initialDate={formInitialDate}
+        initialTime={formInitialTime}
+        initialProfissionalId={formInitialProfissionalId}
+      />
+
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este agendamento?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
