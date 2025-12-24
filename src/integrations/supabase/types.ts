@@ -75,6 +75,162 @@ export type Database = {
           },
         ]
       }
+      atendimento_produtos: {
+        Row: {
+          atendimento_id: string
+          created_at: string
+          id: string
+          preco_unitario: number
+          produto_id: string
+          quantidade: number
+          subtotal: number
+        }
+        Insert: {
+          atendimento_id: string
+          created_at?: string
+          id?: string
+          preco_unitario: number
+          produto_id: string
+          quantidade?: number
+          subtotal: number
+        }
+        Update: {
+          atendimento_id?: string
+          created_at?: string
+          id?: string
+          preco_unitario?: number
+          produto_id?: string
+          quantidade?: number
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atendimento_produtos_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimento_produtos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atendimento_servicos: {
+        Row: {
+          atendimento_id: string
+          comissao_percentual: number
+          comissao_valor: number
+          created_at: string
+          id: string
+          preco_unitario: number
+          profissional_id: string
+          quantidade: number
+          servico_id: string
+          subtotal: number
+        }
+        Insert: {
+          atendimento_id: string
+          comissao_percentual: number
+          comissao_valor: number
+          created_at?: string
+          id?: string
+          preco_unitario: number
+          profissional_id: string
+          quantidade?: number
+          servico_id: string
+          subtotal: number
+        }
+        Update: {
+          atendimento_id?: string
+          comissao_percentual?: number
+          comissao_valor?: number
+          created_at?: string
+          id?: string
+          preco_unitario?: number
+          profissional_id?: string
+          quantidade?: number
+          servico_id?: string
+          subtotal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atendimento_servicos_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimento_servicos_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimento_servicos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atendimentos: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          data_hora: string
+          desconto: number
+          id: string
+          numero_comanda: number
+          observacoes: string | null
+          status: string
+          subtotal: number
+          updated_at: string
+          valor_final: number
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          data_hora?: string
+          desconto?: number
+          id?: string
+          numero_comanda?: number
+          observacoes?: string | null
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          valor_final?: number
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          data_hora?: string
+          desconto?: number
+          id?: string
+          numero_comanda?: number
+          observacoes?: string | null
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          valor_final?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atendimentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           ativo: boolean
@@ -146,6 +302,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      pagamentos: {
+        Row: {
+          atendimento_id: string
+          data_hora: string
+          forma_pagamento: string
+          id: string
+          parcelas: number
+          valor: number
+        }
+        Insert: {
+          atendimento_id: string
+          data_hora?: string
+          forma_pagamento: string
+          id?: string
+          parcelas?: number
+          valor: number
+        }
+        Update: {
+          atendimento_id?: string
+          data_hora?: string
+          forma_pagamento?: string
+          id?: string
+          parcelas?: number
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       produtos: {
         Row: {
