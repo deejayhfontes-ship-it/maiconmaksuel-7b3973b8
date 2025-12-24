@@ -13,10 +13,12 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useSidebarContext } from "./MainLayout";
+import { useAuth } from "@/contexts/AuthContext";
 import logoMaicon from "@/assets/logo.svg";
 import { useEffect, useState } from "react";
 
@@ -33,10 +35,19 @@ const menuItems = [
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
 ];
 
+const adminItems = [
+  { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
+];
+
 export function AppSidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebarContext();
+  const { role } = useAuth();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
+  
+  const allMenuItems = role === "admin" 
+    ? [...menuItems, ...adminItems] 
+    : menuItems;
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -91,7 +102,7 @@ export function AppSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-2 mt-2">
-        {menuItems.map((item, index) => {
+        {allMenuItems.map((item, index) => {
           const isActive = location.pathname === item.path;
           return (
             <NavLink
