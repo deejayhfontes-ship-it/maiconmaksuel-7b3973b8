@@ -43,13 +43,13 @@ export function AppSidebar() {
       )}
     >
       {/* Logo */}
-      <div className="flex h-24 items-center justify-center border-b border-sidebar-border px-2">
+      <div className="flex h-32 items-center justify-center border-b border-sidebar-border px-2">
         <img 
           src={logoMaicon} 
           alt="Maicon Concept" 
           className={cn(
             "object-contain transition-all",
-            collapsed ? "h-12 w-12" : "h-20 max-w-[240px]"
+            collapsed ? "h-12 w-12" : "h-28 max-w-[250px]"
           )}
         />
       </div>
