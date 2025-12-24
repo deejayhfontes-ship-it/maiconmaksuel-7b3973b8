@@ -44,6 +44,7 @@ import {
   ChevronFirst,
   ChevronLast,
   UserCheck,
+  Zap,
 } from "lucide-react";
 import { format, addDays, subDays, isSameDay, parseISO, addMonths, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -336,8 +337,7 @@ const Agenda = () => {
           </Button>
           <Button
             size="lg"
-            variant="secondary"
-            className="flex-1 gap-2 lg:h-14 lg:text-lg"
+            className="flex-1 gap-2 lg:h-14 lg:text-lg bg-warning hover:bg-warning/90 text-warning-foreground shadow-[0_4px_14px_rgba(255,149,0,0.35)]"
             onClick={() => {
               setFormInitialDate(selectedDate);
               setFormInitialTime(undefined);
@@ -346,7 +346,7 @@ const Agenda = () => {
               setIsFormOpen(true);
             }}
           >
-            <CalendarDays className="h-5 w-5" />
+            <Zap className="h-5 w-5" />
             Encaixe
           </Button>
         </div>
