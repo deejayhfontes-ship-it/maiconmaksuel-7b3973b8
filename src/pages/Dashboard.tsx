@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles } from "lucide-react";
-import logoMaicon from "@/assets/logo-maicon.jpg";
+import iconeMaicon from "@/assets/icone-maicon.svg";
 import {
   LineChart,
   Line,
@@ -249,11 +249,13 @@ const Dashboard = () => {
       {/* Header com Logo, Relógio e Mensagem Motivacional */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div className="flex items-center gap-4">
-          <img 
-            src={logoMaicon} 
-            alt="Logo" 
-            className="h-14 w-14 rounded-xl object-cover shadow-md"
-          />
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-card shadow-md p-2">
+            <img 
+              src={iconeMaicon} 
+              alt="Ícone" 
+              className="h-10 w-10 object-contain dark:invert"
+            />
+          </div>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Início</h1>
             <p className="text-muted-foreground">Visão geral do seu salão</p>
