@@ -263,20 +263,22 @@ const Dashboard = () => {
         {/* Relógio Grande Minimalista */}
         <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
           <CardContent className="p-6 flex items-center gap-6">
-            <div className="flex items-baseline gap-1">
-              <p className="text-5xl font-bold tracking-tight text-foreground tabular-nums">
-                {format(currentTime, "HH:mm")}
-              </p>
-              <p className="text-2xl font-light text-muted-foreground tabular-nums">
-                {format(currentTime, ":ss")}
+            <div className="text-center">
+              <div className="flex items-baseline justify-center gap-1">
+                <p className="text-5xl font-bold tracking-tight text-foreground tabular-nums">
+                  {format(currentTime, "HH:mm")}
+                </p>
+                <p className="text-2xl font-light text-muted-foreground tabular-nums">
+                  {format(currentTime, ":ss")}
+                </p>
+              </div>
+              <p className="text-sm font-bold text-foreground capitalize mt-1">
+                {format(currentTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </p>
             </div>
             <div className="h-16 w-px bg-border" />
             <div className="max-w-xs">
-              <p className="text-sm font-bold text-foreground capitalize">
-                {format(currentTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </p>
-              <p className="text-lg font-semibold text-foreground mt-1">
+              <p className="text-lg font-semibold text-foreground">
                 {getGreeting()}! 👋
               </p>
               <div className="flex items-start gap-2 mt-1">
