@@ -45,6 +45,12 @@ const profissionalSchema = z.object({
   telefone: z.string().optional(),
   cpf: z.string().optional(),
   data_admissao: z.string().optional(),
+  funcao: z.string().optional(),
+  endereco: z.string().optional(),
+  bairro: z.string().optional(),
+  cidade: z.string().optional(),
+  estado: z.string().optional(),
+  cep: z.string().optional(),
   cor_agenda: z.string(),
   ativo: z.boolean(),
   comissao_servicos: z.number().min(0).max(100),
@@ -62,6 +68,12 @@ interface Profissional {
   telefone: string | null;
   cpf: string | null;
   data_admissao: string | null;
+  funcao: string | null;
+  endereco: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
   comissao_servicos: number;
   comissao_produtos: number;
   cor_agenda: string;
@@ -107,6 +119,12 @@ export default function ProfissionalFormDialog({
       telefone: "",
       cpf: "",
       data_admissao: "",
+      funcao: "Cabelereira",
+      endereco: "",
+      bairro: "",
+      cidade: "",
+      estado: "",
+      cep: "",
       cor_agenda: "#007AFF",
       ativo: true,
       comissao_servicos: 30,
@@ -124,6 +142,12 @@ export default function ProfissionalFormDialog({
         telefone: profissional.telefone || "",
         cpf: profissional.cpf || "",
         data_admissao: profissional.data_admissao || "",
+        funcao: profissional.funcao || "Cabelereira",
+        endereco: profissional.endereco || "",
+        bairro: profissional.bairro || "",
+        cidade: profissional.cidade || "",
+        estado: profissional.estado || "",
+        cep: profissional.cep || "",
         cor_agenda: profissional.cor_agenda,
         ativo: profissional.ativo,
         comissao_servicos: Number(profissional.comissao_servicos),
@@ -139,6 +163,12 @@ export default function ProfissionalFormDialog({
         telefone: "",
         cpf: "",
         data_admissao: "",
+        funcao: "Cabelereira",
+        endereco: "",
+        bairro: "",
+        cidade: "",
+        estado: "",
+        cep: "",
         cor_agenda: "#007AFF",
         ativo: true,
         comissao_servicos: 30,
@@ -207,6 +237,12 @@ export default function ProfissionalFormDialog({
         telefone: data.telefone || null,
         cpf: data.cpf || null,
         data_admissao: data.data_admissao || null,
+        funcao: data.funcao || null,
+        endereco: data.endereco || null,
+        bairro: data.bairro || null,
+        cidade: data.cidade || null,
+        estado: data.estado || null,
+        cep: data.cep || null,
         cor_agenda: data.cor_agenda,
         ativo: data.ativo,
         comissao_servicos: data.comissao_servicos,
@@ -358,6 +394,20 @@ export default function ProfissionalFormDialog({
 
                   <FormField
                     control={form.control}
+                    name="funcao"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Função</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Cabelereira, Manicure, Esteticista" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="data_admissao"
                     render={({ field }) => (
                       <FormItem>
@@ -385,6 +435,84 @@ export default function ProfissionalFormDialog({
                       </FormItem>
                     )}
                   />
+                </div>
+
+                {/* Endereço */}
+                <div className="pt-4 border-t">
+                  <p className="text-sm font-medium mb-4">Endereço</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="cep"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CEP</FormLabel>
+                          <FormControl>
+                            <InputMask mask="99999-999" value={field.value} onChange={field.onChange}>
+                              {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
+                            </InputMask>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="endereco"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Endereço</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Rua, número" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="bairro"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bairro</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Bairro" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="cidade"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cidade</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Cidade" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="estado"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estado</FormLabel>
+                          <FormControl>
+                            <Input placeholder="UF" maxLength={2} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 {/* Cor da Agenda */}

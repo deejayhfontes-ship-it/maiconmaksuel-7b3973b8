@@ -36,6 +36,12 @@ interface Profissional {
   telefone: string | null;
   cpf: string | null;
   data_admissao: string | null;
+  funcao: string | null;
+  endereco: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
   comissao_servicos: number;
   comissao_produtos: number;
   cor_agenda: string;

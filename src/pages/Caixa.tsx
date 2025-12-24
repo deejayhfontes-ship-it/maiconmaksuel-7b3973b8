@@ -18,6 +18,7 @@ import {
   Sparkles,
   MoreHorizontal,
   AlertTriangle,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +65,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface CaixaData {
   id: string;
@@ -95,6 +97,16 @@ interface DespesaRapida {
   pago_por: string;
 }
 
+interface ComissaoProfissional {
+  id: string;
+  nome: string;
+  foto_url: string | null;
+  cor_agenda: string;
+  comissao_servicos: number;
+  comissao_produtos: number;
+  total_comissao: number;
+}
+
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -120,6 +132,7 @@ const Caixa = () => {
   const [ultimoCaixaFechado, setUltimoCaixaFechado] = useState<CaixaData | null>(null);
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [despesas, setDespesas] = useState<DespesaRapida[]>([]);
+  const [comissoesProfissionais, setComissoesProfissionais] = useState<ComissaoProfissional[]>([]);
   const [loading, setLoading] = useState(true);
   const [tabAtiva, setTabAtiva] = useState("todas");
 
@@ -181,10 +194,69 @@ const Caixa = () => {
         .order("data_hora", { ascending: false });
 
       setDespesas(desps || []);
+
+      // Buscar comissões dos profissionais do dia (atendimentos finalizados)
+      const fimHoje = new Date();
+      fimHoje.setHours(23, 59, 59, 999);
+      
+      const { data: atendimentosHoje } = await supabase
+        .from("atendimentos")
+        .select("id")
+        .eq("status", "finalizado")
+        .gte("data_hora", inicioHoje)
+        .lte("data_hora", fimHoje.toISOString());
+
+      if (atendimentosHoje && atendimentosHoje.length > 0) {
+        const atendimentoIds = atendimentosHoje.map(a => a.id);
+
+        // Buscar serviços com comissões
+        const { data: servicosComissoes } = await supabase
+          .from("atendimento_servicos")
+          .select(`
+            profissional_id,
+            comissao_valor,
+            profissionais:profissional_id (
+              id,
+              nome,
+              foto_url,
+              cor_agenda
+            )
+          `)
+          .in("atendimento_id", atendimentoIds);
+
+        // Agrupar por profissional
+        const comissoesMap = new Map<string, ComissaoProfissional>();
+        
+        servicosComissoes?.forEach((item: any) => {
+          const prof = item.profissionais;
+          if (!prof) return;
+          
+          if (!comissoesMap.has(prof.id)) {
+            comissoesMap.set(prof.id, {
+              id: prof.id,
+              nome: prof.nome,
+              foto_url: prof.foto_url,
+              cor_agenda: prof.cor_agenda,
+              comissao_servicos: 0,
+              comissao_produtos: 0,
+              total_comissao: 0,
+            });
+          }
+          
+          const existing = comissoesMap.get(prof.id)!;
+          existing.comissao_servicos += Number(item.comissao_valor);
+          existing.total_comissao += Number(item.comissao_valor);
+        });
+
+        setComissoesProfissionais(Array.from(comissoesMap.values()));
+      } else {
+        setComissoesProfissionais([]);
+      }
     } else {
       setCaixaAberto(null);
       setMovimentacoes([]);
       setDespesas([]);
+      setComissoesProfissionais([]);
 
       // Buscar último caixa fechado
       const { data: fechado } = await supabase
@@ -766,6 +838,61 @@ const Caixa = () => {
               <p className="text-sm text-muted-foreground">Total gasto hoje:</p>
               <p className="text-xl font-bold text-purple-600">{formatPrice(totais.despesasTotal)}</p>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Card de Comissões a Pagar */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Comissões a Pagar Hoje
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Valores de comissão por profissional dos atendimentos finalizados</p>
+        </CardHeader>
+        <CardContent>
+          {comissoesProfissionais.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhuma comissão registrada hoje</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {comissoesProfissionais.map((prof) => (
+                  <Card key={prof.id} className="bg-muted/30">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={prof.foto_url || undefined} />
+                          <AvatarFallback 
+                            className="text-white font-medium"
+                            style={{ backgroundColor: prof.cor_agenda }}
+                          >
+                            {prof.nome.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium">{prof.nome}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xl font-bold text-success">{formatPrice(prof.total_comissao)}</p>
+                          </div>
+                          {prof.comissao_servicos > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Serviços: {formatPrice(prof.comissao_servicos)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t text-right">
+                <p className="text-sm text-muted-foreground">Total a pagar:</p>
+                <p className="text-xl font-bold text-success">
+                  {formatPrice(comissoesProfissionais.reduce((acc, p) => acc + p.total_comissao, 0))}
+                </p>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
