@@ -315,54 +315,23 @@ const Agenda = () => {
 
   return (
     <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-6rem)] gap-4">
-      {/* Coluna Esquerda - Mini Calendário (Hidden on mobile, visible as horizontal bar on tablet) */}
+      {/* Coluna Esquerda - Mini Calendário */}
       <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4">
-        {/* Data selecionada + Ações em linha no mobile */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Card className="p-4 flex-1">
-            <h2 className="text-lg font-bold text-foreground capitalize">
-              {format(selectedDate, "EEEE", { locale: ptBR })}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {format(selectedDate, "dd/MMM/yyyy", { locale: ptBR })}
-            </p>
-          </Card>
-          
-          <Button
-            className="w-full sm:w-auto gap-2"
-            onClick={() => {
-              setFormInitialDate(selectedDate);
-              setFormInitialTime(undefined);
-              setFormInitialProfissionalId(undefined);
-              setSelectedAgendamento(null);
-              setIsFormOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            Agendar
-          </Button>
-        </div>
-
-        {/* Filtro por profissional - visível em todas as telas */}
-        <Card className="p-4 space-y-3">
-          <h3 className="text-sm font-medium">Filtrar por profissional</h3>
-          <Select value={profissionalFilter} onValueChange={setProfissionalFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos profissionais</SelectItem>
-              {profissionais.map((prof) => (
-                <SelectItem key={prof.id} value={prof.id}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: prof.cor_agenda }} />
-                    {prof.nome}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Card>
+        {/* Botão Agendar - Mobile inline, Desktop maior */}
+        <Button
+          size="lg"
+          className="w-full gap-2 lg:h-14 lg:text-lg"
+          onClick={() => {
+            setFormInitialDate(selectedDate);
+            setFormInitialTime(undefined);
+            setFormInitialProfissionalId(undefined);
+            setSelectedAgendamento(null);
+            setIsFormOpen(true);
+          }}
+        >
+          <Plus className="h-5 w-5" />
+          Agendar
+        </Button>
 
         {/* Mini calendário - Hidden on mobile */}
         <Card className="p-2 hidden lg:block">
@@ -471,8 +440,8 @@ const Agenda = () => {
           ))}
         </div>
 
-        {/* Estatísticas - Scrollable on mobile */}
-        <div className="flex gap-2 sm:gap-3 mb-4 overflow-x-auto pb-2">
+        {/* Estatísticas + Filtro por profissional */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
           <Badge variant="outline" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">
             Total: {stats.total}
           </Badge>
@@ -488,6 +457,24 @@ const Agenda = () => {
           <Badge variant="outline" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">
             Ocupação: {stats.taxaOcupacao}%
           </Badge>
+          
+          {/* Filtro por profissional inline */}
+          <Select value={profissionalFilter} onValueChange={setProfissionalFilter}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectValue placeholder="Todos profissionais" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos profissionais</SelectItem>
+              {profissionais.map((prof) => (
+                <SelectItem key={prof.id} value={prof.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: prof.cor_agenda }} />
+                    {prof.nome}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Grid principal */}
