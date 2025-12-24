@@ -379,28 +379,28 @@ const Dashboard = () => {
       </Card>
 
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => (
           <Card key={card.title} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4 md:p-6">
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1 md:space-y-2 min-w-0 flex-1">
-                  <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">
                     {card.title}
                   </p>
-                  <p className="text-xl md:text-3xl font-bold text-foreground">{card.value}</p>
-                  <div className="flex items-center gap-1 text-xs md:text-sm">
+                  <p className="text-3xl font-bold text-foreground">{card.value}</p>
+                  <div className="flex items-center gap-1 text-sm">
                     {card.changeType === "positive" && card.change && (
                       <>
-                        <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-success flex-shrink-0" />
+                        <TrendingUp className="h-4 w-4 text-success" />
                         <span className="text-success font-medium">{card.change}</span>
                       </>
                     )}
-                    <span className="text-muted-foreground truncate">{card.subtitle}</span>
+                    <span className="text-muted-foreground">{card.subtitle}</span>
                   </div>
                 </div>
-                <div className={`p-2 md:p-3 rounded-lg flex-shrink-0 ${card.iconBg}`}>
-                  <card.icon className={`h-5 w-5 md:h-6 md:w-6 ${card.iconColor}`} />
+                <div className={`p-3 rounded-lg ${card.iconBg}`}>
+                  <card.icon className={`h-6 w-6 ${card.iconColor}`} />
                 </div>
               </div>
             </CardContent>
