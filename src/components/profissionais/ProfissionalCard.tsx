@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DualProgressCard } from "./ProgressBar";
-import { Eye, Pencil, ShoppingCart, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Eye, Pencil, ShoppingCart, Trash2, Target, TargetIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface Profissional {
   id: string;
@@ -56,97 +57,63 @@ export function ProfissionalCard({
 
   return (
     <Card className="overflow-hidden animate-fade-in">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          {/* Avatar */}
-          <Avatar className="h-12 w-12 border-2 shrink-0" style={{ borderColor: profissional.cor_agenda }}>
-            {profissional.foto_url ? (
-              <AvatarImage src={profissional.foto_url} alt={profissional.nome} />
-            ) : null}
-            <AvatarFallback 
-              className="text-sm font-semibold"
-              style={{ backgroundColor: profissional.cor_agenda, color: 'white' }}
-            >
-              {getInitials(profissional.nome)}
-            </AvatarFallback>
-          </Avatar>
-
-          {/* Info Principal */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold truncate">{profissional.nome}</h3>
-              <Badge variant={profissional.ativo ? "success" : "destructive"} className="shrink-0">
-                {profissional.ativo ? "Ativo" : "Inativo"}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground truncate">
-              {profissional.telefone || 'Sem telefone'} • Serv. {profissional.comissao_servicos}% | Prod. {profissional.comissao_produtos}%
-            </p>
-          </div>
-
-          {/* Toggle Metas */}
-          <Collapsible open={showMetas} onOpenChange={setShowMetas}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground">
-                {showMetas ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                <span className="ml-1 text-xs">Metas</span>
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
-
-          {/* Cor Agenda */}
-          <div 
-            className="h-4 w-4 rounded-full border-2 border-border shrink-0"
-            style={{ backgroundColor: profissional.cor_agenda }}
-            title="Cor da agenda"
-          />
-
-          {/* Ações */}
-          <div className="flex items-center gap-1 shrink-0">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => onView(profissional.id)}
-              title="Ver detalhes"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => onEdit(profissional)}
-              title="Editar"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            {profissional.pode_vender_produtos && (
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-8 w-8 text-success hover:text-success"
-                onClick={() => onVendas(profissional.id)}
-                title="Vendas"
+      <CardContent className="p-6 space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-14 w-14 border-2" style={{ borderColor: profissional.cor_agenda }}>
+              {profissional.foto_url ? (
+                <AvatarImage src={profissional.foto_url} alt={profissional.nome} />
+              ) : null}
+              <AvatarFallback 
+                className="text-lg font-semibold"
+                style={{ backgroundColor: profissional.cor_agenda, color: 'white' }}
               >
-                <ShoppingCart className="h-4 w-4" />
-              </Button>
-            )}
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => onDelete(profissional.id)}
-              title="Excluir"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+                {getInitials(profissional.nome)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold text-lg">{profissional.nome}</h3>
+              <p className="text-sm text-muted-foreground">
+                {profissional.telefone || 'Sem telefone'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={profissional.ativo ? "success" : "destructive"}>
+              {profissional.ativo ? "Ativo" : "Inativo"}
+            </Badge>
+            <div 
+              className="h-4 w-4 rounded-full border-2 border-border"
+              style={{ backgroundColor: profissional.cor_agenda }}
+              title="Cor da agenda"
+            />
           </div>
         </div>
 
-        {/* Metas Collapsible */}
-        <Collapsible open={showMetas} onOpenChange={setShowMetas}>
-          <CollapsibleContent className="pt-3 mt-3 border-t border-border">
+        {/* Comissões */}
+        <div className="text-sm text-muted-foreground border-t border-b border-border py-2">
+          Comissões: Serviços {profissional.comissao_servicos}% | Produtos {profissional.comissao_produtos}%
+        </div>
+
+        {/* Toggle Metas */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor={`metas-${profissional.id}`} className="text-sm font-medium cursor-pointer">
+              Metas do Mês
+            </Label>
+          </div>
+          <Switch
+            id={`metas-${profissional.id}`}
+            checked={showMetas}
+            onCheckedChange={setShowMetas}
+          />
+        </div>
+
+        {/* Metas */}
+        {showMetas && (
+          <div className="animate-fade-in">
             <DualProgressCard
               metaServicos={profissional.meta_servicos_mes}
               realizadoServicos={profissional.realizado_servicos || 0}
@@ -154,8 +121,46 @@ export function ProfissionalCard({
               realizadoProdutos={profissional.realizado_produtos || 0}
               mesReferencia={mesReferencia}
             />
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        )}
+
+        {/* Ações */}
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onView(profissional.id)}
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            Ver Detalhes
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onEdit(profissional)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          {profissional.pode_vender_produtos && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="text-success hover:text-success"
+              onClick={() => onVendas(profissional.id)}
+            >
+              <ShoppingCart className="h-4 w-4" />
+            </Button>
+          )}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(profissional.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
