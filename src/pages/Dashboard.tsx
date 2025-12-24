@@ -1,4 +1,8 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -7,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, Users, Calendar, UserPlus, TrendingUp, TrendingDown } from "lucide-react";
+import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -20,6 +24,18 @@ import {
   Bar,
   Cell,
 } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import { format, isToday, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface Agendamento {
+  id: string;
+  data_hora: string;
+  status: string;
+  cliente: { nome: string } | null;
+  profissional: { nome: string; cor_agenda: string };
+  servico: { nome: string };
+}
 
 // Dados mockados para o gráfico de faturamento
 const revenueData = [
@@ -58,61 +74,145 @@ const topServicesData = [
   { name: "Pedicure", value: 22 },
 ];
 
-// Próximos agendamentos
-const upcomingAppointments = [
-  { time: "09:00", client: "Maria Silva", professional: "Juliana", service: "Corte Feminino" },
-  { time: "09:30", client: "Ana Costa", professional: "Maria", service: "Escova" },
-  { time: "10:00", client: "Priscila Lopes", professional: "Daniela", service: "Coloração" },
-  { time: "10:30", client: "Carla Mendes", professional: "Juliana", service: "Manicure" },
-  { time: "11:00", client: "Fernanda Lima", professional: "Patricia", service: "Pedicure" },
-];
-
-const statCards = [
-  {
-    title: "Faturamento Hoje",
-    value: "R$ 1.234,56",
-    change: "+12%",
-    changeType: "positive",
-    subtitle: "vs ontem",
-    icon: DollarSign,
-    iconColor: "text-success",
-    iconBg: "bg-success/10",
-  },
-  {
-    title: "Atendimentos Hoje",
-    value: "12",
-    change: "+8%",
-    changeType: "positive",
-    subtitle: "vs ontem",
-    icon: Users,
-    iconColor: "text-primary",
-    iconBg: "bg-primary/10",
-  },
-  {
-    title: "Agendamentos Hoje",
-    value: "8",
-    change: "",
-    changeType: "neutral",
-    subtitle: "confirmados",
-    icon: Calendar,
-    iconColor: "text-warning",
-    iconBg: "bg-warning/10",
-  },
-  {
-    title: "Novos Clientes",
-    value: "5",
-    change: "",
-    changeType: "neutral",
-    subtitle: "este mês",
-    icon: UserPlus,
-    iconColor: "text-pink-500",
-    iconBg: "bg-pink-500/10",
-  },
-];
-
 const barColors = ["hsl(239, 84%, 67%)", "hsl(239, 84%, 72%)", "hsl(239, 84%, 77%)", "hsl(239, 84%, 82%)", "hsl(239, 84%, 87%)"];
 
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case "confirmado":
+      return <Badge className="bg-success/10 text-success">Confirmado</Badge>;
+    case "agendado":
+      return <Badge className="bg-amber-500/10 text-amber-600">Agendado</Badge>;
+    case "concluido":
+      return <Badge className="bg-blue-500/10 text-blue-600">Concluído</Badge>;
+    case "cancelado":
+      return <Badge className="bg-destructive/10 text-destructive">Cancelado</Badge>;
+    default:
+      return <Badge variant="secondary">{status}</Badge>;
+  }
+};
+
 const Dashboard = () => {
+  const [agendamentosHoje, setAgendamentosHoje] = useState<Agendamento[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    faturamentoHoje: 0,
+    atendimentosHoje: 0,
+    agendamentosHoje: 0,
+    novosClientes: 0,
+  });
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      
+      // Buscar agendamentos de hoje
+      const hoje = new Date();
+      const inicioHoje = new Date(hoje.setHours(0, 0, 0, 0)).toISOString();
+      const fimHoje = new Date(hoje.setHours(23, 59, 59, 999)).toISOString();
+
+      const { data: agendamentos } = await supabase
+        .from("agendamentos")
+        .select(`
+          id,
+          data_hora,
+          status,
+          cliente:clientes(nome),
+          profissional:profissionais(nome, cor_agenda),
+          servico:servicos(nome)
+        `)
+        .gte("data_hora", inicioHoje)
+        .lte("data_hora", fimHoje)
+        .neq("status", "cancelado")
+        .order("data_hora", { ascending: true });
+
+      if (agendamentos) {
+        setAgendamentosHoje(agendamentos as unknown as Agendamento[]);
+        setStats(prev => ({
+          ...prev,
+          agendamentosHoje: agendamentos.length,
+        }));
+      }
+
+      // Buscar atendimentos fechados hoje
+      const { data: atendimentos } = await supabase
+        .from("atendimentos")
+        .select("valor_final")
+        .eq("status", "fechado")
+        .gte("data_hora", inicioHoje)
+        .lte("data_hora", fimHoje);
+
+      if (atendimentos) {
+        const faturamento = atendimentos.reduce((acc, at) => acc + Number(at.valor_final), 0);
+        setStats(prev => ({
+          ...prev,
+          faturamentoHoje: faturamento,
+          atendimentosHoje: atendimentos.length,
+        }));
+      }
+
+      // Novos clientes este mês
+      const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const { count } = await supabase
+        .from("clientes")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", inicioMes);
+
+      if (count) {
+        setStats(prev => ({
+          ...prev,
+          novosClientes: count,
+        }));
+      }
+
+      setLoading(false);
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const statCards = [
+    {
+      title: "Faturamento Hoje",
+      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(stats.faturamentoHoje),
+      change: "+12%",
+      changeType: "positive",
+      subtitle: "vs ontem",
+      icon: DollarSign,
+      iconColor: "text-success",
+      iconBg: "bg-success/10",
+    },
+    {
+      title: "Atendimentos Hoje",
+      value: stats.atendimentosHoje.toString(),
+      change: "+8%",
+      changeType: "positive",
+      subtitle: "vs ontem",
+      icon: Users,
+      iconColor: "text-primary",
+      iconBg: "bg-primary/10",
+    },
+    {
+      title: "Agendamentos Hoje",
+      value: stats.agendamentosHoje.toString(),
+      change: "",
+      changeType: "neutral",
+      subtitle: "confirmados",
+      icon: Calendar,
+      iconColor: "text-warning",
+      iconBg: "bg-warning/10",
+    },
+    {
+      title: "Novos Clientes",
+      value: stats.novosClientes.toString(),
+      change: "",
+      changeType: "neutral",
+      subtitle: "este mês",
+      icon: UserPlus,
+      iconColor: "text-pink-500",
+      iconBg: "bg-pink-500/10",
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -244,14 +344,28 @@ const Dashboard = () => {
 
       {/* Próximos Agendamentos */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">
-            Próximos Agendamentos
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Agendamentos de hoje</p>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-lg font-semibold">
+              Agenda de Hoje
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/agenda" className="flex items-center gap-2">
+              Ver Agenda Completa
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
         </CardHeader>
         <CardContent>
-          {upcomingAppointments.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Carregando...
+            </div>
+          ) : agendamentosHoje.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -259,26 +373,45 @@ const Dashboard = () => {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Profissional</TableHead>
                   <TableHead>Serviço</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {upcomingAppointments.map((apt, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{apt.time}</TableCell>
-                    <TableCell>{apt.client}</TableCell>
-                    <TableCell>{apt.professional}</TableCell>
+                {agendamentosHoje.map((apt) => (
+                  <TableRow key={apt.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        {format(parseISO(apt.data_hora), "HH:mm")}
+                      </div>
+                    </TableCell>
+                    <TableCell>{apt.cliente?.nome || "Sem cliente"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: apt.profissional.cor_agenda }}
+                        />
+                        {apt.profissional.nome}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                        {apt.service}
+                        {apt.servico.nome}
                       </span>
                     </TableCell>
+                    <TableCell>{getStatusBadge(apt.status)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              Nenhum agendamento hoje
+              <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>Nenhum agendamento para hoje</p>
+              <Button asChild variant="link" className="mt-2">
+                <Link to="/agenda">Ir para a Agenda</Link>
+              </Button>
             </div>
           )}
         </CardContent>
