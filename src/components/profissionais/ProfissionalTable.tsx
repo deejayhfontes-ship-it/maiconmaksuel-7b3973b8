@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ProgressBar } from "./ProgressBar";
-import { Eye, MoreHorizontal, Pencil, ShoppingCart, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, ShoppingCart, Trash2 } from "lucide-react";
 
 interface Profissional {
   id: string;
@@ -34,7 +34,6 @@ interface Profissional {
 
 interface ProfissionalTableProps {
   profissionais: Profissional[];
-  onView: (id: string) => void;
   onEdit: (profissional: Profissional) => void;
   onVendas: (id: string) => void;
   onDelete: (id: string) => void;
@@ -42,7 +41,6 @@ interface ProfissionalTableProps {
 
 export function ProfissionalTable({ 
   profissionais, 
-  onView, 
   onEdit, 
   onVendas, 
   onDelete 
@@ -147,10 +145,6 @@ export function ProfissionalTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onView(prof.id)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver Detalhes
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEdit(prof as any)}>
                         <Pencil className="h-4 w-4 mr-2" />
                         Editar

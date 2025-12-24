@@ -391,7 +391,6 @@ const Profissionais = () => {
               key={prof.id}
               profissional={prof}
               mesReferencia={mesAtual}
-              onView={handleView}
               onEdit={handleEdit}
               onVendas={handleVendas}
               onDelete={handleDeleteClick}
@@ -401,7 +400,6 @@ const Profissionais = () => {
       ) : (
         <ProfissionalTable
           profissionais={filteredProfissionais}
-          onView={handleView}
           onEdit={handleEdit}
           onVendas={handleVendas}
           onDelete={handleDeleteClick}
