@@ -36,6 +36,7 @@ import {
   Clock,
   User,
   Scissors,
+  Zap,
 } from "lucide-react";
 import { format, addDays, subDays, startOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -459,6 +460,21 @@ const Agenda = () => {
               Semana
             </Button>
           </div>
+
+          <Button 
+            variant="outline" 
+            onClick={() => { 
+              setFormInitialDate(selectedDate);
+              setFormInitialTime(undefined);
+              setFormInitialProfissionalId(undefined);
+              setSelectedAgendamento(null); 
+              setIsFormOpen(true); 
+            }}
+            className="border-amber-500 text-amber-600 hover:bg-amber-500/10"
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            Encaixe
+          </Button>
 
           <Button onClick={() => { setSelectedAgendamento(null); setIsFormOpen(true); }} className="bg-success hover:bg-success/90">
             <Plus className="h-4 w-4 mr-2" />

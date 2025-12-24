@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock } from "lucide-react";
+import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -91,15 +91,45 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+const motivationalMessages = [
+  "Cada cliente é uma oportunidade de fazer a diferença!",
+  "Seu talento transforma vidas, uma pessoa de cada vez.",
+  "Excelência não é um ato, é um hábito. Continue brilhando!",
+  "Hoje é um novo dia para superar expectativas.",
+  "A beleza que você cria reflete a beleza do seu trabalho.",
+  "Sucesso é a soma de pequenos esforços repetidos dia após dia.",
+  "Você não está apenas trabalhando, está criando confiança.",
+  "Grandes resultados começam com pequenas atitudes positivas.",
+  "Sua energia positiva contagia quem passa por aqui.",
+  "Faça de cada atendimento uma experiência memorável!",
+];
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return "Bom dia";
+  if (hour >= 12 && hour < 18) return "Boa tarde";
+  return "Boa noite";
+};
+
 const Dashboard = () => {
   const [agendamentosHoje, setAgendamentosHoje] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [motivationalMessage] = useState(() => 
+    motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)]
+  );
   const [stats, setStats] = useState({
     faturamentoHoje: 0,
     atendimentosHoje: 0,
     agendamentosHoje: 0,
     novosClientes: 0,
   });
+
+  // Update clock every second
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -215,11 +245,114 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do seu salão</p>
+      {/* Header com Relógio e Mensagem Motivacional */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">Visão geral do seu salão</p>
+        </div>
+        
+        {/* Relógio Grande Minimalista */}
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+          <CardContent className="p-6 flex items-center gap-6">
+            <div className="text-center">
+              <p className="text-5xl font-light tracking-tight text-foreground tabular-nums">
+                {format(currentTime, "HH:mm")}
+              </p>
+              <p className="text-lg text-muted-foreground">
+                {format(currentTime, ":ss", { locale: ptBR })}
+              </p>
+            </div>
+            <div className="h-16 w-px bg-border" />
+            <div className="max-w-xs">
+              <p className="text-lg font-semibold text-foreground">
+                {getGreeting()}! 👋
+              </p>
+              <div className="flex items-start gap-2 mt-1">
+                <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-muted-foreground italic">
+                  "{motivationalMessage}"
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Agenda de Hoje - PRIMEIRO ITEM */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-lg font-semibold">
+              Agenda de Hoje
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/agenda" className="flex items-center gap-2">
+              Ver Agenda Completa
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Carregando...
+            </div>
+          ) : agendamentosHoje.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-24">Horário</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Profissional</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {agendamentosHoje.map((apt) => (
+                  <TableRow key={apt.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        {format(parseISO(apt.data_hora), "HH:mm")}
+                      </div>
+                    </TableCell>
+                    <TableCell>{apt.cliente?.nome || "Sem cliente"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: apt.profissional.cor_agenda }}
+                        />
+                        {apt.profissional.nome}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                        {apt.servico.nome}
+                      </span>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(apt.status)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>Nenhum agendamento para hoje</p>
+              <Button asChild variant="link" className="mt-2">
+                <Link to="/agenda">Ir para a Agenda</Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -342,80 +475,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Próximos Agendamentos */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-lg font-semibold">
-              Agenda de Hoje
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-            </p>
-          </div>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/agenda" className="flex items-center gap-2">
-              Ver Agenda Completa
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Carregando...
-            </div>
-          ) : agendamentosHoje.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-24">Horário</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Profissional</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {agendamentosHoje.map((apt) => (
-                  <TableRow key={apt.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        {format(parseISO(apt.data_hora), "HH:mm")}
-                      </div>
-                    </TableCell>
-                    <TableCell>{apt.cliente?.nome || "Sem cliente"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: apt.profissional.cor_agenda }}
-                        />
-                        {apt.profissional.nome}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                        {apt.servico.nome}
-                      </span>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(apt.status)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>Nenhum agendamento para hoje</p>
-              <Button asChild variant="link" className="mt-2">
-                <Link to="/agenda">Ir para a Agenda</Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 };
