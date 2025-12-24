@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import logoMaicon from "@/assets/logo-maicon.jpg";
 
 const menuItems = [
   { title: "Dashboard", icon: Home, path: "/dashboard" },
@@ -42,13 +43,15 @@ export function AppSidebar() {
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        {!collapsed && (
-          <span className="text-xl font-bold text-primary">BeautyPro</span>
-        )}
-        {collapsed && (
-          <span className="text-xl font-bold text-primary mx-auto">B</span>
-        )}
+      <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-4">
+        <img 
+          src={logoMaicon} 
+          alt="Maicon Concept" 
+          className={cn(
+            "object-contain transition-all",
+            collapsed ? "h-8 w-8" : "h-10 max-w-[180px]"
+          )}
+        />
       </div>
 
       {/* Navigation */}
