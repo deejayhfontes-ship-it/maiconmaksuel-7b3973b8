@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import logoMaicon from "@/assets/logo-maicon.jpg";
+import logoMaicon from "@/assets/logo.svg";
 
 const menuItems = [
   { title: "Dashboard", icon: Home, path: "/dashboard" },
