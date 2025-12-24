@@ -64,91 +64,101 @@ export function AppSidebar() {
   }, [location.pathname]);
 
   const sidebarWidth = collapsed ? "w-16" : "w-64";
-  const isVisible = isMobile ? mobileOpen : true;
 
   return (
-    <aside
-      className={cn(
-        "fixed left-0 top-0 z-50 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out custom-scrollbar overflow-y-auto",
-        sidebarWidth,
-        isMobile && !mobileOpen && "-translate-x-full",
-        isMobile && mobileOpen && "translate-x-0 animate-slide-in-left"
-      )}
-    >
-      {/* Logo */}
-      <div className={cn(
-        "flex items-center justify-between border-b border-sidebar-border px-3 transition-all duration-300",
-        collapsed ? "h-16" : "h-32 lg:h-48"
-      )}>
-        <img 
-          src={logoMaicon} 
-          alt="Maicon Concept" 
-          className={cn(
-            "object-contain transition-all duration-300 dark:brightness-0 dark:invert",
-            collapsed ? "h-10 w-10" : "h-24 lg:h-40 max-w-[200px]"
-          )}
+    <>
+      {/* Mobile Overlay */}
+      {isMobile && mobileOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
         />
-        {isMobile && mobileOpen && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMobileOpen(false)}
-            className="lg:hidden"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-2 mt-2">
-        {allMenuItems.map((item, index) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              style={{ animationDelay: `${index * 30}ms` }}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 animate-fade-in",
-                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:translate-x-1",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                  : "text-sidebar-foreground"
-              )}
-            >
-              <item.icon className={cn(
-                "h-5 w-5 shrink-0 transition-colors",
-                isActive && "text-primary"
-              )} />
-              {!collapsed && (
-                <span className="truncate">{item.title}</span>
-              )}
-            </NavLink>
-          );
-        })}
-      </nav>
-
-      {/* Collapse Toggle - Desktop only */}
-      {!isMobile && (
-        <div className="absolute bottom-4 left-0 right-0 px-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-full justify-center text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                <span>Recolher</span>
-              </>
-            )}
-          </Button>
-        </div>
       )}
-    </aside>
+
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 h-screen transition-all duration-300 ease-ios custom-scrollbar overflow-y-auto",
+          "ios-sidebar",
+          sidebarWidth,
+          isMobile && !mobileOpen && "-translate-x-full",
+          isMobile && mobileOpen && "translate-x-0 animate-slide-in-left"
+        )}
+      >
+        {/* Logo */}
+        <div className={cn(
+          "flex items-center justify-between px-3 transition-all duration-300",
+          collapsed ? "h-16" : "h-32 lg:h-48"
+        )}>
+          <img 
+            src={logoMaicon} 
+            alt="Maicon Concept" 
+            className={cn(
+              "object-contain transition-all duration-300 dark:brightness-0 dark:invert",
+              collapsed ? "h-10 w-10" : "h-24 lg:h-40 max-w-[200px]"
+            )}
+          />
+          {isMobile && mobileOpen && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileOpen(false)}
+              className="lg:hidden"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 p-3 mt-2">
+          {allMenuItems.map((item, index) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                style={{ animationDelay: `${index * 30}ms` }}
+                className={cn(
+                  "flex items-center gap-3 rounded-ios-lg px-3 py-2.5 text-[15px] font-medium transition-all duration-200 ease-ios animate-fade-in",
+                  "hover:translate-x-1",
+                  isActive
+                    ? "ios-nav-item-active"
+                    : "ios-nav-item text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <item.icon className={cn(
+                  "h-5 w-5 shrink-0 transition-colors",
+                  isActive && "text-primary"
+                )} />
+                {!collapsed && (
+                  <span className="truncate">{item.title}</span>
+                )}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {/* Collapse Toggle - Desktop only */}
+        {!isMobile && (
+          <div className="absolute bottom-4 left-0 right-0 px-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCollapsed(!collapsed)}
+              className="w-full justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-ios-lg"
+            >
+              {collapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  <span>Recolher</span>
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </aside>
+    </>
   );
 }

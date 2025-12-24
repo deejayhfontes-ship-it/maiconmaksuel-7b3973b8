@@ -4,17 +4,17 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-ios-sm border-0 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-wide transition-all duration-200 ease-ios",
+  "inline-flex items-center rounded-ios-sm px-2.5 py-1 text-[12px] font-semibold transition-all duration-200 ease-ios",
   {
     variants: {
       variant: {
-        default: "bg-primary/15 text-primary",
-        secondary: "bg-secondary text-secondary-foreground",
-        destructive: "bg-destructive-bg text-destructive-text",
-        success: "bg-success-bg text-success-text",
-        warning: "bg-warning-bg text-warning-text",
-        info: "bg-info-bg text-info-text",
-        outline: "text-muted-foreground border border-border bg-transparent",
+        default: "ios-badge ios-badge-info",
+        secondary: "ios-badge ios-badge-neutral",
+        destructive: "ios-badge ios-badge-destructive",
+        success: "ios-badge ios-badge-success",
+        warning: "ios-badge ios-badge-warning",
+        info: "ios-badge ios-badge-info",
+        outline: "ios-badge border border-border bg-transparent text-muted-foreground",
       },
     },
     defaultVariants: {
