@@ -28,15 +28,16 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, X, Loader2, DollarSign, Target, Scissors, ShoppingCart } from "lucide-react";
 
+// iOS Official Colors for Agenda
 const coresAgenda = [
-  { nome: "Azul", valor: "#3b82f6" },
-  { nome: "Verde", valor: "#22c55e" },
-  { nome: "Vermelho", valor: "#ef4444" },
-  { nome: "Laranja", valor: "#f97316" },
-  { nome: "Roxo", valor: "#8b5cf6" },
-  { nome: "Rosa", valor: "#ec4899" },
-  { nome: "Amarelo", valor: "#eab308" },
-  { nome: "Ciano", valor: "#06b6d4" },
+  { nome: "Azul", valor: "#007AFF" },
+  { nome: "Verde", valor: "#34C759" },
+  { nome: "Vermelho", valor: "#FF3B30" },
+  { nome: "Laranja", valor: "#FF9500" },
+  { nome: "Roxo", valor: "#5856D6" },
+  { nome: "Rosa", valor: "#FF2D55" },
+  { nome: "Ciano", valor: "#5AC8FA" },
+  { nome: "Teal", valor: "#64D2FF" },
 ];
 
 const profissionalSchema = z.object({
@@ -106,7 +107,7 @@ export default function ProfissionalFormDialog({
       telefone: "",
       cpf: "",
       data_admissao: "",
-      cor_agenda: "#3b82f6",
+      cor_agenda: "#007AFF",
       ativo: true,
       comissao_servicos: 30,
       comissao_produtos: 10,
@@ -138,7 +139,7 @@ export default function ProfissionalFormDialog({
         telefone: "",
         cpf: "",
         data_admissao: "",
-        cor_agenda: "#3b82f6",
+        cor_agenda: "#007AFF",
         ativo: true,
         comissao_servicos: 30,
         comissao_produtos: 10,

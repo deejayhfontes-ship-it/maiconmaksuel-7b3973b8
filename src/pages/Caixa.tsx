@@ -405,16 +405,17 @@ const Caixa = () => {
     }
   }, [movimentacoes, tabAtiva]);
 
+  // iOS Status Badges
   const getTipoBadge = (tipo: string) => {
     switch (tipo) {
       case "entrada":
-        return <Badge className="bg-success/10 text-success">Entrada</Badge>;
+        return <Badge variant="success">Entrada</Badge>;
       case "saida":
-        return <Badge className="bg-destructive/10 text-destructive">Saída</Badge>;
+        return <Badge variant="destructive">Saída</Badge>;
       case "sangria":
-        return <Badge className="bg-amber-500/10 text-amber-600">Sangria</Badge>;
+        return <Badge variant="warning">Sangria</Badge>;
       case "reforco":
-        return <Badge className="bg-blue-500/10 text-blue-600">Reforço</Badge>;
+        return <Badge variant="info">Reforço</Badge>;
       default:
         return <Badge variant="secondary">{tipo}</Badge>;
     }
@@ -523,15 +524,15 @@ const Caixa = () => {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="text-purple-600" onClick={() => setIsDespesaOpen(true)}>
+          <Button variant="outline" className="text-info" onClick={() => setIsDespesaOpen(true)}>
             <Receipt className="h-4 w-4 mr-2" />
             Despesa Rápida
           </Button>
-          <Button variant="outline" className="text-amber-600" onClick={() => setIsSangriaOpen(true)}>
+          <Button variant="outline" className="text-warning" onClick={() => setIsSangriaOpen(true)}>
             <ArrowUpCircle className="h-4 w-4 mr-2" />
             Sangria
           </Button>
-          <Button variant="outline" className="text-blue-600" onClick={() => setIsReforcoOpen(true)}>
+          <Button variant="outline" className="text-primary" onClick={() => setIsReforcoOpen(true)}>
             <ArrowDownCircle className="h-4 w-4 mr-2" />
             Reforço
           </Button>
@@ -572,29 +573,29 @@ const Caixa = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-500/5 border-blue-500/20">
+        <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <Wallet className="h-5 w-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Wallet className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Saldo em Caixa</p>
-                <p className="text-2xl font-bold text-blue-600">{formatPrice(totais.saldo)}</p>
+                <p className="text-2xl font-bold text-primary">{formatPrice(totais.saldo)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-purple-500/5 border-purple-500/20">
+        <Card className="bg-info/5 border-info/20">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Receipt className="h-5 w-5 text-purple-600" />
+              <div className="p-2 rounded-lg bg-info/10">
+                <Receipt className="h-5 w-5 text-info" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Despesas do Dia</p>
-                <p className="text-2xl font-bold text-purple-600">{formatPrice(totais.despesasTotal)}</p>
+                <p className="text-2xl font-bold text-info">{formatPrice(totais.despesasTotal)}</p>
                 <p className="text-xs text-muted-foreground">{despesas.filter(d => d.pago_por === "caixa").length} despesas</p>
               </div>
             </div>
@@ -618,8 +619,8 @@ const Caixa = () => {
 
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <CreditCard className="h-5 w-5 text-blue-600" />
+            <div className="p-2 rounded-lg bg-primary/10">
+              <CreditCard className="h-5 w-5 text-primary" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Débito</p>
@@ -630,8 +631,8 @@ const Caixa = () => {
 
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-500/10">
-              <CreditCard className="h-5 w-5 text-purple-600" />
+            <div className="p-2 rounded-lg bg-info/10">
+              <CreditCard className="h-5 w-5 text-info" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Crédito</p>
@@ -642,8 +643,8 @@ const Caixa = () => {
 
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-teal-500/10">
-              <Smartphone className="h-5 w-5 text-teal-600" />
+            <div className="p-2 rounded-lg bg-success/10">
+              <Smartphone className="h-5 w-5 text-success" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">PIX</p>
@@ -727,7 +728,7 @@ const Caixa = () => {
             <CardTitle>Despesas Rápidas de Hoje</CardTitle>
             <p className="text-sm text-muted-foreground">Gastos pequenos do dia a dia</p>
           </div>
-          <Button variant="outline" className="text-purple-600" onClick={() => setIsDespesaOpen(true)}>
+          <Button variant="outline" className="text-info" onClick={() => setIsDespesaOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Despesa
           </Button>
@@ -743,12 +744,12 @@ const Caixa = () => {
                   <Card key={despesa.id} className="bg-muted/30">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-purple-500/10">
-                          <Icon className="h-4 w-4 text-purple-600" />
+                        <div className="p-2 rounded-lg bg-info/10">
+                          <Icon className="h-4 w-4 text-info" />
                         </div>
                         <div className="flex-1">
                           <p className="font-medium">{despesa.descricao}</p>
-                          <p className="text-lg font-bold text-purple-600">{formatPrice(Number(despesa.valor))}</p>
+                          <p className="text-lg font-bold text-info">{formatPrice(Number(despesa.valor))}</p>
                           <p className="text-xs text-muted-foreground">
                             {despesa.pago_por === "caixa" ? "Caixa" : "Próprio"} - {format(parseISO(despesa.data_hora), "HH:mm")}
                           </p>

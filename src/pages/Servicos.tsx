@@ -38,15 +38,16 @@ interface Servico {
   updated_at: string;
 }
 
+// iOS Colors for Service Categories
 const categoriaColors: Record<string, string> = {
-  Cabelo: "bg-blue-500/10 text-blue-600 border-blue-200",
-  Barba: "bg-amber-700/10 text-amber-700 border-amber-200",
-  Manicure: "bg-pink-500/10 text-pink-600 border-pink-200",
-  Pedicure: "bg-purple-500/10 text-purple-600 border-purple-200",
-  Estética: "bg-green-500/10 text-green-600 border-green-200",
-  Depilação: "bg-orange-500/10 text-orange-600 border-orange-200",
-  Massagem: "bg-teal-500/10 text-teal-600 border-teal-200",
-  Outros: "bg-gray-500/10 text-gray-600 border-gray-200",
+  Cabelo: "bg-primary/12 text-primary border-primary/20",
+  Barba: "bg-warning/12 text-warning border-warning/20",
+  Manicure: "bg-[#FF2D55]/12 text-[#FF2D55] border-[#FF2D55]/20",
+  Pedicure: "bg-info/12 text-info border-info/20",
+  Estética: "bg-success/12 text-success border-success/20",
+  Depilação: "bg-warning/12 text-warning border-warning/20",
+  Massagem: "bg-[#5AC8FA]/12 text-[#5AC8FA] border-[#5AC8FA]/20",
+  Outros: "bg-muted text-muted-foreground border-border",
 };
 
 const categorias = ["Cabelo", "Barba", "Manicure", "Pedicure", "Estética", "Depilação", "Massagem", "Outros"];
