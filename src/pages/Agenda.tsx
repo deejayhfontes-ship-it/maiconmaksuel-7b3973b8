@@ -515,8 +515,9 @@ const Agenda = () => {
             Agendar
           </Button>
           <Button
+            variant="secondary"
             size="sm"
-            className="flex-1 gap-1.5 h-10 bg-warning hover:bg-warning/90 text-warning-foreground"
+            className="flex-1 gap-1.5 h-10 !bg-[#FF9500] hover:!bg-[#E68600] !text-white"
             onClick={() => {
               setFormInitialDate(selectedDate);
               setFormInitialTime(undefined);
@@ -631,8 +632,9 @@ const Agenda = () => {
 
           {/* Botão Encaixe - Abaixo da legenda (laranja) */}
           <Button
+            variant="secondary"
             size="lg"
-            className="w-full gap-2 h-14 text-lg bg-warning hover:bg-warning/90 text-warning-foreground shadow-[0_4px_14px_rgba(255,149,0,0.35)]"
+            className="w-full gap-2 h-14 text-lg !bg-[#FF9500] hover:!bg-[#E68600] !text-white shadow-[0_4px_14px_rgba(255,149,0,0.35)]"
             onClick={() => {
               setFormInitialDate(selectedDate);
               setFormInitialTime(undefined);
