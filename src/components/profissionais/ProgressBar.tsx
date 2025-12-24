@@ -21,9 +21,9 @@ export function ProgressBar({
   const remaining = max - value;
   
   const getColor = () => {
-    if (percentage >= 90) return "bg-success";
-    if (percentage >= 70) return "bg-warning";
-    return "bg-destructive";
+    if (percentage >= 90) return "progress-success";
+    if (percentage >= 70) return "progress-warning";
+    return "progress-danger";
   };
   
   const getIcon = () => {

@@ -459,19 +459,19 @@
 
   .ios-button-primary {
     @apply ios-button text-primary-foreground;
-    background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
-    box-shadow: 
-      0 1px 3px rgba(0, 122, 255, 0.12),
-      0 4px 12px rgba(0, 122, 255, 0.2),
-      0 8px 24px rgba(0, 122, 255, 0.15);
+    background: linear-gradient(135deg, #007AFF 0%, #0066CC 100%);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+    border-radius: 12px;
   }
 
   .ios-button-primary:hover {
-    background: linear-gradient(135deg, #0A84FF 0%, #0066CC 100%);
-    box-shadow: 
-      0 2px 6px rgba(0, 122, 255, 0.15),
-      0 8px 24px rgba(0, 122, 255, 0.25),
-      0 16px 32px rgba(0, 122, 255, 0.2);
+    background: linear-gradient(135deg, #0066CC 0%, #0055BB 100%);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .ios-button-primary:active {
+    transform: scale(0.96) translateY(0);
   }
 
   .ios-button-secondary {
@@ -493,19 +493,51 @@
   .ios-button-destructive {
     @apply ios-button text-destructive-foreground;
     background: linear-gradient(135deg, #FF3B30 0%, #D32F2F 100%);
-    box-shadow: 
-      0 1px 3px rgba(255, 59, 48, 0.12),
-      0 4px 12px rgba(255, 59, 48, 0.2),
-      0 8px 24px rgba(255, 59, 48, 0.15);
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.25);
+    border-radius: 12px;
+  }
+
+  .ios-button-destructive:hover {
+    background: linear-gradient(135deg, #D32F2F 0%, #C62828 100%);
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .ios-button-destructive:active {
+    transform: scale(0.96) translateY(0);
   }
 
   .ios-button-success {
     @apply ios-button text-success-foreground;
     background: linear-gradient(135deg, #34C759 0%, #28A745 100%);
-    box-shadow: 
-      0 1px 3px rgba(52, 199, 89, 0.12),
-      0 4px 12px rgba(52, 199, 89, 0.2),
-      0 8px 24px rgba(52, 199, 89, 0.15);
+    box-shadow: 0 2px 8px rgba(52, 199, 89, 0.25);
+    border-radius: 12px;
+  }
+
+  .ios-button-success:hover {
+    background: linear-gradient(135deg, #28A745 0%, #229A3F 100%);
+    box-shadow: 0 4px 12px rgba(52, 199, 89, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .ios-button-success:active {
+    transform: scale(0.96) translateY(0);
+  }
+
+  /* Progress Bar Gradients */
+  .progress-success {
+    background: linear-gradient(90deg, #34C759 0%, #30D158 100%);
+    box-shadow: 0 2px 8px rgba(52, 199, 89, 0.2);
+  }
+
+  .progress-warning {
+    background: linear-gradient(90deg, #FF9500 0%, #FF9F0A 100%);
+    box-shadow: 0 2px 8px rgba(255, 149, 0, 0.2);
+  }
+
+  .progress-danger {
+    background: linear-gradient(90deg, #FF3B30 0%, #FF453A 100%);
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.2);
   }
 
   /* iOS Header/Topbar with Glassmorphism */
