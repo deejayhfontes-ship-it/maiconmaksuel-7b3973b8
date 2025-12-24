@@ -287,7 +287,8 @@ const Produtos = () => {
               Nenhum produto encontrado
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
@@ -403,6 +404,7 @@ const Produtos = () => {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
 
           {/* Paginação */}

@@ -324,7 +324,8 @@ const Clientes = () => {
               Nenhum cliente encontrado
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
@@ -438,6 +439,7 @@ const Clientes = () => {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
 
           {/* Paginação */}
