@@ -273,7 +273,7 @@ const Dashboard = () => {
             </div>
             <div className="h-16 w-px bg-border" />
             <div className="max-w-xs">
-              <p className="text-sm font-medium text-muted-foreground capitalize">
+              <p className="text-sm font-bold text-foreground capitalize">
                 {format(currentTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </p>
               <p className="text-lg font-semibold text-foreground mt-1">
