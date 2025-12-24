@@ -658,6 +658,9 @@ export type Database = {
       profissionais: {
         Row: {
           ativo: boolean
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
           comissao_padrao: number
           comissao_produtos: number
           comissao_servicos: number
@@ -665,8 +668,11 @@ export type Database = {
           cpf: string | null
           created_at: string
           data_admissao: string | null
+          endereco: string | null
           especialidade: string | null
+          estado: string | null
           foto_url: string | null
+          funcao: string | null
           id: string
           meta_produtos_mes: number
           meta_servicos_mes: number
@@ -677,6 +683,9 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
           comissao_padrao?: number
           comissao_produtos?: number
           comissao_servicos?: number
@@ -684,8 +693,11 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           data_admissao?: string | null
+          endereco?: string | null
           especialidade?: string | null
+          estado?: string | null
           foto_url?: string | null
+          funcao?: string | null
           id?: string
           meta_produtos_mes?: number
           meta_servicos_mes?: number
@@ -696,6 +708,9 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
           comissao_padrao?: number
           comissao_produtos?: number
           comissao_servicos?: number
@@ -703,8 +718,11 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           data_admissao?: string | null
+          endereco?: string | null
           especialidade?: string | null
+          estado?: string | null
           foto_url?: string | null
+          funcao?: string | null
           id?: string
           meta_produtos_mes?: number
           meta_servicos_mes?: number
