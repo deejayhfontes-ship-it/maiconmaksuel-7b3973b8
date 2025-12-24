@@ -19,7 +19,7 @@ import { useState } from "react";
 import logoMaicon from "@/assets/logo.svg";
 
 const menuItems = [
-  { title: "Dashboard", icon: Home, path: "/dashboard" },
+  { title: "Início", icon: Home, path: "/dashboard" },
   { title: "Clientes", icon: Users, path: "/clientes" },
   { title: "Profissionais", icon: UserCheck, path: "/profissionais" },
   { title: "Serviços", icon: Scissors, path: "/servicos" },
@@ -48,7 +48,7 @@ export function AppSidebar() {
           src={logoMaicon} 
           alt="Maicon Concept" 
           className={cn(
-            "object-contain transition-all",
+            "object-contain transition-all dark:brightness-0 dark:invert",
             collapsed ? "h-12 w-12" : "h-28 max-w-[250px]"
           )}
         />
