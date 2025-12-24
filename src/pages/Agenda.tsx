@@ -314,21 +314,58 @@ const Agenda = () => {
   const adjustedDayIndex = currentDayIndex === 0 ? 6 : currentDayIndex - 1;
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex gap-4">
-      {/* Coluna Esquerda - Mini Calendário */}
-      <div className="w-72 flex-shrink-0 flex flex-col gap-4">
-        {/* Data selecionada */}
-        <Card className="p-4">
-          <h2 className="text-lg font-bold text-foreground capitalize">
-            {format(selectedDate, "EEEE", { locale: ptBR })}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {format(selectedDate, "dd/MMM/yyyy", { locale: ptBR })}
-          </p>
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-6rem)] gap-4">
+      {/* Coluna Esquerda - Mini Calendário (Hidden on mobile, visible as horizontal bar on tablet) */}
+      <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4">
+        {/* Data selecionada + Ações em linha no mobile */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Card className="p-4 flex-1">
+            <h2 className="text-lg font-bold text-foreground capitalize">
+              {format(selectedDate, "EEEE", { locale: ptBR })}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {format(selectedDate, "dd/MMM/yyyy", { locale: ptBR })}
+            </p>
+          </Card>
+          
+          <Button
+            className="w-full sm:w-auto gap-2"
+            onClick={() => {
+              setFormInitialDate(selectedDate);
+              setFormInitialTime(undefined);
+              setFormInitialProfissionalId(undefined);
+              setSelectedAgendamento(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Agendar
+          </Button>
+        </div>
+
+        {/* Filtro por profissional - visível em todas as telas */}
+        <Card className="p-4 space-y-3">
+          <h3 className="text-sm font-medium">Filtrar por profissional</h3>
+          <Select value={profissionalFilter} onValueChange={setProfissionalFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos profissionais</SelectItem>
+              {profissionais.map((prof) => (
+                <SelectItem key={prof.id} value={prof.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: prof.cor_agenda }} />
+                    {prof.nome}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Card>
 
-        {/* Mini calendário */}
-        <Card className="p-2">
+        {/* Mini calendário - Hidden on mobile */}
+        <Card className="p-2 hidden lg:block">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -364,46 +401,8 @@ const Agenda = () => {
           />
         </Card>
 
-        {/* Botões de ação */}
-        <div className="flex flex-col gap-2">
-          <Button
-            className="w-full gap-2"
-            onClick={() => {
-              setFormInitialDate(selectedDate);
-              setFormInitialTime(undefined);
-              setFormInitialProfissionalId(undefined);
-              setSelectedAgendamento(null);
-              setIsFormOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            Agendar
-          </Button>
-        </div>
-
-        {/* Filtro por profissional */}
-        <Card className="p-4 space-y-3">
-          <h3 className="text-sm font-medium">Filtrar por profissional</h3>
-          <Select value={profissionalFilter} onValueChange={setProfissionalFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos profissionais</SelectItem>
-              {profissionais.map((prof) => (
-                <SelectItem key={prof.id} value={prof.id}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: prof.cor_agenda }} />
-                    {prof.nome}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Card>
-
-        {/* Legenda */}
-        <Card className="p-4 space-y-2">
+        {/* Legenda - Hidden on mobile */}
+        <Card className="p-4 space-y-2 hidden lg:block">
           <h3 className="text-sm font-medium">Legenda</h3>
           <div className="space-y-1.5">
             {Object.entries(statusConfig).map(([key, config]) => (
@@ -419,48 +418,49 @@ const Agenda = () => {
       </div>
 
       {/* Coluna Direita - Grid de Agendamentos */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header com navegação */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goToFirst}>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header com navegação - Responsivo */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start flex-wrap">
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={goToFirst}>
               <ChevronFirst className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={goToPrev}>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={goToPrev}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" onClick={goToToday}>
+            <Button variant="secondary" size="sm" onClick={goToToday}>
               Hoje
             </Button>
-            <Button variant="outline" size="icon" onClick={goToNext}>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={goToNext}>
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={goToLast}>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={goToLast}>
               <ChevronLast className="h-4 w-4" />
             </Button>
-            <h2 className="text-xl font-bold ml-4 capitalize">
-              {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-            </h2>
           </div>
+          
+          <h2 className="text-base sm:text-xl font-bold capitalize text-center sm:text-left order-first sm:order-none">
+            {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          </h2>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={fetchAgendamentos}>
+          <div className="flex items-center gap-2 justify-center sm:justify-end">
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={fetchAgendamentos}>
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
               <Printer className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         {/* Abas de dias da semana */}
-        <div className="flex gap-1 mb-4">
+        <div className="flex gap-1 mb-4 overflow-x-auto pb-2">
           {weekDays.map((day, idx) => (
             <Button
               key={day}
               variant={idx === adjustedDayIndex ? "default" : "ghost"}
               size="sm"
-              className="flex-1"
+              className="flex-shrink-0 min-w-[40px] sm:flex-1"
               onClick={() => {
                 const diff = idx - adjustedDayIndex;
                 setSelectedDate(addDays(selectedDate, diff));
@@ -471,21 +471,21 @@ const Agenda = () => {
           ))}
         </div>
 
-        {/* Estatísticas */}
-        <div className="flex gap-3 mb-4">
-          <Badge variant="outline" className="px-3 py-1">
+        {/* Estatísticas - Scrollable on mobile */}
+        <div className="flex gap-2 sm:gap-3 mb-4 overflow-x-auto pb-2">
+          <Badge variant="outline" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">
             Total: {stats.total}
           </Badge>
-          <Badge variant="outline" className="px-3 py-1 bg-green-500/10 text-green-600 border-green-500/30">
+          <Badge variant="outline" className="px-2 sm:px-3 py-1 bg-green-500/10 text-green-600 border-green-500/30 whitespace-nowrap text-xs">
             Confirmados: {stats.confirmados}
           </Badge>
-          <Badge variant="outline" className="px-3 py-1 bg-blue-500/10 text-blue-600 border-blue-500/30">
+          <Badge variant="outline" className="px-2 sm:px-3 py-1 bg-blue-500/10 text-blue-600 border-blue-500/30 whitespace-nowrap text-xs">
             Atendidos: {stats.atendidos}
           </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            Vagas livres: {stats.vagasLivres}
+          <Badge variant="outline" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">
+            Vagas: {stats.vagasLivres}
           </Badge>
-          <Badge variant="outline" className="px-3 py-1">
+          <Badge variant="outline" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">
             Ocupação: {stats.taxaOcupacao}%
           </Badge>
         </div>

@@ -245,49 +245,53 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header com Logo, Relógio e Mensagem Motivacional */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div className="flex flex-col gap-4 lg:gap-6">
+        {/* Logo e título */}
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-card shadow-md p-2">
+          <div className="flex h-12 w-12 md:h-14 md:w-14 items-center justify-center rounded-xl bg-card shadow-md p-2">
             <img 
               src={iconeMaicon} 
               alt="Ícone" 
-              className="h-10 w-10 object-contain dark:invert"
+              className="h-8 w-8 md:h-10 md:w-10 object-contain dark:invert"
             />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Início</h1>
-            <p className="text-muted-foreground">Visão geral do seu salão</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Início</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Visão geral do seu salão</p>
           </div>
         </div>
         
-        {/* Relógio Grande Minimalista */}
+        {/* Relógio e Mensagem - Responsivo */}
         <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-          <CardContent className="p-6 flex items-center gap-6">
-            <div className="text-center">
-              <div className="flex items-baseline justify-center gap-1">
-                <p className="text-5xl font-bold tracking-tight text-foreground tabular-nums">
-                  {format(currentTime, "HH:mm")}
-                </p>
-                <p className="text-2xl font-light text-muted-foreground tabular-nums">
-                  {format(currentTime, ":ss")}
+          <CardContent className="p-4 md:p-6">
+            {/* Mobile: Layout vertical */}
+            <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+              <div className="text-center md:text-left">
+                <div className="flex items-baseline justify-center md:justify-start gap-1">
+                  <p className="text-3xl md:text-5xl font-bold tracking-tight text-foreground tabular-nums">
+                    {format(currentTime, "HH:mm")}
+                  </p>
+                  <p className="text-lg md:text-2xl font-light text-muted-foreground tabular-nums">
+                    {format(currentTime, ":ss")}
+                  </p>
+                </div>
+                <p className="text-xs md:text-sm font-bold text-foreground capitalize mt-1">
+                  {format(currentTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}
                 </p>
               </div>
-              <p className="text-sm font-bold text-foreground capitalize mt-1">
-                {format(currentTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </p>
-            </div>
-            <div className="h-16 w-px bg-border" />
-            <div className="max-w-xs">
-              <p className="text-lg font-semibold text-foreground">
-                {getGreeting()}! 👋
-              </p>
-              <div className="flex items-start gap-2 mt-1">
-                <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground italic">
-                  "{motivationalMessage}"
+              <div className="hidden md:block h-16 w-px bg-border" />
+              <div className="border-t md:border-t-0 pt-4 md:pt-0">
+                <p className="text-base md:text-lg font-semibold text-foreground text-center md:text-left">
+                  {getGreeting()}! 👋
                 </p>
+                <div className="flex items-start justify-center md:justify-start gap-2 mt-1">
+                  <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <p className="text-xs md:text-sm text-muted-foreground italic text-center md:text-left max-w-xs">
+                    "{motivationalMessage}"
+                  </p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -296,71 +300,75 @@ const Dashboard = () => {
 
       {/* Agenda de Hoje - PRIMEIRO ITEM */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4">
           <div>
-            <CardTitle className="text-lg font-semibold">
+            <CardTitle className="text-base md:text-lg font-semibold">
               Agenda de Hoje
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs md:text-sm text-muted-foreground">
               {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/agenda" className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+            <Link to="/agenda" className="flex items-center justify-center gap-2">
               Ver Agenda Completa
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 md:p-6 md:pt-0">
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
               Carregando...
             </div>
           ) : agendamentosHoje.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-24">Horário</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Profissional</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {agendamentosHoje.map((apt) => (
-                  <TableRow key={apt.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        {format(parseISO(apt.data_hora), "HH:mm")}
-                      </div>
-                    </TableCell>
-                    <TableCell>{apt.cliente?.nome || "Sem cliente"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: apt.profissional.cor_agenda }}
-                        />
-                        {apt.profissional.nome}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                        {apt.servico.nome}
-                      </span>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(apt.status)}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-20 md:w-24">Horário</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="hidden sm:table-cell">Profissional</TableHead>
+                    <TableHead className="hidden md:table-cell">Serviço</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {agendamentosHoje.map((apt) => (
+                    <TableRow key={apt.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-1 md:gap-2">
+                          <Clock className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+                          <span className="text-xs md:text-sm">{format(parseISO(apt.data_hora), "HH:mm")}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs md:text-sm">{apt.cliente?.nome || "Sem cliente"}</span>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 md:w-3 md:h-3 rounded-full"
+                            style={{ backgroundColor: apt.profissional.cor_agenda }}
+                          />
+                          <span className="text-xs md:text-sm">{apt.profissional.nome}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          {apt.servico.nome}
+                        </span>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(apt.status)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>Nenhum agendamento para hoje</p>
+            <div className="text-center py-8 text-muted-foreground px-4">
+              <Calendar className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
+              <p className="text-sm md:text-base">Nenhum agendamento para hoje</p>
               <Button asChild variant="link" className="mt-2">
                 <Link to="/agenda">Ir para a Agenda</Link>
               </Button>

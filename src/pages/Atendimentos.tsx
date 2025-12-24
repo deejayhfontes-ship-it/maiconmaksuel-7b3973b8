@@ -439,12 +439,12 @@ const Atendimentos = () => {
   };
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-7rem)]">
+    <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-7rem)]">
       {/* Lista de Comandas */}
-      <Card className="w-80 flex-shrink-0 flex flex-col">
+      <Card className="w-full lg:w-80 flex-shrink-0 flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               <Receipt className="h-5 w-5" />
               Comandas Abertas
             </CardTitle>
@@ -457,7 +457,44 @@ const Atendimentos = () => {
             Nova Comanda
           </Button>
 
-          <ScrollArea className="flex-1">
+          {/* Mobile: Horizontal scroll, Desktop: Vertical scroll */}
+          <div className="lg:hidden overflow-x-auto">
+            <div className="flex gap-2 pb-2">
+              {loading ? (
+                <p className="text-center text-muted-foreground py-4 w-full">Carregando...</p>
+              ) : atendimentos.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4 w-full">Nenhuma comanda aberta</p>
+              ) : (
+                atendimentos.map((at) => (
+                  <Card
+                    key={at.id}
+                    className={`cursor-pointer transition-all hover:shadow-md flex-shrink-0 w-[200px] ${
+                      selectedAtendimento?.id === at.id ? "ring-2 ring-primary" : ""
+                    }`}
+                    onClick={() => setSelectedAtendimento(at)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold">
+                          #{at.numero_comanda.toString().padStart(3, "0")}
+                        </span>
+                        <Badge className="bg-amber-500/10 text-amber-600 text-xs">Aberta</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {at.cliente?.nome || "Sem cliente"}
+                      </p>
+                      <span className="font-semibold text-success text-sm">
+                        {formatPrice(Number(at.valor_final))}
+                      </span>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+          
+          {/* Desktop: Vertical scroll */}
+          <ScrollArea className="flex-1 hidden lg:block">
             <div className="space-y-2 pr-2">
               {loading ? (
                 <p className="text-center text-muted-foreground py-4">Carregando...</p>
