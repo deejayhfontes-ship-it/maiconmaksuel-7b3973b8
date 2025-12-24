@@ -77,16 +77,17 @@ const topServicesData = [
 
 const barColors = ["hsl(239, 84%, 67%)", "hsl(239, 84%, 72%)", "hsl(239, 84%, 77%)", "hsl(239, 84%, 82%)", "hsl(239, 84%, 87%)"];
 
+// iOS Status Badges
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "confirmado":
-      return <Badge className="bg-success/10 text-success">Confirmado</Badge>;
+      return <Badge variant="success">Confirmado</Badge>;
     case "agendado":
-      return <Badge className="bg-amber-500/10 text-amber-600">Agendado</Badge>;
+      return <Badge variant="warning">Agendado</Badge>;
     case "concluido":
-      return <Badge className="bg-blue-500/10 text-blue-600">Concluído</Badge>;
+      return <Badge variant="info">Concluído</Badge>;
     case "cancelado":
-      return <Badge className="bg-destructive/10 text-destructive">Cancelado</Badge>;
+      return <Badge variant="destructive">Cancelado</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }

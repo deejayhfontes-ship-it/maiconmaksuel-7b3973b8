@@ -135,7 +135,8 @@ const periodPresets = [
   { label: "Mês Anterior", getValue: () => ({ from: startOfMonth(subMonths(new Date(), 1)), to: endOfMonth(subMonths(new Date(), 1)) }) },
 ];
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+// iOS Official Colors
+const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#5856D6', '#FF2D55', '#5AC8FA', '#30D158'];
 
 const Relatorios = () => {
   const { toast } = useToast();
@@ -524,7 +525,7 @@ const Relatorios = () => {
                       formatter={(value: number) => [formatCurrency(value), "Valor"]}
                       contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                     />
-                    <Line type="monotone" dataKey="valor" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6" }} />
+                    <Line type="monotone" dataKey="valor" stroke="#007AFF" strokeWidth={2} dot={{ fill: "#007AFF" }} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -537,7 +538,7 @@ const Relatorios = () => {
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-success hover:bg-success/90"
                     onClick={() => exportToExcel(vendasPorPeriodo.porDia, "vendas-periodo")}
                   >
                     <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
@@ -600,7 +601,7 @@ const Relatorios = () => {
                         formatter={(value: number) => [formatCurrency(value), "Valor"]}
                         contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                       />
-                      <Bar dataKey="valor" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="valor" fill="#007AFF" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -681,7 +682,7 @@ const Relatorios = () => {
                     <XAxis type="number" className="text-xs" tickFormatter={(v) => `R$${v}`} />
                     <YAxis dataKey="nome" type="category" className="text-xs" width={120} />
                     <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Valor"]} />
-                    <Bar dataKey="valor" fill="#10b981" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="valor" fill="#34C759" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -690,7 +691,7 @@ const Relatorios = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Todos os Serviços</CardTitle>
-                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => exportToExcel(vendasPorServico, "vendas-servico")}>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(vendasPorServico, "vendas-servico")}>
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
                 </Button>
               </CardHeader>
@@ -1010,7 +1011,7 @@ const Relatorios = () => {
                     <XAxis dataKey="nome" className="text-xs" />
                     <YAxis className="text-xs" />
                     <RechartsTooltip />
-                    <Bar dataKey="atendimentos" fill="#3b82f6" name="Atendimentos" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="atendimentos" fill="#007AFF" name="Atendimentos" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -1152,7 +1153,7 @@ const Relatorios = () => {
                     <XAxis type="number" className="text-xs" />
                     <YAxis dataKey="nome" type="category" className="text-xs" width={100} />
                     <RechartsTooltip />
-                    <Bar dataKey="atendimentos" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="atendimentos" fill="#5856D6" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -1179,7 +1180,7 @@ const Relatorios = () => {
                       <XAxis dataKey="nome" className="text-xs" />
                       <YAxis className="text-xs" />
                       <RechartsTooltip />
-                      <Bar dataKey="quantidade" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="quantidade" fill="#FF9500" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -1403,7 +1404,7 @@ const Relatorios = () => {
                     <XAxis dataKey="data" className="text-xs" />
                     <YAxis className="text-xs" tickFormatter={(v) => `R$${v}`} />
                     <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Valor"]} />
-                    <Line type="monotone" dataKey="valor" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981" }} name="Entradas" />
+                    <Line type="monotone" dataKey="valor" stroke="#34C759" strokeWidth={2} dot={{ fill: "#34C759" }} name="Entradas" />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>

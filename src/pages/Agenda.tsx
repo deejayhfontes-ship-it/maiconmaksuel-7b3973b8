@@ -88,12 +88,13 @@ const timeSlots = [
   "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
 ];
 
+// iOS Official Colors for Status
 const statusConfig: Record<string, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
-  agendado: { label: "Agendado", color: "text-amber-600", bgColor: "bg-amber-500/20", icon: <Clock className="h-3 w-3" /> },
-  confirmado: { label: "Confirmado", color: "text-green-600", bgColor: "bg-green-500/20", icon: <Check className="h-3 w-3" /> },
-  atendido: { label: "Atendido", color: "text-blue-600", bgColor: "bg-blue-500/20", icon: <UserCheck className="h-3 w-3" /> },
-  cancelado: { label: "Cancelado", color: "text-red-600", bgColor: "bg-red-500/20", icon: <X className="h-3 w-3" /> },
-  faltou: { label: "Faltou", color: "text-gray-600", bgColor: "bg-gray-500/20", icon: <User className="h-3 w-3" /> },
+  agendado: { label: "Agendado", color: "text-warning", bgColor: "bg-warning/15", icon: <Clock className="h-3 w-3" /> },
+  confirmado: { label: "Confirmado", color: "text-success", bgColor: "bg-success/15", icon: <Check className="h-3 w-3" /> },
+  atendido: { label: "Atendido", color: "text-primary", bgColor: "bg-primary/15", icon: <UserCheck className="h-3 w-3" /> },
+  cancelado: { label: "Cancelado", color: "text-destructive", bgColor: "bg-destructive/15", icon: <X className="h-3 w-3" /> },
+  faltou: { label: "Faltou", color: "text-muted-foreground", bgColor: "bg-muted", icon: <User className="h-3 w-3" /> },
 };
 
 const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -445,10 +446,10 @@ const Agenda = () => {
           <Badge variant="outline" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">
             Total: {stats.total}
           </Badge>
-          <Badge variant="outline" className="px-2 sm:px-3 py-1 bg-green-500/10 text-green-600 border-green-500/30 whitespace-nowrap text-xs">
+          <Badge variant="success" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">
             Confirmados: {stats.confirmados}
           </Badge>
-          <Badge variant="outline" className="px-2 sm:px-3 py-1 bg-blue-500/10 text-blue-600 border-blue-500/30 whitespace-nowrap text-xs">
+          <Badge variant="info" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">
             Atendidos: {stats.atendidos}
           </Badge>
           <Badge variant="outline" className="px-2 sm:px-3 py-1 whitespace-nowrap text-xs">

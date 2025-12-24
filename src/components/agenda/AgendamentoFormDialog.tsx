@@ -108,12 +108,13 @@ const horarios = [
   "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
 ];
 
+// iOS Colors for Status
 const statusOptions = [
-  { value: "agendado", label: "Agendado", color: "text-amber-600" },
-  { value: "confirmado", label: "Confirmado", color: "text-green-600" },
-  { value: "atendido", label: "Atendido", color: "text-blue-600" },
-  { value: "cancelado", label: "Cancelado", color: "text-red-600" },
-  { value: "faltou", label: "Faltou", color: "text-gray-600" },
+  { value: "agendado", label: "Agendado", color: "text-warning" },
+  { value: "confirmado", label: "Confirmado", color: "text-success" },
+  { value: "atendido", label: "Atendido", color: "text-primary" },
+  { value: "cancelado", label: "Cancelado", color: "text-destructive" },
+  { value: "faltou", label: "Faltou", color: "text-muted-foreground" },
 ];
 
 export default function AgendamentoFormDialog({

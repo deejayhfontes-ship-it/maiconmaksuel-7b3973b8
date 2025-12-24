@@ -478,7 +478,7 @@ const Atendimentos = () => {
                         <span className="font-bold">
                           #{at.numero_comanda.toString().padStart(3, "0")}
                         </span>
-                        <Badge className="bg-amber-500/10 text-amber-600 text-xs">Aberta</Badge>
+                        <Badge variant="warning" className="text-xs">Aberta</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
                         {at.cliente?.nome || "Sem cliente"}
@@ -514,7 +514,7 @@ const Atendimentos = () => {
                         <span className="font-bold text-lg">
                           #{at.numero_comanda.toString().padStart(3, "0")}
                         </span>
-                        <Badge className="bg-amber-500/10 text-amber-600">Aberta</Badge>
+                        <Badge variant="warning">Aberta</Badge>
                       </div>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
                         <User className="h-3 w-3" />
@@ -681,7 +681,7 @@ const Atendimentos = () => {
                     {itemsServicos.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
-                          <Badge className="bg-blue-500/10 text-blue-600">Serviço</Badge>
+                          <Badge variant="info">Serviço</Badge>
                         </TableCell>
                         <TableCell className="font-medium">{item.servico.nome}</TableCell>
                         <TableCell>{item.profissional.nome}</TableCell>
@@ -698,7 +698,7 @@ const Atendimentos = () => {
                     {itemsProdutos.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
-                          <Badge className="bg-green-500/10 text-green-600">Produto</Badge>
+                          <Badge variant="success">Produto</Badge>
                         </TableCell>
                         <TableCell className="font-medium">{item.produto.nome}</TableCell>
                         <TableCell>-</TableCell>
