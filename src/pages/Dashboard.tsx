@@ -210,8 +210,8 @@ const Dashboard = () => {
       changeType: "positive",
       subtitle: "vs ontem",
       icon: DollarSign,
-      iconColor: "text-success",
-      iconBg: "bg-success/10",
+      iconColor: "#34C759",
+      iconBg: "rgba(52, 199, 89, 0.12)",
     },
     {
       title: "Atendimentos Hoje",
@@ -220,8 +220,8 @@ const Dashboard = () => {
       changeType: "positive",
       subtitle: "vs ontem",
       icon: Users,
-      iconColor: "text-primary",
-      iconBg: "bg-primary/10",
+      iconColor: "#007AFF",
+      iconBg: "rgba(0, 122, 255, 0.12)",
     },
     {
       title: "Agendamentos Hoje",
@@ -230,8 +230,8 @@ const Dashboard = () => {
       changeType: "neutral",
       subtitle: "confirmados",
       icon: Calendar,
-      iconColor: "text-warning",
-      iconBg: "bg-warning/10",
+      iconColor: "#FF9500",
+      iconBg: "rgba(255, 149, 0, 0.12)",
     },
     {
       title: "Novos Clientes",
@@ -240,8 +240,8 @@ const Dashboard = () => {
       changeType: "neutral",
       subtitle: "este mês",
       icon: UserPlus,
-      iconColor: "text-pink-500",
-      iconBg: "bg-pink-500/10",
+      iconColor: "#FF2D55",
+      iconBg: "rgba(255, 45, 85, 0.12)",
     },
   ];
 
@@ -379,32 +379,46 @@ const Dashboard = () => {
       </Card>
 
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6">
         {statCards.map((card) => (
-          <Card key={card.title} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6 h-full">
-              <div className="flex items-center justify-between h-full gap-4">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {card.title}
-                  </p>
-                  <p className="text-3xl font-bold text-foreground">{card.value}</p>
-                  <div className="flex items-center gap-1 text-sm">
-                    {card.changeType === "positive" && card.change && (
-                      <>
-                        <TrendingUp className="h-4 w-4 text-success" />
-                        <span className="text-success font-medium">{card.change}</span>
-                      </>
-                    )}
-                    <span className="text-muted-foreground">{card.subtitle}</span>
-                  </div>
-                </div>
-                <div className={`p-3 rounded-full ${card.iconBg} flex-shrink-0`}>
-                  <card.icon className={`h-6 w-6 ${card.iconColor}`} />
-                </div>
+          <div
+            key={card.title}
+            className="relative bg-card rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+            style={{ height: '140px' }}
+          >
+            {/* Ícone - Posição absoluta no canto superior direito */}
+            <div
+              className="absolute top-6 right-6 w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: card.iconBg }}
+            >
+              <card.icon size={24} color={card.iconColor} />
+            </div>
+
+            {/* Conteúdo com flex column e space-between */}
+            <div className="flex flex-col justify-between h-full pr-16">
+              {/* Título - Sempre no topo */}
+              <p className="text-[13px] font-medium text-muted-foreground">
+                {card.title}
+              </p>
+
+              {/* Valor Principal - Centro */}
+              <p className="text-[32px] font-bold text-foreground leading-none">
+                {card.value}
+              </p>
+
+              {/* Comparação - Sempre na base */}
+              <div className="flex items-center gap-1 text-[13px] font-medium">
+                {card.changeType === "positive" && card.change ? (
+                  <>
+                    <TrendingUp size={14} className="text-success" />
+                    <span className="text-success">{card.change} {card.subtitle}</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">{card.subtitle}</span>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 
