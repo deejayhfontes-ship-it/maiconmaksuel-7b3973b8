@@ -86,6 +86,54 @@ export type Database = {
         }
         Relationships: []
       }
+      produtos: {
+        Row: {
+          ativo: boolean
+          categoria: string | null
+          codigo_barras: string | null
+          created_at: string
+          descricao: string | null
+          estoque_atual: number
+          estoque_minimo: number
+          foto_url: string | null
+          id: string
+          nome: string
+          preco_custo: number | null
+          preco_venda: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string | null
+          codigo_barras?: string | null
+          created_at?: string
+          descricao?: string | null
+          estoque_atual?: number
+          estoque_minimo?: number
+          foto_url?: string | null
+          id?: string
+          nome: string
+          preco_custo?: number | null
+          preco_venda: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string | null
+          codigo_barras?: string | null
+          created_at?: string
+          descricao?: string | null
+          estoque_atual?: number
+          estoque_minimo?: number
+          foto_url?: string | null
+          id?: string
+          nome?: string
+          preco_custo?: number | null
+          preco_venda?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profissionais: {
         Row: {
           ativo: boolean
