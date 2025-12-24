@@ -17,6 +17,7 @@ import Atendimentos from "./pages/Atendimentos";
 import Caixa from "./pages/Caixa";
 import Financeiro from "./pages/Financeiro";
 import Relatorios from "./pages/Relatorios";
+import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import RecuperarSenha from "./pages/RecuperarSenha";
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/caixa" element={<Caixa />} />
                 <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="/relatorios" element={<Relatorios />} />
+                <Route path="/usuarios" element={<Usuarios />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
