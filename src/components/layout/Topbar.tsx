@@ -1,4 +1,4 @@
-import { Search, Bell, Moon, Sun, Menu, User } from "lucide-react";
+import { Search, Bell, Moon, Sun, Menu, User, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,15 +9,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/components/ThemeProvider";
 import { useSidebarContext } from "./MainLayout";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function Topbar() {
   const { resolvedTheme, setTheme } = useTheme();
   const { collapsed, mobileOpen, setMobileOpen } = useSidebarContext();
+  const { profile, role, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -29,6 +34,33 @@ export function Topbar() {
 
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  const getInitials = (nome: string) => {
+    return nome
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+  };
+
+  const getRoleBadge = (role: string | null) => {
+    switch (role) {
+      case "admin":
+        return <Badge variant="default" className="text-xs">Admin</Badge>;
+      case "gerente":
+        return <Badge variant="secondary" className="text-xs">Gerente</Badge>;
+      case "operador":
+        return <Badge variant="outline" className="text-xs">Operador</Badge>;
+      default:
+        return null;
+    }
   };
 
   return (
@@ -92,23 +124,41 @@ export function Topbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2">
                 <Avatar className="h-8 w-8 transition-transform duration-200 hover:scale-105">
+                  {profile?.foto_url && (
+                    <AvatarImage src={profile.foto_url} alt={profile.nome} />
+                  )}
                   <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                    MC
+                    {profile?.nome ? getInitials(profile.nome) : "U"}
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-medium hidden md:inline">
-                  Maicon
+                  {profile?.nome?.split(" ")[0] || "Usuário"}
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 animate-scale-in">
-              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-56 animate-scale-in">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">{profile?.nome || "Usuário"}</p>
+                  <p className="text-xs text-muted-foreground">{profile?.email}</p>
+                  {role && <div className="pt-1">{getRoleBadge(role)}</div>}
+                </div>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Perfil
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive cursor-pointer">
+              <DropdownMenuItem className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                Configurações
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-destructive cursor-pointer"
+                onClick={handleSignOut}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
                 Sair
               </DropdownMenuItem>
             </DropdownMenuContent>
