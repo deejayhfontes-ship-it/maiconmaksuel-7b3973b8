@@ -183,44 +183,87 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    letter-spacing: -0.01em;
-    font-feature-settings: "kern" 1, "liga" 1;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-weight: 400;
+    font-size: 15px;
+    letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Typography Scale - iOS Style */
-  .text-display {
-    @apply text-[34px] font-bold leading-tight tracking-tight;
-    letter-spacing: -0.5px;
-  }
-
-  .text-headline {
-    @apply text-[28px] font-semibold leading-snug;
+  /* Typography Scale - Apple San Francisco */
+  h1, .text-display {
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.2;
     letter-spacing: -0.3px;
   }
 
-  .text-title-1 {
-    @apply text-[22px] font-semibold leading-normal;
+  h2, .text-headline {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.3px;
+  }
+
+  h3, .text-title-1 {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.4;
     letter-spacing: -0.2px;
   }
 
-  .text-title-2 {
-    @apply text-[17px] font-semibold leading-normal;
+  h4, .text-title-2 {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.4;
     letter-spacing: -0.1px;
   }
 
-  .text-body {
-    @apply text-[15px] font-normal leading-relaxed;
+  p, .text-body {
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: 0;
   }
 
   .text-callout {
-    @apply text-[13px] font-normal leading-normal;
-  }
-
-  .text-caption {
-    @apply text-[11px] font-normal leading-tight;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
     letter-spacing: 0.1px;
   }
+
+  .text-caption, small {
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.3;
+    letter-spacing: 0.1px;
+  }
+
+  /* Apply font to all form elements */
+  input, textarea, select, button {
+    font-family: inherit;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button {
+    font-weight: 600;
+  }
+
+  label {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+  }
+
+  /* Font weight utilities */
+  .font-light { font-weight: 300; }
+  .font-normal { font-weight: 400; }
+  .font-medium { font-weight: 500; }
+  .font-semibold { font-weight: 600; }
+  .font-bold { font-weight: 700; }
 }
 
 @layer utilities {
