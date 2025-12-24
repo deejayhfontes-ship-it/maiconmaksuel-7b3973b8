@@ -632,6 +632,8 @@ export type Database = {
         Row: {
           ativo: boolean
           comissao_padrao: number
+          comissao_produtos: number
+          comissao_servicos: number
           cor_agenda: string
           cpf: string | null
           created_at: string
@@ -639,13 +641,18 @@ export type Database = {
           especialidade: string | null
           foto_url: string | null
           id: string
+          meta_produtos_mes: number
+          meta_servicos_mes: number
           nome: string
+          pode_vender_produtos: boolean
           telefone: string | null
           updated_at: string
         }
         Insert: {
           ativo?: boolean
           comissao_padrao?: number
+          comissao_produtos?: number
+          comissao_servicos?: number
           cor_agenda?: string
           cpf?: string | null
           created_at?: string
@@ -653,13 +660,18 @@ export type Database = {
           especialidade?: string | null
           foto_url?: string | null
           id?: string
+          meta_produtos_mes?: number
+          meta_servicos_mes?: number
           nome: string
+          pode_vender_produtos?: boolean
           telefone?: string | null
           updated_at?: string
         }
         Update: {
           ativo?: boolean
           comissao_padrao?: number
+          comissao_produtos?: number
+          comissao_servicos?: number
           cor_agenda?: string
           cpf?: string | null
           created_at?: string
@@ -667,11 +679,64 @@ export type Database = {
           especialidade?: string | null
           foto_url?: string | null
           id?: string
+          meta_produtos_mes?: number
+          meta_servicos_mes?: number
           nome?: string
+          pode_vender_produtos?: boolean
           telefone?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      profissional_metas_historico: {
+        Row: {
+          created_at: string
+          id: string
+          mes_referencia: string
+          meta_produtos: number
+          meta_servicos: number
+          premio_produtos: string | null
+          premio_servicos: string | null
+          profissional_id: string
+          realizado_produtos: number
+          realizado_servicos: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mes_referencia: string
+          meta_produtos?: number
+          meta_servicos?: number
+          premio_produtos?: string | null
+          premio_servicos?: string | null
+          profissional_id: string
+          realizado_produtos?: number
+          realizado_servicos?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mes_referencia?: string
+          meta_produtos?: number
+          meta_servicos?: number
+          premio_produtos?: string | null
+          premio_servicos?: string | null
+          profissional_id?: string
+          realizado_produtos?: number
+          realizado_servicos?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profissional_metas_historico_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       servicos: {
         Row: {
