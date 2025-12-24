@@ -12,11 +12,13 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useSidebarContext } from "./MainLayout";
 import logoMaicon from "@/assets/logo.svg";
+import { useEffect, useState } from "react";
 
 const menuItems = [
   { title: "Início", icon: Home, path: "/dashboard" },
@@ -32,69 +34,110 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebarContext();
   const location = useLocation();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    if (mobileOpen && isMobile) {
+      setMobileOpen(false);
+    }
+  }, [location.pathname]);
+
+  const sidebarWidth = collapsed ? "w-16" : "w-64";
+  const isVisible = isMobile ? mobileOpen : true;
 
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border sidebar-transition",
-        collapsed ? "w-16" : "w-64"
+        "fixed left-0 top-0 z-50 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out custom-scrollbar overflow-y-auto",
+        sidebarWidth,
+        isMobile && !mobileOpen && "-translate-x-full",
+        isMobile && mobileOpen && "translate-x-0 animate-slide-in-left"
       )}
     >
       {/* Logo */}
-      <div className="flex h-48 items-center justify-center border-b border-sidebar-border px-2">
+      <div className={cn(
+        "flex items-center justify-between border-b border-sidebar-border px-3 transition-all duration-300",
+        collapsed ? "h-16" : "h-32 lg:h-48"
+      )}>
         <img 
           src={logoMaicon} 
           alt="Maicon Concept" 
           className={cn(
-            "object-contain transition-all dark:brightness-0 dark:invert",
-            collapsed ? "h-14 w-14" : "h-44 max-w-[280px]"
+            "object-contain transition-all duration-300 dark:brightness-0 dark:invert",
+            collapsed ? "h-10 w-10" : "h-24 lg:h-40 max-w-[200px]"
           )}
         />
+        {isMobile && mobileOpen && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-2 mt-2">
-        {menuItems.map((item) => {
+        {menuItems.map((item, index) => {
           const isActive = location.pathname === item.path;
           return (
             <NavLink
               key={item.path}
               to={item.path}
+              style={{ animationDelay: `${index * 30}ms` }}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 animate-fade-in",
+                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:translate-x-1",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
                   : "text-sidebar-foreground"
               )}
             >
-              <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-primary")} />
-              {!collapsed && <span>{item.title}</span>}
+              <item.icon className={cn(
+                "h-5 w-5 shrink-0 transition-colors",
+                isActive && "text-primary"
+              )} />
+              {!collapsed && (
+                <span className="truncate">{item.title}</span>
+              )}
             </NavLink>
           );
         })}
       </nav>
 
-      {/* Collapse Toggle */}
-      <div className="absolute bottom-4 left-0 right-0 px-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-full justify-center text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <>
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              <span>Recolher</span>
-            </>
-          )}
-        </Button>
-      </div>
+      {/* Collapse Toggle - Desktop only */}
+      {!isMobile && (
+        <div className="absolute bottom-4 left-0 right-0 px-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCollapsed(!collapsed)}
+            className="w-full justify-center text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <>
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                <span>Recolher</span>
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </aside>
   );
 }
