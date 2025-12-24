@@ -8,9 +8,6 @@ import {
   User,
   Clock,
   Trash2,
-  CreditCard,
-  Banknote,
-  Smartphone,
   Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,17 +41,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PagamentoModal } from "@/components/atendimentos/PagamentoModal";
 
 interface Cliente {
   id: string;
@@ -387,15 +379,30 @@ const Atendimentos = () => {
     setIsPaymentOpen(true);
   };
 
-  const handleConfirmarPagamento = async (formaPagamento: string) => {
+  const handleConfirmarPagamento = async (pagamentos: { forma: string; valor: number; parcelas: number }[]) => {
     if (!selectedAtendimento) return;
 
-    await supabase.from("pagamentos").insert([{
-      atendimento_id: selectedAtendimento.id,
-      forma_pagamento: formaPagamento,
-      valor: valorFinal,
-    }]);
+    // Inserir todos os pagamentos
+    for (const pag of pagamentos) {
+      await supabase.from("pagamentos").insert([{
+        atendimento_id: selectedAtendimento.id,
+        forma_pagamento: pag.forma,
+        valor: pag.valor,
+        parcelas: pag.parcelas,
+      }]);
+    }
 
+    // Atualizar estoque dos produtos vendidos
+    for (const item of itemsProdutos) {
+      const produto = produtos.find(p => p.id === item.produto_id);
+      if (produto) {
+        await supabase.from("produtos").update({
+          estoque_atual: Math.max(0, produto.estoque_atual - item.quantidade),
+        }).eq("id", item.produto_id);
+      }
+    }
+
+    // Atualizar o atendimento para fechado
     await supabase.from("atendimentos").update({
       status: "fechado",
       subtotal,
@@ -403,10 +410,22 @@ const Atendimentos = () => {
       valor_final: valorFinal,
     }).eq("id", selectedAtendimento.id);
 
-    toast({ title: "Comanda fechada!", description: `Total: ${formatPrice(valorFinal)}` });
+    // Atualizar última visita do cliente
+    if (selectedAtendimento.cliente_id) {
+      await supabase.from("clientes").update({
+        ultima_visita: new Date().toISOString(),
+        total_visitas: (await supabase.from("clientes").select("total_visitas").eq("id", selectedAtendimento.cliente_id).single()).data?.total_visitas + 1 || 1,
+      }).eq("id", selectedAtendimento.cliente_id);
+    }
+
+    toast({ 
+      title: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} fechada!`, 
+      description: `Total: ${formatPrice(valorFinal)}` 
+    });
     setIsPaymentOpen(false);
     setSelectedAtendimento(null);
     fetchAtendimentos();
+    fetchData(); // Atualizar estoque na lista
   };
 
   const handleCancelarComanda = async () => {
@@ -710,34 +729,14 @@ const Atendimentos = () => {
       </Card>
 
       {/* Modal de Pagamento */}
-      <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Forma de Pagamento</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 pt-4">
-            <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => handleConfirmarPagamento("dinheiro")}>
-              <Banknote className="h-6 w-6" />
-              Dinheiro
-            </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => handleConfirmarPagamento("debito")}>
-              <CreditCard className="h-6 w-6" />
-              Débito
-            </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => handleConfirmarPagamento("credito")}>
-              <CreditCard className="h-6 w-6" />
-              Crédito
-            </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => handleConfirmarPagamento("pix")}>
-              <Smartphone className="h-6 w-6" />
-              PIX
-            </Button>
-          </div>
-          <div className="text-center pt-4 border-t mt-4">
-            <p className="text-2xl font-bold text-success">{formatPrice(valorFinal)}</p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PagamentoModal
+        open={isPaymentOpen}
+        onOpenChange={setIsPaymentOpen}
+        numeroComanda={selectedAtendimento?.numero_comanda || 0}
+        clienteNome={selectedAtendimento?.cliente?.nome || null}
+        totalComanda={valorFinal}
+        onConfirmar={handleConfirmarPagamento}
+      />
 
       {/* Confirmar Cancelamento */}
       <AlertDialog open={isCancelOpen} onOpenChange={setIsCancelOpen}>
