@@ -382,9 +382,9 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => (
           <Card key={card.title} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex justify-between gap-4">
-                <div className="space-y-1 min-w-0">
+            <CardContent className="p-6 h-full">
+              <div className="flex items-center justify-between h-full gap-4">
+                <div className="space-y-1 min-w-0 flex-1">
                   <p className="text-sm font-medium text-muted-foreground">
                     {card.title}
                   </p>
@@ -399,7 +399,7 @@ const Dashboard = () => {
                     <span className="text-muted-foreground">{card.subtitle}</span>
                   </div>
                 </div>
-                <div className={`p-3 rounded-full ${card.iconBg} flex-shrink-0 self-center`}>
+                <div className={`p-3 rounded-full ${card.iconBg} flex-shrink-0`}>
                   <card.icon className={`h-6 w-6 ${card.iconColor}`} />
                 </div>
               </div>
