@@ -319,38 +319,6 @@ const Agenda = () => {
     <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] gap-4 overflow-hidden">
       {/* Coluna Esquerda - Mini Calendário */}
       <div className="w-full lg:w-72 flex-shrink-0 flex flex-col gap-4 overflow-auto">
-        {/* Botões Agendar e Encaixe */}
-        <div className="flex gap-2">
-          <Button
-            size="lg"
-            className="flex-1 gap-2 lg:h-14 lg:text-lg"
-            onClick={() => {
-              setFormInitialDate(selectedDate);
-              setFormInitialTime(undefined);
-              setFormInitialProfissionalId(undefined);
-              setSelectedAgendamento(null);
-              setIsFormOpen(true);
-            }}
-          >
-            <Plus className="h-5 w-5" />
-            Agendar
-          </Button>
-          <Button
-            size="lg"
-            className="flex-1 gap-2 lg:h-14 lg:text-lg bg-warning hover:bg-warning/90 text-warning-foreground shadow-[0_4px_14px_rgba(255,149,0,0.35)]"
-            onClick={() => {
-              setFormInitialDate(selectedDate);
-              setFormInitialTime(undefined);
-              setFormInitialProfissionalId(undefined);
-              setSelectedAgendamento(null);
-              setIsFormOpen(true);
-            }}
-          >
-            <Zap className="h-5 w-5" />
-            Encaixe
-          </Button>
-        </div>
-
         {/* Mini calendário - Hidden on mobile */}
         <Card className="p-2 hidden lg:block">
           <Calendar
@@ -402,6 +370,38 @@ const Agenda = () => {
             ))}
           </div>
         </Card>
+
+        {/* Botões Agendar e Encaixe - Abaixo da legenda */}
+        <div className="flex gap-2">
+          <Button
+            size="lg"
+            className="flex-1 gap-2 lg:h-14 lg:text-lg"
+            onClick={() => {
+              setFormInitialDate(selectedDate);
+              setFormInitialTime(undefined);
+              setFormInitialProfissionalId(undefined);
+              setSelectedAgendamento(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <Plus className="h-5 w-5" />
+            Agendar
+          </Button>
+          <Button
+            size="lg"
+            className="flex-1 gap-2 lg:h-14 lg:text-lg bg-warning hover:bg-warning/90 text-warning-foreground shadow-[0_4px_14px_rgba(255,149,0,0.35)]"
+            onClick={() => {
+              setFormInitialDate(selectedDate);
+              setFormInitialTime(undefined);
+              setFormInitialProfissionalId(undefined);
+              setSelectedAgendamento(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <Zap className="h-5 w-5" />
+            Encaixe
+          </Button>
+        </div>
       </div>
 
       {/* Coluna Direita - Grid de Agendamentos */}
