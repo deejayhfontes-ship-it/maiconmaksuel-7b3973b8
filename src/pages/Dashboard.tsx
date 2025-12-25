@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles } from "lucide-react";
+import AtalhosRapidos from "@/components/dashboard/AtalhosRapidos";
 import iconeMaicon from "@/assets/icone-maicon.svg";
 import {
   LineChart,
@@ -377,6 +378,9 @@ const Dashboard = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Atalhos Rápidos - Estilo iPhone */}
+      <AtalhosRapidos />
 
       {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6">
