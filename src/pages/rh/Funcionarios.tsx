@@ -17,7 +17,7 @@ import { ptBR } from "date-fns/locale";
 import { 
   Plus, Search, MoreHorizontal, Eye, Edit, Clock, Calendar, 
   FileText, AlertTriangle, History, UserMinus, Phone, Mail,
-  Wallet, Building, CreditCard, Users, BarChart3, Filter
+  Wallet, Building, CreditCard, Users, BarChart3, Filter, ArrowLeft
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -122,9 +122,16 @@ export default function Funcionarios() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Gestão de Funcionários</h1>
-          <p className="text-muted-foreground">Funcionários administrativos com salário fixo</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/gestao-rh">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Gestão de Funcionários</h1>
+            <p className="text-muted-foreground">Funcionários administrativos com salário fixo</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>

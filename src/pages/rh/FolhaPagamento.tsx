@@ -15,8 +15,9 @@ import { format, startOfMonth, subMonths, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   Plus, FileText, Check, Download, ChevronDown, ChevronRight, 
-  DollarSign, Calculator, Wallet, CreditCard
+  DollarSign, Calculator, Wallet, CreditCard, ArrowLeft
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function FolhaPagamento() {
   const queryClient = useQueryClient();
@@ -215,9 +216,16 @@ export default function FolhaPagamento() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Folha de Pagamento</h1>
-          <p className="text-muted-foreground">Gerencie os pagamentos mensais dos funcionários</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/gestao-rh">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Folha de Pagamento</h1>
+            <p className="text-muted-foreground">Gerencie os pagamentos mensais dos funcionários</p>
+          </div>
         </div>
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />

@@ -17,8 +17,9 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday
 import { ptBR } from "date-fns/locale";
 import { 
   Clock, Calendar, Check, X, AlertTriangle, ChevronLeft, ChevronRight,
-  Save, FileText, Upload
+  Save, FileText, Upload, ArrowLeft
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Ponto() {
   const queryClient = useQueryClient();
@@ -173,9 +174,16 @@ export default function Ponto() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Controle de Ponto</h1>
-          <p className="text-muted-foreground">Registre a entrada e saída dos funcionários</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/gestao-rh">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Controle de Ponto</h1>
+            <p className="text-muted-foreground">Registre a entrada e saída dos funcionários</p>
+          </div>
         </div>
       </div>
 
