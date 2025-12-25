@@ -19,90 +19,30 @@ interface Atalho {
   Icon: LucideIcon;
   label: string;
   link: string;
-  gradient: string;
+  color: string;
 }
 
 const AtalhosRapidos = () => {
   const navigate = useNavigate();
   
   const atalhos: Atalho[] = [
-    { 
-      Icon: Calendar, 
-      label: 'Agenda', 
-      link: '/agenda',
-      gradient: 'linear-gradient(135deg, #FF6B6B 0%, #FF5252 100%)'
-    },
-    { 
-      Icon: Scissors, 
-      label: 'Atendimentos', 
-      link: '/atendimentos',
-      gradient: 'linear-gradient(135deg, #4ECDC4 0%, #3BAEA5 100%)'
-    },
-    { 
-      Icon: Users, 
-      label: 'Clientes', 
-      link: '/clientes',
-      gradient: 'linear-gradient(135deg, #A8E6CF 0%, #4CD964 100%)'
-    },
-    { 
-      Icon: UserCircle, 
-      label: 'Profissionais', 
-      link: '/profissionais',
-      gradient: 'linear-gradient(135deg, #FFCA28 0%, #FFB300 100%)'
-    },
-    { 
-      Icon: Package, 
-      label: 'Produtos', 
-      link: '/produtos',
-      gradient: 'linear-gradient(135deg, #66BB6A 0%, #43A047 100%)'
-    },
-    { 
-      Icon: Wallet, 
-      label: 'Caixa', 
-      link: '/caixa',
-      gradient: 'linear-gradient(135deg, #4DD0E1 0%, #00ACC1 100%)'
-    },
-    { 
-      Icon: Target, 
-      label: 'Metas', 
-      link: '/profissionais',
-      gradient: 'linear-gradient(135deg, #FF7043 0%, #F4511E 100%)'
-    },
-    { 
-      Icon: BarChart3, 
-      label: 'Relatórios', 
-      link: '/relatorios',
-      gradient: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)'
-    },
-    { 
-      Icon: FileText, 
-      label: 'Notas Fiscais', 
-      link: '/notas-fiscais',
-      gradient: 'linear-gradient(135deg, #EC407A 0%, #D81B60 100%)'
-    },
-    { 
-      Icon: Settings, 
-      label: 'Configurações', 
-      link: '/configuracoes-fiscal',
-      gradient: 'linear-gradient(135deg, #78909C 0%, #546E7A 100%)'
-    },
-    { 
-      Icon: UserCog, 
-      label: 'Gestão RH', 
-      link: '/rh/funcionarios',
-      gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
-    },
-    { 
-      Icon: CheckCircle, 
-      label: 'Confirmações', 
-      link: '/confirmacoes',
-      gradient: 'linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%)'
-    }
+    { Icon: Calendar, label: 'Agenda', link: '/agenda', color: '#007AFF' },
+    { Icon: Scissors, label: 'Atendimentos', link: '/atendimentos', color: '#5AC8FA' },
+    { Icon: Users, label: 'Clientes', link: '/clientes', color: '#34C759' },
+    { Icon: UserCircle, label: 'Profissionais', link: '/profissionais', color: '#FF9500' },
+    { Icon: Package, label: 'Produtos', link: '/produtos', color: '#30D158' },
+    { Icon: Wallet, label: 'Caixa', link: '/caixa', color: '#32ADE6' },
+    { Icon: Target, label: 'Metas', link: '/profissionais', color: '#FF3B30' },
+    { Icon: BarChart3, label: 'Relatórios', link: '/relatorios', color: '#AF52DE' },
+    { Icon: FileText, label: 'Notas Fiscais', link: '/notas-fiscais', color: '#FF2D55' },
+    { Icon: Settings, label: 'Configurações', link: '/configuracoes-fiscal', color: '#8E8E93' },
+    { Icon: UserCog, label: 'Gestão RH', link: '/rh/funcionarios', color: '#FF9F0A' },
+    { Icon: CheckCircle, label: 'Confirmações', link: '/confirmacoes', color: '#30D158' }
   ];
   
   return (
-    <div className="w-full my-10 px-4">
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-6 justify-items-center max-w-5xl mx-auto">
+    <div className="w-full my-8 px-4">
+      <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-6 gap-6 sm:gap-8 justify-items-center max-w-4xl mx-auto">
         {atalhos.map((atalho) => {
           const { Icon } = atalho;
           
@@ -110,71 +50,32 @@ const AtalhosRapidos = () => {
             <div
               key={atalho.label}
               onClick={() => navigate(atalho.link)}
-              className="
-                w-[100px] h-[100px] 
-                sm:w-[110px] sm:h-[110px] 
-                lg:w-[120px] lg:h-[120px]
-                rounded-[24px] sm:rounded-[26px] lg:rounded-[28px]
-                flex flex-col items-center justify-center
-                cursor-pointer
-                relative overflow-hidden
-                transition-all duration-300 ease-out
-                hover:scale-[1.08] hover:-translate-y-1
-                active:scale-[0.92]
-                border border-white/20
-              "
-              style={{
-                background: atalho.gradient,
-                boxShadow: `
-                  0 1px 3px rgba(0, 0, 0, 0.06),
-                  0 4px 12px rgba(0, 0, 0, 0.08),
-                  0 12px 28px rgba(0, 0, 0, 0.06)
-                `
-              }}
+              className="flex flex-col items-center gap-2 cursor-pointer group"
             >
-              {/* Brilho iOS no topo */}
-              <div 
-                className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-[24px] sm:rounded-t-[26px] lg:rounded-t-[28px]"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%)'
-                }}
-              />
-              
-              {/* Círculo branco para ícone */}
-              <div 
+              {/* Ícone estilo iOS */}
+              <div
                 className="
-                  w-12 h-12 sm:w-[52px] sm:h-[52px] lg:w-14 lg:h-14
-                  rounded-full 
+                  w-[60px] h-[60px] 
+                  sm:w-[70px] sm:h-[70px]
+                  rounded-[16px] sm:rounded-[18px]
                   flex items-center justify-center
-                  mb-2
-                  z-10
+                  transition-transform duration-200 ease-out
+                  group-hover:scale-105
+                  group-active:scale-95
                 "
                 style={{
-                  background: 'rgba(255, 255, 255, 0.25)',
-                  backdropFilter: 'blur(4px)',
-                  boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.3)'
+                  backgroundColor: atalho.color,
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
                 }}
               >
                 <Icon 
-                  className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-white"
-                  strokeWidth={2}
-                  style={{
-                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
-                  }}
+                  className="w-7 h-7 sm:w-8 sm:h-8 text-white"
+                  strokeWidth={1.8}
                 />
               </div>
               
               {/* Label */}
-              <span 
-                className="
-                  text-[11px] sm:text-xs lg:text-[13px]
-                  font-semibold text-white text-center
-                  z-10 px-2 leading-tight
-                "
-                style={{
-                  textShadow: '0 1px 3px rgba(0,0,0,0.3)'
-                }}
-              >
+              <span className="text-[11px] sm:text-xs font-medium text-foreground/80 text-center leading-tight max-w-[70px]">
                 {atalho.label}
               </span>
             </div>
