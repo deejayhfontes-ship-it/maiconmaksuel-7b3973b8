@@ -74,6 +74,7 @@ const App = () => (
                 <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscal />} />
                 <Route path="/configuracoes/whatsapp" element={<ConfiguracoesWhatsApp />} />
                 <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
+                <Route path="/rh" element={<Navigate to="/rh/funcionarios" replace />} />
                 <Route path="/rh/funcionarios" element={<Funcionarios />} />
                 <Route path="/rh/ponto" element={<Ponto />} />
                 <Route path="/rh/folha-pagamento" element={<FolhaPagamento />} />
