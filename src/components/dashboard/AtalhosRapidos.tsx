@@ -2,9 +2,9 @@ import {
   Calendar, 
   Scissors, 
   Users, 
-  User, 
+  UserCircle, 
   Package, 
-  DollarSign, 
+  Wallet, 
   Target, 
   BarChart3, 
   FileText, 
@@ -30,79 +30,79 @@ const AtalhosRapidos = () => {
       Icon: Calendar, 
       label: 'Agenda', 
       link: '/agenda',
-      gradient: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)'
+      gradient: 'linear-gradient(135deg, #FF6B6B 0%, #FF5252 100%)'
     },
     { 
       Icon: Scissors, 
       label: 'Atendimentos', 
       link: '/atendimentos',
-      gradient: 'linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%)'
+      gradient: 'linear-gradient(135deg, #4ECDC4 0%, #3BAEA5 100%)'
     },
     { 
       Icon: Users, 
       label: 'Clientes', 
       link: '/clientes',
-      gradient: 'linear-gradient(135deg, #A8E6CF 0%, #56CC9D 100%)'
+      gradient: 'linear-gradient(135deg, #A8E6CF 0%, #4CD964 100%)'
     },
     { 
-      Icon: User, 
+      Icon: UserCircle, 
       label: 'Profissionais', 
       link: '/profissionais',
-      gradient: 'linear-gradient(135deg, #FFD93D 0%, #FFA500 100%)'
+      gradient: 'linear-gradient(135deg, #FFCA28 0%, #FFB300 100%)'
     },
     { 
       Icon: Package, 
       label: 'Produtos', 
       link: '/produtos',
-      gradient: 'linear-gradient(135deg, #6BCF7F 0%, #4CAF50 100%)'
+      gradient: 'linear-gradient(135deg, #66BB6A 0%, #43A047 100%)'
     },
     { 
-      Icon: DollarSign, 
+      Icon: Wallet, 
       label: 'Caixa', 
       link: '/caixa',
-      gradient: 'linear-gradient(135deg, #95E1D3 0%, #38B2AC 100%)'
+      gradient: 'linear-gradient(135deg, #4DD0E1 0%, #00ACC1 100%)'
     },
     { 
       Icon: Target, 
       label: 'Metas', 
       link: '/profissionais',
-      gradient: 'linear-gradient(135deg, #F38181 0%, #E74C3C 100%)'
+      gradient: 'linear-gradient(135deg, #FF7043 0%, #F4511E 100%)'
     },
     { 
       Icon: BarChart3, 
       label: 'Relatórios', 
       link: '/relatorios',
-      gradient: 'linear-gradient(135deg, #AA96DA 0%, #9575CD 100%)'
+      gradient: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)'
     },
     { 
       Icon: FileText, 
       label: 'Notas Fiscais', 
       link: '/notas-fiscais',
-      gradient: 'linear-gradient(135deg, #FCBAD3 0%, #FF6B9D 100%)'
+      gradient: 'linear-gradient(135deg, #EC407A 0%, #D81B60 100%)'
     },
     { 
       Icon: Settings, 
       label: 'Configurações', 
       link: '/configuracoes-fiscal',
-      gradient: 'linear-gradient(135deg, #A8DADC 0%, #457B9D 100%)'
+      gradient: 'linear-gradient(135deg, #78909C 0%, #546E7A 100%)'
     },
     { 
       Icon: UserCog, 
       label: 'Gestão RH', 
       link: '/rh/funcionarios',
-      gradient: 'linear-gradient(135deg, #FFB347 0%, #FF8C42 100%)'
+      gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)'
     },
     { 
       Icon: CheckCircle, 
       label: 'Confirmações', 
       link: '/confirmacoes',
-      gradient: 'linear-gradient(135deg, #90EE90 0%, #32CD32 100%)'
+      gradient: 'linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%)'
     }
   ];
   
   return (
-    <div className="w-full">
-      <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-3 md:gap-4 lg:gap-5 justify-items-center">
+    <div className="w-full my-10 px-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5 lg:gap-6 justify-items-center max-w-5xl mx-auto">
         {atalhos.map((atalho) => {
           const { Icon } = atalho;
           
@@ -110,77 +110,69 @@ const AtalhosRapidos = () => {
             <div
               key={atalho.label}
               onClick={() => navigate(atalho.link)}
-              className="atalho-card group cursor-pointer"
+              className="
+                w-[100px] h-[100px] 
+                sm:w-[110px] sm:h-[110px] 
+                lg:w-[120px] lg:h-[120px]
+                rounded-[24px] sm:rounded-[26px] lg:rounded-[28px]
+                flex flex-col items-center justify-center
+                cursor-pointer
+                relative overflow-hidden
+                transition-all duration-300 ease-out
+                hover:scale-[1.08] hover:-translate-y-1
+                active:scale-[0.92]
+                border border-white/20
+              "
               style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '20px',
                 background: atalho.gradient,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = 'scale(0.95)';
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+                boxShadow: `
+                  0 1px 3px rgba(0, 0, 0, 0.06),
+                  0 4px 12px rgba(0, 0, 0, 0.08),
+                  0 12px 28px rgba(0, 0, 0, 0.06)
+                `
               }}
             >
               {/* Brilho iOS no topo */}
-              <div
+              <div 
+                className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-[24px] sm:rounded-t-[26px] lg:rounded-t-[28px]"
                 style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '40%',
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 100%)',
-                  borderRadius: '20px 20px 0 0',
-                  pointerEvents: 'none'
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%)'
                 }}
               />
               
-              {/* Ícone Minimalista */}
-              <Icon 
-                size={28} 
-                color="#FFFFFF" 
-                strokeWidth={2}
+              {/* Círculo branco para ícone */}
+              <div 
+                className="
+                  w-12 h-12 sm:w-[52px] sm:h-[52px] lg:w-14 lg:h-14
+                  rounded-full 
+                  flex items-center justify-center
+                  mb-2
+                  z-10
+                "
                 style={{
-                  marginBottom: '6px',
-                  zIndex: 1,
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  backdropFilter: 'blur(4px)',
+                  boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.3)'
                 }}
-              />
+              >
+                <Icon 
+                  className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-white"
+                  strokeWidth={2}
+                  style={{
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
+                  }}
+                />
+              </div>
               
               {/* Label */}
-              <span
+              <span 
+                className="
+                  text-[11px] sm:text-xs lg:text-[13px]
+                  font-semibold text-white text-center
+                  z-10 px-2 leading-tight
+                "
                 style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  color: '#FFFFFF',
-                  textAlign: 'center',
-                  zIndex: 1,
-                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                  lineHeight: 1.2,
-                  padding: '0 4px',
-                  maxWidth: '100%',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+                  textShadow: '0 1px 3px rgba(0,0,0,0.3)'
                 }}
               >
                 {atalho.label}
