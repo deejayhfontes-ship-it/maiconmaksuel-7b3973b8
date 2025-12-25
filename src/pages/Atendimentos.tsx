@@ -9,6 +9,7 @@ import {
   Clock,
   Trash2,
   Receipt,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +48,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PagamentoModal } from "@/components/atendimentos/PagamentoModal";
+import { FecharComandaModal } from "@/components/atendimentos/FecharComandaModal";
 
 interface Cliente {
   id: string;
@@ -127,6 +129,8 @@ const Atendimentos = () => {
   const [desconto, setDesconto] = useState(0);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [isNfModalOpen, setIsNfModalOpen] = useState(false);
+  const [atendimentoParaNf, setAtendimentoParaNf] = useState<Atendimento | null>(null);
 
   // Form states para adicionar itens
   const [servicoId, setServicoId] = useState("");
@@ -418,14 +422,28 @@ const Atendimentos = () => {
       }).eq("id", selectedAtendimento.cliente_id);
     }
 
+    // Abrir modal de NF após pagamento
+    setIsPaymentOpen(false);
+    setAtendimentoParaNf({
+      ...selectedAtendimento,
+      valor_final: valorFinal,
+      status: "fechado",
+    });
+    setIsNfModalOpen(true);
+    
     toast({ 
       title: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} fechada!`, 
       description: `Total: ${formatPrice(valorFinal)}` 
     });
-    setIsPaymentOpen(false);
-    setSelectedAtendimento(null);
+    
     fetchAtendimentos();
     fetchData(); // Atualizar estoque na lista
+  };
+
+  const handleNfModalClose = () => {
+    setIsNfModalOpen(false);
+    setAtendimentoParaNf(null);
+    setSelectedAtendimento(null);
   };
 
   const handleCancelarComanda = async () => {
@@ -792,6 +810,14 @@ const Atendimentos = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal Nota Fiscal */}
+      <FecharComandaModal
+        open={isNfModalOpen}
+        onOpenChange={setIsNfModalOpen}
+        atendimento={atendimentoParaNf}
+        onSuccess={handleNfModalClose}
+      />
     </div>
   );
 };

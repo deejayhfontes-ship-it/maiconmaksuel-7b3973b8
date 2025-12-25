@@ -188,6 +188,8 @@ export type Database = {
           data_hora: string
           desconto: number
           id: string
+          nota_fiscal_id: string | null
+          nota_fiscal_solicitada: boolean
           numero_comanda: number
           observacoes: string | null
           status: string
@@ -201,6 +203,8 @@ export type Database = {
           data_hora?: string
           desconto?: number
           id?: string
+          nota_fiscal_id?: string | null
+          nota_fiscal_solicitada?: boolean
           numero_comanda?: number
           observacoes?: string | null
           status?: string
@@ -214,6 +218,8 @@ export type Database = {
           data_hora?: string
           desconto?: number
           id?: string
+          nota_fiscal_id?: string | null
+          nota_fiscal_solicitada?: boolean
           numero_comanda?: number
           observacoes?: string | null
           status?: string
@@ -227,6 +233,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimentos_nota_fiscal_id_fkey"
+            columns: ["nota_fiscal_id"]
+            isOneToOne: false
+            referencedRelation: "notas_fiscais"
             referencedColumns: ["id"]
           },
         ]
@@ -346,6 +359,7 @@ export type Database = {
           nome: string
           numero: string | null
           observacoes: string | null
+          sempre_emitir_nf: boolean
           telefone: string | null
           total_visitas: number
           ultima_visita: string | null
@@ -369,6 +383,7 @@ export type Database = {
           nome: string
           numero?: string | null
           observacoes?: string | null
+          sempre_emitir_nf?: boolean
           telefone?: string | null
           total_visitas?: number
           ultima_visita?: string | null
@@ -392,6 +407,7 @@ export type Database = {
           nome?: string
           numero?: string | null
           observacoes?: string | null
+          sempre_emitir_nf?: boolean
           telefone?: string | null
           total_visitas?: number
           ultima_visita?: string | null
@@ -406,12 +422,19 @@ export type Database = {
           ambiente: string
           api_provider: string | null
           api_token: string | null
+          auto_emitir_cnpj: boolean
+          auto_emitir_cpf: boolean
+          auto_emitir_flag: boolean
+          auto_enviar_email: boolean
+          auto_enviar_sms: boolean
           certificado_digital_path: string | null
           certificado_senha: string | null
           cfop_produtos: string | null
           cfop_servicos: string | null
           cnpj: string
+          comportamento_emissao: string
           created_at: string
+          dias_permitir_emissao: number
           email: string | null
           emissao_automatica: boolean | null
           empresa_nome_fantasia: string | null
@@ -427,15 +450,18 @@ export type Database = {
           id: string
           inscricao_estadual: string | null
           inscricao_municipal: string | null
+          notificar_erro_equipe: boolean
           numero_proximo_nfce: number
           numero_proximo_nfe: number
           observacoes_padrao: string | null
           regime_tributario: string
           serie_nfce: number
           serie_nfe: number
+          sugerir_emissao_marcado: boolean
           telefone: string | null
           tipo_emissao_automatica: string | null
           updated_at: string
+          valor_sugerir_emissao: number
         }
         Insert: {
           aliquota_icms?: number | null
@@ -443,12 +469,19 @@ export type Database = {
           ambiente?: string
           api_provider?: string | null
           api_token?: string | null
+          auto_emitir_cnpj?: boolean
+          auto_emitir_cpf?: boolean
+          auto_emitir_flag?: boolean
+          auto_enviar_email?: boolean
+          auto_enviar_sms?: boolean
           certificado_digital_path?: string | null
           certificado_senha?: string | null
           cfop_produtos?: string | null
           cfop_servicos?: string | null
           cnpj: string
+          comportamento_emissao?: string
           created_at?: string
+          dias_permitir_emissao?: number
           email?: string | null
           emissao_automatica?: boolean | null
           empresa_nome_fantasia?: string | null
@@ -464,15 +497,18 @@ export type Database = {
           id?: string
           inscricao_estadual?: string | null
           inscricao_municipal?: string | null
+          notificar_erro_equipe?: boolean
           numero_proximo_nfce?: number
           numero_proximo_nfe?: number
           observacoes_padrao?: string | null
           regime_tributario?: string
           serie_nfce?: number
           serie_nfe?: number
+          sugerir_emissao_marcado?: boolean
           telefone?: string | null
           tipo_emissao_automatica?: string | null
           updated_at?: string
+          valor_sugerir_emissao?: number
         }
         Update: {
           aliquota_icms?: number | null
@@ -480,12 +516,19 @@ export type Database = {
           ambiente?: string
           api_provider?: string | null
           api_token?: string | null
+          auto_emitir_cnpj?: boolean
+          auto_emitir_cpf?: boolean
+          auto_emitir_flag?: boolean
+          auto_enviar_email?: boolean
+          auto_enviar_sms?: boolean
           certificado_digital_path?: string | null
           certificado_senha?: string | null
           cfop_produtos?: string | null
           cfop_servicos?: string | null
           cnpj?: string
+          comportamento_emissao?: string
           created_at?: string
+          dias_permitir_emissao?: number
           email?: string | null
           emissao_automatica?: boolean | null
           empresa_nome_fantasia?: string | null
@@ -501,15 +544,18 @@ export type Database = {
           id?: string
           inscricao_estadual?: string | null
           inscricao_municipal?: string | null
+          notificar_erro_equipe?: boolean
           numero_proximo_nfce?: number
           numero_proximo_nfe?: number
           observacoes_padrao?: string | null
           regime_tributario?: string
           serie_nfce?: number
           serie_nfe?: number
+          sugerir_emissao_marcado?: boolean
           telefone?: string | null
           tipo_emissao_automatica?: string | null
           updated_at?: string
+          valor_sugerir_emissao?: number
         }
         Relationships: []
       }

@@ -55,6 +55,7 @@ const clienteSchema = z.object({
   estado: z.string().optional(),
   observacoes: z.string().optional(),
   ativo: z.boolean(),
+  sempre_emitir_nf: z.boolean(),
 });
 
 type ClienteFormData = z.infer<typeof clienteSchema>;
@@ -77,6 +78,7 @@ interface Cliente {
   observacoes: string | null;
   foto_url: string | null;
   ativo: boolean;
+  sempre_emitir_nf?: boolean;
   ultima_visita: string | null;
   total_visitas?: number;
   created_at: string;
@@ -129,6 +131,7 @@ export default function ClienteFormDialog({
       estado: "",
       observacoes: "",
       ativo: true,
+      sempre_emitir_nf: false,
     },
   });
 
