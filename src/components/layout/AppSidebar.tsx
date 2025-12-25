@@ -14,6 +14,8 @@ import {
   ChevronRight,
   X,
   ShieldCheck,
+  FileText,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,12 +33,14 @@ const menuItems = [
   { title: "Produtos", icon: Package, path: "/produtos" },
   { title: "Clientes", icon: Users, path: "/clientes" },
   { title: "Caixa", icon: DollarSign, path: "/caixa" },
+  { title: "Notas Fiscais", icon: FileText, path: "/notas-fiscais" },
   { title: "Financeiro", icon: TrendingUp, path: "/financeiro" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
 ];
 
 const adminItems = [
   { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
+  { title: "Config. Fiscal", icon: Settings, path: "/configuracoes/fiscal" },
 ];
 
 
