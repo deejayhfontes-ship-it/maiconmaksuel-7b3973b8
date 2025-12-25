@@ -359,6 +359,7 @@ export type Database = {
           nome: string
           numero: string | null
           observacoes: string | null
+          receber_mensagens: boolean
           sempre_emitir_nf: boolean
           telefone: string | null
           total_visitas: number
@@ -383,6 +384,7 @@ export type Database = {
           nome: string
           numero?: string | null
           observacoes?: string | null
+          receber_mensagens?: boolean
           sempre_emitir_nf?: boolean
           telefone?: string | null
           total_visitas?: number
@@ -407,6 +409,7 @@ export type Database = {
           nome?: string
           numero?: string | null
           observacoes?: string | null
+          receber_mensagens?: boolean
           sempre_emitir_nf?: boolean
           telefone?: string | null
           total_visitas?: number
@@ -558,6 +561,158 @@ export type Database = {
           valor_sugerir_emissao?: number
         }
         Relationships: []
+      }
+      configuracoes_taxa_falta: {
+        Row: {
+          aplicacao_taxa: string
+          cobrar_taxa: boolean
+          comportamento_cancelamento_tardio: string
+          comportamento_sem_confirmacao: string
+          created_at: string
+          horario_fim_envio: string
+          horario_inicio_envio: string
+          id: string
+          intervalo_reenvio_minutos: number
+          notificar_cancelamento: boolean
+          notificar_confirmacao: boolean
+          notificar_sem_resposta: boolean
+          prazo_confirmacao_horas: number
+          prazo_minimo_cancelamento_horas: number
+          tentar_reenvio: boolean
+          tentativas_reenvio: number
+          updated_at: string
+          valor_taxa: number
+        }
+        Insert: {
+          aplicacao_taxa?: string
+          cobrar_taxa?: boolean
+          comportamento_cancelamento_tardio?: string
+          comportamento_sem_confirmacao?: string
+          created_at?: string
+          horario_fim_envio?: string
+          horario_inicio_envio?: string
+          id?: string
+          intervalo_reenvio_minutos?: number
+          notificar_cancelamento?: boolean
+          notificar_confirmacao?: boolean
+          notificar_sem_resposta?: boolean
+          prazo_confirmacao_horas?: number
+          prazo_minimo_cancelamento_horas?: number
+          tentar_reenvio?: boolean
+          tentativas_reenvio?: number
+          updated_at?: string
+          valor_taxa?: number
+        }
+        Update: {
+          aplicacao_taxa?: string
+          cobrar_taxa?: boolean
+          comportamento_cancelamento_tardio?: string
+          comportamento_sem_confirmacao?: string
+          created_at?: string
+          horario_fim_envio?: string
+          horario_inicio_envio?: string
+          id?: string
+          intervalo_reenvio_minutos?: number
+          notificar_cancelamento?: boolean
+          notificar_confirmacao?: boolean
+          notificar_sem_resposta?: boolean
+          prazo_confirmacao_horas?: number
+          prazo_minimo_cancelamento_horas?: number
+          tentar_reenvio?: boolean
+          tentativas_reenvio?: number
+          updated_at?: string
+          valor_taxa?: number
+        }
+        Relationships: []
+      }
+      configuracoes_whatsapp: {
+        Row: {
+          api_provider: string
+          api_token: string | null
+          api_url: string | null
+          created_at: string
+          id: string
+          numero_whatsapp: string | null
+          qrcode_conectado: boolean
+          sessao_ativa: boolean
+          updated_at: string
+        }
+        Insert: {
+          api_provider?: string
+          api_token?: string | null
+          api_url?: string | null
+          created_at?: string
+          id?: string
+          numero_whatsapp?: string | null
+          qrcode_conectado?: boolean
+          sessao_ativa?: boolean
+          updated_at?: string
+        }
+        Update: {
+          api_provider?: string
+          api_token?: string | null
+          api_url?: string | null
+          created_at?: string
+          id?: string
+          numero_whatsapp?: string | null
+          qrcode_conectado?: boolean
+          sessao_ativa?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      confirmacoes_agendamento: {
+        Row: {
+          agendamento_id: string
+          cancelado_em: string | null
+          confirmado_em: string | null
+          created_at: string
+          id: string
+          ip_confirmacao: string | null
+          link_confirmacao: string | null
+          observacao_cancelamento: string | null
+          status: string
+          taxa_aplicada: boolean
+          token_confirmacao: string
+          valor_taxa: number | null
+        }
+        Insert: {
+          agendamento_id: string
+          cancelado_em?: string | null
+          confirmado_em?: string | null
+          created_at?: string
+          id?: string
+          ip_confirmacao?: string | null
+          link_confirmacao?: string | null
+          observacao_cancelamento?: string | null
+          status?: string
+          taxa_aplicada?: boolean
+          token_confirmacao: string
+          valor_taxa?: number | null
+        }
+        Update: {
+          agendamento_id?: string
+          cancelado_em?: string | null
+          confirmado_em?: string | null
+          created_at?: string
+          id?: string
+          ip_confirmacao?: string | null
+          link_confirmacao?: string | null
+          observacao_cancelamento?: string | null
+          status?: string
+          taxa_aplicada?: boolean
+          token_confirmacao?: string
+          valor_taxa?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "confirmacoes_agendamento_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: true
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contas_pagar: {
         Row: {
@@ -766,6 +921,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mensagens_enviadas: {
+        Row: {
+          agendamento_id: string | null
+          created_at: string
+          data_entrega: string | null
+          data_envio: string | null
+          data_leitura: string | null
+          erro_mensagem: string | null
+          id: string
+          mensagem_enviada: string
+          status: string
+          telefone_destino: string
+          template_id: string | null
+        }
+        Insert: {
+          agendamento_id?: string | null
+          created_at?: string
+          data_entrega?: string | null
+          data_envio?: string | null
+          data_leitura?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          mensagem_enviada: string
+          status?: string
+          telefone_destino: string
+          template_id?: string | null
+        }
+        Update: {
+          agendamento_id?: string | null
+          created_at?: string
+          data_entrega?: string | null
+          data_envio?: string | null
+          data_leitura?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          mensagem_enviada?: string
+          status?: string
+          telefone_destino?: string
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensagens_enviadas_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensagens_enviadas_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "mensagens_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mensagens_templates: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          mensagem: string
+          tipo: string
+          titulo: string
+          updated_at: string
+          variaveis_disponiveis: Json | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          mensagem: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+          variaveis_disponiveis?: Json | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          mensagem?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          variaveis_disponiveis?: Json | null
+        }
+        Relationships: []
       }
       notas_fiscais: {
         Row: {

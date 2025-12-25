@@ -25,6 +25,9 @@ import NotFound from "./pages/NotFound";
 import NotasFiscais from "./pages/NotasFiscais";
 import NotaFiscalDetalhe from "./pages/NotaFiscalDetalhe";
 import ConfiguracoesFiscal from "./pages/ConfiguracoesFiscal";
+import ConfiguracoesWhatsApp from "./pages/ConfiguracoesWhatsApp";
+import ConfirmacoesWhatsApp from "./pages/ConfirmacoesWhatsApp";
+import ConfirmarAgendamento from "./pages/ConfirmarAgendamento";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +44,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/cadastro" element={<Cadastro />} />
               <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+              <Route path="/confirmar/:token" element={<ConfirmarAgendamento />} />
               
               {/* Protected routes */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -63,6 +67,8 @@ const App = () => (
                 <Route path="/notas-fiscais" element={<NotasFiscais />} />
                 <Route path="/nota-fiscal/:id" element={<NotaFiscalDetalhe />} />
                 <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscal />} />
+                <Route path="/configuracoes/whatsapp" element={<ConfiguracoesWhatsApp />} />
+                <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
