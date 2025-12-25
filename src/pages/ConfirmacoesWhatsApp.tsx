@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { format, parseISO, addDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -23,8 +28,19 @@ import {
   Scissors,
   MessageSquare,
   TrendingUp,
-  RotateCcw
+  RotateCcw,
+  Settings,
+  Ban,
+  CheckCheck,
+  MoreVertical
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ConfirmacaoCompleta {
   id: string;
@@ -36,12 +52,15 @@ interface ConfirmacaoCompleta {
   taxa_aplicada: boolean;
   valor_taxa: number;
   created_at: string;
+  agendamento_id: string;
   agendamento: {
     id: string;
     data_hora: string;
     cliente: {
+      id: string;
       nome: string;
       celular: string;
+      receber_mensagens: boolean;
     };
     servico: {
       nome: string;
@@ -74,6 +93,14 @@ export default function ConfirmacoesWhatsApp() {
     taxaConfirmacao: 0,
     taxaCancelamento: 0,
   });
+
+  // Modal de cancelamento manual
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [selectedConfirmacao, setSelectedConfirmacao] = useState<ConfirmacaoCompleta | null>(null);
+  const [motivoCancelamento, setMotivoCancelamento] = useState("");
+  const [aplicarTaxa, setAplicarTaxa] = useState(false);
+  const [valorTaxa, setValorTaxa] = useState(30);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     fetchConfirmacoes();
@@ -108,10 +135,11 @@ export default function ConfirmacoesWhatsApp() {
           taxa_aplicada,
           valor_taxa,
           created_at,
+          agendamento_id,
           agendamento:agendamentos(
             id,
             data_hora,
-            cliente:clientes(nome, celular),
+            cliente:clientes(id, nome, celular, receber_mensagens),
             servico:servicos(nome),
             profissional:profissionais(nome)
           )
@@ -126,7 +154,7 @@ export default function ConfirmacoesWhatsApp() {
         ...c,
         agendamento: {
           ...c.agendamento,
-          cliente: c.agendamento?.cliente || { nome: "Cliente", celular: "" },
+          cliente: c.agendamento?.cliente || { id: "", nome: "Cliente", celular: "", receber_mensagens: true },
           servico: c.agendamento?.servico || { nome: "Serviço" },
           profissional: c.agendamento?.profissional || { nome: "Profissional" },
         },
@@ -155,9 +183,93 @@ export default function ConfirmacoesWhatsApp() {
     }
   };
 
+  const handleConfirmarManual = async (confirmacao: ConfirmacaoCompleta) => {
+    setProcessing(true);
+    try {
+      // Atualizar confirmação
+      await supabase
+        .from("confirmacoes_agendamento")
+        .update({
+          status: "confirmado",
+          confirmado_em: new Date().toISOString(),
+        })
+        .eq("id", confirmacao.id);
+
+      // Atualizar status do agendamento
+      await supabase
+        .from("agendamentos")
+        .update({ status: "confirmado" })
+        .eq("id", confirmacao.agendamento_id);
+
+      toast.success("Agendamento confirmado manualmente!");
+      fetchConfirmacoes();
+    } catch (error) {
+      console.error("Erro ao confirmar:", error);
+      toast.error("Erro ao confirmar agendamento");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const openCancelModal = (confirmacao: ConfirmacaoCompleta) => {
+    setSelectedConfirmacao(confirmacao);
+    setMotivoCancelamento("");
+    setAplicarTaxa(false);
+    setCancelModalOpen(true);
+  };
+
+  const handleCancelarManual = async () => {
+    if (!selectedConfirmacao) return;
+    setProcessing(true);
+    try {
+      // Atualizar confirmação
+      await supabase
+        .from("confirmacoes_agendamento")
+        .update({
+          status: "cancelado",
+          cancelado_em: new Date().toISOString(),
+          observacao_cancelamento: motivoCancelamento || "Cancelado manualmente",
+          taxa_aplicada: aplicarTaxa,
+          valor_taxa: aplicarTaxa ? valorTaxa : 0,
+        })
+        .eq("id", selectedConfirmacao.id);
+
+      // Atualizar status do agendamento
+      await supabase
+        .from("agendamentos")
+        .update({ status: "cancelado" })
+        .eq("id", selectedConfirmacao.agendamento_id);
+
+      toast.success("Agendamento cancelado!");
+      setCancelModalOpen(false);
+      fetchConfirmacoes();
+    } catch (error) {
+      console.error("Erro ao cancelar:", error);
+      toast.error("Erro ao cancelar agendamento");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleToggleEnvioMensagens = async (cliente: { id: string; receber_mensagens: boolean }) => {
+    try {
+      await supabase
+        .from("clientes")
+        .update({ receber_mensagens: !cliente.receber_mensagens })
+        .eq("id", cliente.id);
+
+      toast.success(cliente.receber_mensagens 
+        ? "Envio de mensagens desativado para este cliente" 
+        : "Envio de mensagens ativado para este cliente"
+      );
+      fetchConfirmacoes();
+    } catch (error) {
+      toast.error("Erro ao atualizar configuração");
+    }
+  };
+
   const handleReenviar = async (confirmacao: ConfirmacaoCompleta) => {
     toast.info("Reenviando mensagem...");
-    // Simular reenvio
     await new Promise(resolve => setTimeout(resolve, 1500));
     toast.success("Mensagem reenviada com sucesso!");
   };
@@ -184,7 +296,7 @@ export default function ConfirmacoesWhatsApp() {
         );
       case "pendente":
         return (
-          <Badge variant="secondary" className="bg-amber-100 text-amber-700">
+          <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
             <AlertCircle className="h-3 w-3 mr-1" />
             Sem resposta
           </Badge>
@@ -206,14 +318,22 @@ export default function ConfirmacoesWhatsApp() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Smartphone className="h-6 w-6 text-primary" />
-          Confirmações WhatsApp
-        </h1>
-        <p className="text-muted-foreground">
-          Acompanhe as confirmações de agendamentos
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Smartphone className="h-6 w-6 text-primary" />
+            Confirmações WhatsApp
+          </h1>
+          <p className="text-muted-foreground">
+            Acompanhe e gerencie as confirmações de agendamentos
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link to="/configuracoes/whatsapp">
+            <Settings className="h-4 w-4 mr-2" />
+            Configurações
+          </Link>
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -304,6 +424,9 @@ export default function ConfirmacoesWhatsApp() {
             <CardContent className="py-12 text-center">
               <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">Nenhuma confirmação encontrada</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                As confirmações aparecem quando agendamentos são criados
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -318,6 +441,12 @@ export default function ConfirmacoesWhatsApp() {
                       {confirmacao.taxa_aplicada && (
                         <Badge variant="outline" className="text-amber-600 border-amber-300">
                           💰 Taxa R$ {confirmacao.valor_taxa.toFixed(2)}
+                        </Badge>
+                      )}
+                      {!confirmacao.agendamento.cliente.receber_mensagens && (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          <Ban className="h-3 w-3 mr-1" />
+                          Sem envio
                         </Badge>
                       )}
                     </div>
@@ -339,7 +468,7 @@ export default function ConfirmacoesWhatsApp() {
 
                     {confirmacao.status === "confirmado" && confirmacao.confirmado_em && (
                       <p className="text-xs text-green-600">
-                        Confirmado {format(parseISO(confirmacao.confirmado_em), "'há' HH:mm", { locale: ptBR })}
+                        Confirmado em {format(parseISO(confirmacao.confirmado_em), "dd/MM 'às' HH:mm", { locale: ptBR })}
                       </p>
                     )}
 
@@ -350,31 +479,73 @@ export default function ConfirmacoesWhatsApp() {
                     )}
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     {confirmacao.status === "pendente" && (
                       <>
                         <Button 
-                          variant="outline" 
+                          variant="default" 
                           size="sm"
-                          onClick={() => handleReenviar(confirmacao)}
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleConfirmarManual(confirmacao)}
+                          disabled={processing}
                         >
-                          <RotateCcw className="h-4 w-4 mr-1" />
-                          Reenviar
+                          <CheckCheck className="h-4 w-4 mr-1" />
+                          Confirmar
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleLigar(confirmacao.agendamento.cliente.celular)}
+                          className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={() => openCancelModal(confirmacao)}
                         >
-                          <Phone className="h-4 w-4 mr-1" />
-                          Ligar
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Cancelar
                         </Button>
                       </>
                     )}
-                    <Button variant="ghost" size="sm">
-                      <Send className="h-4 w-4 mr-1" />
-                      Mensagem
-                    </Button>
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {confirmacao.status === "pendente" && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleReenviar(confirmacao)}>
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Reenviar Mensagem
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleLigar(confirmacao.agendamento.cliente.celular)}>
+                              <Phone className="h-4 w-4 mr-2" />
+                              Ligar para Cliente
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem>
+                          <Send className="h-4 w-4 mr-2" />
+                          Enviar Mensagem
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleToggleEnvioMensagens(confirmacao.agendamento.cliente)}
+                        >
+                          {confirmacao.agendamento.cliente.receber_mensagens ? (
+                            <>
+                              <Ban className="h-4 w-4 mr-2" />
+                              Desativar Envio para Cliente
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Ativar Envio para Cliente
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardContent>
@@ -382,6 +553,80 @@ export default function ConfirmacoesWhatsApp() {
           ))
         )}
       </div>
+
+      {/* Modal de Cancelamento */}
+      <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              Cancelar Agendamento
+            </DialogTitle>
+            <DialogDescription>
+              Cancelar manualmente o agendamento de {selectedConfirmacao?.agendamento.cliente.nome}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="bg-muted/50 rounded-lg p-3 text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                {selectedConfirmacao && format(parseISO(selectedConfirmacao.agendamento.data_hora), "EEEE, dd/MM 'às' HH:mm", { locale: ptBR })}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <Scissors className="h-4 w-4" />
+                {selectedConfirmacao?.agendamento.servico.nome}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Motivo do cancelamento</Label>
+              <Textarea
+                placeholder="Descreva o motivo..."
+                value={motivoCancelamento}
+                onChange={(e) => setMotivoCancelamento(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Aplicar taxa de cancelamento</Label>
+                <p className="text-xs text-muted-foreground">
+                  Cobrar taxa por cancelamento tardio
+                </p>
+              </div>
+              <Switch
+                checked={aplicarTaxa}
+                onCheckedChange={setAplicarTaxa}
+              />
+            </div>
+
+            {aplicarTaxa && (
+              <div className="space-y-2">
+                <Label>Valor da taxa (R$)</Label>
+                <Input
+                  type="number"
+                  value={valorTaxa}
+                  onChange={(e) => setValorTaxa(parseFloat(e.target.value) || 0)}
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelModalOpen(false)}>
+              Voltar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleCancelarManual}
+              disabled={processing}
+            >
+              {processing ? "Cancelando..." : "Confirmar Cancelamento"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
