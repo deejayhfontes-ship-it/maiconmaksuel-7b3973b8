@@ -78,6 +78,7 @@ const variaveisDescricao: Record<string, string> = {
   taxa_falta: "Valor da taxa",
   nome_salao: "Nome do salão",
   telefone_salao: "Telefone do salão",
+  link_avaliacao: "Link para avaliação Google",
 };
 
 export default function ConfiguracoesWhatsApp() {
@@ -452,7 +453,7 @@ export default function ConfiguracoesWhatsApp() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="confirmacao" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="confirmacao" className="text-xs sm:text-sm">
                 <Bell className="h-4 w-4 mr-1 hidden sm:inline" />
                 Confirmação
@@ -464,6 +465,10 @@ export default function ConfiguracoesWhatsApp() {
               <TabsTrigger value="pos" className="text-xs sm:text-sm">
                 <MessageSquare className="h-4 w-4 mr-1 hidden sm:inline" />
                 Pós
+              </TabsTrigger>
+              <TabsTrigger value="avaliacao" className="text-xs sm:text-sm">
+                ⭐
+                Avaliação
               </TabsTrigger>
               <TabsTrigger value="config" className="text-xs sm:text-sm">
                 <Settings className="h-4 w-4 mr-1 hidden sm:inline" />
@@ -616,6 +621,72 @@ export default function ConfiguracoesWhatsApp() {
                         className="min-h-[150px] font-mono text-sm"
                         value={template.mensagem}
                         onChange={(e) => updateTemplate("pos_atendimento", { mensagem: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <Label className="text-sm font-medium mb-2 block">
+                        Variáveis Disponíveis
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {template.variaveis_disponiveis.map((v) => (
+                          <Badge key={v} variant="secondary" className="text-xs">
+                            {`{${v}}`} - {variaveisDescricao[v] || v}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleTestarMensagem(template)}
+                        disabled={testando}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Testar Mensagem
+                      </Button>
+                      <Button 
+                        onClick={() => handleSaveTemplate(template)}
+                        disabled={saving}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Salvar
+                      </Button>
+                    </div>
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            {/* Tab Avaliação */}
+            <TabsContent value="avaliacao" className="space-y-4 mt-4">
+              {(() => {
+                const template = getTemplateByTipo("avaliacao");
+                if (!template) return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Template de avaliação não encontrado.</p>
+                    <p className="text-sm">Recarregue a página para carregar os templates.</p>
+                  </div>
+                );
+                return (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-medium">
+                        Enviar pedido de avaliação 2 dias após atendimento
+                      </Label>
+                      <Switch
+                        checked={template.ativo}
+                        onCheckedChange={(checked) => updateTemplate("avaliacao", { ativo: checked })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Mensagem</Label>
+                      <Textarea
+                        className="min-h-[150px] font-mono text-sm"
+                        value={template.mensagem}
+                        onChange={(e) => updateTemplate("avaliacao", { mensagem: e.target.value })}
                       />
                     </div>
 
