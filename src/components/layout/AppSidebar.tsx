@@ -39,7 +39,7 @@ const menuItems = [
   { title: "Financeiro", icon: TrendingUp, path: "/financeiro" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
   { title: "Confirmações", icon: Smartphone, path: "/confirmacoes-whatsapp" },
-  { title: "Gestão RH", icon: Briefcase, path: "/rh/funcionarios" },
+  { title: "Gestão RH", icon: Briefcase, path: "/gestao-rh" },
 ];
 
 const adminItems = [
