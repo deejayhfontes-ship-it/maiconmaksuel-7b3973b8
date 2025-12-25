@@ -386,6 +386,13 @@ const Atendimentos = () => {
   const handleConfirmarPagamento = async (pagamentos: { forma: string; valor: number; parcelas: number }[]) => {
     if (!selectedAtendimento) return;
 
+    // Verificar se há caixa aberto
+    const { data: caixaAberto } = await supabase
+      .from("caixa")
+      .select("id")
+      .eq("status", "aberto")
+      .single();
+
     // Inserir todos os pagamentos
     for (const pag of pagamentos) {
       await supabase.from("pagamentos").insert([{
@@ -394,6 +401,19 @@ const Atendimentos = () => {
         valor: pag.valor,
         parcelas: pag.parcelas,
       }]);
+
+      // Registrar movimentação no caixa se estiver aberto
+      if (caixaAberto) {
+        await supabase.from("caixa_movimentacoes").insert([{
+          caixa_id: caixaAberto.id,
+          tipo: "entrada",
+          categoria: "atendimento",
+          descricao: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} - ${pag.forma}`,
+          valor: pag.valor,
+          forma_pagamento: pag.forma,
+          atendimento_id: selectedAtendimento.id,
+        }]);
+      }
     }
 
     // Atualizar estoque dos produtos vendidos
@@ -416,9 +436,15 @@ const Atendimentos = () => {
 
     // Atualizar última visita do cliente
     if (selectedAtendimento.cliente_id) {
+      const { data: clienteData } = await supabase
+        .from("clientes")
+        .select("total_visitas")
+        .eq("id", selectedAtendimento.cliente_id)
+        .single();
+      
       await supabase.from("clientes").update({
         ultima_visita: new Date().toISOString(),
-        total_visitas: (await supabase.from("clientes").select("total_visitas").eq("id", selectedAtendimento.cliente_id).single()).data?.total_visitas + 1 || 1,
+        total_visitas: (clienteData?.total_visitas || 0) + 1,
       }).eq("id", selectedAtendimento.cliente_id);
     }
 
