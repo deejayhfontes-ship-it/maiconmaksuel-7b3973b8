@@ -399,6 +399,120 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_fiscal: {
+        Row: {
+          aliquota_icms: number | null
+          aliquota_iss: number | null
+          ambiente: string
+          api_provider: string | null
+          api_token: string | null
+          certificado_digital_path: string | null
+          certificado_senha: string | null
+          cfop_produtos: string | null
+          cfop_servicos: string | null
+          cnpj: string
+          created_at: string
+          email: string | null
+          emissao_automatica: boolean | null
+          empresa_nome_fantasia: string | null
+          empresa_razao_social: string
+          endereco_bairro: string | null
+          endereco_cep: string | null
+          endereco_cidade: string | null
+          endereco_complemento: string | null
+          endereco_logradouro: string | null
+          endereco_numero: string | null
+          endereco_uf: string | null
+          envio_email_automatico: boolean | null
+          id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          numero_proximo_nfce: number
+          numero_proximo_nfe: number
+          observacoes_padrao: string | null
+          regime_tributario: string
+          serie_nfce: number
+          serie_nfe: number
+          telefone: string | null
+          tipo_emissao_automatica: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliquota_icms?: number | null
+          aliquota_iss?: number | null
+          ambiente?: string
+          api_provider?: string | null
+          api_token?: string | null
+          certificado_digital_path?: string | null
+          certificado_senha?: string | null
+          cfop_produtos?: string | null
+          cfop_servicos?: string | null
+          cnpj: string
+          created_at?: string
+          email?: string | null
+          emissao_automatica?: boolean | null
+          empresa_nome_fantasia?: string | null
+          empresa_razao_social: string
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_logradouro?: string | null
+          endereco_numero?: string | null
+          endereco_uf?: string | null
+          envio_email_automatico?: boolean | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          numero_proximo_nfce?: number
+          numero_proximo_nfe?: number
+          observacoes_padrao?: string | null
+          regime_tributario?: string
+          serie_nfce?: number
+          serie_nfe?: number
+          telefone?: string | null
+          tipo_emissao_automatica?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliquota_icms?: number | null
+          aliquota_iss?: number | null
+          ambiente?: string
+          api_provider?: string | null
+          api_token?: string | null
+          certificado_digital_path?: string | null
+          certificado_senha?: string | null
+          cfop_produtos?: string | null
+          cfop_servicos?: string | null
+          cnpj?: string
+          created_at?: string
+          email?: string | null
+          emissao_automatica?: boolean | null
+          empresa_nome_fantasia?: string | null
+          empresa_razao_social?: string
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_logradouro?: string | null
+          endereco_numero?: string | null
+          endereco_uf?: string | null
+          envio_email_automatico?: boolean | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          numero_proximo_nfce?: number
+          numero_proximo_nfe?: number
+          observacoes_padrao?: string | null
+          regime_tributario?: string
+          serie_nfce?: number
+          serie_nfe?: number
+          telefone?: string | null
+          tipo_emissao_automatica?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contas_pagar: {
         Row: {
           anexo_url: string | null
@@ -541,6 +655,179 @@ export type Database = {
             columns: ["caixa_id"]
             isOneToOne: false
             referencedRelation: "caixa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      itens_nota_fiscal: {
+        Row: {
+          aliquota_icms: number | null
+          aliquota_iss: number | null
+          cfop: string
+          codigo: string | null
+          created_at: string
+          descricao: string
+          id: string
+          ncm: string | null
+          nota_fiscal_id: string
+          quantidade: number
+          tipo: string
+          unidade: string | null
+          valor_desconto: number | null
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          aliquota_icms?: number | null
+          aliquota_iss?: number | null
+          cfop: string
+          codigo?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          ncm?: string | null
+          nota_fiscal_id: string
+          quantidade?: number
+          tipo: string
+          unidade?: string | null
+          valor_desconto?: number | null
+          valor_total: number
+          valor_unitario: number
+        }
+        Update: {
+          aliquota_icms?: number | null
+          aliquota_iss?: number | null
+          cfop?: string
+          codigo?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          ncm?: string | null
+          nota_fiscal_id?: string
+          quantidade?: number
+          tipo?: string
+          unidade?: string | null
+          valor_desconto?: number | null
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_nota_fiscal_nota_fiscal_id_fkey"
+            columns: ["nota_fiscal_id"]
+            isOneToOne: false
+            referencedRelation: "notas_fiscais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notas_fiscais: {
+        Row: {
+          atendimento_id: string | null
+          base_calculo_icms: number | null
+          base_calculo_iss: number | null
+          chave_acesso: string | null
+          cliente_cpf_cnpj: string | null
+          cliente_endereco: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          created_at: string
+          data_autorizacao: string | null
+          data_cancelamento: string | null
+          data_emissao: string
+          id: string
+          motivo_rejeicao: string | null
+          numero: number
+          observacoes: string | null
+          pdf_path: string | null
+          protocolo: string | null
+          serie: number
+          status: string
+          tipo: string
+          updated_at: string
+          valor_desconto: number | null
+          valor_icms: number | null
+          valor_iss: number | null
+          valor_produtos: number | null
+          valor_servicos: number | null
+          valor_total: number
+          xml_path: string | null
+        }
+        Insert: {
+          atendimento_id?: string | null
+          base_calculo_icms?: number | null
+          base_calculo_iss?: number | null
+          chave_acesso?: string | null
+          cliente_cpf_cnpj?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_autorizacao?: string | null
+          data_cancelamento?: string | null
+          data_emissao?: string
+          id?: string
+          motivo_rejeicao?: string | null
+          numero: number
+          observacoes?: string | null
+          pdf_path?: string | null
+          protocolo?: string | null
+          serie: number
+          status?: string
+          tipo: string
+          updated_at?: string
+          valor_desconto?: number | null
+          valor_icms?: number | null
+          valor_iss?: number | null
+          valor_produtos?: number | null
+          valor_servicos?: number | null
+          valor_total?: number
+          xml_path?: string | null
+        }
+        Update: {
+          atendimento_id?: string | null
+          base_calculo_icms?: number | null
+          base_calculo_iss?: number | null
+          chave_acesso?: string | null
+          cliente_cpf_cnpj?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          data_autorizacao?: string | null
+          data_cancelamento?: string | null
+          data_emissao?: string
+          id?: string
+          motivo_rejeicao?: string | null
+          numero?: number
+          observacoes?: string | null
+          pdf_path?: string | null
+          protocolo?: string | null
+          serie?: number
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor_desconto?: number | null
+          valor_icms?: number | null
+          valor_iss?: number | null
+          valor_produtos?: number | null
+          valor_servicos?: number | null
+          valor_total?: number
+          xml_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notas_fiscais_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_fiscais_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
         ]

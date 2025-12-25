@@ -22,6 +22,9 @@ import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import NotFound from "./pages/NotFound";
+import NotasFiscais from "./pages/NotasFiscais";
+import NotaFiscalDetalhe from "./pages/NotaFiscalDetalhe";
+import ConfiguracoesFiscal from "./pages/ConfiguracoesFiscal";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +60,9 @@ const App = () => (
                 <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="/relatorios" element={<Relatorios />} />
                 <Route path="/usuarios" element={<Usuarios />} />
+                <Route path="/notas-fiscais" element={<NotasFiscais />} />
+                <Route path="/nota-fiscal/:id" element={<NotaFiscalDetalhe />} />
+                <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscal />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
