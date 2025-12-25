@@ -15,8 +15,9 @@ import { toast } from "sonner";
 import { format, addDays, addYears, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
-  Calendar, Sun, AlertTriangle, Check, Clock, Printer, Plus
+  Calendar, Sun, AlertTriangle, Check, Clock, Printer, Plus, ArrowLeft
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Ferias() {
   const queryClient = useQueryClient();
@@ -191,9 +192,16 @@ export default function Ferias() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Gestão de Férias</h1>
-          <p className="text-muted-foreground">Controle períodos aquisitivos e férias dos funcionários</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/gestao-rh">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Gestão de Férias</h1>
+            <p className="text-muted-foreground">Controle períodos aquisitivos e férias dos funcionários</p>
+          </div>
         </div>
       </div>
 

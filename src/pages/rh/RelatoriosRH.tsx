@@ -6,7 +6,7 @@ import { format, subMonths, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
   Users, Wallet, TrendingUp, Clock, Calendar, AlertTriangle,
-  Download, BarChart3
+  Download, BarChart3, ArrowLeft
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -91,15 +91,17 @@ export default function RelatoriosRH() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Relatórios de RH</h1>
-          <p className="text-muted-foreground">Visão geral e indicadores do departamento</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/gestao-rh">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Relatórios de RH</h1>
+            <p className="text-muted-foreground">Visão geral e indicadores do departamento</p>
+          </div>
         </div>
-        <Button variant="outline" asChild>
-          <Link to="/rh/funcionarios">
-            ← Voltar para Funcionários
-          </Link>
-        </Button>
       </div>
 
       {/* Cards Principais */}
