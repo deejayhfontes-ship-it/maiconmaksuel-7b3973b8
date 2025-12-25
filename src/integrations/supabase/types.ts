@@ -860,6 +860,352 @@ export type Database = {
           },
         ]
       }
+      documentos_funcionarios: {
+        Row: {
+          created_at: string
+          data_upload: string | null
+          funcionario_id: string
+          id: string
+          nome_arquivo: string
+          observacoes: string | null
+          tipo: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          data_upload?: string | null
+          funcionario_id: string
+          id?: string
+          nome_arquivo: string
+          observacoes?: string | null
+          tipo: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          data_upload?: string | null
+          funcionario_id?: string
+          id?: string
+          nome_arquivo?: string
+          observacoes?: string | null
+          tipo?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documentos_funcionarios_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ferias_funcionarios: {
+        Row: {
+          abono_pecuniario: boolean | null
+          created_at: string
+          data_fim_ferias: string | null
+          data_inicio_ferias: string | null
+          dias_abono: number | null
+          dias_direito: number | null
+          dias_gozados: number | null
+          funcionario_id: string
+          id: string
+          observacoes: string | null
+          periodo_aquisitivo_fim: string
+          periodo_aquisitivo_inicio: string
+          status: string
+          terco_constitucional: number | null
+          valor_ferias: number | null
+        }
+        Insert: {
+          abono_pecuniario?: boolean | null
+          created_at?: string
+          data_fim_ferias?: string | null
+          data_inicio_ferias?: string | null
+          dias_abono?: number | null
+          dias_direito?: number | null
+          dias_gozados?: number | null
+          funcionario_id: string
+          id?: string
+          observacoes?: string | null
+          periodo_aquisitivo_fim: string
+          periodo_aquisitivo_inicio: string
+          status?: string
+          terco_constitucional?: number | null
+          valor_ferias?: number | null
+        }
+        Update: {
+          abono_pecuniario?: boolean | null
+          created_at?: string
+          data_fim_ferias?: string | null
+          data_inicio_ferias?: string | null
+          dias_abono?: number | null
+          dias_direito?: number | null
+          dias_gozados?: number | null
+          funcionario_id?: string
+          id?: string
+          observacoes?: string | null
+          periodo_aquisitivo_fim?: string
+          periodo_aquisitivo_inicio?: string
+          status?: string
+          terco_constitucional?: number | null
+          valor_ferias?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ferias_funcionarios_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folhas_pagamento: {
+        Row: {
+          created_at: string
+          data_aprovacao: string | null
+          data_pagamento: string | null
+          id: string
+          mes_referencia: string
+          observacoes: string | null
+          status: string
+          valor_total_bruto: number | null
+          valor_total_descontos: number | null
+          valor_total_liquido: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_aprovacao?: string | null
+          data_pagamento?: string | null
+          id?: string
+          mes_referencia: string
+          observacoes?: string | null
+          status?: string
+          valor_total_bruto?: number | null
+          valor_total_descontos?: number | null
+          valor_total_liquido?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_aprovacao?: string | null
+          data_pagamento?: string | null
+          id?: string
+          mes_referencia?: string
+          observacoes?: string | null
+          status?: string
+          valor_total_bruto?: number | null
+          valor_total_descontos?: number | null
+          valor_total_liquido?: number | null
+        }
+        Relationships: []
+      }
+      funcionarios: {
+        Row: {
+          agencia: string | null
+          ativo: boolean | null
+          banco: string | null
+          cargo: string
+          cargo_customizado: string | null
+          cep: string | null
+          conta: string | null
+          cpf: string
+          created_at: string
+          data_admissao: string
+          data_demissao: string | null
+          data_nascimento: string | null
+          departamento: string | null
+          email: string | null
+          endereco_completo: string | null
+          foto_url: string | null
+          id: string
+          jornada_entrada: string | null
+          jornada_entrada_tarde: string | null
+          jornada_saida: string | null
+          jornada_saida_almoco: string | null
+          nome: string
+          observacoes: string | null
+          outros_beneficios: Json | null
+          pix_chave: string | null
+          pix_tipo: string | null
+          plano_saude: number | null
+          rg: string | null
+          salario_base: number
+          telefone: string | null
+          tipo_conta: string | null
+          tipo_contrato: string
+          updated_at: string
+          vale_refeicao: number | null
+          vale_transporte: number | null
+        }
+        Insert: {
+          agencia?: string | null
+          ativo?: boolean | null
+          banco?: string | null
+          cargo?: string
+          cargo_customizado?: string | null
+          cep?: string | null
+          conta?: string | null
+          cpf: string
+          created_at?: string
+          data_admissao: string
+          data_demissao?: string | null
+          data_nascimento?: string | null
+          departamento?: string | null
+          email?: string | null
+          endereco_completo?: string | null
+          foto_url?: string | null
+          id?: string
+          jornada_entrada?: string | null
+          jornada_entrada_tarde?: string | null
+          jornada_saida?: string | null
+          jornada_saida_almoco?: string | null
+          nome: string
+          observacoes?: string | null
+          outros_beneficios?: Json | null
+          pix_chave?: string | null
+          pix_tipo?: string | null
+          plano_saude?: number | null
+          rg?: string | null
+          salario_base: number
+          telefone?: string | null
+          tipo_conta?: string | null
+          tipo_contrato?: string
+          updated_at?: string
+          vale_refeicao?: number | null
+          vale_transporte?: number | null
+        }
+        Update: {
+          agencia?: string | null
+          ativo?: boolean | null
+          banco?: string | null
+          cargo?: string
+          cargo_customizado?: string | null
+          cep?: string | null
+          conta?: string | null
+          cpf?: string
+          created_at?: string
+          data_admissao?: string
+          data_demissao?: string | null
+          data_nascimento?: string | null
+          departamento?: string | null
+          email?: string | null
+          endereco_completo?: string | null
+          foto_url?: string | null
+          id?: string
+          jornada_entrada?: string | null
+          jornada_entrada_tarde?: string | null
+          jornada_saida?: string | null
+          jornada_saida_almoco?: string | null
+          nome?: string
+          observacoes?: string | null
+          outros_beneficios?: Json | null
+          pix_chave?: string | null
+          pix_tipo?: string | null
+          plano_saude?: number | null
+          rg?: string | null
+          salario_base?: number
+          telefone?: string | null
+          tipo_conta?: string | null
+          tipo_contrato?: string
+          updated_at?: string
+          vale_refeicao?: number | null
+          vale_transporte?: number | null
+        }
+        Relationships: []
+      }
+      itens_folha_pagamento: {
+        Row: {
+          adicional_noturno: number | null
+          comissoes: number | null
+          created_at: string
+          desconto_faltas: number | null
+          faltas: number | null
+          folha_pagamento_id: string
+          funcionario_id: string
+          horas_extras: number | null
+          id: string
+          inss: number | null
+          irrf: number | null
+          observacoes: string | null
+          outros_descontos: number | null
+          outros_proventos: number | null
+          plano_saude: number | null
+          salario_base: number
+          salario_liquido: number | null
+          total_descontos: number | null
+          total_proventos: number | null
+          vale_refeicao: number | null
+          vale_transporte: number | null
+          valor_horas_extras: number | null
+        }
+        Insert: {
+          adicional_noturno?: number | null
+          comissoes?: number | null
+          created_at?: string
+          desconto_faltas?: number | null
+          faltas?: number | null
+          folha_pagamento_id: string
+          funcionario_id: string
+          horas_extras?: number | null
+          id?: string
+          inss?: number | null
+          irrf?: number | null
+          observacoes?: string | null
+          outros_descontos?: number | null
+          outros_proventos?: number | null
+          plano_saude?: number | null
+          salario_base: number
+          salario_liquido?: number | null
+          total_descontos?: number | null
+          total_proventos?: number | null
+          vale_refeicao?: number | null
+          vale_transporte?: number | null
+          valor_horas_extras?: number | null
+        }
+        Update: {
+          adicional_noturno?: number | null
+          comissoes?: number | null
+          created_at?: string
+          desconto_faltas?: number | null
+          faltas?: number | null
+          folha_pagamento_id?: string
+          funcionario_id?: string
+          horas_extras?: number | null
+          id?: string
+          inss?: number | null
+          irrf?: number | null
+          observacoes?: string | null
+          outros_descontos?: number | null
+          outros_proventos?: number | null
+          plano_saude?: number | null
+          salario_base?: number
+          salario_liquido?: number | null
+          total_descontos?: number | null
+          total_proventos?: number | null
+          vale_refeicao?: number | null
+          vale_transporte?: number | null
+          valor_horas_extras?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_folha_pagamento_folha_pagamento_id_fkey"
+            columns: ["folha_pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "folhas_pagamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_folha_pagamento_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_nota_fiscal: {
         Row: {
           aliquota_icms: number | null
@@ -1123,6 +1469,50 @@ export type Database = {
           },
         ]
       }
+      ocorrencias_funcionarios: {
+        Row: {
+          anexos_urls: Json | null
+          created_at: string
+          data_ocorrencia: string
+          descricao: string
+          funcionario_id: string
+          gravidade: string | null
+          id: string
+          medidas_tomadas: string | null
+          tipo: string
+        }
+        Insert: {
+          anexos_urls?: Json | null
+          created_at?: string
+          data_ocorrencia: string
+          descricao: string
+          funcionario_id: string
+          gravidade?: string | null
+          id?: string
+          medidas_tomadas?: string | null
+          tipo: string
+        }
+        Update: {
+          anexos_urls?: Json | null
+          created_at?: string
+          data_ocorrencia?: string
+          descricao?: string
+          funcionario_id?: string
+          gravidade?: string | null
+          id?: string
+          medidas_tomadas?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocorrencias_funcionarios_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagamentos: {
         Row: {
           atendimento_id: string
@@ -1154,6 +1544,68 @@ export type Database = {
             columns: ["atendimento_id"]
             isOneToOne: false
             referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ponto_funcionarios: {
+        Row: {
+          atestado_url: string | null
+          created_at: string
+          data: string
+          entrada_manha: string | null
+          entrada_tarde: string | null
+          falta: boolean | null
+          funcionario_id: string
+          horas_extras: number | null
+          horas_trabalhadas: number | null
+          id: string
+          justificada: boolean | null
+          justificativa: string | null
+          observacoes: string | null
+          saida: string | null
+          saida_almoco: string | null
+        }
+        Insert: {
+          atestado_url?: string | null
+          created_at?: string
+          data: string
+          entrada_manha?: string | null
+          entrada_tarde?: string | null
+          falta?: boolean | null
+          funcionario_id: string
+          horas_extras?: number | null
+          horas_trabalhadas?: number | null
+          id?: string
+          justificada?: boolean | null
+          justificativa?: string | null
+          observacoes?: string | null
+          saida?: string | null
+          saida_almoco?: string | null
+        }
+        Update: {
+          atestado_url?: string | null
+          created_at?: string
+          data?: string
+          entrada_manha?: string | null
+          entrada_tarde?: string | null
+          falta?: boolean | null
+          funcionario_id?: string
+          horas_extras?: number | null
+          horas_trabalhadas?: number | null
+          id?: string
+          justificada?: boolean | null
+          justificativa?: string | null
+          observacoes?: string | null
+          saida?: string | null
+          saida_almoco?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ponto_funcionarios_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
             referencedColumns: ["id"]
           },
         ]
