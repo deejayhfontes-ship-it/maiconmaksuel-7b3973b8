@@ -28,6 +28,7 @@ import ConfiguracoesFiscal from "./pages/ConfiguracoesFiscal";
 import ConfiguracoesWhatsApp from "./pages/ConfiguracoesWhatsApp";
 import ConfirmacoesWhatsApp from "./pages/ConfirmacoesWhatsApp";
 import ConfirmarAgendamento from "./pages/ConfirmarAgendamento";
+import GestaoRH from "./pages/GestaoRH";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
                 <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscal />} />
                 <Route path="/configuracoes/whatsapp" element={<ConfiguracoesWhatsApp />} />
                 <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
+                <Route path="/gestao-rh" element={<GestaoRH />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
