@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   FileText,
   Settings,
+  Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,11 +37,13 @@ const menuItems = [
   { title: "Notas Fiscais", icon: FileText, path: "/notas-fiscais" },
   { title: "Financeiro", icon: TrendingUp, path: "/financeiro" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
+  { title: "Confirmações", icon: Smartphone, path: "/confirmacoes-whatsapp" },
 ];
 
 const adminItems = [
   { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
   { title: "Config. Fiscal", icon: Settings, path: "/configuracoes/fiscal" },
+  { title: "Config. WhatsApp", icon: Smartphone, path: "/configuracoes/whatsapp" },
 ];
 
 
