@@ -30,6 +30,9 @@ import ConfirmacoesWhatsApp from "./pages/ConfirmacoesWhatsApp";
 import ConfirmarAgendamento from "./pages/ConfirmarAgendamento";
 import Funcionarios from "./pages/rh/Funcionarios";
 import Ponto from "./pages/rh/Ponto";
+import FolhaPagamento from "./pages/rh/FolhaPagamento";
+import Ferias from "./pages/rh/Ferias";
+import RelatoriosRH from "./pages/rh/RelatoriosRH";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +76,9 @@ const App = () => (
                 <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
                 <Route path="/rh/funcionarios" element={<Funcionarios />} />
                 <Route path="/rh/ponto" element={<Ponto />} />
+                <Route path="/rh/folha-pagamento" element={<FolhaPagamento />} />
+                <Route path="/rh/ferias" element={<Ferias />} />
+                <Route path="/rh/relatorios" element={<RelatoriosRH />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
