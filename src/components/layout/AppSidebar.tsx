@@ -18,6 +18,7 @@ import {
   Settings,
   Smartphone,
   Briefcase,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const menuItems = [
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
   { title: "Confirmações", icon: Smartphone, path: "/confirmacoes-whatsapp" },
   { title: "Gestão RH", icon: Briefcase, path: "/gestao-rh" },
+  { title: "Ponto", icon: Clock, path: "/ponto" },
 ];
 
 const adminItems = [
