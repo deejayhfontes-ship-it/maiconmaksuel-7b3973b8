@@ -11,7 +11,8 @@ import {
   Plane,
   Eye,
   Download,
-  AlertTriangle
+  AlertTriangle,
+  UserCheck
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,6 +24,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FuncionarioFormDialog } from '@/components/rh/FuncionarioFormDialog';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 interface Funcionario {
   id: string;
@@ -36,17 +38,25 @@ interface Funcionario {
   tipo_contrato: string;
 }
 
-interface PontoHoje {
+interface Profissional {
   id: string;
-  funcionario_id: string;
-  funcionario?: Funcionario;
+  nome: string;
+  especialidade: string | null;
+  ativo: boolean;
+}
+
+interface PontoRegistro {
+  id: string;
+  tipo_pessoa: string;
+  pessoa_id: string;
+  nome?: string;
+  cargo_especialidade?: string;
   data: string;
   entrada_manha: string | null;
   saida_almoco: string | null;
   entrada_tarde: string | null;
   saida: string | null;
   horas_trabalhadas: number | null;
-  falta: boolean;
 }
 
 interface FolhaPagamento {
@@ -74,17 +84,34 @@ interface Ferias {
 
 const GestaoRH = () => {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
-  const [pontoHoje, setPontoHoje] = useState<PontoHoje[]>([]);
+  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [pontosHoje, setPontosHoje] = useState<PontoRegistro[]>([]);
   const [folhas, setFolhas] = useState<FolhaPagamento[]>([]);
   const [ferias, setFerias] = useState<Ferias[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [funcionarioDialogOpen, setFuncionarioDialogOpen] = useState(false);
   const [selectedFuncionario, setSelectedFuncionario] = useState<Funcionario | null>(null);
+  
+  // Estados do relógio de ponto
+  const [horaAtual, setHoraAtual] = useState(new Date());
+  const [pessoaSelecionada, setPessoaSelecionada] = useState<string>('');
+  const [pontoAtual, setPontoAtual] = useState<PontoRegistro | null>(null);
+  const [registrandoPonto, setRegistrandoPonto] = useState(false);
 
   useEffect(() => {
     fetchData();
+    const timer = setInterval(() => setHoraAtual(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (pessoaSelecionada) {
+      carregarPontoAtual();
+    } else {
+      setPontoAtual(null);
+    }
+  }, [pessoaSelecionada]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -97,14 +124,16 @@ const GestaoRH = () => {
       
       if (funcData) setFuncionarios(funcData);
 
-      // Buscar ponto de hoje
-      const hoje = format(new Date(), 'yyyy-MM-dd');
-      const { data: pontoData } = await supabase
-        .from('ponto_funcionarios')
-        .select('*')
-        .eq('data', hoje);
+      // Buscar profissionais
+      const { data: profData } = await supabase
+        .from('profissionais')
+        .select('id, nome, especialidade, ativo')
+        .order('nome');
       
-      if (pontoData) setPontoHoje(pontoData);
+      if (profData) setProfissionais(profData);
+
+      // Buscar pontos de hoje (nova tabela unificada)
+      await carregarPontosHoje(funcData || [], profData || []);
 
       // Buscar folhas de pagamento
       const { data: folhasData } = await supabase
@@ -131,7 +160,133 @@ const GestaoRH = () => {
     }
   };
 
+  const carregarPontosHoje = async (funcs: Funcionario[], profs: Profissional[]) => {
+    const hoje = format(new Date(), 'yyyy-MM-dd');
+    
+    const { data: pontosData } = await supabase
+      .from('ponto_registros')
+      .select('*')
+      .eq('data', hoje);
+
+    if (pontosData) {
+      const pontosFormatados = pontosData.map(p => {
+        if (p.tipo_pessoa === 'funcionario') {
+          const func = funcs.find(f => f.id === p.pessoa_id);
+          return { ...p, nome: func?.nome || 'Funcionário', cargo_especialidade: func?.cargo || '' };
+        } else {
+          const prof = profs.find(pr => pr.id === p.pessoa_id);
+          return { ...p, nome: prof?.nome || 'Profissional', cargo_especialidade: prof?.especialidade || '' };
+        }
+      });
+      setPontosHoje(pontosFormatados);
+    }
+  };
+
+  const carregarPontoAtual = async () => {
+    if (!pessoaSelecionada) return;
+
+    const [tipo, id] = pessoaSelecionada.split('-');
+    const hoje = format(new Date(), 'yyyy-MM-dd');
+
+    const { data } = await supabase
+      .from('ponto_registros')
+      .select('*')
+      .eq('tipo_pessoa', tipo)
+      .eq('pessoa_id', id)
+      .eq('data', hoje)
+      .single();
+
+    setPontoAtual(data || null);
+  };
+
+  const getProximoPonto = () => {
+    if (!pontoAtual || !pontoAtual.entrada_manha) return { tipo: 'entrada_manha', label: 'Entrada' };
+    if (!pontoAtual.saida_almoco) return { tipo: 'saida_almoco', label: 'Almoço' };
+    if (!pontoAtual.entrada_tarde) return { tipo: 'entrada_tarde', label: 'Retorno' };
+    if (!pontoAtual.saida) return { tipo: 'saida', label: 'Saída' };
+    return { tipo: 'completo', label: 'Completo' };
+  };
+
+  const calcularHorasTrabalhadas = (ponto: Partial<PontoRegistro>) => {
+    if (!ponto.entrada_manha || !ponto.saida) return 0;
+
+    const entrada = new Date(`2000-01-01T${ponto.entrada_manha}`);
+    const saida = new Date(`2000-01-01T${ponto.saida}`);
+
+    let totalMinutos = (saida.getTime() - entrada.getTime()) / 1000 / 60;
+
+    if (ponto.saida_almoco && ponto.entrada_tarde) {
+      const saidaAlmoco = new Date(`2000-01-01T${ponto.saida_almoco}`);
+      const entradaTarde = new Date(`2000-01-01T${ponto.entrada_tarde}`);
+      const minutosAlmoco = (entradaTarde.getTime() - saidaAlmoco.getTime()) / 1000 / 60;
+      totalMinutos -= minutosAlmoco;
+    }
+
+    return Number((totalMinutos / 60).toFixed(2));
+  };
+
+  const baterPonto = async () => {
+    if (!pessoaSelecionada) {
+      toast.error('Selecione uma pessoa primeiro');
+      return;
+    }
+
+    const proximoPonto = getProximoPonto();
+    if (proximoPonto.tipo === 'completo') {
+      toast.info('Todos os pontos do dia já foram registrados');
+      return;
+    }
+
+    setRegistrandoPonto(true);
+    const [tipo, id] = pessoaSelecionada.split('-');
+    const agora = horaAtual.toTimeString().slice(0, 5);
+    const hoje = format(new Date(), 'yyyy-MM-dd');
+
+    try {
+      const { data: registroExistente } = await supabase
+        .from('ponto_registros')
+        .select('id')
+        .eq('tipo_pessoa', tipo)
+        .eq('pessoa_id', id)
+        .eq('data', hoje)
+        .single();
+
+      if (registroExistente) {
+        const updateData: Record<string, unknown> = { [proximoPonto.tipo]: agora };
+        
+        if (proximoPonto.tipo === 'saida') {
+          const newPonto = { ...pontoAtual, saida: agora };
+          updateData.horas_trabalhadas = calcularHorasTrabalhadas(newPonto);
+        }
+
+        await supabase
+          .from('ponto_registros')
+          .update(updateData)
+          .eq('id', registroExistente.id);
+      } else {
+        await supabase
+          .from('ponto_registros')
+          .insert({
+            tipo_pessoa: tipo,
+            pessoa_id: id,
+            data: hoje,
+            [proximoPonto.tipo]: agora
+          });
+      }
+
+      toast.success(`✅ ${proximoPonto.label} registrada às ${agora}`);
+      await carregarPontoAtual();
+      await carregarPontosHoje(funcionarios, profissionais);
+    } catch (error) {
+      console.error('Erro ao bater ponto:', error);
+      toast.error('Erro ao registrar ponto');
+    } finally {
+      setRegistrandoPonto(false);
+    }
+  };
+
   const funcionariosAtivos = funcionarios.filter(f => f.ativo);
+  const profissionaisAtivos = profissionais.filter(p => p.ativo);
   const funcionariosFiltrados = funcionariosAtivos.filter(f => 
     f.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -141,9 +296,13 @@ const GestaoRH = () => {
   };
 
   const calcularPresencaHoje = () => {
-    const presentes = pontoHoje.filter(p => p.entrada_manha && !p.falta).length;
-    const total = funcionariosAtivos.length;
-    return total > 0 ? Math.round((presentes / total) * 100) : 0;
+    const totalPessoas = funcionariosAtivos.length + profissionaisAtivos.length;
+    const presentes = pontosHoje.filter(p => p.entrada_manha).length;
+    return {
+      percentual: totalPessoas > 0 ? Math.round((presentes / totalPessoas) * 100) : 0,
+      presentes,
+      total: totalPessoas
+    };
   };
 
   const getFeriasVencendo = () => {
@@ -181,17 +340,27 @@ const GestaoRH = () => {
   };
 
   const feriasVencendo = getFeriasVencendo();
+  const presencaHoje = calcularPresencaHoje();
+  const proximoPonto = getProximoPonto();
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-          Gestão de RH
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Administração de funcionários e folha de pagamento
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+            Gestão de RH
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Administração de funcionários e profissionais
+          </p>
+        </div>
+        <Link to="/ponto">
+          <Button variant="outline" className="gap-2">
+            <Clock className="w-4 h-4" />
+            Abrir Ponto (Tela Cheia)
+          </Button>
+        </Link>
       </div>
 
       {/* Cards de Métricas */}
@@ -201,9 +370,9 @@ const GestaoRH = () => {
             <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
               <Users className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-sm font-medium text-muted-foreground">Funcionários Ativos</p>
+            <p className="text-sm font-medium text-muted-foreground">Funcionários</p>
             <p className="text-3xl font-bold text-foreground mt-2">{funcionariosAtivos.length}</p>
-            <p className="text-sm text-green-600 mt-2">Total cadastrado</p>
+            <p className="text-sm text-muted-foreground mt-2">+ {profissionaisAtivos.length} profissionais</p>
           </CardContent>
         </Card>
 
@@ -224,9 +393,9 @@ const GestaoRH = () => {
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
             <p className="text-sm font-medium text-muted-foreground">Presença Hoje</p>
-            <p className="text-3xl font-bold text-foreground mt-2">{calcularPresencaHoje()}%</p>
+            <p className="text-3xl font-bold text-foreground mt-2">{presencaHoje.percentual}%</p>
             <p className="text-sm text-muted-foreground mt-2">
-              {pontoHoje.filter(p => p.entrada_manha && !p.falta).length} de {funcionariosAtivos.length} presentes
+              {presencaHoje.presentes} de {presencaHoje.total} presentes
             </p>
           </CardContent>
         </Card>
@@ -244,6 +413,158 @@ const GestaoRH = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Seção Relógio de Ponto Unificado */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Relógio de Ponto
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </p>
+            </div>
+            <div className="text-4xl font-bold font-mono text-primary">
+              {horaAtual.toTimeString().slice(0, 5)}
+            </div>
+          </div>
+
+          {/* Seletor e Botão */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <select
+              value={pessoaSelecionada}
+              onChange={(e) => setPessoaSelecionada(e.target.value)}
+              className="flex-1 h-12 px-4 border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+            >
+              <option value="">Selecione quem vai bater o ponto...</option>
+              
+              {funcionariosAtivos.length > 0 && (
+                <optgroup label="👔 FUNCIONÁRIOS RH">
+                  {funcionariosAtivos.map(f => (
+                    <option key={`funcionario-${f.id}`} value={`funcionario-${f.id}`}>
+                      {f.nome} - {f.cargo || 'Funcionário'}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              
+              {profissionaisAtivos.length > 0 && (
+                <optgroup label="💇 PROFISSIONAIS">
+                  {profissionaisAtivos.map(p => (
+                    <option key={`profissional-${p.id}`} value={`profissional-${p.id}`}>
+                      {p.nome} - {p.especialidade || 'Profissional'}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+
+            <Button 
+              onClick={baterPonto}
+              disabled={!pessoaSelecionada || proximoPonto.tipo === 'completo' || registrandoPonto}
+              className="h-12 px-6 gap-2"
+              style={{
+                background: proximoPonto.tipo === 'completo' ? undefined : 'linear-gradient(135deg, hsl(142.1, 76.2%, 36.3%) 0%, hsl(142.1, 76.2%, 30%) 100%)'
+              }}
+            >
+              {registrandoPonto ? 'Registrando...' : proximoPonto.tipo === 'completo' ? '✅ Completo' : `🟢 Registrar ${proximoPonto.label}`}
+            </Button>
+          </div>
+
+          {/* Status do ponto selecionado */}
+          {pessoaSelecionada && pontoAtual && (
+            <div className="grid grid-cols-4 gap-3 mb-6 p-4 bg-muted/30 rounded-xl">
+              <div className="text-center">
+                <div className={`text-lg font-semibold ${pontoAtual.entrada_manha ? 'text-green-600' : 'text-muted-foreground'}`}>
+                  {formatTime(pontoAtual.entrada_manha)}
+                </div>
+                <div className="text-xs text-muted-foreground">Entrada</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-lg font-semibold ${pontoAtual.saida_almoco ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                  {formatTime(pontoAtual.saida_almoco)}
+                </div>
+                <div className="text-xs text-muted-foreground">Almoço</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-lg font-semibold ${pontoAtual.entrada_tarde ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                  {formatTime(pontoAtual.entrada_tarde)}
+                </div>
+                <div className="text-xs text-muted-foreground">Retorno</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-lg font-semibold ${pontoAtual.saida ? 'text-purple-600' : 'text-muted-foreground'}`}>
+                  {formatTime(pontoAtual.saida)}
+                </div>
+                <div className="text-xs text-muted-foreground">Saída</div>
+              </div>
+            </div>
+          )}
+
+          {/* Tabela de pontos do dia */}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-center">Entrada</TableHead>
+                  <TableHead className="text-center">Almoço</TableHead>
+                  <TableHead className="text-center">Retorno</TableHead>
+                  <TableHead className="text-center">Saída</TableHead>
+                  <TableHead className="text-center">Horas</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pontosHoje.length > 0 ? (
+                  pontosHoje.map((ponto) => (
+                    <TableRow key={`${ponto.tipo_pessoa}-${ponto.pessoa_id}`}>
+                      <TableCell className="font-medium">{ponto.nome}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="secondary"
+                          className={ponto.tipo_pessoa === 'profissional' 
+                            ? 'bg-primary/10 text-primary' 
+                            : 'bg-green-500/10 text-green-600'
+                          }
+                        >
+                          {ponto.tipo_pessoa === 'profissional' ? '💇 Profissional' : '👔 Funcionário'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">{formatTime(ponto.entrada_manha)}</TableCell>
+                      <TableCell className="text-center">{formatTime(ponto.saida_almoco)}</TableCell>
+                      <TableCell className="text-center">{formatTime(ponto.entrada_tarde)}</TableCell>
+                      <TableCell className="text-center">{formatTime(ponto.saida)}</TableCell>
+                      <TableCell className="text-center font-semibold text-primary">
+                        {ponto.horas_trabalhadas ? `${ponto.horas_trabalhadas}h` : '--'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {ponto.saida ? (
+                          <Badge className="bg-green-600">✅ Completo</Badge>
+                        ) : ponto.entrada_manha ? (
+                          <Badge variant="secondary" className="bg-orange-500/10 text-orange-600">🟡 Em andamento</Badge>
+                        ) : (
+                          <Badge variant="destructive">❌ Ausente</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Nenhum ponto registrado hoje
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Seção Funcionários */}
       <Card>
@@ -293,10 +614,6 @@ const GestaoRH = () => {
                       Editar
                     </Button>
                     <Button variant="outline" size="sm" className="w-full gap-2">
-                      <Clock className="w-3 h-3" />
-                      Ponto
-                    </Button>
-                    <Button variant="outline" size="sm" className="w-full gap-2">
                       <Plane className="w-3 h-3" />
                       Férias
                     </Button>
@@ -315,82 +632,6 @@ const GestaoRH = () => {
               Ver Todos Funcionários ({funcionariosFiltrados.length})
             </Button>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Seção Ponto */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Ponto Hoje</h2>
-              <p className="text-sm text-muted-foreground">
-                {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </p>
-            </div>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Registrar Ponto
-            </Button>
-          </div>
-
-          {funcionariosAtivos.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="text-center">Entrada</TableHead>
-                    <TableHead className="text-center">Almoço</TableHead>
-                    <TableHead className="text-center">Retorno</TableHead>
-                    <TableHead className="text-center">Saída</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {funcionariosAtivos.map((func) => {
-                    const ponto = pontoHoje.find(p => p.funcionario_id === func.id);
-                    const horasTrabalhadas = ponto?.horas_trabalhadas || 0;
-                    const isFalta = ponto?.falta || (!ponto?.entrada_manha && pontoHoje.length > 0);
-                    
-                    return (
-                      <TableRow key={func.id}>
-                        <TableCell className="font-medium">{func.nome}</TableCell>
-                        <TableCell className="text-center">{formatTime(ponto?.entrada_manha || null)}</TableCell>
-                        <TableCell className="text-center">{formatTime(ponto?.saida_almoco || null)}</TableCell>
-                        <TableCell className="text-center">{formatTime(ponto?.entrada_tarde || null)}</TableCell>
-                        <TableCell className="text-center">{formatTime(ponto?.saida || null)}</TableCell>
-                        <TableCell className="text-center">
-                          {isFalta ? (
-                            <Badge variant="destructive">❌ Falta</Badge>
-                          ) : ponto?.entrada_manha ? (
-                            <Badge variant="default" className="bg-green-600">
-                              ✅ {horasTrabalhadas}h
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">🟡 Pendente</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhum funcionário cadastrado
-            </div>
-          )}
-
-          <div className="flex gap-3 mt-4">
-            <Button variant="outline" className="flex-1">
-              Ver Calendário Mensal
-            </Button>
-            <Button variant="outline" className="flex-1">
-              Relatório de Ponto
-            </Button>
-          </div>
         </CardContent>
       </Card>
 

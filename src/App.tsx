@@ -29,6 +29,7 @@ import ConfiguracoesWhatsApp from "./pages/ConfiguracoesWhatsApp";
 import ConfirmacoesWhatsApp from "./pages/ConfirmacoesWhatsApp";
 import ConfirmarAgendamento from "./pages/ConfirmarAgendamento";
 import GestaoRH from "./pages/GestaoRH";
+import PontoEletronico from "./pages/PontoEletronico";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/cadastro" element={<Cadastro />} />
               <Route path="/recuperar-senha" element={<RecuperarSenha />} />
               <Route path="/confirmar/:token" element={<ConfirmarAgendamento />} />
+              <Route path="/ponto" element={<PontoEletronico />} />
               
               {/* Protected routes */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

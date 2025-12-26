@@ -1610,6 +1610,51 @@ export type Database = {
           },
         ]
       }
+      ponto_registros: {
+        Row: {
+          created_at: string | null
+          data: string
+          entrada_manha: string | null
+          entrada_tarde: string | null
+          horas_trabalhadas: number | null
+          id: string
+          observacoes: string | null
+          pessoa_id: string
+          saida: string | null
+          saida_almoco: string | null
+          tipo_pessoa: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data: string
+          entrada_manha?: string | null
+          entrada_tarde?: string | null
+          horas_trabalhadas?: number | null
+          id?: string
+          observacoes?: string | null
+          pessoa_id: string
+          saida?: string | null
+          saida_almoco?: string | null
+          tipo_pessoa: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          entrada_manha?: string | null
+          entrada_tarde?: string | null
+          horas_trabalhadas?: number | null
+          id?: string
+          observacoes?: string | null
+          pessoa_id?: string
+          saida?: string | null
+          saida_almoco?: string | null
+          tipo_pessoa?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           ativo: boolean
