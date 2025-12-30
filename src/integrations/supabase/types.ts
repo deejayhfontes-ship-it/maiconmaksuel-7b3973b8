@@ -2263,39 +2263,54 @@ export type Database = {
       }
       servicos: {
         Row: {
+          aparece_pdv: boolean
+          apenas_agenda: boolean
           ativo: boolean
           categoria: string | null
           comissao_padrao: number
           created_at: string
           descricao: string | null
           duracao_minutos: number
+          gera_comissao: boolean
+          gera_receita: boolean
           id: string
           nome: string
           preco: number
+          tipo_servico: string
           updated_at: string
         }
         Insert: {
+          aparece_pdv?: boolean
+          apenas_agenda?: boolean
           ativo?: boolean
           categoria?: string | null
           comissao_padrao?: number
           created_at?: string
           descricao?: string | null
           duracao_minutos?: number
+          gera_comissao?: boolean
+          gera_receita?: boolean
           id?: string
           nome: string
           preco: number
+          tipo_servico?: string
           updated_at?: string
         }
         Update: {
+          aparece_pdv?: boolean
+          apenas_agenda?: boolean
           ativo?: boolean
           categoria?: string | null
           comissao_padrao?: number
           created_at?: string
           descricao?: string | null
           duracao_minutos?: number
+          gera_comissao?: boolean
+          gera_receita?: boolean
           id?: string
           nome?: string
           preco?: number
+          tipo_servico?: string
           updated_at?: string
         }
         Relationships: []
