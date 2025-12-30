@@ -491,32 +491,18 @@ const Financeiro = () => {
         </div>
       </div>
 
-      {/* Quick Access Card - Vales */}
-      <Card 
-        className="border-l-4 border-l-amber-500 cursor-pointer hover:shadow-md transition-all group"
-        onClick={() => navigate("/financeiro/vales")}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/10">
-                <Receipt className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Vales e Adiantamentos</p>
-                <p className="text-xl font-bold text-foreground">Acessar</p>
-              </div>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+      <Tabs value={activeTab} onValueChange={(value) => {
+        if (value === "vales") {
+          navigate("/financeiro/vales");
+        } else {
+          setActiveTab(value);
+        }
+      }}>
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
           <TabsTrigger value="pagar">Contas a Pagar</TabsTrigger>
           <TabsTrigger value="receber">Contas a Receber</TabsTrigger>
           <TabsTrigger value="fluxo">Fluxo de Caixa</TabsTrigger>
+          <TabsTrigger value="vales">Vales</TabsTrigger>
         </TabsList>
 
         {/* TAB PAGAR */}
