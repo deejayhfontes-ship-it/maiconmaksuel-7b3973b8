@@ -10,6 +10,7 @@ import {
   Check,
   Loader2,
   QrCode,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,13 +48,20 @@ interface Pagamento {
   parcelas: number;
 }
 
+interface GorjetaProfissional {
+  profissional_id: string;
+  profissional_nome: string;
+  valor: number;
+}
+
 interface PagamentoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   numeroComanda: number;
   clienteNome: string | null;
   totalComanda: number;
-  onConfirmar: (pagamentos: Omit<Pagamento, "id">[]) => Promise<void>;
+  profissionais?: { id: string; nome: string }[];
+  onConfirmar: (pagamentos: Omit<Pagamento, "id">[], gorjetas?: GorjetaProfissional[]) => Promise<void>;
 }
 
 type FormaPagamento = "dinheiro" | "debito" | "credito" | "pix" | "multiplas" | null;
@@ -79,12 +87,17 @@ export function PagamentoModal({
   numeroComanda,
   clienteNome,
   totalComanda,
+  profissionais = [],
   onConfirmar,
 }: PagamentoModalProps) {
   const [formaSelecionada, setFormaSelecionada] = useState<FormaPagamento>(null);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [mostrarGorjeta, setMostrarGorjeta] = useState(false);
+  const [gorjetas, setGorjetas] = useState<GorjetaProfissional[]>([]);
+  const [gorjetaProfId, setGorjetaProfId] = useState("");
+  const [gorjetaValor, setGorjetaValor] = useState(0);
   
   // Estados específicos por forma
   const [valorRecebido, setValorRecebido] = useState<number>(0);
@@ -94,6 +107,7 @@ export function PagamentoModal({
   const [aguardandoPix, setAguardandoPix] = useState(false);
 
   const totalPago = pagamentos.reduce((acc, p) => acc + p.valor, 0);
+  const totalGorjetas = gorjetas.reduce((acc, g) => acc + g.valor, 0);
   const faltando = Math.max(0, totalComanda - totalPago);
   const troco = formaSelecionada === "dinheiro" ? Math.max(0, valorRecebido - faltando) : 0;
 
@@ -108,8 +122,30 @@ export function PagamentoModal({
       setValorParcial(0);
       setFormaParcial("dinheiro");
       setAguardandoPix(false);
+      setMostrarGorjeta(false);
+      setGorjetas([]);
+      setGorjetaProfId("");
+      setGorjetaValor(0);
     }
   }, [open]);
+
+  const handleAddGorjeta = () => {
+    if (!gorjetaProfId || gorjetaValor <= 0) return;
+    const prof = profissionais.find(p => p.id === gorjetaProfId);
+    if (!prof) return;
+    
+    setGorjetas([...gorjetas, {
+      profissional_id: gorjetaProfId,
+      profissional_nome: prof.nome,
+      valor: gorjetaValor,
+    }]);
+    setGorjetaProfId("");
+    setGorjetaValor(0);
+  };
+
+  const handleRemoveGorjeta = (profId: string) => {
+    setGorjetas(gorjetas.filter(g => g.profissional_id !== profId));
+  };
 
   const handleSelectForma = (forma: FormaPagamento) => {
     setFormaSelecionada(forma);
@@ -173,7 +209,7 @@ export function PagamentoModal({
     
     setLoading(true);
     try {
-      await onConfirmar(pagamentos.map(({ id, ...rest }) => rest));
+      await onConfirmar(pagamentos.map(({ id, ...rest }) => rest), gorjetas.length > 0 ? gorjetas : undefined);
       setSucesso(true);
     } catch (error) {
       console.error("Erro ao confirmar pagamento:", error);
@@ -531,6 +567,15 @@ export function PagamentoModal({
                 <span>Total pago:</span>
                 <span className="font-medium text-success">{formatPrice(totalPago)}</span>
               </div>
+              {totalGorjetas > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center gap-1">
+                    <Gift className="h-3 w-3 text-pink-500" />
+                    Gorjetas:
+                  </span>
+                  <span className="font-medium text-pink-500">{formatPrice(totalGorjetas)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-bold border-t pt-2">
                 <span>Faltando:</span>
                 <span className={faltando > 0.01 ? "text-destructive" : "text-success"}>
@@ -539,6 +584,86 @@ export function PagamentoModal({
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Seção Gorjeta */}
+        {!sucesso && profissionais.length > 0 && (
+          <div className="mt-4 border rounded-lg p-3">
+            <button
+              type="button"
+              className="flex items-center justify-between w-full text-sm font-medium"
+              onClick={() => setMostrarGorjeta(!mostrarGorjeta)}
+            >
+              <span className="flex items-center gap-2">
+                <Gift className="h-4 w-4 text-pink-500" />
+                Adicionar Gorjeta
+                {gorjetas.length > 0 && (
+                  <Badge variant="secondary" className="bg-pink-500/10 text-pink-500">
+                    {gorjetas.length}
+                  </Badge>
+                )}
+              </span>
+              <span className="text-muted-foreground">{mostrarGorjeta ? "−" : "+"}</span>
+            </button>
+            
+            {mostrarGorjeta && (
+              <div className="mt-3 space-y-3">
+                <div className="flex gap-2">
+                  <Select value={gorjetaProfId} onValueChange={setGorjetaProfId}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Profissional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profissionais
+                        .filter(p => !gorjetas.find(g => g.profissional_id === p.id))
+                        .map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    placeholder="Valor"
+                    className="w-24"
+                    value={gorjetaValor || ""}
+                    onChange={(e) => setGorjetaValor(Number(e.target.value))}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    onClick={handleAddGorjeta}
+                    disabled={!gorjetaProfId || gorjetaValor <= 0}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {gorjetas.length > 0 && (
+                  <div className="space-y-1">
+                    {gorjetas.map((g) => (
+                      <div key={g.profissional_id} className="flex items-center justify-between text-sm p-2 bg-pink-500/5 rounded">
+                        <span>{g.profissional_nome}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-pink-500">{formatPrice(g.valor)}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleRemoveGorjeta(g.profissional_id)}
+                          >
+                            <X className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {!sucesso && pagamentos.length > 0 && faltando <= 0.01 && (
