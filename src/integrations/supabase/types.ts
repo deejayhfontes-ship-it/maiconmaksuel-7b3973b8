@@ -901,6 +901,135 @@ export type Database = {
           },
         ]
       }
+      fechamentos_profissionais: {
+        Row: {
+          confirmado_em: string | null
+          confirmado_por: string | null
+          created_at: string
+          fechamento_semanal_id: string
+          id: string
+          observacoes: string | null
+          profissional_id: string
+          status: string
+          total_atendimentos: number | null
+          total_comissoes: number | null
+          total_faturamento: number | null
+          total_vales: number | null
+          valor_liquido: number | null
+        }
+        Insert: {
+          confirmado_em?: string | null
+          confirmado_por?: string | null
+          created_at?: string
+          fechamento_semanal_id: string
+          id?: string
+          observacoes?: string | null
+          profissional_id: string
+          status?: string
+          total_atendimentos?: number | null
+          total_comissoes?: number | null
+          total_faturamento?: number | null
+          total_vales?: number | null
+          valor_liquido?: number | null
+        }
+        Update: {
+          confirmado_em?: string | null
+          confirmado_por?: string | null
+          created_at?: string
+          fechamento_semanal_id?: string
+          id?: string
+          observacoes?: string | null
+          profissional_id?: string
+          status?: string
+          total_atendimentos?: number | null
+          total_comissoes?: number | null
+          total_faturamento?: number | null
+          total_vales?: number | null
+          valor_liquido?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fechamentos_profissionais_fechamento_semanal_id_fkey"
+            columns: ["fechamento_semanal_id"]
+            isOneToOne: false
+            referencedRelation: "fechamentos_semanais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamentos_profissionais_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fechamentos_semanais: {
+        Row: {
+          ano: number
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          fechado_em: string | null
+          fechado_por: string | null
+          id: string
+          observacoes: string | null
+          reaberto_em: string | null
+          reaberto_por: string | null
+          semana_numero: number
+          status: string
+          total_comissoes: number | null
+          total_faturamento: number | null
+          total_liquido: number | null
+          total_produtos_valor: number | null
+          total_servicos: number | null
+          total_vales: number | null
+          updated_at: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          fechado_em?: string | null
+          fechado_por?: string | null
+          id?: string
+          observacoes?: string | null
+          reaberto_em?: string | null
+          reaberto_por?: string | null
+          semana_numero: number
+          status?: string
+          total_comissoes?: number | null
+          total_faturamento?: number | null
+          total_liquido?: number | null
+          total_produtos_valor?: number | null
+          total_servicos?: number | null
+          total_vales?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          fechado_em?: string | null
+          fechado_por?: string | null
+          id?: string
+          observacoes?: string | null
+          reaberto_em?: string | null
+          reaberto_por?: string | null
+          semana_numero?: number
+          status?: string
+          total_comissoes?: number | null
+          total_faturamento?: number | null
+          total_liquido?: number | null
+          total_produtos_valor?: number | null
+          total_servicos?: number | null
+          total_vales?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ferias_funcionarios: {
         Row: {
           abono_pecuniario: boolean | null
@@ -1357,6 +1486,119 @@ export type Database = {
           variaveis_disponiveis?: Json | null
         }
         Relationships: []
+      }
+      metas: {
+        Row: {
+          alerta_100: boolean | null
+          alerta_50: boolean | null
+          alerta_75: boolean | null
+          alerta_atraso: boolean | null
+          ano: number
+          ativo: boolean | null
+          calculo_automatico: boolean | null
+          created_at: string
+          created_by: string | null
+          data_fim: string
+          data_inicio: string
+          id: string
+          mes: number | null
+          nome: string
+          observacoes: string | null
+          percentual_crescimento: number | null
+          periodo_tipo: string
+          responsavel_id: string | null
+          tipo: string
+          unidade: string
+          updated_at: string
+          valor_meta: number
+        }
+        Insert: {
+          alerta_100?: boolean | null
+          alerta_50?: boolean | null
+          alerta_75?: boolean | null
+          alerta_atraso?: boolean | null
+          ano: number
+          ativo?: boolean | null
+          calculo_automatico?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          data_fim: string
+          data_inicio: string
+          id?: string
+          mes?: number | null
+          nome: string
+          observacoes?: string | null
+          percentual_crescimento?: number | null
+          periodo_tipo?: string
+          responsavel_id?: string | null
+          tipo: string
+          unidade?: string
+          updated_at?: string
+          valor_meta: number
+        }
+        Update: {
+          alerta_100?: boolean | null
+          alerta_50?: boolean | null
+          alerta_75?: boolean | null
+          alerta_atraso?: boolean | null
+          ano?: number
+          ativo?: boolean | null
+          calculo_automatico?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string
+          data_inicio?: string
+          id?: string
+          mes?: number | null
+          nome?: string
+          observacoes?: string | null
+          percentual_crescimento?: number | null
+          periodo_tipo?: string
+          responsavel_id?: string | null
+          tipo?: string
+          unidade?: string
+          updated_at?: string
+          valor_meta?: number
+        }
+        Relationships: []
+      }
+      metas_progresso: {
+        Row: {
+          data: string
+          id: string
+          meta_id: string
+          percentual: number | null
+          projecao_final: number | null
+          updated_at: string
+          valor_atual: number | null
+        }
+        Insert: {
+          data: string
+          id?: string
+          meta_id: string
+          percentual?: number | null
+          projecao_final?: number | null
+          updated_at?: string
+          valor_atual?: number | null
+        }
+        Update: {
+          data?: string
+          id?: string
+          meta_id?: string
+          percentual?: number | null
+          projecao_final?: number | null
+          updated_at?: string
+          valor_atual?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metas_progresso_meta_id_fkey"
+            columns: ["meta_id"]
+            isOneToOne: false
+            referencedRelation: "metas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notas_fiscais: {
         Row: {
