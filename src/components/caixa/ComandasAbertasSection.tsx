@@ -5,6 +5,7 @@ import {
   User,
   Receipt,
   X,
+  ShoppingCart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 interface Comanda {
   id: string;
@@ -82,6 +84,7 @@ export const ComandasAbertasSection = ({ onComandaFinalizada }: ComandasAbertasS
   const [selectedProfissional, setSelectedProfissional] = useState<string>("");
   const [searchCliente, setSearchCliente] = useState("");
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fetchComandas = useCallback(async () => {
     const { data } = await supabase
@@ -176,6 +179,16 @@ export const ComandasAbertasSection = ({ onComandaFinalizada }: ComandasAbertasS
     c.nome.toLowerCase().includes(searchCliente.toLowerCase())
   );
 
+  const handleAdicionarItem = (comandaId: string) => {
+    // Navegar para a página de atendimentos com o atendimento específico
+    navigate(`/atendimentos?atendimento=${comandaId}`);
+  };
+
+  const handleFinalizarComanda = (comandaId: string) => {
+    // Navegar para atendimentos para finalizar (fechar comanda)
+    navigate(`/atendimentos?atendimento=${comandaId}&finalizar=true`);
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -229,10 +242,20 @@ export const ComandasAbertasSection = ({ onComandaFinalizada }: ComandasAbertasS
                   </div>
                 </div>
                 <div className="flex gap-2 ml-4">
-                  <Button size="sm" variant="outline" className="text-xs">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs"
+                    onClick={() => handleAdicionarItem(comanda.id)}
+                  >
+                    <ShoppingCart className="h-3 w-3 mr-1" />
                     Adicionar
                   </Button>
-                  <Button size="sm" className="text-xs bg-success hover:bg-success/90">
+                  <Button 
+                    size="sm" 
+                    className="text-xs bg-success hover:bg-success/90"
+                    onClick={() => handleFinalizarComanda(comanda.id)}
+                  >
                     Finalizar
                   </Button>
                   <Button
