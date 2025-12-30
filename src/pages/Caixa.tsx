@@ -19,6 +19,9 @@ import {
   MoreHorizontal,
   AlertTriangle,
   Users,
+  DollarSign,
+  FileText,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +69,8 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ComandasAbertasSection } from "@/components/caixa/ComandasAbertasSection";
+import { AcoesRapidasSection } from "@/components/caixa/AcoesRapidasSection";
 
 interface CaixaData {
   id: string;
@@ -506,18 +511,54 @@ const Caixa = () => {
     }
   }, [movimentacoes, tabAtiva]);
 
-  // iOS Status Badges
-  const getTipoBadge = (tipo: string) => {
+  // iOS Status Badges with icons
+  const getTipoBadge = (tipo: string, categoria?: string | null) => {
     switch (tipo) {
       case "entrada":
-        return <Badge variant="success">Entrada</Badge>;
+        return (
+          <Badge variant="success" className="gap-1">
+            <DollarSign className="h-3 w-3" />
+            Entrada
+          </Badge>
+        );
       case "saida":
-        return <Badge variant="destructive">Saída</Badge>;
+        return (
+          <Badge variant="destructive" className="gap-1">
+            <ArrowUpCircle className="h-3 w-3" />
+            Saída
+          </Badge>
+        );
       case "sangria":
-        return <Badge variant="warning">Sangria</Badge>;
+        return (
+          <Badge variant="warning" className="gap-1">
+            <ArrowUpCircle className="h-3 w-3" />
+            Sangria
+          </Badge>
+        );
       case "reforco":
-        return <Badge variant="info">Reforço</Badge>;
+        return (
+          <Badge variant="info" className="gap-1">
+            <ArrowDownCircle className="h-3 w-3" />
+            Reforço
+          </Badge>
+        );
       default:
+        if (categoria === "vale") {
+          return (
+            <Badge className="bg-purple-500 gap-1">
+              <FileText className="h-3 w-3" />
+              Vale
+            </Badge>
+          );
+        }
+        if (categoria === "gorjeta") {
+          return (
+            <Badge className="bg-pink-500 gap-1">
+              <Gift className="h-3 w-3" />
+              Gorjeta
+            </Badge>
+          );
+        }
         return <Badge variant="secondary">{tipo}</Badge>;
     }
   };
@@ -755,6 +796,12 @@ const Caixa = () => {
         </Card>
       </div>
 
+      {/* Comandas Abertas */}
+      <ComandasAbertasSection onComandaFinalizada={fetchCaixa} />
+
+      {/* Ações Rápidas */}
+      <AcoesRapidasSection caixaId={caixaAberto.id} onActionComplete={fetchCaixa} />
+
       {/* Movimentações */}
       <Card>
         <CardHeader>
@@ -795,7 +842,7 @@ const Caixa = () => {
                           <TableCell className="font-medium">
                             {format(parseISO(mov.data_hora), "HH:mm")}
                           </TableCell>
-                          <TableCell>{getTipoBadge(mov.tipo)}</TableCell>
+                          <TableCell>{getTipoBadge(mov.tipo, mov.categoria)}</TableCell>
                           <TableCell>{mov.descricao}</TableCell>
                           <TableCell>
                             {mov.forma_pagamento && (
