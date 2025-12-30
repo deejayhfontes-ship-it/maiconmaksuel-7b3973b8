@@ -19,9 +19,7 @@ import {
   MoreHorizontal,
   AlertTriangle,
   Users,
-  CalendarCheck,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -142,7 +140,6 @@ const getCategoriaIcon = (categoria: string) => {
 };
 
 const Caixa = () => {
-  const navigate = useNavigate();
   const [caixaAberto, setCaixaAberto] = useState<CaixaData | null>(null);
   const [ultimoCaixaFechado, setUltimoCaixaFechado] = useState<CaixaData | null>(null);
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
@@ -753,24 +750,6 @@ const Caixa = () => {
             <div>
               <p className="text-xs text-muted-foreground">PIX</p>
               <p className="text-lg font-bold">{formatPrice(totais.pix)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Atalhos Rápidos */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card 
-          className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-info/30 bg-info/5"
-          onClick={() => navigate("/financeiro/fechamento-semanal")}
-        >
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-info/10">
-              <CalendarCheck className="h-6 w-6 text-info" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Fechamento Semanal</p>
-              <p className="text-xs text-muted-foreground">Acertar com profissionais</p>
             </div>
           </CardContent>
         </Card>
