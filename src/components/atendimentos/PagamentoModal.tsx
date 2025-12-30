@@ -11,6 +11,7 @@ import {
   Loader2,
   QrCode,
   Gift,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +65,7 @@ interface PagamentoModalProps {
   onConfirmar: (pagamentos: Omit<Pagamento, "id">[], gorjetas?: GorjetaProfissional[]) => Promise<void>;
 }
 
-type FormaPagamento = "dinheiro" | "debito" | "credito" | "pix" | "multiplas" | null;
+type FormaPagamento = "dinheiro" | "debito" | "credito" | "pix" | "cheque" | "multiplas" | null;
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -78,6 +79,7 @@ const formasPagamento = [
   { id: "debito", label: "Débito", icon: CreditCard, color: "text-blue-600 bg-blue-500/10" },
   { id: "credito", label: "Crédito", icon: CreditCard, color: "text-purple-600 bg-purple-500/10" },
   { id: "pix", label: "PIX", icon: Smartphone, color: "text-teal-600 bg-teal-500/10" },
+  { id: "cheque", label: "Cheque", icon: FileText, color: "text-green-700 bg-green-600/10" },
   { id: "multiplas", label: "Múltiplas", icon: Layers, color: "text-amber-600 bg-amber-500/10" },
 ];
 
@@ -427,6 +429,32 @@ export function PagamentoModal({
           </div>
         );
 
+      case "cheque":
+        return (
+          <div className="space-y-4 text-center">
+            <div className="py-6">
+              <FileText className="h-16 w-16 mx-auto text-green-700 mb-4" />
+              <p className="text-lg">Pagamento em Cheque</p>
+              <p className="text-3xl font-bold text-green-700">{formatPrice(faltando)}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                O cheque será registrado para compensação futura
+              </p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setFormaSelecionada(null)}>
+                Voltar
+              </Button>
+              <Button 
+                className="flex-1 bg-green-700 hover:bg-green-800" 
+                onClick={() => handleAdicionarPagamento("cheque", faltando, 1)}
+              >
+                Confirmar Cheque
+              </Button>
+            </div>
+          </div>
+        );
+
       case "multiplas":
         return (
           <div className="space-y-4">
@@ -442,6 +470,7 @@ export function PagamentoModal({
                     <SelectItem value="debito">Débito</SelectItem>
                     <SelectItem value="credito">Crédito</SelectItem>
                     <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
