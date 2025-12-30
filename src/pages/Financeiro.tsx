@@ -493,18 +493,18 @@ const Financeiro = () => {
 
       {/* Quick Access Card - Vales */}
       <Card 
-        className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-all group"
+        className="border-l-4 border-l-amber-500 cursor-pointer hover:shadow-md transition-all group"
         onClick={() => navigate("/financeiro/vales")}
       >
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FFCC0020" }}>
-                <Receipt className="h-6 w-6" style={{ color: "#FFCC00" }} />
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <Receipt className="h-5 w-5 text-amber-500" />
               </div>
               <div>
-                <p className="font-semibold text-lg">Vales e Adiantamentos</p>
-                <p className="text-sm text-muted-foreground">Gestão de adiantamentos dos profissionais</p>
+                <p className="text-sm text-muted-foreground">Vales e Adiantamentos</p>
+                <p className="text-xl font-bold text-foreground">Acessar</p>
               </div>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
