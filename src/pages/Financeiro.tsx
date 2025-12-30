@@ -48,7 +48,10 @@ import {
   Edit,
   Trash2,
   Wallet,
+  Receipt,
+  ChevronRight,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
   LineChart,
   Line,
@@ -109,6 +112,7 @@ const formasPagamento = [
 ];
 
 const Financeiro = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("pagar");
   const [contasPagar, setContasPagar] = useState<ContaPagar[]>([]);
   const [contasReceber, setContasReceber] = useState<ContaReceber[]>([]);
@@ -486,6 +490,27 @@ const Financeiro = () => {
           </div>
         </div>
       </div>
+
+      {/* Quick Access Card - Vales */}
+      <Card 
+        className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-all group"
+        onClick={() => navigate("/financeiro/vales")}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FFCC0020" }}>
+                <Receipt className="h-6 w-6" style={{ color: "#FFCC00" }} />
+              </div>
+              <div>
+                <p className="font-semibold text-lg">Vales e Adiantamentos</p>
+                <p className="text-sm text-muted-foreground">Gestão de adiantamentos dos profissionais</p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
