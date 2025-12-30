@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  CreditCard,
+  DollarSign,
   FileText,
-  Gift,
-  Receipt,
+  Heart,
+  FileCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -238,65 +238,90 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
 
   const actions = [
     {
-      icon: CreditCard,
+      icon: DollarSign,
       label: "Dívidas",
       count: dividas.length,
-      color: "text-destructive",
-      bgColor: "bg-destructive/10",
+      iconBgColor: "bg-blue-500",
+      gradientFrom: "from-blue-50",
+      gradientTo: "to-blue-100",
+      darkGradientFrom: "dark:from-blue-950/30",
+      darkGradientTo: "dark:to-blue-900/20",
+      badgeColor: "bg-red-500",
       onClick: () => setIsDividasOpen(true),
     },
     {
       icon: FileText,
       label: "Vale",
       count: null,
-      color: "text-info",
-      bgColor: "bg-info/10",
+      iconBgColor: "bg-purple-500",
+      gradientFrom: "from-purple-50",
+      gradientTo: "to-purple-100",
+      darkGradientFrom: "dark:from-purple-950/30",
+      darkGradientTo: "dark:to-purple-900/20",
+      badgeColor: "bg-purple-500",
       onClick: () => setIsValeOpen(true),
     },
     {
-      icon: Gift,
+      icon: Heart,
       label: "Gorjetas",
       count: gorjetas.length > 0 ? gorjetas.length : null,
-      color: "text-pink-500",
-      bgColor: "bg-pink-500/10",
+      iconBgColor: "bg-pink-500",
+      gradientFrom: "from-pink-50",
+      gradientTo: "to-pink-100",
+      darkGradientFrom: "dark:from-pink-950/30",
+      darkGradientTo: "dark:to-pink-900/20",
+      badgeColor: "bg-pink-500",
       onClick: () => setIsGorjetasOpen(true),
     },
     {
-      icon: Receipt,
+      icon: FileCheck,
       label: "Cheques",
       count: cheques.length > 0 ? cheques.length : null,
-      color: "text-amber-500",
-      bgColor: "bg-amber-500/10",
+      iconBgColor: "bg-green-500",
+      gradientFrom: "from-green-50",
+      gradientTo: "to-green-100",
+      darkGradientFrom: "dark:from-green-950/30",
+      darkGradientTo: "dark:to-green-900/20",
+      badgeColor: "bg-orange-500",
       onClick: () => setIsChequesOpen(true),
     },
   ];
 
   return (
     <>
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle>Ações Rápidas</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {actions.map((action) => (
-              <div
+              <button
                 key={action.label}
                 onClick={action.onClick}
                 className={cn(
-                  "relative flex flex-col items-center justify-center p-4 rounded-xl cursor-pointer transition-all hover:scale-105",
-                  action.bgColor,
-                  "border border-transparent hover:border-border"
+                  "relative flex flex-col items-center justify-center p-6 rounded-2xl cursor-pointer transition-all hover:scale-105",
+                  "bg-gradient-to-br",
+                  action.gradientFrom,
+                  action.gradientTo,
+                  action.darkGradientFrom,
+                  action.darkGradientTo,
+                  "border border-transparent hover:border-border shadow-sm hover:shadow-md"
                 )}
               >
                 {action.count !== null && action.count > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-destructive">
+                  <span className={cn(
+                    "absolute top-2 right-2 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center",
+                    action.badgeColor
+                  )}>
                     {action.count}
-                  </Badge>
+                  </span>
                 )}
-                <action.icon className={cn("h-8 w-8 mb-2", action.color)} />
-                <span className="text-sm font-medium">{action.label}</span>
-              </div>
+                <div className={cn("p-4 rounded-2xl mb-3", action.iconBgColor)}>
+                  <action.icon className="w-8 h-8 text-white" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">{action.label}</span>
+              </button>
             ))}
           </div>
         </CardContent>
@@ -307,7 +332,7 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-destructive" />
+              <DollarSign className="h-5 w-5 text-blue-600" />
               Dívidas Pendentes ({dividas.length})
             </DialogTitle>
           </DialogHeader>
@@ -374,7 +399,7 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-pink-500" />
+              <Heart className="h-5 w-5 text-pink-500" />
               Gorjetas para Repassar
             </DialogTitle>
           </DialogHeader>
@@ -426,7 +451,7 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-amber-500" />
+              <FileCheck className="h-5 w-5 text-green-500" />
               Cheques na Gaveta ({cheques.length})
             </DialogTitle>
           </DialogHeader>

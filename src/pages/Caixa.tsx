@@ -22,6 +22,7 @@ import {
   DollarSign,
   FileText,
   Gift,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -656,30 +657,48 @@ const Caixa = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Badge className="bg-success text-success-foreground px-4 py-2 text-sm animate-pulse">
-            <span className="w-2 h-2 bg-white rounded-full mr-2 inline-block" />
-            CAIXA ABERTO
-          </Badge>
+          <div className="bg-green-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 shadow-md">
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+            <span className="font-semibold">CAIXA ABERTO</span>
+          </div>
           <div className="text-sm text-muted-foreground">
-            <p>Aberto às {format(parseISO(caixaAberto.data_abertura), "HH:mm", { locale: ptBR })}</p>
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              <span>Aberto às {format(parseISO(caixaAberto.data_abertura), "HH:mm", { locale: ptBR })}</span>
+            </div>
             <p>Valor inicial: {formatPrice(Number(caixaAberto.valor_inicial))}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="text-info" onClick={() => setIsDespesaOpen(true)}>
-            <Receipt className="h-4 w-4 mr-2" />
+          <Button 
+            variant="outline" 
+            className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-semibold" 
+            onClick={() => setIsDespesaOpen(true)}
+          >
+            <Receipt className="h-5 w-5 mr-2" />
             Despesa Rápida
           </Button>
-          <Button variant="outline" className="text-warning" onClick={() => setIsSangriaOpen(true)}>
-            <ArrowUpCircle className="h-4 w-4 mr-2" />
+          <Button 
+            variant="outline" 
+            className="border-2 border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold" 
+            onClick={() => setIsSangriaOpen(true)}
+          >
+            <ArrowDownCircle className="h-5 w-5 mr-2" />
             Sangria
           </Button>
-          <Button variant="outline" className="text-primary" onClick={() => setIsReforcoOpen(true)}>
-            <ArrowDownCircle className="h-4 w-4 mr-2" />
+          <Button 
+            variant="outline" 
+            className="border-2 border-cyan-500 text-cyan-600 hover:bg-cyan-50 font-semibold" 
+            onClick={() => setIsReforcoOpen(true)}
+          >
+            <ArrowUpCircle className="h-5 w-5 mr-2" />
             Reforço
           </Button>
-          <Button variant="destructive" onClick={() => setIsFecharOpen(true)}>
-            <Lock className="h-4 w-4 mr-2" />
+          <Button 
+            className="bg-red-500 hover:bg-red-600 text-white font-semibold" 
+            onClick={() => setIsFecharOpen(true)}
+          >
+            <Lock className="h-5 w-5 mr-2" />
             Fechar Caixa
           </Button>
         </div>
@@ -687,57 +706,57 @@ const Caixa = () => {
 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-success/5 border-success/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-success/10">
-                <TrendingUp className="h-5 w-5 text-success" />
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20 border-green-200 dark:border-green-800 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="p-3 bg-green-500 rounded-xl shadow-sm">
+                <TrendingUp className="w-10 h-10 text-white" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Entradas</p>
-                <p className="text-2xl font-bold text-success">{formatPrice(totais.entradas)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-destructive/5 border-destructive/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-destructive/10">
-                <TrendingDown className="h-5 w-5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Saídas</p>
-                <p className="text-2xl font-bold text-destructive">{formatPrice(totais.saidas)}</p>
+              <div className="text-right flex-1 ml-4">
+                <p className="text-sm font-medium text-muted-foreground mb-1">Total Entradas</p>
+                <p className="text-3xl font-bold text-green-700 dark:text-green-400">{formatPrice(totais.entradas)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Wallet className="h-5 w-5 text-primary" />
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950/30 dark:to-red-900/20 border-red-200 dark:border-red-800 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="p-3 bg-red-500 rounded-xl shadow-sm">
+                <TrendingDown className="w-10 h-10 text-white" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Saldo em Caixa</p>
-                <p className="text-2xl font-bold text-primary">{formatPrice(totais.saldo)}</p>
+              <div className="text-right flex-1 ml-4">
+                <p className="text-sm font-medium text-muted-foreground mb-1">Total Saídas</p>
+                <p className="text-3xl font-bold text-red-700 dark:text-red-400">{formatPrice(totais.saidas)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-info/5 border-info/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-info/10">
-                <Receipt className="h-5 w-5 text-info" />
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200 dark:border-blue-800 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="p-3 bg-blue-500 rounded-xl shadow-sm">
+                <Wallet className="w-10 h-10 text-white" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Despesas do Dia</p>
-                <p className="text-2xl font-bold text-info">{formatPrice(totais.despesasTotal)}</p>
+              <div className="text-right flex-1 ml-4">
+                <p className="text-sm font-medium text-muted-foreground mb-1">Saldo em Caixa</p>
+                <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{formatPrice(totais.saldo)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-purple-200 dark:border-purple-800 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="p-3 bg-purple-500 rounded-xl shadow-sm">
+                <Receipt className="w-10 h-10 text-white" />
+              </div>
+              <div className="text-right flex-1 ml-4">
+                <p className="text-sm font-medium text-muted-foreground mb-1">Despesas do Dia</p>
+                <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{formatPrice(totais.despesasTotal)}</p>
                 <p className="text-xs text-muted-foreground">{despesas.filter(d => d.pago_por === "caixa").length} despesas</p>
               </div>
             </div>
@@ -747,50 +766,50 @@ const Caixa = () => {
 
       {/* Cards de Formas de Pagamento */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-success/10">
-              <Banknote className="h-5 w-5 text-success" />
+        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-green-100 dark:border-green-800/50 hover:shadow-md transition-shadow">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
+              <Banknote className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Dinheiro</p>
-              <p className="text-lg font-bold">{formatPrice(totais.dinheiro)}</p>
+              <p className="text-sm text-muted-foreground">Dinheiro</p>
+              <p className="text-2xl font-bold">{formatPrice(totais.dinheiro)}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <CreditCard className="h-5 w-5 text-primary" />
+        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-blue-100 dark:border-blue-800/50 hover:shadow-md transition-shadow">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+              <CreditCard className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Débito</p>
-              <p className="text-lg font-bold">{formatPrice(totais.debito)}</p>
+              <p className="text-sm text-muted-foreground">Débito</p>
+              <p className="text-2xl font-bold">{formatPrice(totais.debito)}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-info/10">
-              <CreditCard className="h-5 w-5 text-info" />
+        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-purple-100 dark:border-purple-800/50 hover:shadow-md transition-shadow">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
+              <CreditCard className="w-8 h-8 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Crédito</p>
-              <p className="text-lg font-bold">{formatPrice(totais.credito)}</p>
+              <p className="text-sm text-muted-foreground">Crédito</p>
+              <p className="text-2xl font-bold">{formatPrice(totais.credito)}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-success/10">
-              <Smartphone className="h-5 w-5 text-success" />
+        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-cyan-100 dark:border-cyan-800/50 hover:shadow-md transition-shadow">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-cyan-50 dark:bg-cyan-900/30 rounded-xl">
+              <Smartphone className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">PIX</p>
-              <p className="text-lg font-bold">{formatPrice(totais.pix)}</p>
+              <p className="text-sm text-muted-foreground">PIX</p>
+              <p className="text-2xl font-bold">{formatPrice(totais.pix)}</p>
             </div>
           </CardContent>
         </Card>
