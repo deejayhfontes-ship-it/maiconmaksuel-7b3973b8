@@ -187,11 +187,17 @@ export function Topbar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer rounded-ios-sm">
+              <DropdownMenuItem 
+                className="cursor-pointer rounded-ios-sm"
+                onClick={() => navigate("/perfil")}
+              >
                 <User className="mr-2 h-4 w-4" />
                 Perfil
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer rounded-ios-sm">
+              <DropdownMenuItem 
+                className="cursor-pointer rounded-ios-sm"
+                onClick={() => navigate("/configuracoes")}
+              >
                 <Settings className="mr-2 h-4 w-4" />
                 Configurações
               </DropdownMenuItem>

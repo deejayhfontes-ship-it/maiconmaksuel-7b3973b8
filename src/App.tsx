@@ -35,6 +35,8 @@ import ProfissionalDetalhe from "./pages/ProfissionalDetalhe";
 import FechamentoSemanal from "./pages/FechamentoSemanal";
 import MetasSalao from "./pages/MetasSalao";
 import RelatorioCompleto from "./pages/RelatorioCompleto";
+import Configuracoes from "./pages/Configuracoes";
+import Perfil from "./pages/Perfil";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +85,8 @@ const App = () => (
                 <Route path="/configuracoes/metas" element={<MetasSalao />} />
                 <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
                 <Route path="/gestao-rh" element={<GestaoRH />} />
+                <Route path="/configuracoes" element={<Configuracoes />} />
+                <Route path="/perfil" element={<Perfil />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
