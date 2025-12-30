@@ -49,6 +49,9 @@ import {
   Mail,
   MessageSquare,
   Check,
+  Archive,
+  ArrowUpCircle,
+  CheckCircle,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -1535,11 +1538,90 @@ const Relatorios = () => {
     const totalReceitas = vendasPorPeriodo.total;
     const totalComissoes = comissoesPorProfissional.reduce((sum, p) => sum + p.totalComissao, 0);
     const lucro = totalReceitas - totalComissoes;
+    const contasVencidas = contasPagar.filter(c => c.status === "pendente" && new Date(c.data_vencimento) < new Date()).length;
+
+    // Cards de navegação rápida
+    const financeiroCards = (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+        {/* Card Gaveta do Caixa */}
+        <div 
+          onClick={() => { setCategory("caixa"); setReportType("caixas_fechados"); }}
+          className="relative bg-card rounded-2xl p-5 border shadow-sm cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+        >
+          <div className="absolute top-3 right-3">
+            <Badge className="bg-red-500 text-white text-[10px] px-2 py-0.5">Essencial</Badge>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgba(175, 82, 222, 0.12)' }}>
+              <Archive className="h-6 w-6" style={{ color: '#AF52DE' }} />
+            </div>
+            <div className="flex-1 pt-1">
+              <h3 className="font-semibold text-foreground">Gaveta do Caixa</h3>
+              <p className="text-sm text-muted-foreground mt-1">Controle de caixa e movimentações</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Valores a Pagar */}
+        <div 
+          onClick={() => selectReport("financeiro", "contas_pagar")}
+          className="relative bg-card rounded-2xl p-5 border shadow-sm cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+        >
+          {contasVencidas > 0 && (
+            <div className="absolute top-3 right-3">
+              <Badge className="bg-red-500 text-white text-xs px-2">{contasVencidas} vencida{contasVencidas > 1 ? 's' : ''}</Badge>
+            </div>
+          )}
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
+              <ArrowUpCircle className="h-6 w-6" style={{ color: '#FF3B30' }} />
+            </div>
+            <div className="flex-1 pt-1">
+              <h3 className="font-semibold text-foreground">Valores a Pagar</h3>
+              <p className="text-sm text-muted-foreground mt-1">Contas e pagamentos pendentes</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Pagamentos Realizados */}
+        <div 
+          onClick={() => selectReport("profissionais", "pagamentos_realizados")}
+          className="relative bg-card rounded-2xl p-5 border shadow-sm cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+        >
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
+              <CheckCircle className="h-6 w-6" style={{ color: '#34C759' }} />
+            </div>
+            <div className="flex-1 pt-1">
+              <h3 className="font-semibold text-foreground">Pagamentos Realizados</h3>
+              <p className="text-sm text-muted-foreground mt-1">Histórico de pagamentos</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Fluxo de Caixa */}
+        <div 
+          onClick={() => selectReport("financeiro", "fluxo")}
+          className="relative bg-card rounded-2xl p-5 border shadow-sm cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+        >
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-xl" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
+              <TrendingUp className="h-6 w-6" style={{ color: '#007AFF' }} />
+            </div>
+            <div className="flex-1 pt-1">
+              <h3 className="font-semibold text-foreground">Fluxo de Caixa</h3>
+              <p className="text-sm text-muted-foreground mt-1">Entradas e saídas do período</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
 
     switch (reportType) {
       case "dre":
         return (
           <div className="space-y-6">
+            {financeiroCards}
             <Card>
               <CardHeader>
                 <CardTitle>DRE - Demonstrativo de Resultados</CardTitle>
@@ -1594,6 +1676,7 @@ const Relatorios = () => {
       case "fluxo":
         return (
           <div className="space-y-6">
+            {financeiroCards}
             <Card>
               <CardHeader>
                 <CardTitle>Fluxo de Caixa</CardTitle>
@@ -1632,6 +1715,260 @@ const Relatorios = () => {
                         <TableCell className="text-right text-green-600">{formatCurrency(item.valor)}</TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "contas_pagar":
+        const totalPagar = contasPagar.reduce((sum, c) => sum + (c.valor || 0), 0);
+        const totalPagarPendente = contasPagar.filter(c => c.status === "pendente").reduce((sum, c) => sum + (c.valor || 0), 0);
+
+        return (
+          <div className="space-y-6">
+            {financeiroCards}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total de Contas</p>
+                      <p className="text-2xl font-bold">{contasPagar.length}</p>
+                    </div>
+                    <FileText className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total a Pagar</p>
+                      <p className="text-2xl font-bold text-red-600">{formatCurrency(totalPagar)}</p>
+                    </div>
+                    <ArrowUpCircle className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pendente</p>
+                      <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalPagarPendente)}</p>
+                    </div>
+                    <Clock className="h-8 w-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Contas a Pagar</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(contasPagar, "contas-pagar")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contasPagar.map((conta) => (
+                      <TableRow key={conta.id}>
+                        <TableCell className="font-medium">{conta.descricao}</TableCell>
+                        <TableCell>{conta.categoria}</TableCell>
+                        <TableCell>{format(new Date(conta.data_vencimento), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(conta.valor)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={conta.status === "pago" ? "default" : new Date(conta.data_vencimento) < new Date() ? "destructive" : "secondary"}>
+                            {conta.status === "pago" ? "Pago" : new Date(conta.data_vencimento) < new Date() ? "Vencido" : "Pendente"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {contasPagar.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhuma conta a pagar no período
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "contas_receber":
+        const totalReceber = contasReceber.reduce((sum, c) => sum + (c.valor || 0), 0);
+        const totalReceberPendente = contasReceber.filter(c => c.status === "pendente").reduce((sum, c) => sum + (c.valor || 0), 0);
+
+        return (
+          <div className="space-y-6">
+            {financeiroCards}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total de Contas</p>
+                      <p className="text-2xl font-bold">{contasReceber.length}</p>
+                    </div>
+                    <FileText className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total a Receber</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(totalReceber)}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pendente</p>
+                      <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalReceberPendente)}</p>
+                    </div>
+                    <Clock className="h-8 w-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Contas a Receber</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(contasReceber, "contas-receber")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contasReceber.map((conta) => (
+                      <TableRow key={conta.id}>
+                        <TableCell className="font-medium">{conta.descricao}</TableCell>
+                        <TableCell>{conta.cliente?.nome || "-"}</TableCell>
+                        <TableCell>{format(new Date(conta.data_vencimento), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(conta.valor)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={conta.status === "recebido" ? "default" : new Date(conta.data_vencimento) < new Date() ? "destructive" : "secondary"}>
+                            {conta.status === "recebido" ? "Recebido" : new Date(conta.data_vencimento) < new Date() ? "Vencido" : "Pendente"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {contasReceber.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhuma conta a receber no período
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "extrato_cartoes":
+        const pagamentosCartao = pagamentos.filter(p => 
+          p.forma_pagamento?.toLowerCase().includes("cartão") || 
+          p.forma_pagamento?.toLowerCase().includes("credito") ||
+          p.forma_pagamento?.toLowerCase().includes("debito")
+        );
+        const totalCartoes = pagamentosCartao.reduce((sum, p) => sum + (p.valor || 0), 0);
+
+        return (
+          <div className="space-y-6">
+            {financeiroCards}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Transações com Cartão</p>
+                      <p className="text-2xl font-bold">{pagamentosCartao.length}</p>
+                    </div>
+                    <CreditCard className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total em Cartões</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(totalCartoes)}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Extrato de Cartões</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(pagamentosCartao, "extrato-cartoes")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead>Forma</TableHead>
+                      <TableHead className="text-center">Parcelas</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagamentosCartao.map((pgto) => (
+                      <TableRow key={pgto.id}>
+                        <TableCell>{format(new Date(pgto.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
+                        <TableCell>{pgto.forma_pagamento}</TableCell>
+                        <TableCell className="text-center">{pgto.parcelas || 1}x</TableCell>
+                        <TableCell className="text-right text-green-600">{formatCurrency(pgto.valor)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {pagamentosCartao.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          Nenhum pagamento com cartão no período
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
