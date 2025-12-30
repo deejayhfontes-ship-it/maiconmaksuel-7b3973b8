@@ -32,6 +32,8 @@ import GestaoRH from "./pages/GestaoRH";
 import PontoEletronico from "./pages/PontoEletronico";
 import Vales from "./pages/Vales";
 import ProfissionalDetalhe from "./pages/ProfissionalDetalhe";
+import FechamentoSemanal from "./pages/FechamentoSemanal";
+import MetasSalao from "./pages/MetasSalao";
 
 const queryClient = new QueryClient();
 
@@ -69,12 +71,14 @@ const App = () => (
                 <Route path="/caixa" element={<Caixa />} />
                 <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="/financeiro/vales" element={<Vales />} />
+                <Route path="/financeiro/fechamento-semanal" element={<FechamentoSemanal />} />
                 <Route path="/relatorios" element={<Relatorios />} />
                 <Route path="/usuarios" element={<Usuarios />} />
                 <Route path="/notas-fiscais" element={<NotasFiscais />} />
                 <Route path="/nota-fiscal/:id" element={<NotaFiscalDetalhe />} />
                 <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscal />} />
                 <Route path="/configuracoes/whatsapp" element={<ConfiguracoesWhatsApp />} />
+                <Route path="/configuracoes/metas" element={<MetasSalao />} />
                 <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
                 <Route path="/gestao-rh" element={<GestaoRH />} />
               </Route>
