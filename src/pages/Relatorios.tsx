@@ -49,6 +49,10 @@ import {
   Mail,
   MessageSquare,
   Check,
+  ArrowUpCircle,
+  CheckCircle2,
+  Inbox,
+  ArrowLeftRight,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -80,7 +84,7 @@ type VendasReport = "periodo" | "profissional" | "servico" | "forma_pgto";
 type ClientesReport = "novos" | "ativos" | "inativos" | "aniversariantes";
 type ProfissionaisReport = "performance" | "comissoes" | "atendimentos";
 type ProdutosReport = "mais_vendidos" | "estoque" | "margem";
-type FinanceiroReport = "dre" | "fluxo";
+type FinanceiroReport = "receitas_despesas" | "valores_pagar" | "pagamentos_realizados" | "gaveta_caixa" | "fluxo_caixa";
 
 type ReportType = VendasReport | ClientesReport | ProfissionaisReport | ProdutosReport | FinanceiroReport;
 
@@ -113,8 +117,11 @@ const menuItems = {
     { id: "margem", label: "Margem de Lucro", icon: PieChart },
   ],
   financeiro: [
-    { id: "dre", label: "DRE", icon: FileText },
-    { id: "fluxo", label: "Fluxo de Caixa", icon: Wallet },
+    { id: "receitas_despesas", label: "Receitas e Despesas", icon: BarChart3, color: "#007AFF", description: "Resumo financeiro completo" },
+    { id: "valores_pagar", label: "Valores a Pagar", icon: ArrowUpCircle, color: "#FF3B30", description: "Contas pendentes e vencimentos" },
+    { id: "pagamentos_realizados", label: "Pagamentos Realizados", icon: CheckCircle2, color: "#34C759", description: "Histórico de pagamentos" },
+    { id: "gaveta_caixa", label: "Gaveta do Caixa", icon: Inbox, color: "#AF52DE", description: "Movimentações de caixa" },
+    { id: "fluxo_caixa", label: "Fluxo de Caixa", icon: ArrowLeftRight, color: "#FF9500", description: "Entradas e saídas do período" },
   ],
 };
 
@@ -1336,12 +1343,12 @@ const Relatorios = () => {
     const lucro = totalReceitas - totalComissoes;
 
     switch (reportType) {
-      case "dre":
+      case "receitas_despesas":
         return (
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>DRE - Demonstrativo de Resultados</CardTitle>
+                <CardTitle>Resumo Financeiro</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1362,27 +1369,36 @@ const Relatorios = () => {
             </Card>
 
             <div className="grid gap-4 md:grid-cols-3">
-              <Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
                 <CardContent className="pt-6">
                   <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
+                      <TrendingUp className="h-6 w-6" style={{ color: '#34C759' }} />
+                    </div>
                     <p className="text-sm text-muted-foreground">Receita Total</p>
-                    <p className="text-2xl font-bold text-green-600">{formatCurrency(totalReceitas)}</p>
+                    <p className="text-2xl font-bold" style={{ color: '#34C759' }}>{formatCurrency(totalReceitas)}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
                 <CardContent className="pt-6">
                   <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
+                      <TrendingDown className="h-6 w-6" style={{ color: '#FF3B30' }} />
+                    </div>
                     <p className="text-sm text-muted-foreground">Despesas (Comissões)</p>
-                    <p className="text-2xl font-bold text-red-600">{formatCurrency(totalComissoes)}</p>
+                    <p className="text-2xl font-bold" style={{ color: '#FF3B30' }}>{formatCurrency(totalComissoes)}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
                 <CardContent className="pt-6">
                   <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
+                      <DollarSign className="h-6 w-6" style={{ color: '#007AFF' }} />
+                    </div>
                     <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                    <p className={cn("text-2xl font-bold", lucro >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(lucro)}</p>
+                    <p className={cn("text-2xl font-bold")} style={{ color: lucro >= 0 ? '#34C759' : '#FF3B30' }}>{formatCurrency(lucro)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1390,10 +1406,202 @@ const Relatorios = () => {
           </div>
         );
 
-      case "fluxo":
+      case "valores_pagar":
         return (
           <div className="space-y-6">
-            <Card>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
+                      <ArrowUpCircle className="h-6 w-6" style={{ color: '#FF3B30' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Vencidas</p>
+                    <p className="text-2xl font-bold" style={{ color: '#FF3B30' }}>R$ 0,00</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 149, 0, 0.12)' }}>
+                      <Clock className="h-6 w-6" style={{ color: '#FF9500' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Vence Hoje</p>
+                    <p className="text-2xl font-bold" style={{ color: '#FF9500' }}>R$ 0,00</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
+                      <CalendarIcon className="h-6 w-6" style={{ color: '#007AFF' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">A Vencer</p>
+                    <p className="text-2xl font-bold" style={{ color: '#007AFF' }}>R$ 0,00</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <Card style={{ borderRadius: '16px' }}>
+              <CardHeader>
+                <CardTitle>Contas a Pagar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <ArrowUpCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhuma conta pendente encontrada</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "pagamentos_realizados":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
+                      <CheckCircle2 className="h-6 w-6" style={{ color: '#34C759' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Total Pago no Período</p>
+                    <p className="text-2xl font-bold" style={{ color: '#34C759' }}>R$ 0,00</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
+                      <FileText className="h-6 w-6" style={{ color: '#007AFF' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Quantidade de Pagamentos</p>
+                    <p className="text-2xl font-bold" style={{ color: '#007AFF' }}>0</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <Card style={{ borderRadius: '16px' }}>
+              <CardHeader>
+                <CardTitle>Histórico de Pagamentos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum pagamento realizado no período</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "gaveta_caixa":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(175, 82, 222, 0.12)' }}>
+                      <Inbox className="h-6 w-6" style={{ color: '#AF52DE' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Saldo Atual</p>
+                    <p className="text-2xl font-bold" style={{ color: '#AF52DE' }}>R$ 0,00</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
+                      <TrendingUp className="h-6 w-6" style={{ color: '#34C759' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Entradas</p>
+                    <p className="text-2xl font-bold" style={{ color: '#34C759' }}>R$ 0,00</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
+                      <TrendingDown className="h-6 w-6" style={{ color: '#FF3B30' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Saídas</p>
+                    <p className="text-2xl font-bold" style={{ color: '#FF3B30' }}>R$ 0,00</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
+                      <CreditCard className="h-6 w-6" style={{ color: '#007AFF' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Sangrias</p>
+                    <p className="text-2xl font-bold" style={{ color: '#007AFF' }}>R$ 0,00</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <Card style={{ borderRadius: '16px' }}>
+              <CardHeader>
+                <CardTitle>Movimentações do Caixa</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhuma movimentação registrada</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "fluxo_caixa":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
+                      <TrendingUp className="h-6 w-6" style={{ color: '#34C759' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Entradas</p>
+                    <p className="text-2xl font-bold" style={{ color: '#34C759' }}>{formatCurrency(totalReceitas)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
+                      <TrendingDown className="h-6 w-6" style={{ color: '#FF3B30' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Saídas</p>
+                    <p className="text-2xl font-bold" style={{ color: '#FF3B30' }}>{formatCurrency(totalComissoes)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 149, 0, 0.12)' }}>
+                      <ArrowLeftRight className="h-6 w-6" style={{ color: '#FF9500' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Saldo Líquido</p>
+                    <p className="text-2xl font-bold" style={{ color: '#FF9500' }}>{formatCurrency(lucro)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card style={{ borderRadius: '16px' }}>
               <CardHeader>
                 <CardTitle>Fluxo de Caixa</CardTitle>
               </CardHeader>
@@ -1404,13 +1612,13 @@ const Relatorios = () => {
                     <XAxis dataKey="data" className="text-xs" />
                     <YAxis className="text-xs" tickFormatter={(v) => `R$${v}`} />
                     <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Valor"]} />
-                    <Line type="monotone" dataKey="valor" stroke="#34C759" strokeWidth={2} dot={{ fill: "#34C759" }} name="Entradas" />
+                    <Line type="monotone" dataKey="valor" stroke="#FF9500" strokeWidth={2} dot={{ fill: "#FF9500" }} name="Entradas" />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card style={{ borderRadius: '16px' }}>
               <CardHeader>
                 <CardTitle>Entradas por Dia</CardTitle>
               </CardHeader>
@@ -1428,7 +1636,7 @@ const Relatorios = () => {
                       <TableRow key={item.data}>
                         <TableCell>{item.data}</TableCell>
                         <TableCell className="text-center">{item.quantidade}</TableCell>
-                        <TableCell className="text-right text-green-600">{formatCurrency(item.valor)}</TableCell>
+                        <TableCell className="text-right" style={{ color: '#34C759' }}>{formatCurrency(item.valor)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
