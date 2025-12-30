@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,8 @@ import {
   XCircle,
   AlertCircle,
   Save,
-  TestTube
+  TestTube,
+  ArrowLeft
 } from "lucide-react";
 
 interface ConfiguracoesWhatsApp {
@@ -268,16 +270,23 @@ export default function ConfiguracoesWhatsApp() {
     );
   }
 
+  const navigate = useNavigate();
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Smartphone className="h-6 w-6 text-primary" />
-          Configurações WhatsApp
-        </h1>
-        <p className="text-muted-foreground">
-          Configure o envio automático de mensagens e confirmações
-        </p>
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/configuracoes")}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Smartphone className="h-6 w-6 text-primary" />
+            Configurações WhatsApp
+          </h1>
+          <p className="text-muted-foreground">
+            Configure o envio automático de mensagens e confirmações
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

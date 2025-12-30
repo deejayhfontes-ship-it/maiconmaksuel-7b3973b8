@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Shield, Plug, Calculator, Save, Upload, TestTube, CheckCircle2, XCircle, AlertTriangle, ExternalLink, Loader2 } from "lucide-react";
+import { Building2, Shield, Plug, Calculator, Save, Upload, TestTube, CheckCircle2, XCircle, AlertTriangle, ExternalLink, Loader2, ArrowLeft } from "lucide-react";
 
 const ESTADOS_BR = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", 
@@ -238,14 +239,21 @@ export default function ConfiguracoesFiscal() {
     );
   }
 
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6 pb-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Configurações Fiscais</h1>
-        <p className="text-muted-foreground mt-1">
-          Configure os dados da empresa e integração para emissão de notas fiscais
-        </p>
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/configuracoes")}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Configurações Fiscais</h1>
+          <p className="text-muted-foreground mt-1">
+            Configure os dados da empresa e integração para emissão de notas fiscais
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}
