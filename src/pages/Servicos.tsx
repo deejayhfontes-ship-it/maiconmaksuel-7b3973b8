@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Scissors, Plus, Search, Edit, Trash2, Clock } from "lucide-react";
+import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +34,11 @@ interface Servico {
   preco: number;
   comissao_padrao: number;
   ativo: boolean;
+  tipo_servico: string;
+  apenas_agenda: boolean;
+  gera_receita: boolean;
+  gera_comissao: boolean;
+  aparece_pdv: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +78,7 @@ const Servicos = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("todas");
+  const [tipoFilter, setTipoFilter] = useState("todos");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedServico, setSelectedServico] = useState<Servico | null>(null);
@@ -117,8 +123,12 @@ const Servicos = () => {
       result = result.filter((s) => s.categoria === categoriaFilter);
     }
 
+    if (tipoFilter !== "todos") {
+      result = result.filter((s) => s.tipo_servico === tipoFilter);
+    }
+
     return result;
-  }, [servicos, searchTerm, categoriaFilter]);
+  }, [servicos, searchTerm, categoriaFilter, tipoFilter]);
 
   const handleEdit = (servico: Servico) => {
     setSelectedServico(servico);
@@ -159,6 +169,26 @@ const Servicos = () => {
     setIsFormOpen(false);
     setSelectedServico(null);
     if (refresh) fetchServicos();
+  };
+
+  const getTipoBadge = (servico: Servico) => {
+    if (servico.tipo_servico === "controle_interno" || servico.apenas_agenda) {
+      return (
+        <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 text-[10px] gap-1">
+          <ClipboardList className="h-3 w-3" />
+          Controle
+        </Badge>
+      );
+    }
+    if (servico.tipo_servico === "cortesia") {
+      return (
+        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[10px] gap-1">
+          <Gift className="h-3 w-3" />
+          Cortesia
+        </Badge>
+      );
+    }
+    return null;
   };
 
   return (
@@ -211,6 +241,20 @@ const Servicos = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={tipoFilter}
+              onValueChange={setTipoFilter}
+            >
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os tipos</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="cortesia">Cortesia</SelectItem>
+                <SelectItem value="controle_interno">Controle Interno</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -226,88 +270,110 @@ const Servicos = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredServicos.map((servico) => (
-            <Card
-              key={servico.id}
-              className={`relative overflow-hidden transition-all hover:shadow-lg ${
-                !servico.ativo ? "opacity-60" : ""
-              }`}
-            >
-              <CardContent className="p-5">
-                <div className="space-y-4">
-                  {/* Header do Card */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1 flex-1">
-                      <h3 className="font-bold text-lg leading-tight">
-                        {servico.nome}
-                      </h3>
-                      <Badge
-                        variant="outline"
-                        className={
-                          categoriaColors[servico.categoria || "Outros"] ||
-                          categoriaColors.Outros
-                        }
-                      >
-                        {servico.categoria || "Outros"}
-                      </Badge>
+          {filteredServicos.map((servico) => {
+            const isControleInterno = servico.tipo_servico === "controle_interno" || servico.apenas_agenda;
+            
+            return (
+              <Card
+                key={servico.id}
+                className={`relative overflow-hidden transition-all hover:shadow-lg ${
+                  !servico.ativo ? "opacity-60" : ""
+                } ${isControleInterno ? "border-dashed border-warning/40" : ""}`}
+              >
+                <CardContent className="p-5">
+                  <div className="space-y-4">
+                    {/* Header do Card */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className={`font-bold text-lg leading-tight ${isControleInterno ? "text-muted-foreground" : ""}`}>
+                            {isControleInterno && <ClipboardList className="h-4 w-4 inline mr-1 text-warning" />}
+                            {servico.nome}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge
+                            variant="outline"
+                            className={
+                              categoriaColors[servico.categoria || "Outros"] ||
+                              categoriaColors.Outros
+                            }
+                          >
+                            {servico.categoria || "Outros"}
+                          </Badge>
+                          {getTipoBadge(servico)}
+                        </div>
+                      </div>
+                      {!servico.ativo && (
+                        <Badge variant="secondary" className="shrink-0">
+                          Inativo
+                        </Badge>
+                      )}
                     </div>
-                    {!servico.ativo && (
-                      <Badge variant="secondary" className="shrink-0">
-                        Inativo
-                      </Badge>
+
+                    {/* Descrição */}
+                    {servico.descricao && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {servico.descricao}
+                      </p>
                     )}
-                  </div>
 
-                  {/* Descrição */}
-                  {servico.descricao && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {servico.descricao}
-                    </p>
-                  )}
-
-                  {/* Duração */}
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span className="text-sm">
-                      {formatDuration(servico.duracao_minutos)}
-                    </span>
-                  </div>
-
-                  {/* Preço e Comissão */}
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-success">
-                        {formatPrice(Number(servico.preco))}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Comissão: {Number(servico.comissao_padrao)}%
-                      </p>
+                    {/* Duração */}
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span className="text-sm">
+                        {formatDuration(servico.duracao_minutos)}
+                      </span>
                     </div>
 
-                    {/* Ações */}
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(servico)}
-                        className="h-8 w-8"
-                      >
-                        <Edit className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteClick(servico)}
-                        className="h-8 w-8"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                    {/* Preço e Comissão */}
+                    <div className="flex items-end justify-between">
+                      <div>
+                        {isControleInterno ? (
+                          <p className="text-xl font-medium text-muted-foreground">
+                            --
+                          </p>
+                        ) : servico.tipo_servico === "cortesia" ? (
+                          <p className="text-xl font-medium text-success">
+                            Cortesia
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-2xl font-bold text-success">
+                              {formatPrice(Number(servico.preco))}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Comissão: {Number(servico.comissao_padrao)}%
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Ações */}
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(servico)}
+                          className="h-8 w-8"
+                        >
+                          <Edit className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(servico)}
+                          className="h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
