@@ -72,6 +72,8 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ComandasAbertasSection } from "@/components/caixa/ComandasAbertasSection";
 import { AcoesRapidasSection } from "@/components/caixa/AcoesRapidasSection";
+import { ChequesListModal } from "@/components/caixa/ChequesListModal";
+import { ChequeFormModal } from "@/components/caixa/ChequeFormModal";
 
 interface CaixaData {
   id: string;
@@ -162,6 +164,8 @@ const Caixa = () => {
   const [isDespesaOpen, setIsDespesaOpen] = useState(false);
   const [isSangriaOpen, setIsSangriaOpen] = useState(false);
   const [isReforcoOpen, setIsReforcoOpen] = useState(false);
+  const [isChequesListOpen, setIsChequesListOpen] = useState(false);
+  const [isNovoChequeOpen, setIsNovoChequeOpen] = useState(false);
 
   // Form states
   const [valorInicial, setValorInicial] = useState(0);

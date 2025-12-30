@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ChequesListModal } from "./ChequesListModal";
 
 interface Divida {
   id: string;
@@ -46,16 +47,6 @@ interface Gorjeta {
   data: string;
 }
 
-// Note: Cheques table doesn't exist yet, using placeholder
-interface Cheque {
-  id: string;
-  banco: string;
-  numero: string;
-  valor: number;
-  data_bom_para: string;
-  cliente_nome: string;
-}
-
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -71,7 +62,7 @@ interface AcoesRapidasSectionProps {
 export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasSectionProps) => {
   const [dividas, setDividas] = useState<Divida[]>([]);
   const [gorjetas, setGorjetas] = useState<Gorjeta[]>([]);
-  const [cheques, setCheques] = useState<Cheque[]>([]);
+  const [chequesPendentes, setChequesPendentes] = useState(0);
   const [isDividasOpen, setIsDividasOpen] = useState(false);
   const [isGorjetasOpen, setIsGorjetasOpen] = useState(false);
   const [isChequesOpen, setIsChequesOpen] = useState(false);
@@ -126,9 +117,13 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
       );
     }
 
-    // Cheques: tabela não existe ainda, deixar vazio por enquanto
-    // TODO: Criar tabela de cheques quando necessário
-    setCheques([]);
+    // Buscar cheques pendentes
+    const { count: chequesCount } = await supabase
+      .from("cheques")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pendente");
+    
+    setChequesPendentes(chequesCount || 0);
 
     // Buscar profissionais para vales
     const { data: profsData } = await supabase
@@ -276,7 +271,7 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
     {
       icon: FileCheck,
       label: "Cheques",
-      count: cheques.length > 0 ? cheques.length : null,
+      count: chequesPendentes > 0 ? chequesPendentes : null,
       iconBgColor: "bg-green-500",
       gradientFrom: "from-green-50",
       gradientTo: "to-green-100",
@@ -447,64 +442,11 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
       </Dialog>
 
       {/* Modal Cheques */}
-      <Dialog open={isChequesOpen} onOpenChange={setIsChequesOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileCheck className="h-5 w-5 text-green-500" />
-              Cheques na Gaveta ({cheques.length})
-            </DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[400px]">
-            {cheques.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Nenhum cheque na gaveta
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {cheques.map((cheque) => {
-                  const diasVencer = differenceInDays(
-                    parseISO(cheque.data_bom_para),
-                    new Date()
-                  );
-
-                  return (
-                    <div
-                      key={cheque.id}
-                      className="p-3 rounded-lg border bg-card"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium">
-                            #{cheque.numero} - {cheque.banco}
-                          </p>
-                          <p className="text-lg font-bold">
-                            {formatPrice(cheque.valor)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {cheque.cliente_nome}
-                          </p>
-                        </div>
-                        <Badge variant="secondary">
-                          Vence em {diasVencer}d
-                        </Badge>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="flex-1">
-                          Depositar
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          Detalhes
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+      <ChequesListModal 
+        open={isChequesOpen} 
+        onOpenChange={setIsChequesOpen}
+        caixaId={caixaId}
+      />
 
       {/* Modal Vale */}
       <Dialog open={isValeOpen} onOpenChange={setIsValeOpen}>

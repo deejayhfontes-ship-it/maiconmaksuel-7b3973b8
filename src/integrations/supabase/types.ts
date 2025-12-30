@@ -340,6 +340,97 @@ export type Database = {
           },
         ]
       }
+      cheques: {
+        Row: {
+          agencia: string | null
+          atendimento_id: string | null
+          banco: string | null
+          caixa_id: string | null
+          cliente_id: string | null
+          conta: string | null
+          cpf_cnpj_emitente: string | null
+          created_at: string
+          data_compensacao: string | null
+          data_devolucao: string | null
+          data_emissao: string
+          data_vencimento: string
+          emitente: string
+          id: string
+          motivo_devolucao: string | null
+          numero_cheque: string
+          observacoes: string | null
+          status: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          agencia?: string | null
+          atendimento_id?: string | null
+          banco?: string | null
+          caixa_id?: string | null
+          cliente_id?: string | null
+          conta?: string | null
+          cpf_cnpj_emitente?: string | null
+          created_at?: string
+          data_compensacao?: string | null
+          data_devolucao?: string | null
+          data_emissao?: string
+          data_vencimento: string
+          emitente: string
+          id?: string
+          motivo_devolucao?: string | null
+          numero_cheque: string
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          agencia?: string | null
+          atendimento_id?: string | null
+          banco?: string | null
+          caixa_id?: string | null
+          cliente_id?: string | null
+          conta?: string | null
+          cpf_cnpj_emitente?: string | null
+          created_at?: string
+          data_compensacao?: string | null
+          data_devolucao?: string | null
+          data_emissao?: string
+          data_vencimento?: string
+          emitente?: string
+          id?: string
+          motivo_devolucao?: string | null
+          numero_cheque?: string
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cheques_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cheques_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cheques_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           ativo: boolean
