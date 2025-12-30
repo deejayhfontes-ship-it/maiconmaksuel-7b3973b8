@@ -19,6 +19,7 @@ import {
   Smartphone,
   Briefcase,
   Clock,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const menuItems = [
 
 const adminItems = [
   { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
+  { title: "Metas do Salão", icon: Target, path: "/configuracoes/metas" },
   { title: "Config. Fiscal", icon: Settings, path: "/configuracoes/fiscal" },
   { title: "Config. WhatsApp", icon: Smartphone, path: "/configuracoes/whatsapp" },
 ];
