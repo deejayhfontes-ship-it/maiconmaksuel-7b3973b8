@@ -52,6 +52,8 @@ import {
   Archive,
   ArrowUpCircle,
   CheckCircle,
+  Trophy,
+  ShoppingCart,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -81,7 +83,7 @@ import autoTable from "jspdf-autotable";
 type ReportCategory = "vendas" | "clientes" | "profissionais" | "produtos" | "financeiro" | "lucros" | "caixa";
 type VendasReport = "periodo" | "profissional" | "servico" | "forma_pgto" | "historico" | "itens_vendidos" | "clientes_ausentes" | "servicos_lucrativos" | "produtos_lucrativos" | "clientes_lucro";
 type ClientesReport = "novos" | "ativos" | "inativos" | "aniversariantes";
-type ProfissionaisReport = "performance" | "comissoes" | "atendimentos" | "valores_pagar" | "pagamentos_realizados";
+type ProfissionaisReport = "performance" | "comissoes" | "atendimentos" | "top_lucro_servicos" | "top_lucro_produtos" | "vales_adiantamentos" | "valores_pagar" | "pagamentos_realizados";
 type ProdutosReport = "mais_vendidos" | "estoque" | "margem";
 type FinanceiroReport = "dre" | "fluxo" | "contas_pagar" | "contas_receber" | "extrato_cartoes";
 type LucrosReport = "lucro_bruto" | "grafico_lucro";
@@ -117,6 +119,9 @@ const menuItems = {
     { id: "performance", label: "Performance", icon: TrendingUp },
     { id: "comissoes", label: "Comissões", icon: DollarSign },
     { id: "atendimentos", label: "Atendimentos", icon: Activity },
+    { id: "top_lucro_servicos", label: "Top Lucro - Serviços", icon: Trophy },
+    { id: "top_lucro_produtos", label: "Top Lucro - Produtos", icon: ShoppingCart },
+    { id: "vales_adiantamentos", label: "Vales e Adiantamentos", icon: FileText },
     { id: "valores_pagar", label: "Valores a Pagar", icon: Wallet },
     { id: "pagamentos_realizados", label: "Pagamentos Realizados", icon: Check },
   ],
@@ -1362,6 +1367,252 @@ const Relatorios = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+          </div>
+        );
+
+      case "top_lucro_servicos":
+      case "top_lucro_produtos":
+      case "vales_adiantamentos":
+      case "valores_pagar":
+      case "pagamentos_realizados":
+        return (
+          <div className="space-y-6">
+            {/* Cards de navegação */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Card Top Lucro - Serviços */}
+              <Card 
+                className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg bg-white border-0 shadow-sm relative overflow-hidden"
+                onClick={() => selectReport("profissionais", "top_lucro_servicos")}
+              >
+                <Badge className="absolute top-3 right-3 bg-blue-500 text-white text-xs">Novo</Badge>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl" style={{ backgroundColor: "#FFD70020" }}>
+                      <Trophy className="h-6 w-6" style={{ color: "#FFD700" }} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Top Lucro - Serviços</h3>
+                      <p className="text-sm text-muted-foreground">Ranking por lucro em serviços</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card Top Lucro - Produtos */}
+              <Card 
+                className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg bg-white border-0 shadow-sm relative overflow-hidden"
+                onClick={() => selectReport("profissionais", "top_lucro_produtos")}
+              >
+                <Badge className="absolute top-3 right-3 bg-blue-500 text-white text-xs">Novo</Badge>
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl" style={{ backgroundColor: "#AF52DE20" }}>
+                      <ShoppingCart className="h-6 w-6" style={{ color: "#AF52DE" }} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Top Lucro - Produtos</h3>
+                      <p className="text-sm text-muted-foreground">Ranking por lucro em produtos</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card Vales e Adiantamentos */}
+              <Card 
+                className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg bg-white border-0 shadow-sm"
+                onClick={() => selectReport("profissionais", "vales_adiantamentos")}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl" style={{ backgroundColor: "#FFCC0020" }}>
+                      <FileText className="h-6 w-6" style={{ color: "#FFCC00" }} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Vales e Adiantamentos</h3>
+                      <p className="text-sm text-muted-foreground">Controle de vales dos profissionais</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Conteúdo específico de cada relatório */}
+            {reportType === "top_lucro_servicos" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5" style={{ color: "#FFD700" }} />
+                    Ranking de Lucro por Serviços
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Posição</TableHead>
+                        <TableHead>Profissional</TableHead>
+                        <TableHead className="text-right">Faturamento em Serviços</TableHead>
+                        <TableHead className="text-right">Comissão Gerada</TableHead>
+                        <TableHead className="text-right">Lucro para Empresa</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {comissoesPorProfissional.map((item, idx) => {
+                        const lucroEmpresa = item.totalServicos - item.totalComissao;
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <Badge 
+                                variant={idx === 0 ? "default" : "secondary"}
+                                className={idx === 0 ? "bg-yellow-500" : idx === 1 ? "bg-gray-400" : idx === 2 ? "bg-amber-600" : ""}
+                              >
+                                #{idx + 1}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium">{item.nome}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.totalServicos)}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">{formatCurrency(item.totalComissao)}</TableCell>
+                            <TableCell className="text-right font-semibold text-green-600">{formatCurrency(lucroEmpresa)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {reportType === "top_lucro_produtos" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5" style={{ color: "#AF52DE" }} />
+                    Ranking de Lucro por Produtos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {produtosMaisVendidos.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Posição</TableHead>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-center">Quantidade Vendida</TableHead>
+                          <TableHead className="text-right">Valor Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {produtosMaisVendidos.map((item, idx) => (
+                          <TableRow key={item.nome}>
+                            <TableCell>
+                              <Badge 
+                                variant={idx === 0 ? "default" : "secondary"}
+                                className={idx === 0 ? "bg-purple-500" : idx === 1 ? "bg-gray-400" : idx === 2 ? "bg-amber-600" : ""}
+                              >
+                                #{idx + 1}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium">{item.nome}</TableCell>
+                            <TableCell className="text-center">{item.quantidade}</TableCell>
+                            <TableCell className="text-right font-semibold text-purple-600">{formatCurrency(item.valor)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">Nenhuma venda de produto no período</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {reportType === "vales_adiantamentos" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" style={{ color: "#FFCC00" }} />
+                    Vales e Adiantamentos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhum vale ou adiantamento registrado no período.</p>
+                    <p className="text-sm mt-2">Os vales serão listados aqui quando houver registros.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {reportType === "valores_pagar" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Valores a Pagar aos Profissionais</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Profissional</TableHead>
+                        <TableHead className="text-center">Atendimentos</TableHead>
+                        <TableHead className="text-right">Comissão Pendente</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {comissoesPorProfissional.filter(p => !comissoesStatus[p.id]).map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.nome}</TableCell>
+                          <TableCell className="text-center">{item.atendimentos}</TableCell>
+                          <TableCell className="text-right font-semibold text-red-600">{formatCurrency(item.totalComissao)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {comissoesPorProfissional.filter(p => !comissoesStatus[p.id]).length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                            Nenhum valor pendente para pagamento
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {reportType === "pagamentos_realizados" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pagamentos Realizados</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Profissional</TableHead>
+                        <TableHead className="text-center">Atendimentos</TableHead>
+                        <TableHead className="text-right">Valor Pago</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {comissoesPorProfissional.filter(p => comissoesStatus[p.id]).map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.nome}</TableCell>
+                          <TableCell className="text-center">{item.atendimentos}</TableCell>
+                          <TableCell className="text-right font-semibold text-green-600">{formatCurrency(item.totalComissao)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {comissoesPorProfissional.filter(p => comissoesStatus[p.id]).length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                            Nenhum pagamento realizado no período
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
     }
