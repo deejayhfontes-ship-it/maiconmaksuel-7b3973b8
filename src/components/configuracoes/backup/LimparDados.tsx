@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,7 +8,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -16,11 +15,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, AlertTriangle, Shield, Image, FileText, Users, DollarSign } from "lucide-react";
+import { Trash2, AlertTriangle, Shield, Image, FileText, Users, DollarSign, RotateCcw, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 type ConfirmStep = 1 | 2 | 3;
+
+interface DataCounts {
+  clientes: number;
+  agendamentos: number;
+  atendimentos: number;
+  produtos: number;
+  servicos: number;
+  profissionais: number;
+  contasPagar: number;
+  contasReceber: number;
+}
 
 export default function LimparDados() {
   const navigate = useNavigate();
@@ -37,6 +48,61 @@ export default function LimparDados() {
   });
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState("");
+  const [dataCounts, setDataCounts] = useState<DataCounts>({
+    clientes: 0,
+    agendamentos: 0,
+    atendimentos: 0,
+    produtos: 0,
+    servicos: 0,
+    profissionais: 0,
+    contasPagar: 0,
+    contasReceber: 0,
+  });
+
+  // Buscar contagem de dados ao abrir o modal
+  useEffect(() => {
+    if (showZerarDialog) {
+      fetchDataCounts();
+    }
+  }, [showZerarDialog]);
+
+  const fetchDataCounts = async () => {
+    try {
+      const [
+        clientesRes,
+        agendamentosRes,
+        atendimentosRes,
+        produtosRes,
+        servicosRes,
+        profissionaisRes,
+        contasPagarRes,
+        contasReceberRes,
+      ] = await Promise.all([
+        supabase.from("clientes").select("id", { count: "exact", head: true }),
+        supabase.from("agendamentos").select("id", { count: "exact", head: true }),
+        supabase.from("atendimentos").select("id", { count: "exact", head: true }),
+        supabase.from("produtos").select("id", { count: "exact", head: true }),
+        supabase.from("servicos").select("id", { count: "exact", head: true }),
+        supabase.from("profissionais").select("id", { count: "exact", head: true }),
+        supabase.from("contas_pagar").select("id", { count: "exact", head: true }),
+        supabase.from("contas_receber").select("id", { count: "exact", head: true }),
+      ]);
+
+      setDataCounts({
+        clientes: clientesRes.count || 0,
+        agendamentos: agendamentosRes.count || 0,
+        atendimentos: atendimentosRes.count || 0,
+        produtos: produtosRes.count || 0,
+        servicos: servicosRes.count || 0,
+        profissionais: profissionaisRes.count || 0,
+        contasPagar: contasPagarRes.count || 0,
+        contasReceber: contasReceberRes.count || 0,
+      });
+    } catch (error) {
+      console.error("Erro ao buscar contagem:", error);
+    }
+  };
 
   const handleLimparTeste = async () => {
     toast.success("Dados de teste removidos!");
@@ -47,13 +113,13 @@ export default function LimparDados() {
   };
 
   const handleLimparCache = async () => {
-    toast.success("Cache de imagens limpo! (24 MB liberados)");
+    toast.success("Cache de imagens limpo!");
   };
 
   const canProceedStep2 = backupFeito;
   const canProceedStep3 = 
     senhaAdmin.length >= 6 &&
-    textoConfirmacao === "APAGAR TUDO" &&
+    textoConfirmacao === "RESETAR SISTEMA" &&
     motivo.length > 0 &&
     confirmacoes.entendo &&
     confirmacoes.fezBackup &&
@@ -63,28 +129,82 @@ export default function LimparDados() {
     setLoading(true);
     setProgress(0);
 
+    const steps = [
+      { name: "Limpando pagamentos...", table: "pagamentos" },
+      { name: "Limpando gorjetas...", table: "gorjetas" },
+      { name: "Limpando itens de atendimento...", table: "atendimento_servicos" },
+      { name: "Limpando produtos de atendimento...", table: "atendimento_produtos" },
+      { name: "Limpando confirmações...", table: "confirmacoes_agendamento" },
+      { name: "Limpando mensagens...", table: "mensagens_enviadas" },
+      { name: "Limpando itens notas fiscais...", table: "itens_nota_fiscal" },
+      { name: "Limpando notas fiscais...", table: "notas_fiscais" },
+      { name: "Limpando atendimentos...", table: "atendimentos" },
+      { name: "Limpando agendamentos...", table: "agendamentos" },
+      { name: "Limpando dívidas pagamentos...", table: "dividas_pagamentos" },
+      { name: "Limpando dívidas...", table: "dividas" },
+      { name: "Limpando cheques...", table: "cheques" },
+      { name: "Limpando movimentações caixa...", table: "caixa_movimentacoes" },
+      { name: "Limpando caixa...", table: "caixa" },
+      { name: "Limpando despesas rápidas...", table: "despesas_rapidas" },
+      { name: "Limpando contas a pagar...", table: "contas_pagar" },
+      { name: "Limpando contas a receber...", table: "contas_receber" },
+      { name: "Limpando metas profissionais...", table: "profissional_metas_historico" },
+      { name: "Limpando fechamentos profissionais...", table: "fechamentos_profissionais" },
+      { name: "Limpando fechamentos semanais...", table: "fechamentos_semanais" },
+      { name: "Limpando vales...", table: "vales" },
+      { name: "Limpando clientes...", table: "clientes" },
+      { name: "Limpando profissionais...", table: "profissionais" },
+      { name: "Limpando produtos...", table: "produtos" },
+      { name: "Limpando serviços...", table: "servicos" },
+    ];
+
     try {
-      const steps = ["Clientes", "Agendamentos", "Vendas", "Produtos", "Profissionais", "Financeiro", "Logs"];
-      
       for (let i = 0; i < steps.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 600));
+        setCurrentStep(steps[i].name);
         setProgress(((i + 1) / steps.length) * 100);
+        
+        // Deletar todos os registros da tabela
+        const { error } = await supabase
+          .from(steps[i].table as any)
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000"); // Deleta todos
+        
+        if (error) {
+          console.warn(`Aviso ao limpar ${steps[i].table}:`, error.message);
+        }
+        
+        // Pequeno delay para feedback visual
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      toast.success("Sistema zerado com sucesso!", {
-        description: "O sistema será reiniciado em 5 segundos...",
+      setCurrentStep("Concluído!");
+      
+      toast.success("Sistema resetado com sucesso!", {
+        description: "Todos os dados de teste foram removidos. O sistema está pronto para uso.",
+        duration: 5000,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      navigate("/dashboard");
-
-    } catch (error) {
-      console.error("Erro ao zerar sistema:", error);
-      toast.error("Erro ao zerar sistema");
-    } finally {
-      setLoading(false);
+      // Resetar estados
       setShowZerarDialog(false);
       setConfirmStep(1);
+      setBackupFeito(false);
+      setSenhaAdmin("");
+      setTextoConfirmacao("");
+      setMotivo("");
+      setConfirmacoes({ entendo: false, fezBackup: false, responsabilidade: false });
+
+      // Redirecionar para dashboard
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
+
+    } catch (error) {
+      console.error("Erro ao resetar sistema:", error);
+      toast.error("Erro ao resetar sistema", {
+        description: "Alguns dados podem não ter sido removidos. Tente novamente.",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,36 +212,41 @@ export default function LimparDados() {
     <>
       <AlertDialogHeader>
         <AlertDialogTitle className="flex items-center gap-2 text-warning">
-          <AlertTriangle className="h-5 w-5" />
-          CONFIRMAÇÃO 1 DE 3
+          <RotateCcw className="h-5 w-5" />
+          RESETAR SISTEMA - CONFIRMAÇÃO 1 DE 3
         </AlertDialogTitle>
         <AlertDialogDescription className="space-y-4 text-left">
           <p className="font-semibold text-foreground">
-            Você está prestes a APAGAR TODOS OS DADOS do sistema!
+            Você está prestes a RESETAR o sistema, removendo todos os dados de teste!
           </p>
           <div className="bg-muted/50 p-4 rounded-lg">
-            <p className="font-medium mb-2">Isso inclui:</p>
+            <p className="font-medium mb-2">Dados que serão removidos:</p>
             <ul className="text-sm space-y-1">
-              <li>• 1.247 clientes</li>
-              <li>• 8.942 agendamentos</li>
-              <li>• 5.683 vendas</li>
-              <li>• 156 produtos</li>
-              <li>• 12 profissionais</li>
-              <li>• TODO o histórico financeiro</li>
+              <li>• {dataCounts.clientes} clientes</li>
+              <li>• {dataCounts.agendamentos} agendamentos</li>
+              <li>• {dataCounts.atendimentos} atendimentos/vendas</li>
+              <li>• {dataCounts.produtos} produtos</li>
+              <li>• {dataCounts.servicos} serviços</li>
+              <li>• {dataCounts.profissionais} profissionais</li>
+              <li>• Todo o histórico financeiro</li>
             </ul>
+          </div>
+          <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
+            <p className="text-sm">
+              <strong>Objetivo:</strong> Limpar dados de teste para iniciar o sistema do zero, pronto para uso real.
+            </p>
           </div>
           <p className="text-destructive font-semibold">
             Esta ação NÃO PODE SER DESFEITA!
           </p>
-          <p>Tem certeza ABSOLUTA que deseja continuar?</p>
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel onClick={() => setShowZerarDialog(false)}>
-          Não, Cancelar
+          Cancelar
         </AlertDialogCancel>
         <Button variant="destructive" onClick={() => setConfirmStep(2)}>
-          Sim, Continuar →
+          Continuar →
         </Button>
       </AlertDialogFooter>
     </>
@@ -184,7 +309,7 @@ export default function LimparDados() {
         </AlertDialogTitle>
       </AlertDialogHeader>
       <div className="space-y-4 py-4">
-        <p className="font-semibold">Para APAGAR TUDO, você deve:</p>
+        <p className="font-semibold">Para RESETAR o sistema, você deve:</p>
         
         <div>
           <Label htmlFor="senha-admin">1. Digite sua senha de ADMINISTRADOR:</Label>
@@ -200,13 +325,13 @@ export default function LimparDados() {
 
         <div>
           <Label htmlFor="texto-confirmacao">
-            2. Digite EXATAMENTE: <strong>APAGAR TUDO</strong>
+            2. Digite EXATAMENTE: <strong>RESETAR SISTEMA</strong>
           </Label>
           <Input
             id="texto-confirmacao"
             value={textoConfirmacao}
             onChange={(e) => setTextoConfirmacao(e.target.value.toUpperCase())}
-            placeholder="Digite APAGAR TUDO"
+            placeholder="Digite RESETAR SISTEMA"
             className="mt-1"
             autoComplete="off"
           />
@@ -216,20 +341,20 @@ export default function LimparDados() {
           <Label className="mb-2 block">3. Confirme o motivo:</Label>
           <RadioGroup value={motivo} onValueChange={setMotivo} className="space-y-2">
             <div className="flex items-center gap-2">
+              <RadioGroupItem value="limpar-testes" id="limpar-testes" />
+              <Label htmlFor="limpar-testes">Limpar dados de teste</Label>
+            </div>
+            <div className="flex items-center gap-2">
               <RadioGroupItem value="recomecar" id="recomecar" />
               <Label htmlFor="recomecar">Recomeçar do zero</Label>
             </div>
             <div className="flex items-center gap-2">
-              <RadioGroupItem value="trocar" id="trocar" />
-              <Label htmlFor="trocar">Trocar de empresa</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <RadioGroupItem value="teste" id="teste" />
-              <Label htmlFor="teste">Sistema de teste</Label>
+              <RadioGroupItem value="nova-empresa" id="nova-empresa" />
+              <Label htmlFor="nova-empresa">Configurar nova empresa</Label>
             </div>
             <div className="flex items-center gap-2">
               <RadioGroupItem value="outro" id="outro" />
-              <Label htmlFor="outro">Outro</Label>
+              <Label htmlFor="outro">Outro motivo</Label>
             </div>
           </RadioGroup>
         </div>
@@ -245,7 +370,7 @@ export default function LimparDados() {
               }
             />
             <Label htmlFor="entendo" className="text-sm">
-              Entendo que todos os dados serão perdidos
+              Entendo que todos os dados serão removidos
             </Label>
           </div>
           <div className="flex items-center gap-2">
@@ -257,7 +382,7 @@ export default function LimparDados() {
               }
             />
             <Label htmlFor="fez-backup" className="text-sm">
-              Fiz backup dos dados importantes
+              Fiz backup dos dados importantes (se necessário)
             </Label>
           </div>
           <div className="flex items-center gap-2">
@@ -269,38 +394,52 @@ export default function LimparDados() {
               }
             />
             <Label htmlFor="responsabilidade" className="text-sm">
-              Assumo total responsabilidade
+              Confirmo que desejo resetar o sistema
             </Label>
           </div>
         </div>
 
         {loading && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-warning" />
-              <span className="text-sm font-medium">NÃO FECHE o sistema</span>
+              <RotateCcw className="h-4 w-4 text-primary animate-spin" />
+              <span className="text-sm font-medium">{currentStep}</span>
             </div>
             <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground text-center">
+              Aguarde, não feche esta janela...
+            </p>
           </div>
         )}
 
-        <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-center">
-          <p className="text-sm font-semibold text-destructive">
-            ⚠️ ÚLTIMA CHANCE DE CANCELAR
-          </p>
-        </div>
+        {!loading && (
+          <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg text-center">
+            <p className="text-sm font-semibold text-primary">
+              ✓ Após o reset, o sistema estará pronto para uso real
+            </p>
+          </div>
+        )}
       </div>
       <AlertDialogFooter>
-        <AlertDialogCancel onClick={() => setConfirmStep(2)}>
-          Cancelar Tudo
+        <AlertDialogCancel onClick={() => setConfirmStep(2)} disabled={loading}>
+          ← Voltar
         </AlertDialogCancel>
         <Button 
           variant="destructive" 
           onClick={handleZerarSistema}
           disabled={!canProceedStep3 || loading}
-          isLoading={loading}
         >
-          🗑️ APAGAR TUDO AGORA
+          {loading ? (
+            <>
+              <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+              Resetando...
+            </>
+          ) : (
+            <>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              RESETAR SISTEMA
+            </>
+          )}
         </Button>
       </AlertDialogFooter>
     </>
@@ -419,41 +558,44 @@ export default function LimparDados() {
             </div>
           </div>
 
-          {/* Apagar Tudo */}
-          <div className="p-4 border-2 border-destructive rounded-lg bg-destructive/5">
+          {/* Resetar Sistema */}
+          <div className="p-4 border-2 border-primary rounded-lg bg-primary/5">
             <div className="flex items-start gap-3">
-              <Shield className="h-6 w-6 text-destructive mt-0.5 flex-shrink-0" />
+              <RotateCcw className="h-6 w-6 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="font-semibold text-destructive text-lg">
-                  ZERAR SISTEMA COMPLETO
+                <h3 className="font-semibold text-primary text-lg">
+                  RESETAR SISTEMA
                 </h3>
                 <p className="text-sm mt-2">
-                  ⚠️ APAGA <strong>TODOS</strong> OS DADOS DO SISTEMA
+                  Limpa todos os dados de teste para iniciar o sistema do zero
                 </p>
                 <ul className="text-sm mt-2 space-y-1 text-muted-foreground">
-                  <li>• Todos os clientes</li>
-                  <li>• Todos os agendamentos</li>
-                  <li>• Todas as vendas</li>
-                  <li>• Todos os produtos</li>
-                  <li>• Todos os profissionais</li>
-                  <li>• Todo o financeiro</li>
-                  <li>• Configurações (mantém apenas padrão)</li>
+                  <li>• Remove todos os clientes cadastrados</li>
+                  <li>• Remove todos os agendamentos</li>
+                  <li>• Remove todas as vendas/atendimentos</li>
+                  <li>• Remove todos os produtos e serviços</li>
+                  <li>• Remove todos os profissionais</li>
+                  <li>• Remove todo o histórico financeiro</li>
                 </ul>
-                <p className="text-sm mt-3 font-semibold text-destructive">
-                  ⚠️ ESTA AÇÃO NÃO PODE SER DESFEITA!
-                </p>
-                <p className="text-xs mt-1 text-muted-foreground">
-                  Requer: Senha Admin + 3 Confirmações
+                <div className="mt-3 p-2 bg-success/10 border border-success/30 rounded-lg">
+                  <p className="text-xs text-success flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Após o reset, o sistema estará pronto para uso real
+                  </p>
+                </div>
+                <p className="text-xs mt-2 text-muted-foreground">
+                  Requer: Senha Admin + Confirmações de segurança
                 </p>
                 <Button 
-                  variant="destructive" 
+                  variant="default" 
                   className="mt-4"
                   onClick={() => {
                     setShowZerarDialog(true);
                     setConfirmStep(1);
                   }}
                 >
-                  🚨 ZERAR SISTEMA COMPLETO
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Resetar Sistema
                 </Button>
               </div>
             </div>
