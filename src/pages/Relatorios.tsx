@@ -75,14 +75,16 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // Tipos
-type ReportCategory = "vendas" | "clientes" | "profissionais" | "produtos" | "financeiro";
-type VendasReport = "periodo" | "profissional" | "servico" | "forma_pgto";
+type ReportCategory = "vendas" | "clientes" | "profissionais" | "produtos" | "financeiro" | "lucros" | "caixa";
+type VendasReport = "periodo" | "profissional" | "servico" | "forma_pgto" | "historico" | "itens_vendidos" | "clientes_ausentes" | "servicos_lucrativos" | "produtos_lucrativos" | "clientes_lucro";
 type ClientesReport = "novos" | "ativos" | "inativos" | "aniversariantes";
-type ProfissionaisReport = "performance" | "comissoes" | "atendimentos";
+type ProfissionaisReport = "performance" | "comissoes" | "atendimentos" | "valores_pagar" | "pagamentos_realizados";
 type ProdutosReport = "mais_vendidos" | "estoque" | "margem";
-type FinanceiroReport = "dre" | "fluxo";
+type FinanceiroReport = "dre" | "fluxo" | "contas_pagar" | "contas_receber" | "extrato_cartoes";
+type LucrosReport = "lucro_bruto" | "grafico_lucro";
+type CaixaReport = "caixas_fechados" | "sangrias" | "reforcos";
 
-type ReportType = VendasReport | ClientesReport | ProfissionaisReport | ProdutosReport | FinanceiroReport;
+type ReportType = VendasReport | ClientesReport | ProfissionaisReport | ProdutosReport | FinanceiroReport | LucrosReport | CaixaReport;
 
 interface DateRange {
   from: Date;
@@ -95,6 +97,12 @@ const menuItems = {
     { id: "profissional", label: "Por Profissional", icon: UserCheck },
     { id: "servico", label: "Por Serviço", icon: BarChart3 },
     { id: "forma_pgto", label: "Por Forma de Pagamento", icon: CreditCard },
+    { id: "historico", label: "Histórico de Vendas", icon: FileText },
+    { id: "itens_vendidos", label: "Itens Vendidos", icon: ShoppingBag },
+    { id: "clientes_ausentes", label: "Clientes Ausentes", icon: Users },
+    { id: "servicos_lucrativos", label: "Serviços Mais Lucrativos", icon: TrendingUp },
+    { id: "produtos_lucrativos", label: "Produtos Mais Lucrativos", icon: TrendingUp },
+    { id: "clientes_lucro", label: "Clientes que Dão Mais Lucro", icon: DollarSign },
   ],
   clientes: [
     { id: "novos", label: "Novos Clientes", icon: Users },
@@ -106,6 +114,8 @@ const menuItems = {
     { id: "performance", label: "Performance", icon: TrendingUp },
     { id: "comissoes", label: "Comissões", icon: DollarSign },
     { id: "atendimentos", label: "Atendimentos", icon: Activity },
+    { id: "valores_pagar", label: "Valores a Pagar", icon: Wallet },
+    { id: "pagamentos_realizados", label: "Pagamentos Realizados", icon: Check },
   ],
   produtos: [
     { id: "mais_vendidos", label: "Mais Vendidos", icon: ShoppingBag },
@@ -115,15 +125,29 @@ const menuItems = {
   financeiro: [
     { id: "dre", label: "DRE", icon: FileText },
     { id: "fluxo", label: "Fluxo de Caixa", icon: Wallet },
+    { id: "contas_pagar", label: "Contas a Pagar", icon: TrendingDown },
+    { id: "contas_receber", label: "Contas a Receber", icon: TrendingUp },
+    { id: "extrato_cartoes", label: "Extrato de Cartões", icon: CreditCard },
+  ],
+  lucros: [
+    { id: "lucro_bruto", label: "Lucro Bruto", icon: DollarSign },
+    { id: "grafico_lucro", label: "Gráfico de Lucro", icon: BarChart3 },
+  ],
+  caixa: [
+    { id: "caixas_fechados", label: "Caixas Fechados", icon: Wallet },
+    { id: "sangrias", label: "Relatório de Sangrias", icon: TrendingDown },
+    { id: "reforcos", label: "Relatório de Reforços", icon: TrendingUp },
   ],
 };
 
 const categoryLabels: Record<ReportCategory, string> = {
-  vendas: "Vendas",
-  clientes: "Clientes",
-  profissionais: "Profissionais",
-  produtos: "Produtos",
-  financeiro: "Financeiro",
+  vendas: "De Vendas",
+  clientes: "De Clientes",
+  profissionais: "De Profissionais",
+  produtos: "De Estoque",
+  financeiro: "Financeiros",
+  lucros: "De Lucros",
+  caixa: "Da Gaveta do Caixa",
 };
 
 const periodPresets = [
@@ -159,6 +183,11 @@ const Relatorios = () => {
   const [atendimentoProdutos, setAtendimentoProdutos] = useState<any[]>([]);
   const [pagamentos, setPagamentos] = useState<any[]>([]);
   const [comissoesStatus, setComissoesStatus] = useState<Record<string, boolean>>({});
+  const [caixas, setCaixas] = useState<any[]>([]);
+  const [movimentacoesCaixa, setMovimentacoesCaixa] = useState<any[]>([]);
+  const [contasPagar, setContasPagar] = useState<any[]>([]);
+  const [contasReceber, setContasReceber] = useState<any[]>([]);
+  const [diasAusencia, setDiasAusencia] = useState(30);
 
   const fetchData = async () => {
     setLoading(true);
@@ -177,6 +206,10 @@ const Relatorios = () => {
         atendimentoServicosRes,
         atendimentoProdutosRes,
         pagamentosRes,
+        caixasRes,
+        movimentacoesRes,
+        contasPagarRes,
+        contasReceberRes,
       ] = await Promise.all([
         supabase
           .from("atendimentos")
@@ -202,6 +235,26 @@ const Relatorios = () => {
           .select("*")
           .gte("data_hora", startDate.toISOString())
           .lte("data_hora", endDate.toISOString()),
+        supabase
+          .from("caixa")
+          .select("*")
+          .gte("data_abertura", startDate.toISOString())
+          .lte("data_abertura", endDate.toISOString()),
+        supabase
+          .from("caixa_movimentacoes")
+          .select("*, caixa:caixa(data_abertura)")
+          .gte("data_hora", startDate.toISOString())
+          .lte("data_hora", endDate.toISOString()),
+        supabase
+          .from("contas_pagar")
+          .select("*")
+          .gte("data_vencimento", startDate.toISOString())
+          .lte("data_vencimento", endDate.toISOString()),
+        supabase
+          .from("contas_receber")
+          .select("*, cliente:clientes(nome)")
+          .gte("data_vencimento", startDate.toISOString())
+          .lte("data_vencimento", endDate.toISOString()),
       ]);
 
       if (atendimentosRes.data) setAtendimentos(atendimentosRes.data);
@@ -212,6 +265,10 @@ const Relatorios = () => {
       if (atendimentoServicosRes.data) setAtendimentoServicos(atendimentoServicosRes.data);
       if (atendimentoProdutosRes.data) setAtendimentoProdutos(atendimentoProdutosRes.data);
       if (pagamentosRes.data) setPagamentos(pagamentosRes.data);
+      if (caixasRes.data) setCaixas(caixasRes.data);
+      if (movimentacoesRes.data) setMovimentacoesCaixa(movimentacoesRes.data);
+      if (contasPagarRes.data) setContasPagar(contasPagarRes.data);
+      if (contasReceberRes.data) setContasReceber(contasReceberRes.data);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar dados",
@@ -406,6 +463,146 @@ const Relatorios = () => {
     }).sort((a, b) => parseFloat(b.margem) - parseFloat(a.margem));
   }, [produtos]);
 
+  // Cálculo de Lucro Bruto
+  const lucroBruto = useMemo(() => {
+    const finalizados = atendimentos.filter((a) => a.status === "finalizado");
+    const receitaServicos = atendimentoServicos.reduce((sum, as) => sum + (as.subtotal || 0), 0);
+    const receitaProdutos = atendimentoProdutos.reduce((sum, ap) => sum + (ap.subtotal || 0), 0);
+    const custoProdutos = atendimentoProdutos.reduce((sum, ap) => {
+      const custo = ap.produto?.preco_custo || 0;
+      return sum + (custo * (ap.quantidade || 1));
+    }, 0);
+    const comissoes = atendimentoServicos.reduce((sum, as) => sum + (as.comissao_valor || 0), 0);
+    
+    const receitaTotal = receitaServicos + receitaProdutos;
+    const custoTotal = custoProdutos + comissoes;
+    const lucro = receitaTotal - custoTotal;
+    const margemLucro = receitaTotal > 0 ? (lucro / receitaTotal) * 100 : 0;
+
+    const porDia: Record<string, { data: string; receita: number; custo: number; lucro: number }> = {};
+    finalizados.forEach((a) => {
+      const dia = format(new Date(a.data_hora), "dd/MM");
+      if (!porDia[dia]) {
+        porDia[dia] = { data: dia, receita: 0, custo: 0, lucro: 0 };
+      }
+      porDia[dia].receita += a.valor_final || 0;
+    });
+
+    return {
+      receitaServicos,
+      receitaProdutos,
+      receitaTotal,
+      custoProdutos,
+      comissoes,
+      custoTotal,
+      lucro,
+      margemLucro,
+      porDia: Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data)),
+    };
+  }, [atendimentos, atendimentoServicos, atendimentoProdutos]);
+
+  // Clientes ausentes há X dias
+  const clientesAusentes = useMemo(() => {
+    const dataLimite = subDays(new Date(), diasAusencia);
+    return clientes.filter((c) => {
+      if (!c.ultima_visita) return c.total_visitas > 0;
+      const ultimaVisita = new Date(c.ultima_visita);
+      return ultimaVisita < dataLimite && c.total_visitas > 0;
+    }).sort((a, b) => {
+      const dataA = a.ultima_visita ? new Date(a.ultima_visita).getTime() : 0;
+      const dataB = b.ultima_visita ? new Date(b.ultima_visita).getTime() : 0;
+      return dataA - dataB;
+    });
+  }, [clientes, diasAusencia]);
+
+  // Clientes que dão mais lucro
+  const clientesMaisLucro = useMemo(() => {
+    const agrupado: Record<string, { id: string; nome: string; celular: string; totalGasto: number; visitas: number }> = {};
+    
+    atendimentos.filter(a => a.status === "finalizado" && a.cliente_id).forEach((a) => {
+      const clienteId = a.cliente_id;
+      const cliente = clientes.find(c => c.id === clienteId);
+      if (!agrupado[clienteId]) {
+        agrupado[clienteId] = { 
+          id: clienteId, 
+          nome: cliente?.nome || a.cliente?.nome || "Desconhecido",
+          celular: cliente?.celular || a.cliente?.celular || "",
+          totalGasto: 0, 
+          visitas: 0 
+        };
+      }
+      agrupado[clienteId].totalGasto += a.valor_final || 0;
+      agrupado[clienteId].visitas += 1;
+    });
+
+    return Object.values(agrupado).sort((a, b) => b.totalGasto - a.totalGasto).slice(0, 50);
+  }, [atendimentos, clientes]);
+
+  // Serviços mais lucrativos
+  const servicosMaisLucrativos = useMemo(() => {
+    const agrupado: Record<string, { nome: string; quantidade: number; receita: number; comissao: number; lucro: number }> = {};
+    
+    atendimentoServicos.forEach((as) => {
+      const servNome = as.servico?.nome || "Desconhecido";
+      if (!agrupado[servNome]) {
+        agrupado[servNome] = { nome: servNome, quantidade: 0, receita: 0, comissao: 0, lucro: 0 };
+      }
+      agrupado[servNome].quantidade += as.quantidade || 1;
+      agrupado[servNome].receita += as.subtotal || 0;
+      agrupado[servNome].comissao += as.comissao_valor || 0;
+      agrupado[servNome].lucro = agrupado[servNome].receita - agrupado[servNome].comissao;
+    });
+
+    return Object.values(agrupado).sort((a, b) => b.lucro - a.lucro);
+  }, [atendimentoServicos]);
+
+  // Produtos mais lucrativos
+  const produtosMaisLucrativos = useMemo(() => {
+    const agrupado: Record<string, { nome: string; quantidade: number; receita: number; custo: number; lucro: number; margem: number }> = {};
+    
+    atendimentoProdutos.forEach((ap) => {
+      const prodNome = ap.produto?.nome || "Desconhecido";
+      const custo = ap.produto?.preco_custo || 0;
+      const quantidade = ap.quantidade || 1;
+      if (!agrupado[prodNome]) {
+        agrupado[prodNome] = { nome: prodNome, quantidade: 0, receita: 0, custo: 0, lucro: 0, margem: 0 };
+      }
+      agrupado[prodNome].quantidade += quantidade;
+      agrupado[prodNome].receita += ap.subtotal || 0;
+      agrupado[prodNome].custo += custo * quantidade;
+      agrupado[prodNome].lucro = agrupado[prodNome].receita - agrupado[prodNome].custo;
+      agrupado[prodNome].margem = agrupado[prodNome].receita > 0 ? (agrupado[prodNome].lucro / agrupado[prodNome].receita) * 100 : 0;
+    });
+
+    return Object.values(agrupado).sort((a, b) => b.lucro - a.lucro);
+  }, [atendimentoProdutos]);
+
+  // Caixas fechados
+  const caixasFechados = useMemo(() => {
+    return caixas.filter(c => c.status === "fechado").map(c => ({
+      ...c,
+      dataAbertura: format(new Date(c.data_abertura), "dd/MM/yyyy HH:mm"),
+      dataFechamento: c.data_fechamento ? format(new Date(c.data_fechamento), "dd/MM/yyyy HH:mm") : "-",
+    }));
+  }, [caixas]);
+
+  // Sangrias e reforços
+  const sangrias = useMemo(() => {
+    return movimentacoesCaixa.filter(m => m.tipo === "saida" && m.categoria === "sangria");
+  }, [movimentacoesCaixa]);
+
+  const reforcos = useMemo(() => {
+    return movimentacoesCaixa.filter(m => m.tipo === "entrada" && m.categoria === "reforco");
+  }, [movimentacoesCaixa]);
+
+  // Valores a pagar profissionais
+  const valoresAPagar = useMemo(() => {
+    return comissoesPorProfissional.map(p => ({
+      ...p,
+      pago: comissoesStatus[p.id] || false,
+    }));
+  }, [comissoesPorProfissional, comissoesStatus]);
+
   // Exportar para Excel
   const exportToExcel = (data: any[], filename: string) => {
     const ws = XLSX.utils.json_to_sheet(data);
@@ -452,6 +649,10 @@ const Relatorios = () => {
         return renderProdutosReport();
       case "financeiro":
         return renderFinanceiroReport();
+      case "lucros":
+        return renderLucrosReport();
+      case "caixa":
+        return renderCaixaReport();
       default:
         return null;
     }
@@ -1431,6 +1632,406 @@ const Relatorios = () => {
                         <TableCell className="text-right text-green-600">{formatCurrency(item.valor)}</TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+    }
+  };
+
+  const renderLucrosReport = () => {
+    switch (reportType) {
+      case "lucro_bruto":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Receita Total</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(lucroBruto.receitaTotal)}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Custo Produtos</p>
+                      <p className="text-2xl font-bold text-red-600">{formatCurrency(lucroBruto.custoProdutos)}</p>
+                    </div>
+                    <TrendingDown className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Comissões</p>
+                      <p className="text-2xl font-bold text-orange-600">{formatCurrency(lucroBruto.comissoes)}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Lucro Bruto</p>
+                      <p className={cn("text-2xl font-bold", lucroBruto.lucro >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(lucroBruto.lucro)}</p>
+                    </div>
+                    <PieChart className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Detalhamento do Lucro</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-3 border-b">
+                    <span className="font-semibold">Receita de Serviços</span>
+                    <span className="font-medium text-green-600">{formatCurrency(lucroBruto.receitaServicos)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b">
+                    <span className="font-semibold">Receita de Produtos</span>
+                    <span className="font-medium text-green-600">{formatCurrency(lucroBruto.receitaProdutos)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b bg-green-50 dark:bg-green-950/30 px-3 rounded">
+                    <span className="font-semibold">= Receita Total</span>
+                    <span className="font-bold text-green-600">{formatCurrency(lucroBruto.receitaTotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 pl-4">
+                    <span className="text-muted-foreground">(-) Custo dos Produtos</span>
+                    <span className="text-red-600">{formatCurrency(lucroBruto.custoProdutos)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 pl-4">
+                    <span className="text-muted-foreground">(-) Comissões</span>
+                    <span className="text-red-600">{formatCurrency(lucroBruto.comissoes)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-t-2 bg-muted/50 px-3 rounded">
+                    <span className="font-bold text-lg">= Lucro Bruto</span>
+                    <span className={cn("font-bold text-lg", lucroBruto.lucro >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(lucroBruto.lucro)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted-foreground">Margem de Lucro</span>
+                    <Badge variant={lucroBruto.margemLucro >= 30 ? "default" : lucroBruto.margemLucro >= 15 ? "secondary" : "destructive"}>
+                      {lucroBruto.margemLucro.toFixed(1)}%
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "grafico_lucro":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Composição da Receita</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RePieChart>
+                      <Pie
+                        data={[
+                          { name: "Serviços", value: lucroBruto.receitaServicos },
+                          { name: "Produtos", value: lucroBruto.receitaProdutos },
+                        ]}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      >
+                        <Cell fill="#007AFF" />
+                        <Cell fill="#34C759" />
+                      </Pie>
+                      <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Valor"]} />
+                      <Legend />
+                    </RePieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Distribuição de Custos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RePieChart>
+                      <Pie
+                        data={[
+                          { name: "Custo Produtos", value: lucroBruto.custoProdutos },
+                          { name: "Comissões", value: lucroBruto.comissoes },
+                          { name: "Lucro", value: lucroBruto.lucro > 0 ? lucroBruto.lucro : 0 },
+                        ]}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      >
+                        <Cell fill="#FF3B30" />
+                        <Cell fill="#FF9500" />
+                        <Cell fill="#34C759" />
+                      </Pie>
+                      <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Valor"]} />
+                      <Legend />
+                    </RePieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Evolução do Faturamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={lucroBruto.porDia}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="data" className="text-xs" />
+                    <YAxis className="text-xs" tickFormatter={(v) => `R$${v}`} />
+                    <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Receita"]} />
+                    <Bar dataKey="receita" fill="#007AFF" radius={[4, 4, 0, 0]} name="Receita" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        );
+    }
+  };
+
+  const renderCaixaReport = () => {
+    switch (reportType) {
+      case "caixas_fechados":
+        const totalCaixas = caixasFechados.length;
+        const totalMovimentado = caixasFechados.reduce((sum, c) => sum + (c.valor_final || 0), 0);
+        const totalDiferenca = caixasFechados.reduce((sum, c) => sum + (c.diferenca || 0), 0);
+
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Caixas Fechados</p>
+                      <p className="text-2xl font-bold">{totalCaixas}</p>
+                    </div>
+                    <Wallet className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Movimentado</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(totalMovimentado)}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Diferença Total</p>
+                      <p className={cn("text-2xl font-bold", totalDiferenca >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(totalDiferenca)}</p>
+                    </div>
+                    <Activity className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Histórico de Caixas</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(caixasFechados, "caixas-fechados")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Abertura</TableHead>
+                      <TableHead>Fechamento</TableHead>
+                      <TableHead className="text-right">Valor Inicial</TableHead>
+                      <TableHead className="text-right">Valor Final</TableHead>
+                      <TableHead className="text-right">Diferença</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {caixasFechados.map((caixa) => (
+                      <TableRow key={caixa.id}>
+                        <TableCell>{caixa.dataAbertura}</TableCell>
+                        <TableCell>{caixa.dataFechamento}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(caixa.valor_inicial || 0)}</TableCell>
+                        <TableCell className="text-right text-green-600">{formatCurrency(caixa.valor_final || 0)}</TableCell>
+                        <TableCell className={cn("text-right font-medium", (caixa.diferenca || 0) >= 0 ? "text-green-600" : "text-red-600")}>
+                          {formatCurrency(caixa.diferenca || 0)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {caixasFechados.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhum caixa fechado no período
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "sangrias":
+        const totalSangrias = sangrias.reduce((sum, s) => sum + (s.valor || 0), 0);
+
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total de Sangrias</p>
+                      <p className="text-2xl font-bold">{sangrias.length}</p>
+                    </div>
+                    <TrendingDown className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Valor Total</p>
+                      <p className="text-2xl font-bold text-red-600">{formatCurrency(totalSangrias)}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Sangrias Realizadas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sangrias.map((s) => (
+                      <TableRow key={s.id}>
+                        <TableCell>{format(new Date(s.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
+                        <TableCell>{s.descricao}</TableCell>
+                        <TableCell className="text-right text-red-600">{formatCurrency(s.valor)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {sangrias.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                          Nenhuma sangria no período
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "reforcos":
+        const totalReforcos = reforcos.reduce((sum, r) => sum + (r.valor || 0), 0);
+
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total de Reforços</p>
+                      <p className="text-2xl font-bold">{reforcos.length}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Valor Total</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(totalReforcos)}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Reforços Realizados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reforcos.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell>{format(new Date(r.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
+                        <TableCell>{r.descricao}</TableCell>
+                        <TableCell className="text-right text-green-600">{formatCurrency(r.valor)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {reforcos.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                          Nenhum reforço no período
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
