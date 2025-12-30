@@ -37,6 +37,14 @@ import MetasSalao from "./pages/MetasSalao";
 import RelatorioCompleto from "./pages/RelatorioCompleto";
 import Configuracoes from "./pages/Configuracoes";
 import Perfil from "./pages/Perfil";
+import CaixaExtrato from "./pages/CaixaExtrato";
+import CaixaComandas from "./pages/CaixaComandas";
+import CaixaDividas from "./pages/CaixaDividas";
+import CaixaGorjetas from "./pages/CaixaGorjetas";
+import CaixaHistorico from "./pages/CaixaHistorico";
+import CaixaGaveta from "./pages/CaixaGaveta";
+import CaixaFechar from "./pages/CaixaFechar";
+import CaixaPDV from "./pages/CaixaPDV";
 
 const queryClient = new QueryClient();
 
@@ -72,9 +80,19 @@ const App = () => (
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/atendimentos" element={<Atendimentos />} />
                 <Route path="/caixa" element={<Caixa />} />
+                <Route path="/caixa/extrato" element={<CaixaExtrato />} />
+                <Route path="/caixa/comandas" element={<CaixaComandas />} />
+                <Route path="/caixa/dividas" element={<CaixaDividas />} />
+                <Route path="/caixa/gorjetas" element={<CaixaGorjetas />} />
+                <Route path="/caixa/historico" element={<CaixaHistorico />} />
+                <Route path="/caixa/gaveta" element={<CaixaGaveta />} />
+                <Route path="/caixa/fechar" element={<CaixaFechar />} />
+                <Route path="/caixa/pdv" element={<CaixaPDV />} />
                 <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="/financeiro/vales" element={<Vales />} />
                 <Route path="/financeiro/fechamento-semanal" element={<FechamentoSemanal />} />
+                <Route path="/financeiro/dividas" element={<CaixaDividas />} />
+                <Route path="/financeiro/cheques" element={<Caixa />} />
                 <Route path="/relatorios" element={<Relatorios />} />
                 <Route path="/relatorios/completo" element={<RelatorioCompleto />} />
                 <Route path="/usuarios" element={<Usuarios />} />
