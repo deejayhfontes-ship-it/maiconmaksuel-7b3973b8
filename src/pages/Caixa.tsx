@@ -105,6 +105,18 @@ interface ComissaoProfissional {
   comissao_servicos: number;
   comissao_produtos: number;
   total_comissao: number;
+  vales_abertos: number;
+  comissao_liquida: number;
+}
+
+interface ValeProfissional {
+  id: string;
+  profissional_id: string;
+  valor_total: number;
+  saldo_restante: number;
+  status: string;
+  motivo: string;
+  data_lancamento: string;
 }
 
 const formatPrice = (price: number) => {
@@ -133,6 +145,8 @@ const Caixa = () => {
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [despesas, setDespesas] = useState<DespesaRapida[]>([]);
   const [comissoesProfissionais, setComissoesProfissionais] = useState<ComissaoProfissional[]>([]);
+  const [valesProfissionais, setValesProfissionais] = useState<ValeProfissional[]>([]);
+  const [descontarVales, setDescontarVales] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [tabAtiva, setTabAtiva] = useState("todas");
 
@@ -206,6 +220,14 @@ const Caixa = () => {
         .gte("data_hora", inicioHoje)
         .lte("data_hora", fimHoje.toISOString());
 
+      // Buscar vales abertos de todos os profissionais
+      const { data: valesAbertos } = await supabase
+        .from("vales")
+        .select("*")
+        .eq("status", "aberto");
+      
+      setValesProfissionais(valesAbertos || []);
+
       if (atendimentosHoje && atendimentosHoje.length > 0) {
         const atendimentoIds = atendimentosHoje.map(a => a.id);
 
@@ -232,6 +254,10 @@ const Caixa = () => {
           if (!prof) return;
           
           if (!comissoesMap.has(prof.id)) {
+            // Calcular vales abertos deste profissional
+            const valesProf = (valesAbertos || []).filter(v => v.profissional_id === prof.id);
+            const totalVales = valesProf.reduce((sum, v) => sum + Number(v.saldo_restante || 0), 0);
+            
             comissoesMap.set(prof.id, {
               id: prof.id,
               nome: prof.nome,
@@ -240,12 +266,15 @@ const Caixa = () => {
               comissao_servicos: 0,
               comissao_produtos: 0,
               total_comissao: 0,
+              vales_abertos: totalVales,
+              comissao_liquida: 0,
             });
           }
           
           const existing = comissoesMap.get(prof.id)!;
           existing.comissao_servicos += Number(item.comissao_valor);
           existing.total_comissao += Number(item.comissao_valor);
+          existing.comissao_liquida = existing.total_comissao - existing.vales_abertos;
         });
 
         setComissoesProfissionais(Array.from(comissoesMap.values()));
@@ -858,7 +887,7 @@ const Caixa = () => {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {comissoesProfissionais.map((prof) => (
-                  <Card key={prof.id} className="bg-muted/30">
+                  <Card key={prof.id} className={cn("bg-muted/30", prof.vales_abertos > 0 && "border-amber-500/50")}>
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-12 w-12">
@@ -880,17 +909,40 @@ const Caixa = () => {
                               Serviços: {formatPrice(prof.comissao_servicos)}
                             </p>
                           )}
+                          {prof.vales_abertos > 0 && (
+                            <div className="mt-2 pt-2 border-t border-dashed">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-amber-600">Vales abertos:</span>
+                                <span className="text-xs font-medium text-amber-600">-{formatPrice(prof.vales_abertos)}</span>
+                              </div>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="text-xs font-medium">Líquido:</span>
+                                <span className={cn("text-sm font-bold", prof.comissao_liquida >= 0 ? "text-success" : "text-destructive")}>
+                                  {formatPrice(prof.comissao_liquida)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t text-right">
-                <p className="text-sm text-muted-foreground">Total a pagar:</p>
-                <p className="text-xl font-bold text-success">
-                  {formatPrice(comissoesProfissionais.reduce((acc, p) => acc + p.total_comissao, 0))}
-                </p>
+              <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                <div>
+                  {comissoesProfissionais.some(p => p.vales_abertos > 0) && (
+                    <p className="text-sm text-amber-600">
+                      Total em vales: {formatPrice(comissoesProfissionais.reduce((acc, p) => acc + p.vales_abertos, 0))}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total a pagar:</p>
+                  <p className="text-xl font-bold text-success">
+                    {formatPrice(comissoesProfissionais.reduce((acc, p) => acc + p.total_comissao, 0))}
+                  </p>
+                </div>
               </div>
             </>
           )}

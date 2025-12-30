@@ -195,6 +195,7 @@ const Relatorios = () => {
   const [movimentacoesCaixa, setMovimentacoesCaixa] = useState<any[]>([]);
   const [contasPagar, setContasPagar] = useState<any[]>([]);
   const [contasReceber, setContasReceber] = useState<any[]>([]);
+  const [vales, setVales] = useState<any[]>([]);
   const [diasAusencia, setDiasAusencia] = useState(30);
 
   const fetchData = async () => {
@@ -218,6 +219,7 @@ const Relatorios = () => {
         movimentacoesRes,
         contasPagarRes,
         contasReceberRes,
+        valesRes,
       ] = await Promise.all([
         supabase
           .from("atendimentos")
@@ -263,6 +265,11 @@ const Relatorios = () => {
           .select("*, cliente:clientes(nome)")
           .gte("data_vencimento", startDate.toISOString())
           .lte("data_vencimento", endDate.toISOString()),
+        supabase
+          .from("vales")
+          .select("*, profissional:profissionais(nome, foto_url, cor_agenda)")
+          .gte("data_lancamento", format(startDate, "yyyy-MM-dd"))
+          .lte("data_lancamento", format(endDate, "yyyy-MM-dd")),
       ]);
 
       if (atendimentosRes.data) setAtendimentos(atendimentosRes.data);
@@ -277,6 +284,7 @@ const Relatorios = () => {
       if (movimentacoesRes.data) setMovimentacoesCaixa(movimentacoesRes.data);
       if (contasPagarRes.data) setContasPagar(contasPagarRes.data);
       if (contasReceberRes.data) setContasReceber(contasReceberRes.data);
+      if (valesRes.data) setVales(valesRes.data);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar dados",
@@ -610,6 +618,50 @@ const Relatorios = () => {
       pago: comissoesStatus[p.id] || false,
     }));
   }, [comissoesPorProfissional, comissoesStatus]);
+
+  // Vales e adiantamentos
+  const valesRelatorio = useMemo(() => {
+    const totalAbertos = vales.filter(v => v.status === "aberto").reduce((sum, v) => sum + Number(v.saldo_restante || 0), 0);
+    const totalQuitados = vales.filter(v => v.status === "quitado").reduce((sum, v) => sum + Number(v.valor_total || 0), 0);
+    const qtdAbertos = vales.filter(v => v.status === "aberto").length;
+    const qtdQuitados = vales.filter(v => v.status === "quitado").length;
+    
+    // Agrupar por profissional
+    const porProfissional: Record<string, { nome: string; foto_url: string | null; cor_agenda: string; total: number; abertos: number; quitados: number; saldo: number }> = {};
+    
+    vales.forEach(v => {
+      const profId = v.profissional_id;
+      const profNome = v.profissional?.nome || "Desconhecido";
+      if (!porProfissional[profId]) {
+        porProfissional[profId] = {
+          nome: profNome,
+          foto_url: v.profissional?.foto_url || null,
+          cor_agenda: v.profissional?.cor_agenda || "#007AFF",
+          total: 0,
+          abertos: 0,
+          quitados: 0,
+          saldo: 0,
+        };
+      }
+      porProfissional[profId].total += 1;
+      if (v.status === "aberto") {
+        porProfissional[profId].abertos += 1;
+        porProfissional[profId].saldo += Number(v.saldo_restante || 0);
+      } else {
+        porProfissional[profId].quitados += 1;
+      }
+    });
+
+    return {
+      totalAbertos,
+      totalQuitados,
+      qtdAbertos,
+      qtdQuitados,
+      totalGeral: vales.reduce((sum, v) => sum + Number(v.valor_total || 0), 0),
+      porProfissional: Object.entries(porProfissional).map(([id, data]) => ({ id, ...data })).sort((a, b) => b.saldo - a.saldo),
+      lista: vales.sort((a, b) => new Date(b.data_lancamento).getTime() - new Date(a.data_lancamento).getTime()),
+    };
+  }, [vales]);
 
   // Exportar para Excel
   const exportToExcel = (data: any[], filename: string) => {
@@ -1260,9 +1312,24 @@ const Relatorios = () => {
         );
 
       case "comissoes":
+        // Calcular vales por profissional para o período
+        const valesPorProf: Record<string, number> = {};
+        vales.filter(v => v.status === "aberto").forEach(v => {
+          if (!valesPorProf[v.profissional_id]) valesPorProf[v.profissional_id] = 0;
+          valesPorProf[v.profissional_id] += Number(v.saldo_restante || 0);
+        });
+
+        const comissoesComVales = comissoesPorProfissional.map(p => ({
+          ...p,
+          valesAbertos: valesPorProf[p.id] || 0,
+          comissaoLiquida: p.totalComissao - (valesPorProf[p.id] || 0),
+        }));
+
+        const totalValesAbertos = Object.values(valesPorProf).reduce((sum, v) => sum + v, 0);
+
         return (
           <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
@@ -1278,10 +1345,10 @@ const Relatorios = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Profissionais</p>
-                      <p className="text-2xl font-bold">{comissoesPorProfissional.length}</p>
+                      <p className="text-sm text-muted-foreground">Vales a Descontar</p>
+                      <p className="text-2xl font-bold text-amber-600">-{formatCurrency(totalValesAbertos)}</p>
                     </div>
-                    <Users className="h-8 w-8 text-blue-500" />
+                    <FileText className="h-8 w-8 text-amber-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -1289,10 +1356,21 @@ const Relatorios = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Média por Profissional</p>
-                      <p className="text-2xl font-bold">{formatCurrency(comissoesPorProfissional.length > 0 ? comissoesPorProfissional.reduce((sum, p) => sum + p.totalComissao, 0) / comissoesPorProfissional.length : 0)}</p>
+                      <p className="text-sm text-muted-foreground">Líquido a Pagar</p>
+                      <p className="text-2xl font-bold text-primary">{formatCurrency(comissoesPorProfissional.reduce((sum, p) => sum + p.totalComissao, 0) - totalValesAbertos)}</p>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-purple-500" />
+                    <Wallet className="h-8 w-8 text-primary" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Profissionais</p>
+                      <p className="text-2xl font-bold">{comissoesPorProfissional.length}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-blue-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -1301,7 +1379,7 @@ const Relatorios = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Comissões por Profissional</CardTitle>
-                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => exportToExcel(comissoesPorProfissional.map(p => ({ profissional: p.nome, atendimentos: p.atendimentos, faturamento: p.totalServicos, comissao: p.totalComissao })), "comissoes")}>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => exportToExcel(comissoesComVales.map(p => ({ profissional: p.nome, atendimentos: p.atendimentos, faturamento: p.totalServicos, comissao_bruta: p.totalComissao, vales: p.valesAbertos, comissao_liquida: p.comissaoLiquida })), "comissoes")}>
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
                 </Button>
               </CardHeader>
@@ -1310,20 +1388,30 @@ const Relatorios = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Profissional</TableHead>
-                      <TableHead className="text-center">Atendimentos</TableHead>
-                      <TableHead className="text-right">Faturamento</TableHead>
-                      <TableHead className="text-right">Comissão</TableHead>
+                      <TableHead className="text-center">Atend.</TableHead>
+                      <TableHead className="text-right">Comissão Bruta</TableHead>
+                      <TableHead className="text-right">Vales</TableHead>
+                      <TableHead className="text-right">Líquido</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead>Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {comissoesPorProfissional.map((item) => (
+                    {comissoesComVales.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.nome}</TableCell>
                         <TableCell className="text-center">{item.atendimentos}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.totalServicos)}</TableCell>
-                        <TableCell className="text-right font-semibold text-green-600">{formatCurrency(item.totalComissao)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.totalComissao)}</TableCell>
+                        <TableCell className="text-right">
+                          {item.valesAbertos > 0 ? (
+                            <span className="text-amber-600">-{formatCurrency(item.valesAbertos)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className={cn("text-right font-semibold", item.comissaoLiquida >= 0 ? "text-green-600" : "text-red-600")}>
+                          {formatCurrency(item.comissaoLiquida)}
+                        </TableCell>
                         <TableCell className="text-center">
                           <Badge variant={comissoesStatus[item.id] ? "default" : "secondary"}>
                             {comissoesStatus[item.id] ? "Pago" : "Pendente"}
@@ -1336,7 +1424,7 @@ const Relatorios = () => {
                             onClick={() => setComissoesStatus(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
                           >
                             <Check className="h-3 w-3 mr-1" />
-                            {comissoesStatus[item.id] ? "Desfazer" : "Marcar Pago"}
+                            {comissoesStatus[item.id] ? "Desfazer" : "Pagar"}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -1527,21 +1615,144 @@ const Relatorios = () => {
             )}
 
             {reportType === "vales_adiantamentos" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" style={{ color: "#FFCC00" }} />
-                    Vales e Adiantamentos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhum vale ou adiantamento registrado no período.</p>
-                    <p className="text-sm mt-2">Os vales serão listados aqui quando houver registros.</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                {/* Cards de resumo */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total em Aberto</p>
+                          <p className="text-2xl font-bold text-amber-600">{formatCurrency(valesRelatorio.totalAbertos)}</p>
+                        </div>
+                        <FileText className="h-8 w-8 text-amber-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Vales Abertos</p>
+                          <p className="text-2xl font-bold">{valesRelatorio.qtdAbertos}</p>
+                        </div>
+                        <Archive className="h-8 w-8 text-red-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Vales Quitados</p>
+                          <p className="text-2xl font-bold text-green-600">{valesRelatorio.qtdQuitados}</p>
+                        </div>
+                        <CheckCircle className="h-8 w-8 text-green-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total no Período</p>
+                          <p className="text-2xl font-bold">{formatCurrency(valesRelatorio.totalGeral)}</p>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-blue-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Por profissional */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Vales por Profissional</CardTitle>
+                    {valesRelatorio.porProfissional.length > 0 && (
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => exportToExcel(valesRelatorio.porProfissional.map(p => ({ profissional: p.nome, vales_abertos: p.abertos, vales_quitados: p.quitados, saldo_devedor: p.saldo })), "vales_profissionais")}>
+                        <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    {valesRelatorio.porProfissional.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Profissional</TableHead>
+                            <TableHead className="text-center">Vales Abertos</TableHead>
+                            <TableHead className="text-center">Vales Quitados</TableHead>
+                            <TableHead className="text-right">Saldo Devedor</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {valesRelatorio.porProfissional.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="font-medium">{item.nome}</TableCell>
+                              <TableCell className="text-center">
+                                {item.abertos > 0 ? (
+                                  <Badge variant="destructive">{item.abertos}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">0</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="secondary">{item.quitados}</Badge>
+                              </TableCell>
+                              <TableCell className={cn("text-right font-semibold", item.saldo > 0 ? "text-red-600" : "text-green-600")}>
+                                {formatCurrency(item.saldo)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">Nenhum vale no período selecionado</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Lista de vales */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Histórico de Vales</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {valesRelatorio.lista.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Profissional</TableHead>
+                            <TableHead>Motivo</TableHead>
+                            <TableHead className="text-right">Valor</TableHead>
+                            <TableHead className="text-right">Saldo</TableHead>
+                            <TableHead className="text-center">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {valesRelatorio.lista.map((vale) => (
+                            <TableRow key={vale.id}>
+                              <TableCell>{format(new Date(vale.data_lancamento), "dd/MM/yyyy")}</TableCell>
+                              <TableCell className="font-medium">{vale.profissional?.nome || "—"}</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{vale.motivo}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(vale.valor_total)}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(vale.saldo_restante || 0)}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={vale.status === "quitado" ? "default" : "destructive"}>
+                                  {vale.status === "quitado" ? "Quitado" : "Aberto"}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">Nenhum vale registrado no período</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {reportType === "valores_pagar" && (
