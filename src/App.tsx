@@ -34,6 +34,7 @@ import Vales from "./pages/Vales";
 import ProfissionalDetalhe from "./pages/ProfissionalDetalhe";
 import FechamentoSemanal from "./pages/FechamentoSemanal";
 import MetasSalao from "./pages/MetasSalao";
+import RelatorioCompleto from "./pages/RelatorioCompleto";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ const App = () => (
                 <Route path="/financeiro/vales" element={<Vales />} />
                 <Route path="/financeiro/fechamento-semanal" element={<FechamentoSemanal />} />
                 <Route path="/relatorios" element={<Relatorios />} />
+                <Route path="/relatorios/completo" element={<RelatorioCompleto />} />
                 <Route path="/usuarios" element={<Usuarios />} />
                 <Route path="/notas-fiscais" element={<NotasFiscais />} />
                 <Route path="/nota-fiscal/:id" element={<NotaFiscalDetalhe />} />
