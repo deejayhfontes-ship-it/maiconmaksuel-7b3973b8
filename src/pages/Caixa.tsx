@@ -657,8 +657,8 @@ const Caixa = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="bg-green-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 shadow-md">
-            <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+          <div className="bg-green-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 shadow-lg animate-pulse">
+            <div className="w-3 h-3 bg-white rounded-full" />
             <span className="font-semibold">CAIXA ABERTO</span>
           </div>
           <div className="text-sm text-muted-foreground">
