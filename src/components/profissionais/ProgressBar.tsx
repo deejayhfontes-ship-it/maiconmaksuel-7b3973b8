@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Scissors, Package, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 
 interface ProgressBarProps {
   value: number;
@@ -26,10 +27,10 @@ export function ProgressBar({
     return "progress-danger";
   };
   
-  const getIcon = () => {
-    if (percentage >= 90) return "🔥";
-    if (percentage >= 70) return "⚠️";
-    return "🔴";
+  const getStatusIcon = () => {
+    if (percentage >= 90) return <TrendingUp className="h-3 w-3 text-success" />;
+    if (percentage >= 70) return <AlertTriangle className="h-3 w-3 text-warning" />;
+    return <TrendingDown className="h-3 w-3 text-destructive" />;
   };
   
   const getTextColor = () => {
@@ -69,7 +70,7 @@ export function ProgressBar({
       </div>
       {showRemaining && remaining > 0 && (
         <div className="flex items-center justify-end gap-1 text-xs">
-          <span>{getIcon()}</span>
+          {getStatusIcon()}
           <span className={getTextColor()}>
             Faltam {formatCurrency(remaining)}
           </span>
@@ -147,7 +148,7 @@ export function DualProgressCard({
       {/* Meta Serviços */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm">💇</span>
+          <Scissors className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">META SERVIÇOS - {mesReferencia.toUpperCase()}</span>
         </div>
         <div className="text-xs text-muted-foreground">
@@ -159,7 +160,7 @@ export function DualProgressCard({
       {/* Meta Produtos */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm">🛒</span>
+          <Package className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">META PRODUTOS - {mesReferencia.toUpperCase()}</span>
         </div>
         {metaProdutos > 0 ? (
