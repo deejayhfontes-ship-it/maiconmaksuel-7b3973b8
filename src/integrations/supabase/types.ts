@@ -1918,6 +1918,74 @@ export type Database = {
         }
         Relationships: []
       }
+      vales: {
+        Row: {
+          comprovante_url: string | null
+          created_at: string
+          data_lancamento: string
+          data_quitacao: string | null
+          forma_desconto: string
+          id: string
+          motivo: string
+          observacoes: string | null
+          parcelas_pagas: number
+          parcelas_total: number | null
+          profissional_id: string
+          quitado_por: string | null
+          saldo_restante: number | null
+          status: string
+          updated_at: string
+          valor_pago: number
+          valor_total: number
+        }
+        Insert: {
+          comprovante_url?: string | null
+          created_at?: string
+          data_lancamento?: string
+          data_quitacao?: string | null
+          forma_desconto?: string
+          id?: string
+          motivo: string
+          observacoes?: string | null
+          parcelas_pagas?: number
+          parcelas_total?: number | null
+          profissional_id: string
+          quitado_por?: string | null
+          saldo_restante?: number | null
+          status?: string
+          updated_at?: string
+          valor_pago?: number
+          valor_total: number
+        }
+        Update: {
+          comprovante_url?: string | null
+          created_at?: string
+          data_lancamento?: string
+          data_quitacao?: string | null
+          forma_desconto?: string
+          id?: string
+          motivo?: string
+          observacoes?: string | null
+          parcelas_pagas?: number
+          parcelas_total?: number | null
+          profissional_id?: string
+          quitado_por?: string | null
+          saldo_restante?: number | null
+          status?: string
+          updated_at?: string
+          valor_pago?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vales_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
