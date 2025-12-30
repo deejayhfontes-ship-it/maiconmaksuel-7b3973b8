@@ -49,10 +49,6 @@ import {
   Mail,
   MessageSquare,
   Check,
-  ArrowUpCircle,
-  CheckCircle2,
-  Inbox,
-  ArrowLeftRight,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -79,86 +75,55 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // Tipos
-type ReportCategory = "clientes" | "profissionais" | "cadastros" | "financeiros" | "vendas" | "lucros" | "gaveta_caixa" | "estoque";
-type ClientesReport = "novos" | "ativos" | "inativos" | "aniversariantes";
-type ProfissionaisReport = "valores_pagar" | "pagamentos_realizados" | "comissoes" | "vales";
-type CadastrosReport = "clientes_cadastrados" | "profissionais_cadastrados" | "servicos_cadastrados" | "produtos_cadastrados";
-type FinanceirosReport = "dre" | "fluxo_caixa" | "receitas_despesas";
+type ReportCategory = "vendas" | "clientes" | "profissionais" | "produtos" | "financeiro";
 type VendasReport = "periodo" | "profissional" | "servico" | "forma_pgto";
-type LucrosReport = "lucros_servicos" | "lucros_produtos";
-type GavetaCaixaReport = "movimentacoes" | "sangrias" | "suprimentos";
-type EstoqueReport = "posicao_estoque" | "estoque_minimo" | "margem";
+type ClientesReport = "novos" | "ativos" | "inativos" | "aniversariantes";
+type ProfissionaisReport = "performance" | "comissoes" | "atendimentos";
+type ProdutosReport = "mais_vendidos" | "estoque" | "margem";
+type FinanceiroReport = "dre" | "fluxo";
 
-type ReportType = ClientesReport | ProfissionaisReport | CadastrosReport | FinanceirosReport | VendasReport | LucrosReport | GavetaCaixaReport | EstoqueReport;
+type ReportType = VendasReport | ClientesReport | ProfissionaisReport | ProdutosReport | FinanceiroReport;
 
 interface DateRange {
   from: Date;
   to: Date;
 }
 
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: any;
-  color?: string;
-  description?: string;
-}
-
-const menuItems: Record<ReportCategory, MenuItem[]> = {
+const menuItems = {
+  vendas: [
+    { id: "periodo", label: "Por Período", icon: CalendarIcon },
+    { id: "profissional", label: "Por Profissional", icon: UserCheck },
+    { id: "servico", label: "Por Serviço", icon: BarChart3 },
+    { id: "forma_pgto", label: "Por Forma de Pagamento", icon: CreditCard },
+  ],
   clientes: [
-    { id: "novos", label: "Novos Clientes", icon: Users, color: "#007AFF" },
-    { id: "ativos", label: "Clientes Ativos", icon: UserCheck, color: "#34C759" },
-    { id: "inativos", label: "Clientes Inativos", icon: Users, color: "#FF9500" },
-    { id: "aniversariantes", label: "Aniversariantes", icon: Cake, color: "#FF2D55" },
+    { id: "novos", label: "Novos Clientes", icon: Users },
+    { id: "ativos", label: "Clientes Ativos", icon: UserCheck },
+    { id: "inativos", label: "Clientes Inativos", icon: Users },
+    { id: "aniversariantes", label: "Aniversariantes", icon: Cake },
   ],
   profissionais: [
-    { id: "valores_pagar", label: "Valores a Pagar", icon: Wallet, color: "#FF3B30" },
-    { id: "pagamentos_realizados", label: "Pagamentos Realizados", icon: CheckCircle2, color: "#34C759" },
-    { id: "comissoes", label: "Relatório de Comissões", icon: DollarSign, color: "#007AFF" },
-    { id: "vales", label: "Relatório de Vales", icon: FileText, color: "#AF52DE" },
+    { id: "performance", label: "Performance", icon: TrendingUp },
+    { id: "comissoes", label: "Comissões", icon: DollarSign },
+    { id: "atendimentos", label: "Atendimentos", icon: Activity },
   ],
-  cadastros: [
-    { id: "clientes_cadastrados", label: "Clientes Cadastrados", icon: Users, color: "#007AFF" },
-    { id: "profissionais_cadastrados", label: "Profissionais Cadastrados", icon: UserCheck, color: "#34C759" },
-    { id: "servicos_cadastrados", label: "Serviços Cadastrados", icon: Activity, color: "#FF9500" },
-    { id: "produtos_cadastrados", label: "Produtos Cadastrados", icon: Package, color: "#AF52DE" },
+  produtos: [
+    { id: "mais_vendidos", label: "Mais Vendidos", icon: ShoppingBag },
+    { id: "estoque", label: "Estoque", icon: Package },
+    { id: "margem", label: "Margem de Lucro", icon: PieChart },
   ],
-  financeiros: [
-    { id: "dre", label: "DRE - Demonstrativo", icon: BarChart3, color: "#007AFF" },
-    { id: "fluxo_caixa", label: "Fluxo de Caixa", icon: ArrowLeftRight, color: "#FF9500" },
-    { id: "receitas_despesas", label: "Receitas e Despesas", icon: TrendingUp, color: "#34C759" },
-  ],
-  vendas: [
-    { id: "periodo", label: "Vendas por Período", icon: CalendarIcon, color: "#007AFF" },
-    { id: "profissional", label: "Vendas por Profissional", icon: UserCheck, color: "#34C759" },
-    { id: "servico", label: "Vendas por Serviço", icon: BarChart3, color: "#FF9500" },
-    { id: "forma_pgto", label: "Vendas por Forma de Pagamento", icon: CreditCard, color: "#AF52DE" },
-  ],
-  lucros: [
-    { id: "lucros_servicos", label: "Profissionais que geram mais Lucros (com serviços)", icon: TrendingUp, color: "#34C759" },
-    { id: "lucros_produtos", label: "Profissionais que geram mais Lucros (com produtos)", icon: ShoppingBag, color: "#007AFF" },
-  ],
-  gaveta_caixa: [
-    { id: "movimentacoes", label: "Movimentações", icon: Inbox, color: "#AF52DE" },
-    { id: "sangrias", label: "Sangrias", icon: TrendingDown, color: "#FF3B30" },
-    { id: "suprimentos", label: "Suprimentos", icon: TrendingUp, color: "#34C759" },
-  ],
-  estoque: [
-    { id: "posicao_estoque", label: "Posição de Estoque", icon: Package, color: "#007AFF" },
-    { id: "estoque_minimo", label: "Produtos Estoque Mínimo", icon: Package, color: "#FF3B30" },
-    { id: "margem", label: "Margem de Lucro", icon: PieChart, color: "#34C759" },
+  financeiro: [
+    { id: "dre", label: "DRE", icon: FileText },
+    { id: "fluxo", label: "Fluxo de Caixa", icon: Wallet },
   ],
 };
 
-const categoryLabels: Record<ReportCategory, { label: string; icon: any }> = {
-  clientes: { label: "De Clientes", icon: Users },
-  profissionais: { label: "De Profissionais", icon: UserCheck },
-  cadastros: { label: "De Cadastros", icon: FileText },
-  financeiros: { label: "Financeiros", icon: DollarSign },
-  vendas: { label: "De Vendas", icon: BarChart3 },
-  lucros: { label: "De Lucros", icon: TrendingUp },
-  gaveta_caixa: { label: "Da Gaveta do Caixa", icon: Inbox },
-  estoque: { label: "De Estoque", icon: Package },
+const categoryLabels: Record<ReportCategory, string> = {
+  vendas: "Vendas",
+  clientes: "Clientes",
+  profissionais: "Profissionais",
+  produtos: "Produtos",
+  financeiro: "Financeiro",
 };
 
 const periodPresets = [
@@ -175,9 +140,9 @@ const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#5856D6', '#FF2D55'
 
 const Relatorios = () => {
   const { toast } = useToast();
-  const [category, setCategory] = useState<ReportCategory>("clientes");
-  const [reportType, setReportType] = useState<ReportType>("novos");
-  const [expandedCategories, setExpandedCategories] = useState<ReportCategory[]>(["clientes"]);
+  const [category, setCategory] = useState<ReportCategory>("vendas");
+  const [reportType, setReportType] = useState<ReportType>("periodo");
+  const [expandedCategories, setExpandedCategories] = useState<ReportCategory[]>(["vendas"]);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: startOfMonth(new Date()),
     to: new Date(),
@@ -483,16 +448,10 @@ const Relatorios = () => {
         return renderClientesReport();
       case "profissionais":
         return renderProfissionaisReport();
-      case "estoque":
-        return renderEstoqueReport();
-      case "financeiros":
-        return renderFinanceirosReport();
-      case "cadastros":
-        return renderCadastrosReport();
-      case "lucros":
-        return renderLucrosReport();
-      case "gaveta_caixa":
-        return renderGavetaCaixaReport();
+      case "produtos":
+        return renderProdutosReport();
+      case "financeiro":
+        return renderFinanceiroReport();
       default:
         return null;
     }
@@ -1038,137 +997,54 @@ const Relatorios = () => {
 
   const renderProfissionaisReport = () => {
     switch (reportType) {
-      case "valores_pagar":
+      case "performance":
         return (
           <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
-                      <Wallet className="h-6 w-6" style={{ color: '#FF3B30' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Total a Pagar</p>
-                    <p className="text-2xl font-bold" style={{ color: '#FF3B30' }}>{formatCurrency(comissoesPorProfissional.reduce((sum, p) => sum + p.totalComissao, 0))}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
-                      <Users className="h-6 w-6" style={{ color: '#007AFF' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Profissionais</p>
-                    <p className="text-2xl font-bold" style={{ color: '#007AFF' }}>{comissoesPorProfissional.length}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 149, 0, 0.12)' }}>
-                      <Clock className="h-6 w-6" style={{ color: '#FF9500' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Pendentes</p>
-                    <p className="text-2xl font-bold" style={{ color: '#FF9500' }}>{comissoesPorProfissional.filter(p => !comissoesStatus[p.id]).length}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            <Card style={{ borderRadius: '16px' }}>
+            <Card>
               <CardHeader>
-                <CardTitle>Valores a Pagar por Profissional</CardTitle>
+                <CardTitle>Performance por Profissional</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={comissoesPorProfissional}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="nome" className="text-xs" />
+                    <YAxis className="text-xs" />
+                    <RechartsTooltip />
+                    <Bar dataKey="atendimentos" fill="#007AFF" name="Atendimentos" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Ranking de Performance</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Posição</TableHead>
                       <TableHead>Profissional</TableHead>
                       <TableHead className="text-center">Atendimentos</TableHead>
-                      <TableHead className="text-right">Valor a Pagar</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-right">Faturamento</TableHead>
+                      <TableHead className="text-right">Ticket Médio</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {comissoesPorProfissional.filter(p => !comissoesStatus[p.id]).map((item) => (
+                    {comissoesPorProfissional.map((item, idx) => (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          <Badge variant={idx === 0 ? "default" : "secondary"}>#{idx + 1}</Badge>
+                        </TableCell>
                         <TableCell className="font-medium">{item.nome}</TableCell>
                         <TableCell className="text-center">{item.atendimentos}</TableCell>
-                        <TableCell className="text-right font-semibold" style={{ color: '#FF3B30' }}>{formatCurrency(item.totalComissao)}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="secondary">Pendente</Badge>
-                        </TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.totalServicos)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.atendimentos > 0 ? item.totalServicos / item.atendimentos : 0)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "pagamentos_realizados":
-        return (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
-                      <CheckCircle2 className="h-6 w-6" style={{ color: '#34C759' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Total Pago</p>
-                    <p className="text-2xl font-bold" style={{ color: '#34C759' }}>{formatCurrency(comissoesPorProfissional.filter(p => comissoesStatus[p.id]).reduce((sum, p) => sum + p.totalComissao, 0))}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
-                      <Users className="h-6 w-6" style={{ color: '#007AFF' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Profissionais Pagos</p>
-                    <p className="text-2xl font-bold" style={{ color: '#007AFF' }}>{comissoesPorProfissional.filter(p => comissoesStatus[p.id]).length}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Pagamentos Realizados</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {comissoesPorProfissional.filter(p => comissoesStatus[p.id]).length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Profissional</TableHead>
-                        <TableHead className="text-center">Atendimentos</TableHead>
-                        <TableHead className="text-right">Valor Pago</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {comissoesPorProfissional.filter(p => comissoesStatus[p.id]).map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.nome}</TableCell>
-                          <TableCell className="text-center">{item.atendimentos}</TableCell>
-                          <TableCell className="text-right font-semibold" style={{ color: '#34C759' }}>{formatCurrency(item.totalComissao)}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="default">Pago</Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhum pagamento realizado no período</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -1263,18 +1139,23 @@ const Relatorios = () => {
           </div>
         );
 
-      case "vales":
+      case "atendimentos":
         return (
           <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
+            <Card>
               <CardHeader>
-                <CardTitle>Relatório de Vales</CardTitle>
+                <CardTitle>Atendimentos por Profissional</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhum vale registrado no período</p>
-                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={comissoesPorProfissional} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" className="text-xs" />
+                    <YAxis dataKey="nome" type="category" className="text-xs" width={100} />
+                    <RechartsTooltip />
+                    <Bar dataKey="atendimentos" fill="#5856D6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
@@ -1282,9 +1163,9 @@ const Relatorios = () => {
     }
   };
 
-  const renderEstoqueReport = () => {
+  const renderProdutosReport = () => {
     switch (reportType) {
-      case "posicao_estoque":
+      case "mais_vendidos":
         return (
           <div className="space-y-6">
             <Card>
@@ -1335,7 +1216,7 @@ const Relatorios = () => {
           </div>
         );
 
-      case "estoque_minimo":
+      case "estoque":
         return (
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
@@ -1449,7 +1330,7 @@ const Relatorios = () => {
     }
   };
 
-  const renderFinanceirosReport = () => {
+  const renderFinanceiroReport = () => {
     const totalReceitas = vendasPorPeriodo.total;
     const totalComissoes = comissoesPorProfissional.reduce((sum, p) => sum + p.totalComissao, 0);
     const lucro = totalReceitas - totalComissoes;
@@ -1460,7 +1341,7 @@ const Relatorios = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>DRE - Demonstrativo de Resultado</CardTitle>
+                <CardTitle>DRE - Demonstrativo de Resultados</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1479,50 +1360,42 @@ const Relatorios = () => {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        );
 
-      case "fluxo_caixa":
-        return (
-          <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
+              <Card>
                 <CardContent className="pt-6">
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
-                      <TrendingUp className="h-6 w-6" style={{ color: '#34C759' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Entradas</p>
-                    <p className="text-2xl font-bold" style={{ color: '#34C759' }}>{formatCurrency(totalReceitas)}</p>
+                    <p className="text-sm text-muted-foreground">Receita Total</p>
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(totalReceitas)}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
+              <Card>
                 <CardContent className="pt-6">
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
-                      <TrendingDown className="h-6 w-6" style={{ color: '#FF3B30' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Saídas</p>
-                    <p className="text-2xl font-bold" style={{ color: '#FF3B30' }}>{formatCurrency(totalComissoes)}</p>
+                    <p className="text-sm text-muted-foreground">Despesas (Comissões)</p>
+                    <p className="text-2xl font-bold text-red-600">{formatCurrency(totalComissoes)}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
+              <Card>
                 <CardContent className="pt-6">
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 149, 0, 0.12)' }}>
-                      <ArrowLeftRight className="h-6 w-6" style={{ color: '#FF9500' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Saldo</p>
-                    <p className="text-2xl font-bold" style={{ color: '#FF9500' }}>{formatCurrency(lucro)}</p>
+                    <p className="text-sm text-muted-foreground">Lucro Líquido</p>
+                    <p className={cn("text-2xl font-bold", lucro >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(lucro)}</p>
                   </div>
                 </CardContent>
               </Card>
             </div>
-            <Card style={{ borderRadius: '16px' }}>
+          </div>
+        );
+
+      case "fluxo":
+        return (
+          <div className="space-y-6">
+            <Card>
               <CardHeader>
-                <CardTitle>Fluxo de Caixa por Dia</CardTitle>
+                <CardTitle>Fluxo de Caixa</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -1531,401 +1404,35 @@ const Relatorios = () => {
                     <XAxis dataKey="data" className="text-xs" />
                     <YAxis className="text-xs" tickFormatter={(v) => `R$${v}`} />
                     <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Valor"]} />
-                    <Line type="monotone" dataKey="valor" stroke="#FF9500" strokeWidth={2} dot={{ fill: "#FF9500" }} />
+                    <Line type="monotone" dataKey="valor" stroke="#34C759" strokeWidth={2} dot={{ fill: "#34C759" }} name="Entradas" />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-          </div>
-        );
 
-      case "receitas_despesas":
-        return (
-          <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Resumo Financeiro</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-3 border-b">
-                    <span className="font-semibold text-lg">Receita Bruta</span>
-                    <span className="text-lg font-bold text-green-600">{formatCurrency(totalReceitas)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 pl-4">
-                    <span className="text-muted-foreground">(-) Comissões</span>
-                    <span className="text-red-600">{formatCurrency(totalComissoes)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-t border-b bg-muted/30 px-3 rounded">
-                    <span className="font-semibold text-lg">Resultado Operacional</span>
-                    <span className={cn("text-lg font-bold", lucro >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(lucro)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
-                      <TrendingUp className="h-6 w-6" style={{ color: '#34C759' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Receita Total</p>
-                    <p className="text-2xl font-bold" style={{ color: '#34C759' }}>{formatCurrency(totalReceitas)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
-                      <TrendingDown className="h-6 w-6" style={{ color: '#FF3B30' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Despesas (Comissões)</p>
-                    <p className="text-2xl font-bold" style={{ color: '#FF3B30' }}>{formatCurrency(totalComissoes)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="hover:scale-[1.02] transition-transform cursor-pointer" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
-                      <DollarSign className="h-6 w-6" style={{ color: '#007AFF' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                    <p className={cn("text-2xl font-bold")} style={{ color: lucro >= 0 ? '#34C759' : '#FF3B30' }}>{formatCurrency(lucro)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        );
-
-    }
-  };
-
-  const renderCadastrosReport = () => {
-    switch (reportType) {
-      case "clientes_cadastrados":
-        return (
-          <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Clientes Cadastrados</CardTitle>
-                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => exportToExcel(clientes.map(c => ({ nome: c.nome, celular: c.celular, email: c.email || '', cadastro: format(new Date(c.created_at), "dd/MM/yyyy") })), "clientes-cadastrados")}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
-                </Button>
+                <CardTitle>Entradas por Dia</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Celular</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Cadastro</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clientes.slice(0, 50).map((c) => (
-                      <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.nome}</TableCell>
-                        <TableCell>{c.celular}</TableCell>
-                        <TableCell>{c.email || "-"}</TableCell>
-                        <TableCell>{format(new Date(c.created_at), "dd/MM/yyyy")}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "profissionais_cadastrados":
-        return (
-          <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Profissionais Cadastrados</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Especialidade</TableHead>
-                      <TableHead className="text-center">Comissão</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {profissionais.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.nome}</TableCell>
-                        <TableCell>{p.especialidade || "-"}</TableCell>
-                        <TableCell className="text-center">{p.comissao_padrao}%</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant={p.ativo ? "default" : "secondary"}>{p.ativo ? "Ativo" : "Inativo"}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "servicos_cadastrados":
-        return (
-          <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Serviços Cadastrados</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead className="text-center">Duração</TableHead>
-                      <TableHead className="text-right">Preço</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {servicos.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-medium">{s.nome}</TableCell>
-                        <TableCell>{s.categoria || "-"}</TableCell>
-                        <TableCell className="text-center">{s.duracao_minutos} min</TableCell>
-                        <TableCell className="text-right">{formatCurrency(s.preco)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "produtos_cadastrados":
-        return (
-          <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Produtos Cadastrados</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead className="text-center">Estoque</TableHead>
-                      <TableHead className="text-right">Preço</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {produtos.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.nome}</TableCell>
-                        <TableCell>{p.categoria || "-"}</TableCell>
-                        <TableCell className="text-center">{p.estoque_atual}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(p.preco_venda)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        );
-    }
-  };
-
-  const renderLucrosReport = () => {
-    switch (reportType) {
-      case "lucros_servicos":
-        return (
-          <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Profissionais que Geram Mais Lucros (Serviços)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={comissoesPorProfissional}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="nome" className="text-xs" />
-                    <YAxis className="text-xs" tickFormatter={(v) => `R$${v}`} />
-                    <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Faturamento"]} />
-                    <Bar dataKey="totalServicos" fill="#34C759" radius={[4, 4, 0, 0]} name="Faturamento" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Ranking de Lucro por Serviços</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Posição</TableHead>
-                      <TableHead>Profissional</TableHead>
+                      <TableHead>Data</TableHead>
                       <TableHead className="text-center">Atendimentos</TableHead>
-                      <TableHead className="text-right">Faturamento</TableHead>
-                      <TableHead className="text-right">Lucro (- Comissão)</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {comissoesPorProfissional.map((item, idx) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <Badge variant={idx === 0 ? "default" : "secondary"}>#{idx + 1}</Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">{item.nome}</TableCell>
-                        <TableCell className="text-center">{item.atendimentos}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.totalServicos)}</TableCell>
-                        <TableCell className="text-right" style={{ color: '#34C759' }}>{formatCurrency(item.totalServicos - item.totalComissao)}</TableCell>
+                    {vendasPorPeriodo.porDia.map((item) => (
+                      <TableRow key={item.data}>
+                        <TableCell>{item.data}</TableCell>
+                        <TableCell className="text-center">{item.quantidade}</TableCell>
+                        <TableCell className="text-right text-green-600">{formatCurrency(item.valor)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "lucros_produtos":
-        return (
-          <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Produtos Mais Lucrativos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {margemProdutos.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={margemProdutos.slice(0, 10)}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="nome" className="text-xs" />
-                      <YAxis className="text-xs" tickFormatter={(v) => `R$${v}`} />
-                      <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Lucro"]} />
-                      <Bar dataKey="lucro" fill="#007AFF" radius={[4, 4, 0, 0]} name="Lucro" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhum produto com margem cadastrada</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        );
-    }
-  };
-
-  const renderGavetaCaixaReport = () => {
-    switch (reportType) {
-      case "movimentacoes":
-        return (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(175, 82, 222, 0.12)' }}>
-                      <Inbox className="h-6 w-6" style={{ color: '#AF52DE' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Saldo Atual</p>
-                    <p className="text-2xl font-bold" style={{ color: '#AF52DE' }}>R$ 0,00</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(52, 199, 89, 0.12)' }}>
-                      <TrendingUp className="h-6 w-6" style={{ color: '#34C759' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Entradas</p>
-                    <p className="text-2xl font-bold" style={{ color: '#34C759' }}>R$ 0,00</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)' }}>
-                      <TrendingDown className="h-6 w-6" style={{ color: '#FF3B30' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Saídas</p>
-                    <p className="text-2xl font-bold" style={{ color: '#FF3B30' }}>R$ 0,00</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="hover:scale-[1.02] transition-transform" style={{ borderRadius: '16px' }}>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'rgba(0, 122, 255, 0.12)' }}>
-                      <CreditCard className="h-6 w-6" style={{ color: '#007AFF' }} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Sangrias</p>
-                    <p className="text-2xl font-bold" style={{ color: '#007AFF' }}>R$ 0,00</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Movimentações do Caixa</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhuma movimentação registrada</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "sangrias":
-        return (
-          <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Sangrias do Período</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <TrendingDown className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhuma sangria registrada no período</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "suprimentos":
-        return (
-          <div className="space-y-6">
-            <Card style={{ borderRadius: '16px' }}>
-              <CardHeader>
-                <CardTitle>Suprimentos do Período</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhum suprimento registrado no período</p>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -1956,7 +1463,7 @@ const Relatorios = () => {
                       onValueChange={(value) => selectReport(cat, value as ReportType)}
                     >
                       <SelectTrigger className="w-[140px] flex-shrink-0">
-                        <SelectValue placeholder={categoryLabels[cat].label} />
+                        <SelectValue placeholder={categoryLabels[cat]} />
                       </SelectTrigger>
                       <SelectContent>
                         {menuItems[cat].map((item) => (
@@ -1984,7 +1491,7 @@ const Relatorios = () => {
                         )}
                         onClick={() => toggleCategory(cat)}
                       >
-                        <span>{categoryLabels[cat].label}</span>
+                        <span>{categoryLabels[cat]}</span>
                         <ChevronRight className={cn("h-4 w-4 transition-transform", expandedCategories.includes(cat) && "rotate-90")} />
                       </button>
                       {expandedCategories.includes(cat) && (
