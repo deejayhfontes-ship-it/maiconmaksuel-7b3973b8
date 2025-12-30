@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   BarChart3,
   TrendingUp,
@@ -1051,6 +1052,620 @@ const Relatorios = () => {
             </div>
           </div>
         );
+
+      case "historico":
+        const historicoVendas = atendimentos.filter(a => a.status === "finalizado").sort((a, b) => 
+          new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()
+        );
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total de Vendas</p>
+                      <p className="text-2xl font-bold">{historicoVendas.length}</p>
+                    </div>
+                    <ShoppingBag className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Valor Total</p>
+                      <p className="text-2xl font-bold">{formatCurrency(historicoVendas.reduce((sum, v) => sum + (v.valor_final || 0), 0))}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Ticket Médio</p>
+                      <p className="text-2xl font-bold">{formatCurrency(historicoVendas.length > 0 ? historicoVendas.reduce((sum, v) => sum + (v.valor_final || 0), 0) / historicoVendas.length : 0)}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Histórico de Vendas</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(historicoVendas.map(v => ({
+                  data: format(new Date(v.data_hora), "dd/MM/yyyy HH:mm"),
+                  comanda: v.numero_comanda,
+                  cliente: v.cliente?.nome || "Cliente avulso",
+                  valor: v.valor_final,
+                  status: v.status
+                })), "historico-vendas")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead>Comanda</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historicoVendas.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhuma venda encontrada no período selecionado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      historicoVendas.slice(0, 50).map((v) => (
+                        <TableRow key={v.id}>
+                          <TableCell>{format(new Date(v.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
+                          <TableCell>#{v.numero_comanda}</TableCell>
+                          <TableCell>{v.cliente?.nome || "Cliente avulso"}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(v.valor_final || 0)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              Finalizado
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "itens_vendidos":
+        const todosItens = [
+          ...atendimentoServicos.map(as => ({
+            tipo: "Serviço",
+            nome: as.servico?.nome || "Desconhecido",
+            quantidade: as.quantidade || 1,
+            valor: as.subtotal || 0,
+            data: as.created_at
+          })),
+          ...atendimentoProdutos.map(ap => ({
+            tipo: "Produto",
+            nome: ap.produto?.nome || "Desconhecido",
+            quantidade: ap.quantidade || 1,
+            valor: ap.subtotal || 0,
+            data: ap.created_at
+          }))
+        ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+        const totalServicos = atendimentoServicos.reduce((sum, as) => sum + (as.subtotal || 0), 0);
+        const totalProdutosVal = atendimentoProdutos.reduce((sum, ap) => sum + (ap.subtotal || 0), 0);
+
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Itens</p>
+                      <p className="text-2xl font-bold">{todosItens.length}</p>
+                    </div>
+                    <ShoppingBag className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Serviços</p>
+                      <p className="text-2xl font-bold">{atendimentoServicos.length}</p>
+                    </div>
+                    <Activity className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Produtos</p>
+                      <p className="text-2xl font-bold">{atendimentoProdutos.length}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-amber-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Vendido</p>
+                      <p className="text-2xl font-bold">{formatCurrency(totalServicos + totalProdutosVal)}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Itens Vendidos</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(todosItens.map(i => ({
+                  tipo: i.tipo,
+                  nome: i.nome,
+                  quantidade: i.quantidade,
+                  valor: i.valor,
+                  data: format(new Date(i.data), "dd/MM/yyyy")
+                })), "itens-vendidos")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-center">Qtd</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead>Data</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {todosItens.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhum item vendido no período selecionado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      todosItens.slice(0, 100).map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>
+                            <Badge variant="outline" className={item.tipo === "Serviço" ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-amber-50 text-amber-700 border-amber-200"}>
+                              {item.tipo}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">{item.nome}</TableCell>
+                          <TableCell className="text-center">{item.quantidade}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.valor)}</TableCell>
+                          <TableCell>{format(new Date(item.data), "dd/MM/yyyy")}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "clientes_ausentes":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 mb-4">
+              <Label>Clientes ausentes há mais de:</Label>
+              <Select value={diasAusencia.toString()} onValueChange={(v) => setDiasAusencia(parseInt(v))}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 dias</SelectItem>
+                  <SelectItem value="30">30 dias</SelectItem>
+                  <SelectItem value="60">60 dias</SelectItem>
+                  <SelectItem value="90">90 dias</SelectItem>
+                  <SelectItem value="180">180 dias</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Clientes Ausentes há +{diasAusencia} dias</p>
+                    <p className="text-2xl font-bold">{clientesAusentes.length}</p>
+                  </div>
+                  <Users className="h-8 w-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Lista de Clientes Ausentes</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(clientesAusentes.map(c => ({
+                  nome: c.nome,
+                  celular: c.celular,
+                  email: c.email || "",
+                  ultima_visita: c.ultima_visita ? format(new Date(c.ultima_visita), "dd/MM/yyyy") : "Nunca",
+                  total_visitas: c.total_visitas
+                })), "clientes-ausentes")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Celular</TableHead>
+                      <TableHead>Última Visita</TableHead>
+                      <TableHead className="text-center">Visitas</TableHead>
+                      <TableHead>Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clientesAusentes.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhum cliente ausente há mais de {diasAusencia} dias
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      clientesAusentes.slice(0, 50).map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium">{c.nome}</TableCell>
+                          <TableCell>{c.celular}</TableCell>
+                          <TableCell>{c.ultima_visita ? format(new Date(c.ultima_visita), "dd/MM/yyyy") : "Nunca"}</TableCell>
+                          <TableCell className="text-center">{c.total_visitas}</TableCell>
+                          <TableCell>
+                            <Button size="sm" variant="outline">
+                              <MessageSquare className="h-3 w-3 mr-1" /> Contatar
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "servicos_lucrativos":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total de Serviços</p>
+                      <p className="text-2xl font-bold">{servicosMaisLucrativos.length}</p>
+                    </div>
+                    <Activity className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Receita Total</p>
+                      <p className="text-2xl font-bold">{formatCurrency(servicosMaisLucrativos.reduce((sum, s) => sum + s.receita, 0))}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Lucro Total</p>
+                      <p className="text-2xl font-bold">{formatCurrency(servicosMaisLucrativos.reduce((sum, s) => sum + s.lucro, 0))}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Serviços Mais Lucrativos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={servicosMaisLucrativos.slice(0, 10)} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" tickFormatter={(v) => `R$${v}`} />
+                    <YAxis dataKey="nome" type="category" width={120} className="text-xs" />
+                    <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Lucro"]} />
+                    <Bar dataKey="lucro" fill="#34C759" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Detalhamento</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(servicosMaisLucrativos, "servicos-lucrativos")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Serviço</TableHead>
+                      <TableHead className="text-center">Qtd</TableHead>
+                      <TableHead className="text-right">Receita</TableHead>
+                      <TableHead className="text-right">Comissão</TableHead>
+                      <TableHead className="text-right">Lucro</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {servicosMaisLucrativos.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhum serviço realizado no período selecionado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      servicosMaisLucrativos.map((s) => (
+                        <TableRow key={s.nome}>
+                          <TableCell className="font-medium">{s.nome}</TableCell>
+                          <TableCell className="text-center">{s.quantidade}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(s.receita)}</TableCell>
+                          <TableCell className="text-right text-red-600">{formatCurrency(s.comissao)}</TableCell>
+                          <TableCell className="text-right text-green-600 font-medium">{formatCurrency(s.lucro)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "produtos_lucrativos":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Produtos Vendidos</p>
+                      <p className="text-2xl font-bold">{produtosMaisLucrativos.length}</p>
+                    </div>
+                    <Package className="h-8 w-8 text-amber-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Receita Total</p>
+                      <p className="text-2xl font-bold">{formatCurrency(produtosMaisLucrativos.reduce((sum, p) => sum + p.receita, 0))}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Lucro Total</p>
+                      <p className="text-2xl font-bold">{formatCurrency(produtosMaisLucrativos.reduce((sum, p) => sum + p.lucro, 0))}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Produtos Mais Lucrativos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={produtosMaisLucrativos.slice(0, 10)} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" tickFormatter={(v) => `R$${v}`} />
+                    <YAxis dataKey="nome" type="category" width={120} className="text-xs" />
+                    <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Lucro"]} />
+                    <Bar dataKey="lucro" fill="#FF9500" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Detalhamento</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(produtosMaisLucrativos, "produtos-lucrativos")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead className="text-center">Qtd</TableHead>
+                      <TableHead className="text-right">Receita</TableHead>
+                      <TableHead className="text-right">Custo</TableHead>
+                      <TableHead className="text-right">Lucro</TableHead>
+                      <TableHead className="text-right">Margem</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {produtosMaisLucrativos.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          Nenhum produto vendido no período selecionado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      produtosMaisLucrativos.map((p) => (
+                        <TableRow key={p.nome}>
+                          <TableCell className="font-medium">{p.nome}</TableCell>
+                          <TableCell className="text-center">{p.quantidade}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(p.receita)}</TableCell>
+                          <TableCell className="text-right text-red-600">{formatCurrency(p.custo)}</TableCell>
+                          <TableCell className="text-right text-green-600 font-medium">{formatCurrency(p.lucro)}</TableCell>
+                          <TableCell className="text-right">{p.margem.toFixed(1)}%</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "clientes_lucro":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Clientes Analisados</p>
+                      <p className="text-2xl font-bold">{clientesMaisLucro.length}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Faturamento Total</p>
+                      <p className="text-2xl font-bold">{formatCurrency(clientesMaisLucro.reduce((sum, c) => sum + c.totalGasto, 0))}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Média por Cliente</p>
+                      <p className="text-2xl font-bold">{formatCurrency(clientesMaisLucro.length > 0 ? clientesMaisLucro.reduce((sum, c) => sum + c.totalGasto, 0) / clientesMaisLucro.length : 0)}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Top 10 Clientes por Faturamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={clientesMaisLucro.slice(0, 10)} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" tickFormatter={(v) => `R$${v}`} />
+                    <YAxis dataKey="nome" type="category" width={120} className="text-xs" />
+                    <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Total Gasto"]} />
+                    <Bar dataKey="totalGasto" fill="#007AFF" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Ranking de Clientes</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(clientesMaisLucro, "clientes-mais-lucro")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>#</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Celular</TableHead>
+                      <TableHead className="text-center">Visitas</TableHead>
+                      <TableHead className="text-right">Total Gasto</TableHead>
+                      <TableHead className="text-right">Ticket Médio</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clientesMaisLucro.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          Nenhum dado de cliente encontrado no período
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      clientesMaisLucro.map((c, idx) => (
+                        <TableRow key={c.id}>
+                          <TableCell>
+                            {idx < 3 ? (
+                              <Badge className={idx === 0 ? "bg-yellow-500" : idx === 1 ? "bg-gray-400" : "bg-amber-600"}>
+                                {idx + 1}º
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">{idx + 1}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">{c.nome}</TableCell>
+                          <TableCell>{c.celular}</TableCell>
+                          <TableCell className="text-center">{c.visitas}</TableCell>
+                          <TableCell className="text-right text-green-600 font-medium">{formatCurrency(c.totalGasto)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(c.visitas > 0 ? c.totalGasto / c.visitas : 0)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
