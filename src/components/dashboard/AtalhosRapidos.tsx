@@ -35,7 +35,7 @@ const AtalhosRapidos = () => {
     { Icon: Target, label: 'Metas', link: '/configuracoes/metas', gradient: 'linear-gradient(135deg, #FF3B30 0%, #FF453A 100%)' },
     { Icon: BarChart3, label: 'Relatórios', link: '/relatorios', gradient: 'linear-gradient(135deg, #AF52DE 0%, #BF5AF2 100%)' },
     { Icon: FileText, label: 'Notas Fiscais', link: '/notas-fiscais', gradient: 'linear-gradient(135deg, #FF2D55 0%, #FF375F 100%)' },
-    { Icon: Settings, label: 'Configurações', link: '/configuracoes/fiscal', gradient: 'linear-gradient(135deg, #8E8E93 0%, #636366 100%)' },
+    { Icon: Settings, label: 'Configurações', link: '/configuracoes', gradient: 'linear-gradient(135deg, #8E8E93 0%, #636366 100%)' },
     { Icon: UserCog, label: 'Gestão RH', link: '/gestao-rh', gradient: 'linear-gradient(135deg, #FF9F0A 0%, #FF6F00 100%)' },
     { Icon: CheckCircle, label: 'Confirmações', link: '/confirmacoes-whatsapp', gradient: 'linear-gradient(135deg, #30D158 0%, #34C759 100%)' }
   ];
