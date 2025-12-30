@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ import {
   Trash2,
   Eye,
   Clock,
+  ArrowLeft,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
@@ -82,6 +84,7 @@ interface Profissional {
 }
 
 const Vales = () => {
+  const navigate = useNavigate();
   const [vales, setVales] = useState<Vale[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [loading, setLoading] = useState(true);
@@ -309,6 +312,9 @@ const Vales = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/financeiro")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl" style={{ backgroundColor: "#FFCC0020" }}>
             <Receipt className="h-6 w-6" style={{ color: "#FFCC00" }} />
           </div>
