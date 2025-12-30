@@ -91,7 +91,7 @@ export function AppSidebar() {
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen transition-all duration-300 ease-ios custom-scrollbar overflow-y-auto",
+          "fixed left-0 top-0 z-50 h-screen transition-all duration-300 ease-ios flex flex-col",
           "ios-sidebar",
           sidebarWidth,
           isMobile && !mobileOpen && "-translate-x-full",
@@ -100,7 +100,7 @@ export function AppSidebar() {
       >
         {/* Logo com efeito gradiente Apple */}
         <div className={cn(
-          "flex items-center justify-center px-4 transition-all duration-300 relative",
+          "flex items-center justify-center px-4 transition-all duration-300 relative shrink-0",
           collapsed ? "h-16" : "h-36 lg:h-52"
         )}>
           <div className="relative flex items-center justify-center w-full">
@@ -128,8 +128,8 @@ export function AppSidebar() {
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-3 mt-2">
+        {/* Navigation - scrollable area */}
+        <nav className="flex-1 space-y-1 p-3 mt-2 overflow-y-auto custom-scrollbar">
           {allMenuItems.map((item, index) => {
             const isActive = location.pathname === item.path;
             return (
@@ -157,10 +157,9 @@ export function AppSidebar() {
           })}
         </nav>
 
-
-        {/* Collapse Toggle - Desktop only */}
+        {/* Collapse Toggle - Desktop only - fixed at bottom */}
         {!isMobile && (
-          <div className="absolute bottom-4 left-0 right-0 px-3">
+          <div className="shrink-0 p-3 border-t border-border/50">
             <Button
               variant="ghost"
               size="sm"
