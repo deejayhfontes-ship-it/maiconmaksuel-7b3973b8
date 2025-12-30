@@ -860,6 +860,113 @@ export type Database = {
           },
         ]
       }
+      dividas: {
+        Row: {
+          atendimento_id: string | null
+          cliente_id: string
+          created_at: string
+          data_origem: string
+          data_vencimento: string
+          id: string
+          observacoes: string | null
+          saldo: number
+          status: string
+          updated_at: string
+          valor_original: number
+          valor_pago: number
+        }
+        Insert: {
+          atendimento_id?: string | null
+          cliente_id: string
+          created_at?: string
+          data_origem?: string
+          data_vencimento: string
+          id?: string
+          observacoes?: string | null
+          saldo: number
+          status?: string
+          updated_at?: string
+          valor_original: number
+          valor_pago?: number
+        }
+        Update: {
+          atendimento_id?: string | null
+          cliente_id?: string
+          created_at?: string
+          data_origem?: string
+          data_vencimento?: string
+          id?: string
+          observacoes?: string | null
+          saldo?: number
+          status?: string
+          updated_at?: string
+          valor_original?: number
+          valor_pago?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dividas_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dividas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dividas_pagamentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_pagamento: string
+          desconto: number | null
+          divida_id: string
+          forma_pagamento: string
+          id: string
+          juros: number | null
+          observacoes: string | null
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string
+          desconto?: number | null
+          divida_id: string
+          forma_pagamento: string
+          id?: string
+          juros?: number | null
+          observacoes?: string | null
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_pagamento?: string
+          desconto?: number | null
+          divida_id?: string
+          forma_pagamento?: string
+          id?: string
+          juros?: number | null
+          observacoes?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dividas_pagamentos_divida_id_fkey"
+            columns: ["divida_id"]
+            isOneToOne: false
+            referencedRelation: "dividas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documentos_funcionarios: {
         Row: {
           created_at: string
@@ -1244,6 +1351,60 @@ export type Database = {
           vale_transporte?: number | null
         }
         Relationships: []
+      }
+      gorjetas: {
+        Row: {
+          atendimento_id: string | null
+          created_at: string
+          data: string
+          data_repasse: string | null
+          forma_repasse: string | null
+          id: string
+          observacoes: string | null
+          profissional_id: string
+          repassada: boolean
+          valor: number
+        }
+        Insert: {
+          atendimento_id?: string | null
+          created_at?: string
+          data?: string
+          data_repasse?: string | null
+          forma_repasse?: string | null
+          id?: string
+          observacoes?: string | null
+          profissional_id: string
+          repassada?: boolean
+          valor?: number
+        }
+        Update: {
+          atendimento_id?: string | null
+          created_at?: string
+          data?: string
+          data_repasse?: string | null
+          forma_repasse?: string | null
+          id?: string
+          observacoes?: string | null
+          profissional_id?: string
+          repassada?: boolean
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gorjetas_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gorjetas_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       itens_folha_pagamento: {
         Row: {
