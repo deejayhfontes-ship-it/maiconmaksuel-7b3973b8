@@ -31,6 +31,7 @@ import ConfirmarAgendamento from "./pages/ConfirmarAgendamento";
 import GestaoRH from "./pages/GestaoRH";
 import PontoEletronico from "./pages/PontoEletronico";
 import Vales from "./pages/Vales";
+import ProfissionalDetalhe from "./pages/ProfissionalDetalhe";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/clientes" element={<Clientes />} />
                 <Route path="/profissionais" element={<Profissionais />} />
+                <Route path="/profissional/:id" element={<ProfissionalDetalhe />} />
                 <Route path="/servicos" element={<Servicos />} />
                 <Route path="/produtos" element={<Produtos />} />
                 <Route path="/agenda" element={<Agenda />} />

@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DualProgressCard } from "./ProgressBar";
-import { Pencil, ShoppingCart, Trash2, Target } from "lucide-react";
+import { Pencil, ShoppingCart, Trash2, Target, Eye } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -42,6 +43,7 @@ export function ProfissionalCard({
   onVendas, 
   onDelete 
 }: ProfissionalCardProps) {
+  const navigate = useNavigate();
   const [showMetas, setShowMetas] = useState(false);
 
   const getInitials = (nome: string) => {
@@ -131,10 +133,17 @@ export function ProfissionalCard({
             variant="outline" 
             size="sm" 
             className="flex-1"
+            onClick={() => navigate(`/profissional/${profissional.id}`)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Ver
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
             onClick={() => onEdit(profissional)}
           >
-            <Pencil className="h-4 w-4 mr-2" />
-            Editar
+            <Pencil className="h-4 w-4" />
           </Button>
           {profissional.pode_vender_produtos && (
             <Button 
