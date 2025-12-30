@@ -341,71 +341,71 @@ const Vales = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm min-h-[110px]">
           <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Vales Ativos</p>
-                <p className="text-2xl font-bold" style={{ color: "#FF3B30" }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">Total Vales Ativos</p>
+                <p className="text-xl sm:text-2xl font-bold truncate" style={{ color: "#FF3B30" }}>
                   {formatCurrency(stats.totalAberto)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">{stats.qtdAbertos} vales abertos</p>
               </div>
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FF3B3010" }}>
-                <AlertCircle className="h-6 w-6" style={{ color: "#FF3B30" }} />
+              <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#FF3B3010" }}>
+                <AlertCircle className="h-5 w-5" style={{ color: "#FF3B30" }} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm min-h-[110px]">
           <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Quitados Este Mês</p>
-                <p className="text-2xl font-bold" style={{ color: "#34C759" }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">Quitados Este Mês</p>
+                <p className="text-xl sm:text-2xl font-bold truncate" style={{ color: "#34C759" }}>
                   {stats.quitadosMes}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">{formatCurrency(stats.valorQuitadoMes)} total</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">{formatCurrency(stats.valorQuitadoMes)} total</p>
               </div>
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#34C75910" }}>
-                <CheckCircle className="h-6 w-6" style={{ color: "#34C759" }} />
+              <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#34C75910" }}>
+                <CheckCircle className="h-5 w-5" style={{ color: "#34C759" }} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm min-h-[110px]">
           <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Maior Vale Ativo</p>
-                <p className="text-2xl font-bold" style={{ color: "#FFCC00" }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">Maior Vale Ativo</p>
+                <p className="text-xl sm:text-2xl font-bold truncate" style={{ color: "#FFCC00" }}>
                   {stats.maiorValeAberto ? formatCurrency(stats.maiorValeAberto.saldo_restante) : "R$ 0,00"}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1 truncate max-w-[150px]">
+                <p className="text-xs text-muted-foreground mt-1 truncate">
                   {stats.maiorValeAberto?.profissional?.nome || "Nenhum"}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FFCC0010" }}>
-                <TrendingUp className="h-6 w-6" style={{ color: "#FFCC00" }} />
+              <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#FFCC0010" }}>
+                <TrendingUp className="h-5 w-5" style={{ color: "#FFCC00" }} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm min-h-[110px]">
           <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Média por Profissional</p>
-                <p className="text-2xl font-bold" style={{ color: "#007AFF" }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">Média por Profissional</p>
+                <p className="text-xl sm:text-2xl font-bold truncate" style={{ color: "#007AFF" }}>
                   {formatCurrency(stats.mediaPorProfissional)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Cálculo automático</p>
               </div>
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#007AFF10" }}>
-                <Users className="h-6 w-6" style={{ color: "#007AFF" }} />
+              <div className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#007AFF10" }}>
+                <Users className="h-5 w-5" style={{ color: "#007AFF" }} />
               </div>
             </div>
           </CardContent>

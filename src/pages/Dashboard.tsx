@@ -387,38 +387,37 @@ const Dashboard = () => {
         {statCards.map((card) => (
           <div
             key={card.title}
-            className="relative bg-card rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
-            style={{ height: '140px' }}
+            className="relative bg-card rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow min-h-[130px]"
           >
             {/* Ícone - Posição absoluta no canto superior direito */}
             <div
-              className="absolute top-6 right-6 w-12 h-12 rounded-xl flex items-center justify-center"
+              className="absolute top-5 right-5 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: card.iconBg }}
             >
-              <card.icon size={24} color={card.iconColor} />
+              <card.icon size={22} color={card.iconColor} />
             </div>
 
             {/* Conteúdo com flex column e space-between */}
-            <div className="flex flex-col justify-between h-full pr-16">
+            <div className="flex flex-col justify-between h-full pr-14 md:pr-16 min-h-[90px]">
               {/* Título - Sempre no topo */}
-              <p className="text-[13px] font-medium text-muted-foreground">
+              <p className="text-xs md:text-[13px] font-medium text-muted-foreground truncate">
                 {card.title}
               </p>
 
               {/* Valor Principal - Centro */}
-              <p className="text-[32px] font-bold text-foreground leading-none">
+              <p className="text-2xl md:text-[28px] lg:text-[32px] font-bold text-foreground leading-none truncate">
                 {card.value}
               </p>
 
               {/* Comparação - Sempre na base */}
-              <div className="flex items-center gap-1 text-[13px] font-medium">
+              <div className="flex items-center gap-1 text-xs md:text-[13px] font-medium">
                 {card.changeType === "positive" && card.change ? (
                   <>
-                    <TrendingUp size={14} className="text-success" />
-                    <span className="text-success">{card.change} {card.subtitle}</span>
+                    <TrendingUp size={14} className="text-success shrink-0" />
+                    <span className="text-success truncate">{card.change} {card.subtitle}</span>
                   </>
                 ) : (
-                  <span className="text-muted-foreground">{card.subtitle}</span>
+                  <span className="text-muted-foreground truncate">{card.subtitle}</span>
                 )}
               </div>
             </div>

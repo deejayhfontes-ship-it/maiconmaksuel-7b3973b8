@@ -552,41 +552,41 @@ const Financeiro = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="border-l-4 border-l-destructive">
+            <Card className="border-l-4 border-l-destructive min-h-[90px]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-destructive/10">
+                  <div className="p-2 rounded-lg bg-destructive/10 shrink-0">
                     <TrendingDown className="h-5 w-5 text-destructive" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">A Pagar</p>
-                    <p className="text-xl font-bold text-destructive">{formatCurrency(statsPagar.aPagar)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">A Pagar</p>
+                    <p className="text-lg sm:text-xl font-bold text-destructive truncate">{formatCurrency(statsPagar.aPagar)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-l-4 border-l-success">
+            <Card className="border-l-4 border-l-success min-h-[90px]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-success/10">
+                  <div className="p-2 rounded-lg bg-success/10 shrink-0">
                     <Check className="h-5 w-5 text-success" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pago</p>
-                    <p className="text-xl font-bold text-success">{formatCurrency(statsPagar.pago)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Pago</p>
+                    <p className="text-lg sm:text-xl font-bold text-success truncate">{formatCurrency(statsPagar.pago)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-l-4 border-l-amber-500">
+            <Card className="border-l-4 border-l-amber-500 min-h-[90px]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
+                  <div className="p-2 rounded-lg bg-amber-500/10 shrink-0">
                     <AlertTriangle className="h-5 w-5 text-amber-500" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Atrasadas ({statsPagar.qtdAtrasadas})</p>
-                    <p className="text-xl font-bold text-amber-500">{formatCurrency(statsPagar.atrasadas)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Atrasadas ({statsPagar.qtdAtrasadas})</p>
+                    <p className="text-lg sm:text-xl font-bold text-amber-500 truncate">{formatCurrency(statsPagar.atrasadas)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -701,41 +701,41 @@ const Financeiro = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="border-l-4 border-l-primary">
+            <Card className="border-l-4 border-l-primary min-h-[90px]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                     <TrendingUp className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">A Receber</p>
-                    <p className="text-xl font-bold text-primary">{formatCurrency(statsReceber.aReceber)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">A Receber</p>
+                    <p className="text-lg sm:text-xl font-bold text-primary truncate">{formatCurrency(statsReceber.aReceber)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-l-4 border-l-success">
+            <Card className="border-l-4 border-l-success min-h-[90px]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-success/10">
+                  <div className="p-2 rounded-lg bg-success/10 shrink-0">
                     <Check className="h-5 w-5 text-success" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Recebido</p>
-                    <p className="text-xl font-bold text-success">{formatCurrency(statsReceber.recebido)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Recebido</p>
+                    <p className="text-lg sm:text-xl font-bold text-success truncate">{formatCurrency(statsReceber.recebido)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-l-4 border-l-amber-500">
+            <Card className="border-l-4 border-l-amber-500 min-h-[90px]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
+                  <div className="p-2 rounded-lg bg-amber-500/10 shrink-0">
                     <AlertTriangle className="h-5 w-5 text-amber-500" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Atrasadas ({statsReceber.qtdAtrasadas})</p>
-                    <p className="text-xl font-bold text-amber-500">{formatCurrency(statsReceber.atrasadas)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Atrasadas ({statsReceber.qtdAtrasadas})</p>
+                    <p className="text-lg sm:text-xl font-bold text-amber-500 truncate">{formatCurrency(statsReceber.atrasadas)}</p>
                   </div>
                 </div>
               </CardContent>
