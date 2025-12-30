@@ -383,7 +383,10 @@ const Atendimentos = () => {
     setIsPaymentOpen(true);
   };
 
-  const handleConfirmarPagamento = async (pagamentos: { forma: string; valor: number; parcelas: number }[]) => {
+  const handleConfirmarPagamento = async (
+    pagamentos: { forma: string; valor: number; parcelas: number }[],
+    gorjetas?: { profissional_id: string; profissional_nome: string; valor: number }[]
+  ) => {
     if (!selectedAtendimento) return;
 
     // Verificar se há caixa aberto
@@ -412,6 +415,19 @@ const Atendimentos = () => {
           valor: pag.valor,
           forma_pagamento: pag.forma,
           atendimento_id: selectedAtendimento.id,
+        }]);
+      }
+    }
+
+    // Inserir gorjetas se houver
+    if (gorjetas && gorjetas.length > 0) {
+      for (const gorjeta of gorjetas) {
+        await supabase.from("gorjetas").insert([{
+          profissional_id: gorjeta.profissional_id,
+          atendimento_id: selectedAtendimento.id,
+          valor: gorjeta.valor,
+          data: new Date().toISOString(),
+          repassada: false,
         }]);
       }
     }
@@ -816,6 +832,7 @@ const Atendimentos = () => {
         numeroComanda={selectedAtendimento?.numero_comanda || 0}
         clienteNome={selectedAtendimento?.cliente?.nome || null}
         totalComanda={valorFinal}
+        profissionais={profissionais}
         onConfirmar={handleConfirmarPagamento}
       />
 
