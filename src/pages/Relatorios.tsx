@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,7 @@ import {
   CheckCircle,
   Trophy,
   ShoppingCart,
+  FileDown,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -80,7 +82,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // Tipos
-type ReportCategory = "vendas" | "clientes" | "profissionais" | "produtos" | "financeiro" | "lucros" | "caixa";
+type ReportCategory = "vendas" | "clientes" | "profissionais" | "produtos" | "financeiro" | "lucros" | "caixa" | "consolidado";
 type VendasReport = "periodo" | "profissional" | "servico" | "forma_pgto" | "historico" | "itens_vendidos" | "clientes_ausentes" | "servicos_lucrativos" | "produtos_lucrativos" | "clientes_lucro";
 type ClientesReport = "novos" | "ativos" | "inativos" | "aniversariantes";
 type ProfissionaisReport = "performance" | "comissoes" | "atendimentos" | "top_lucro_servicos" | "top_lucro_produtos" | "vales_adiantamentos" | "valores_pagar" | "pagamentos_realizados";
@@ -88,8 +90,9 @@ type ProdutosReport = "mais_vendidos" | "estoque" | "margem";
 type FinanceiroReport = "dre" | "fluxo" | "contas_pagar" | "contas_receber" | "extrato_cartoes";
 type LucrosReport = "lucro_bruto" | "grafico_lucro";
 type CaixaReport = "caixas_fechados" | "sangrias" | "reforcos";
+type ConsolidadoReport = "completo";
 
-type ReportType = VendasReport | ClientesReport | ProfissionaisReport | ProdutosReport | FinanceiroReport | LucrosReport | CaixaReport;
+type ReportType = VendasReport | ClientesReport | ProfissionaisReport | ProdutosReport | FinanceiroReport | LucrosReport | CaixaReport | ConsolidadoReport;
 
 interface DateRange {
   from: Date;
@@ -146,6 +149,9 @@ const menuItems = {
     { id: "sangrias", label: "Relatório de Sangrias", icon: TrendingDown },
     { id: "reforcos", label: "Relatório de Reforços", icon: TrendingUp },
   ],
+  consolidado: [
+    { id: "completo", label: "Relatório Completo", icon: FileDown },
+  ],
 };
 
 const categoryLabels: Record<ReportCategory, string> = {
@@ -156,6 +162,7 @@ const categoryLabels: Record<ReportCategory, string> = {
   financeiro: "Financeiros",
   lucros: "De Lucros",
   caixa: "Da Gaveta do Caixa",
+  consolidado: "Consolidados",
 };
 
 const periodPresets = [
@@ -171,6 +178,7 @@ const periodPresets = [
 const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#5856D6', '#FF2D55', '#5AC8FA', '#30D158'];
 
 const Relatorios = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [category, setCategory] = useState<ReportCategory>("vendas");
   const [reportType, setReportType] = useState<ReportType>("periodo");
@@ -306,6 +314,11 @@ const Relatorios = () => {
   };
 
   const selectReport = (cat: ReportCategory, type: ReportType) => {
+    // Se for relatório completo, navegar para a página dedicada
+    if (cat === 'consolidado' && type === 'completo') {
+      navigate('/relatorios/completo');
+      return;
+    }
     setCategory(cat);
     setReportType(type);
   };
