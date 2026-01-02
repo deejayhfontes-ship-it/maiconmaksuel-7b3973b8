@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles } from "lucide-react";
+import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles, Bug } from "lucide-react";
 import AtalhosRapidos from "@/components/dashboard/AtalhosRapidos";
 import iconeMaicon from "@/assets/icone-maicon.svg";
 import {
@@ -529,6 +529,220 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* BOTÕES DE DEBUG - DIAGNÓSTICO */}
+      <Card className="border-warning/50 bg-warning/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-warning">
+            <Bug className="h-5 w-5" />
+            Diagnóstico do Sistema
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Botão 1: Ver dados reais */}
+            <Button
+              variant="outline"
+              onClick={async () => {
+                console.log("════════════════════════════════════");
+                console.log("🔍 DIAGNÓSTICO COMPLETO DO BANCO");
+                console.log("════════════════════════════════════");
+                
+                const { data: clientes, error: clientesError } = await supabase
+                  .from('clientes')
+                  .select('*');
+                
+                const { data: servicos, error: servicosError } = await supabase
+                  .from('servicos')
+                  .select('*');
+                
+                const { data: produtos, error: produtosError } = await supabase
+                  .from('produtos')
+                  .select('*');
+                
+                const { data: profissionais, error: profissionaisError } = await supabase
+                  .from('profissionais')
+                  .select('*');
+                
+                const { data: agendamentos, error: agendamentosError } = await supabase
+                  .from('agendamentos')
+                  .select('*');
+                
+                const { data: atendimentos, error: atendimentosError } = await supabase
+                  .from('atendimentos')
+                  .select('*');
+                
+                console.log("📊 DADOS NO BANCO:");
+                console.log("Clientes:", clientes?.length || 0, clientes);
+                console.log("Serviços:", servicos?.length || 0, servicos);
+                console.log("Produtos:", produtos?.length || 0, produtos);
+                console.log("Profissionais:", profissionais?.length || 0, profissionais);
+                console.log("Agendamentos:", agendamentos?.length || 0, agendamentos);
+                console.log("Atendimentos:", atendimentos?.length || 0, atendimentos);
+                
+                console.log("\n❌ ERROS (se houver):");
+                console.log({ clientesError, servicosError, produtosError, profissionaisError, agendamentosError, atendimentosError });
+                
+                alert(
+                  `📊 DADOS REAIS NO BANCO:\n\n` +
+                  `Clientes: ${clientes?.length || 0}\n` +
+                  `Serviços: ${servicos?.length || 0}\n` +
+                  `Produtos: ${produtos?.length || 0}\n` +
+                  `Profissionais: ${profissionais?.length || 0}\n` +
+                  `Agendamentos: ${agendamentos?.length || 0}\n` +
+                  `Atendimentos: ${atendimentos?.length || 0}\n\n` +
+                  `Veja console (F12) para detalhes!`
+                );
+              }}
+            >
+              🔍 Ver Dados Reais
+            </Button>
+
+            {/* Botão 2: Testar DELETE */}
+            <Button
+              variant="outline"
+              onClick={async () => {
+                console.log("════════════════════════════════════");
+                console.log("🧪 TESTANDO DELETE DIRETO");
+                console.log("════════════════════════════════════");
+                
+                // Pegar um cliente para testar
+                const { data: oneClient } = await supabase
+                  .from('clientes')
+                  .select('*')
+                  .limit(1)
+                  .single();
+                
+                if (oneClient) {
+                  console.log("Cliente encontrado para teste:", oneClient);
+                  
+                  const { error: deleteError } = await supabase
+                    .from('clientes')
+                    .delete()
+                    .eq('id', oneClient.id);
+                  
+                  if (deleteError) {
+                    console.error("❌ ERRO AO DELETAR:", deleteError);
+                    alert(`❌ ERRO AO DELETAR:\n\n${deleteError.message}\n\nIsso explica por que a limpeza não funciona!`);
+                  } else {
+                    console.log("✅ DELETE funcionou!");
+                    
+                    // Verificar se realmente deletou
+                    const { data: checkClient } = await supabase
+                      .from('clientes')
+                      .select('*')
+                      .eq('id', oneClient.id);
+                    
+                    if (checkClient && checkClient.length === 0) {
+                      alert("✅ DELETE FUNCIONOU!\n\nO cliente foi realmente removido do banco.");
+                    } else {
+                      alert("⚠️ DELETE não funcionou - cliente ainda existe!");
+                    }
+                  }
+                } else {
+                  alert("Nenhum cliente encontrado para testar.\nO banco pode já estar vazio!");
+                }
+              }}
+            >
+              🧪 Testar DELETE
+            </Button>
+
+            {/* Botão 3: Testar RLS */}
+            <Button
+              variant="outline"
+              onClick={async () => {
+                console.log("════════════════════════════════════");
+                console.log("🔐 TESTANDO PERMISSÕES RLS");
+                console.log("════════════════════════════════════");
+                
+                const tests = {
+                  canSelect: false,
+                  canInsert: false,
+                  canUpdate: false,
+                  canDelete: false
+                };
+                
+                let testClientId: string | null = null;
+                
+                // SELECT
+                const { data: selectTest, error: selectError } = await supabase
+                  .from('clientes')
+                  .select('*')
+                  .limit(1);
+                
+                if (!selectError) {
+                  tests.canSelect = true;
+                  console.log("✅ SELECT permitido");
+                } else {
+                  console.log("❌ SELECT bloqueado:", selectError);
+                }
+                
+                // INSERT
+                const { data: insertTest, error: insertError } = await supabase
+                  .from('clientes')
+                  .insert({ 
+                    nome: 'TESTE_RLS_' + Date.now(), 
+                    celular: '11999999999'
+                  })
+                  .select();
+                
+                if (!insertError && insertTest && insertTest.length > 0) {
+                  tests.canInsert = true;
+                  testClientId = insertTest[0].id;
+                  console.log("✅ INSERT permitido, ID:", testClientId);
+                  
+                  // UPDATE
+                  const { error: updateError } = await supabase
+                    .from('clientes')
+                    .update({ nome: 'TESTE_RLS_UPDATED' })
+                    .eq('id', testClientId);
+                  
+                  if (!updateError) {
+                    tests.canUpdate = true;
+                    console.log("✅ UPDATE permitido");
+                  } else {
+                    console.log("❌ UPDATE bloqueado:", updateError);
+                  }
+                  
+                  // DELETE
+                  const { error: deleteError } = await supabase
+                    .from('clientes')
+                    .delete()
+                    .eq('id', testClientId);
+                  
+                  if (!deleteError) {
+                    tests.canDelete = true;
+                    console.log("✅ DELETE permitido");
+                  } else {
+                    console.log("❌ DELETE BLOQUEADO:", deleteError);
+                  }
+                } else {
+                  console.log("❌ INSERT bloqueado:", insertError);
+                }
+                
+                console.log("\n📊 RESULTADO DOS TESTES RLS:", tests);
+                
+                alert(
+                  `🔐 PERMISSÕES RLS:\n\n` +
+                  `SELECT: ${tests.canSelect ? '✅' : '❌'}\n` +
+                  `INSERT: ${tests.canInsert ? '✅' : '❌'}\n` +
+                  `UPDATE: ${tests.canUpdate ? '✅' : '❌'}\n` +
+                  `DELETE: ${tests.canDelete ? '✅' : '❌'}\n\n` +
+                  (tests.canDelete 
+                    ? "✅ Todas as permissões OK!"
+                    : "❌ DELETE BLOQUEADO!\nVerifique as políticas RLS no Supabase!")
+                );
+              }}
+            >
+              🔐 Testar Permissões RLS
+            </Button>
+          </div>
+          
+          <p className="text-xs text-muted-foreground">
+            Use esses botões para diagnosticar problemas. Abra o console (F12) para ver logs detalhados.
+          </p>
+        </CardContent>
+      </Card>
 
     </div>
   );
