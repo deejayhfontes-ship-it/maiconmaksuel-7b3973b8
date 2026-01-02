@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 interface Comanda {
   id: string;
@@ -190,8 +191,8 @@ export const ComandasAbertasSection = ({ onComandaFinalizada }: ComandasAbertasS
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="overflow-visible">
+      <CardHeader className="flex flex-row items-center justify-between pb-4">
         <div className="flex items-center gap-2">
           <Receipt className="h-5 w-5 text-primary" />
           <CardTitle>Comandas Abertas</CardTitle>
@@ -199,76 +200,102 @@ export const ComandasAbertasSection = ({ onComandaFinalizada }: ComandasAbertasS
             <Badge variant="secondary">{comandas.length}</Badge>
           )}
         </div>
-        <Button onClick={() => setIsNovaComandaOpen(true)} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Nova
-        </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* Botão Nova Comanda destacado */}
+        <Button 
+          onClick={() => setIsNovaComandaOpen(true)} 
+          className="w-full h-12 text-base font-semibold"
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Nova Comanda
+        </Button>
+
         {loading ? (
           <p className="text-center text-muted-foreground py-4">Carregando...</p>
         ) : comandas.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
+          <p className="text-center text-muted-foreground py-4">
             Nenhuma comanda aberta
           </p>
         ) : (
           <div className="space-y-3">
-            {comandas.map((comanda) => (
+            {comandas.map((comanda, index) => (
               <div
                 key={comanda.id}
-                className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                className={cn(
+                  "p-4 bg-card border-2 rounded-xl transition-all",
+                  index === 0 
+                    ? "border-primary shadow-sm" 
+                    : "border-border hover:border-primary/50"
+                )}
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">
-                      #{format(parseISO(comanda.data_hora), "HH:mm")}
-                    </span>
-                    <span className="text-foreground font-semibold">
-                      {comanda.cliente_nome}
-                    </span>
-                    <span className="text-lg font-bold text-primary ml-auto">
-                      {formatPrice(comanda.valor_final)}
-                    </span>
+                {/* Header do card */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <span className="text-lg font-bold">#{comanda.numero_comanda.toString().padStart(3, '0')}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {comanda.profissional_nome}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatDuration(comanda.data_hora)}
-                    </span>
-                  </div>
+                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
+                    Aberta
+                  </Badge>
                 </div>
-                <div className="flex gap-2 ml-4">
+
+                {/* Info do cliente */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <User className="h-4 w-4" />
+                  <span>{comanda.cliente_nome === "Cliente não identificado" ? "Sem cliente" : comanda.cliente_nome}</span>
+                </div>
+
+                {/* Horário e valor */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <span>{format(parseISO(comanda.data_hora), "HH:mm")}</span>
+                  </div>
+                  <span className="text-lg font-bold text-success">
+                    {formatPrice(comanda.valor_final)}
+                  </span>
+                </div>
+
+                {/* Ações */}
+                <div className="flex gap-2 mt-4 pt-3 border-t">
                   <Button 
                     size="sm" 
                     variant="outline" 
-                    className="text-xs"
-                    onClick={() => handleAdicionarItem(comanda.id)}
+                    className="flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAdicionarItem(comanda.id);
+                    }}
                   >
-                    <ShoppingCart className="h-3 w-3 mr-1" />
+                    <ShoppingCart className="h-4 w-4 mr-1" />
                     Adicionar
                   </Button>
                   <Button 
                     size="sm" 
-                    className="text-xs bg-success hover:bg-success/90"
-                    onClick={() => handleFinalizarComanda(comanda.id)}
+                    className="flex-1 bg-success hover:bg-success/90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFinalizarComanda(comanda.id);
+                    }}
                   >
                     Finalizar
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => handleCancelarComanda(comanda.id)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCancelarComanda(comanda.id);
+                    }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
+
+            {/* Resumo */}
             <div className="pt-3 border-t flex justify-between items-center">
               <span className="text-sm text-muted-foreground">
                 Total: {comandas.length} comanda{comandas.length !== 1 ? "s" : ""}
