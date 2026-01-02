@@ -46,10 +46,23 @@ export function useBrowserNotifications() {
 
     if (Notification.permission === "granted") {
       setPermission("granted");
+      toast({
+        title: "Notificações já estão ativadas!",
+        description: "Você já está recebendo alertas sobre agendamentos.",
+      });
       return true;
     }
 
-    if (Notification.permission !== "denied") {
+    if (Notification.permission === "denied") {
+      toast({
+        title: "Notificações bloqueadas",
+        description: "As notificações foram bloqueadas. Você precisa permitir nas configurações do navegador.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    try {
       const result = await Notification.requestPermission();
       setPermission(result);
       
@@ -67,9 +80,15 @@ export function useBrowserNotifications() {
         });
         return false;
       }
+    } catch (error) {
+      console.error("Erro ao solicitar permissão:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível solicitar permissão para notificações.",
+        variant: "destructive",
+      });
+      return false;
     }
-
-    return false;
   }, [toast]);
 
   // Tocar som de notificação
