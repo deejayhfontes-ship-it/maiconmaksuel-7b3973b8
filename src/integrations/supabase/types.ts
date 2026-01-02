@@ -1512,6 +1512,117 @@ export type Database = {
           },
         ]
       }
+      import_logs: {
+        Row: {
+          agendamentos_duplicados: number | null
+          agendamentos_erros: number | null
+          agendamentos_importados: number | null
+          arquivo_nome: string
+          arquivo_tamanho: number | null
+          avisos: Json | null
+          clientes_duplicados: number | null
+          clientes_erros: number | null
+          clientes_importados: number | null
+          created_at: string
+          erros_detalhados: Json | null
+          id: string
+          origem: string
+          produtos_duplicados: number | null
+          produtos_erros: number | null
+          produtos_importados: number | null
+          profissionais_duplicados: number | null
+          profissionais_erros: number | null
+          profissionais_importados: number | null
+          servicos_duplicados: number | null
+          servicos_erros: number | null
+          servicos_importados: number | null
+          status: string
+          sync_comissoes_recalculadas: number | null
+          sync_estatisticas_atualizadas: number | null
+          sync_estoque_atualizado: boolean | null
+          tempo_processamento_segundos: number | null
+          total_erros: number | null
+          total_registros_ignorados: number | null
+          total_registros_importados: number | null
+          usuario_id: string | null
+          vendas_duplicadas: number | null
+          vendas_erros: number | null
+          vendas_importadas: number | null
+        }
+        Insert: {
+          agendamentos_duplicados?: number | null
+          agendamentos_erros?: number | null
+          agendamentos_importados?: number | null
+          arquivo_nome: string
+          arquivo_tamanho?: number | null
+          avisos?: Json | null
+          clientes_duplicados?: number | null
+          clientes_erros?: number | null
+          clientes_importados?: number | null
+          created_at?: string
+          erros_detalhados?: Json | null
+          id?: string
+          origem?: string
+          produtos_duplicados?: number | null
+          produtos_erros?: number | null
+          produtos_importados?: number | null
+          profissionais_duplicados?: number | null
+          profissionais_erros?: number | null
+          profissionais_importados?: number | null
+          servicos_duplicados?: number | null
+          servicos_erros?: number | null
+          servicos_importados?: number | null
+          status?: string
+          sync_comissoes_recalculadas?: number | null
+          sync_estatisticas_atualizadas?: number | null
+          sync_estoque_atualizado?: boolean | null
+          tempo_processamento_segundos?: number | null
+          total_erros?: number | null
+          total_registros_ignorados?: number | null
+          total_registros_importados?: number | null
+          usuario_id?: string | null
+          vendas_duplicadas?: number | null
+          vendas_erros?: number | null
+          vendas_importadas?: number | null
+        }
+        Update: {
+          agendamentos_duplicados?: number | null
+          agendamentos_erros?: number | null
+          agendamentos_importados?: number | null
+          arquivo_nome?: string
+          arquivo_tamanho?: number | null
+          avisos?: Json | null
+          clientes_duplicados?: number | null
+          clientes_erros?: number | null
+          clientes_importados?: number | null
+          created_at?: string
+          erros_detalhados?: Json | null
+          id?: string
+          origem?: string
+          produtos_duplicados?: number | null
+          produtos_erros?: number | null
+          produtos_importados?: number | null
+          profissionais_duplicados?: number | null
+          profissionais_erros?: number | null
+          profissionais_importados?: number | null
+          servicos_duplicados?: number | null
+          servicos_erros?: number | null
+          servicos_importados?: number | null
+          status?: string
+          sync_comissoes_recalculadas?: number | null
+          sync_estatisticas_atualizadas?: number | null
+          sync_estoque_atualizado?: boolean | null
+          tempo_processamento_segundos?: number | null
+          total_erros?: number | null
+          total_registros_ignorados?: number | null
+          total_registros_importados?: number | null
+          usuario_id?: string | null
+          vendas_duplicadas?: number | null
+          vendas_erros?: number | null
+          vendas_importadas?: number | null
+        }
+        Relationships: []
+      }
       itens_folha_pagamento: {
         Row: {
           adicional_noturno: number | null
