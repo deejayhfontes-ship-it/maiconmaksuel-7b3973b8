@@ -184,7 +184,7 @@ export function WebcamCapture({ open, onClose, onCapture }: WebcamCaptureProps) 
     });
   };
 
-  // Confirmar foto com crop
+  // Confirmar foto com crop - captura exatamente o que está na preview
   const confirmPhoto = () => {
     const cropCanvas = cropCanvasRef.current;
     const img = imageRef.current;
@@ -194,52 +194,61 @@ export function WebcamCapture({ open, onClose, onCapture }: WebcamCaptureProps) 
     const ctx = cropCanvas.getContext("2d");
     if (!ctx) return;
 
-    // Tamanho final do crop (quadrado 512x512)
+    // Tamanho do container visual (256px)
+    const containerSize = 256;
+    // Tamanho de saída
     const outputSize = 512;
+    
     cropCanvas.width = outputSize;
     cropCanvas.height = outputSize;
 
-    // Container size (256px que é o tamanho visual do crop area)
-    const containerSize = 256;
-    
-    // Calcular dimensões da imagem escalada
-    const imgAspect = img.width / img.height;
-    let drawWidth, drawHeight;
-    
-    if (imgAspect > 1) {
-      drawHeight = containerSize;
-      drawWidth = containerSize * imgAspect;
-    } else {
-      drawWidth = containerSize;
-      drawHeight = containerSize / imgAspect;
-    }
+    // Calcular como a imagem está sendo exibida na preview
+    // A imagem tem height: 256px e width: auto
+    const displayHeight = containerSize;
+    const displayWidth = (img.width / img.height) * displayHeight;
 
     // Aplicar escala
-    drawWidth *= scale;
-    drawHeight *= scale;
+    const scaledWidth = displayWidth * scale;
+    const scaledHeight = displayHeight * scale;
 
-    // Calcular posição de origem na imagem
-    const centerX = (drawWidth / 2) + position.x;
-    const centerY = (drawHeight / 2) + position.y;
+    // A imagem está centralizada no container de 256x256
+    // position.x e position.y são offsets a partir do centro
     
-    // Converter de posição no container para posição na imagem original
-    const scaleToOriginal = img.width / drawWidth;
-    
-    const srcX = ((drawWidth / 2) - position.x - (containerSize / 2)) * scaleToOriginal;
-    const srcY = ((drawHeight / 2) - position.y - (containerSize / 2)) * scaleToOriginal;
-    const srcSize = containerSize * scaleToOriginal;
+    // Calcular onde a imagem começa em relação ao container
+    const imgLeft = (containerSize / 2) - (scaledWidth / 2) + position.x;
+    const imgTop = (containerSize / 2) - (scaledHeight / 2) + position.y;
 
-    // Desenhar crop
+    // O crop é o quadrado de 256x256 começando em (0,0) do container
+    // Precisamos converter para coordenadas da imagem original
+    
+    // Ponto de crop no espaço da imagem escalada
+    const cropX = -imgLeft;
+    const cropY = -imgTop;
+
+    // Converter para coordenadas da imagem original
+    const ratioX = img.width / scaledWidth;
+    const ratioY = img.height / scaledHeight;
+
+    const srcX = cropX * ratioX;
+    const srcY = cropY * ratioY;
+    const srcW = containerSize * ratioX;
+    const srcH = containerSize * ratioY;
+
+    // Limpar canvas
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, outputSize, outputSize);
+
+    // Desenhar a porção visível da imagem
     ctx.drawImage(
       img,
       Math.max(0, srcX),
       Math.max(0, srcY),
-      srcSize,
-      srcSize,
-      0,
-      0,
-      outputSize,
-      outputSize
+      Math.min(srcW, img.width - Math.max(0, srcX)),
+      Math.min(srcH, img.height - Math.max(0, srcY)),
+      srcX < 0 ? (-srcX / srcW) * outputSize : 0,
+      srcY < 0 ? (-srcY / srcH) * outputSize : 0,
+      srcX < 0 ? outputSize + (srcX / srcW) * outputSize : (Math.min(srcW, img.width - srcX) / srcW) * outputSize,
+      srcY < 0 ? outputSize + (srcY / srcH) * outputSize : (Math.min(srcH, img.height - srcY) / srcH) * outputSize
     );
 
     cropCanvas.toBlob(
