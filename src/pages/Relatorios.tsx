@@ -238,6 +238,7 @@ const Relatorios = () => {
         contasPagarRes,
         contasReceberRes,
         valesRes,
+        dividasRes,
       ] = await Promise.all([
         supabase
           .from("atendimentos")
@@ -307,12 +308,6 @@ const Relatorios = () => {
       if (contasPagarRes.data) setContasPagar(contasPagarRes.data);
       if (contasReceberRes.data) setContasReceber(contasReceberRes.data);
       if (valesRes.data) setVales(valesRes.data);
-      
-      // Fetch dividas separado do array principal
-      const dividasRes = await supabase
-        .from("dividas")
-        .select("*, cliente:clientes(nome, celular, elegivel_crediario)")
-        .order("data_vencimento", { ascending: true });
       if (dividasRes.data) setDividas(dividasRes.data);
     } catch (error: any) {
       toast({
