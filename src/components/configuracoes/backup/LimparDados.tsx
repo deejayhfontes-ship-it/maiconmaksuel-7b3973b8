@@ -148,7 +148,8 @@ export default function LimparDados() {
       { name: "Limpando despesas rápidas...", table: "despesas_rapidas" },
       { name: "Limpando contas a pagar...", table: "contas_pagar" },
       { name: "Limpando contas a receber...", table: "contas_receber" },
-      { name: "Limpando metas profissionais...", table: "profissional_metas_historico" },
+      { name: "Limpando metas progresso...", table: "metas_progresso" },
+      { name: "Limpando metas...", table: "metas" },
       { name: "Limpando fechamentos profissionais...", table: "fechamentos_profissionais" },
       { name: "Limpando fechamentos semanais...", table: "fechamentos_semanais" },
       { name: "Limpando vales...", table: "vales" },
@@ -158,35 +159,80 @@ export default function LimparDados() {
       { name: "Limpando serviços...", table: "servicos" },
     ];
 
+    let deletedCounts: Record<string, number> = {};
+
     try {
       for (let i = 0; i < steps.length; i++) {
         setCurrentStep(steps[i].name);
         setProgress(((i + 1) / steps.length) * 100);
         
-        // Deletar todos os registros da tabela
-        const { error } = await supabase
+        console.log(`🗑️ ${steps[i].name}`);
+        
+        // MÉTODO CORRETO: Usar .not('id', 'is', null) para deletar TUDO
+        const { error, count } = await supabase
           .from(steps[i].table as any)
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000"); // Deleta todos
+          .delete({ count: 'exact' })
+          .not('id', 'is', null);
         
         if (error) {
-          console.warn(`Aviso ao limpar ${steps[i].table}:`, error.message);
+          console.warn(`⚠️ Aviso ao limpar ${steps[i].table}:`, error.message);
+        } else {
+          deletedCounts[steps[i].table] = count || 0;
+          console.log(`✅ ${steps[i].table}: ${count || 0} registros deletados`);
         }
         
         // Pequeno delay para feedback visual
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 150));
       }
+
+      // VERIFICAÇÃO FINAL: Conferir se realmente zerou
+      console.log("🔍 VERIFICANDO SE BANCO ESTÁ VAZIO...");
+      
+      const [
+        { count: clientesRestantes },
+        { count: agendamentosRestantes },
+        { count: atendimentosRestantes },
+        { count: servicosRestantes },
+        { count: produtosRestantes },
+        { count: profissionaisRestantes },
+      ] = await Promise.all([
+        supabase.from("clientes").select("id", { count: "exact", head: true }),
+        supabase.from("agendamentos").select("id", { count: "exact", head: true }),
+        supabase.from("atendimentos").select("id", { count: "exact", head: true }),
+        supabase.from("servicos").select("id", { count: "exact", head: true }),
+        supabase.from("produtos").select("id", { count: "exact", head: true }),
+        supabase.from("profissionais").select("id", { count: "exact", head: true }),
+      ]);
+
+      console.log("📊 Verificação final:");
+      console.log(`   Clientes restantes: ${clientesRestantes || 0}`);
+      console.log(`   Agendamentos restantes: ${agendamentosRestantes || 0}`);
+      console.log(`   Atendimentos restantes: ${atendimentosRestantes || 0}`);
+      console.log(`   Serviços restantes: ${servicosRestantes || 0}`);
+      console.log(`   Produtos restantes: ${produtosRestantes || 0}`);
+      console.log(`   Profissionais restantes: ${profissionaisRestantes || 0}`);
+
+      const totalRestante = (clientesRestantes || 0) + (agendamentosRestantes || 0) + 
+                           (atendimentosRestantes || 0) + (servicosRestantes || 0) + 
+                           (produtosRestantes || 0) + (profissionaisRestantes || 0);
 
       setCurrentStep("Concluído!");
       
       // Disparar evento para atualizar todas as telas
-      console.log("Reset completo - disparando evento data-updated");
+      console.log("✅ Reset completo - disparando evento data-updated");
       window.dispatchEvent(new Event('data-updated'));
       
-      toast.success("Sistema resetado com sucesso!", {
-        description: "Todos os dados de teste foram removidos. O sistema está pronto para uso.",
-        duration: 5000,
-      });
+      if (totalRestante > 0) {
+        toast.warning("Reset parcial!", {
+          description: `Alguns dados (${totalRestante}) não puderam ser removidos. Verifique permissões RLS.`,
+          duration: 8000,
+        });
+      } else {
+        toast.success("Sistema resetado com sucesso!", {
+          description: "Todos os dados foram removidos. O sistema está zerado.",
+          duration: 5000,
+        });
+      }
 
       // Resetar estados
       setShowZerarDialog(false);
@@ -202,10 +248,10 @@ export default function LimparDados() {
         window.location.href = "/dashboard";
       }, 2000);
 
-    } catch (error) {
-      console.error("Erro ao resetar sistema:", error);
+    } catch (error: any) {
+      console.error("❌ Erro ao resetar sistema:", error);
       toast.error("Erro ao resetar sistema", {
-        description: "Alguns dados podem não ter sido removidos. Tente novamente.",
+        description: error?.message || "Alguns dados podem não ter sido removidos. Tente novamente.",
       });
     } finally {
       setLoading(false);
