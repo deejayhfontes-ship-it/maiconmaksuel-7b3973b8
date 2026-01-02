@@ -41,7 +41,10 @@ const estados = [
 
 const clienteSchema = z.object({
   nome: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
-  celular: z.string().min(14, "Celular inválido"),
+  celular: z.string().refine((val) => {
+    const digits = val.replace(/\D/g, "");
+    return digits.length >= 10 && digits.length <= 11;
+  }, "Celular inválido - deve ter 10 ou 11 dígitos"),
   telefone: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   cpf: z.string().optional(),
