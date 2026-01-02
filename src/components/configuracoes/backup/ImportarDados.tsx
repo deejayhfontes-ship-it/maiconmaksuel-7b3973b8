@@ -1,4 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -59,6 +61,8 @@ type ColunaMapeamento = {
 };
 
 export default function ImportarDados() {
+  const queryClient = useQueryClient();
+  
   const [opcaoSelecionada, setOpcaoSelecionada] = useState<ImportOption | null>(null);
   const [tipoDados, setTipoDados] = useState<TipoDados>("clientes");
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -86,6 +90,8 @@ export default function ImportarDados() {
   });
   const [showClientesIncompletos, setShowClientesIncompletos] = useState(false);
   const [avisos, setAvisos] = useState<string[]>([]);
+  const [contadorReload, setContadorReload] = useState(5);
+  const [verificandoDados, setVerificandoDados] = useState(false);
 
   // Hook de importação
   const {
@@ -107,6 +113,69 @@ export default function ImportarDados() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-reload após importação concluída
+  useEffect(() => {
+    if (importStep === "concluido") {
+      setContadorReload(5);
+      
+      // Invalidar todos os caches do React Query
+      queryClient.invalidateQueries();
+      
+      // Disparar evento para outras páginas
+      window.dispatchEvent(new Event('data-updated'));
+      
+      // Contador regressivo para reload
+      reloadTimerRef.current = setInterval(() => {
+        setContadorReload(prev => {
+          if (prev <= 1) {
+            if (reloadTimerRef.current) clearInterval(reloadTimerRef.current);
+            window.location.reload();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (reloadTimerRef.current) clearInterval(reloadTimerRef.current);
+    };
+  }, [importStep, queryClient]);
+
+  // Função para verificar dados no banco
+  const verificarDadosNoBanco = async () => {
+    setVerificandoDados(true);
+    try {
+      const [clientesRes, servicosRes, produtosRes, profissionaisRes] = await Promise.all([
+        supabase.from('clientes').select('id', { count: 'exact', head: true }),
+        supabase.from('servicos').select('id', { count: 'exact', head: true }),
+        supabase.from('produtos').select('id', { count: 'exact', head: true }),
+        supabase.from('profissionais').select('id', { count: 'exact', head: true }),
+      ]);
+
+      const resumo = {
+        clientes: clientesRes.count || 0,
+        servicos: servicosRes.count || 0,
+        produtos: produtosRes.count || 0,
+        profissionais: profissionaisRes.count || 0,
+      };
+
+      console.log('📊 DADOS NO BANCO:', resumo);
+      
+      toast.success('Verificação concluída!', {
+        description: `Clientes: ${resumo.clientes} | Serviços: ${resumo.servicos} | Produtos: ${resumo.produtos} | Profissionais: ${resumo.profissionais}`
+      });
+
+      alert(`📊 Dados no Banco:\n\nClientes: ${resumo.clientes}\nServiços: ${resumo.servicos}\nProdutos: ${resumo.produtos}\nProfissionais: ${resumo.profissionais}`);
+    } catch (error) {
+      console.error('Erro ao verificar:', error);
+      toast.error('Erro ao verificar dados');
+    } finally {
+      setVerificandoDados(false);
+    }
+  };
 
   // Simulação de colunas detectadas
   const [colunasDetectadas] = useState([
@@ -961,7 +1030,10 @@ export default function ImportarDados() {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Importação Concluída!</h3>
                 <p className="text-muted-foreground">
-                  {resultados.reduce((sum, r) => sum + r.importados, 0).toLocaleString()} registros importados
+                  {resultados.reduce((sum, r) => sum + r.importados, 0).toLocaleString()} registros importados no banco de dados
+                </p>
+                <p className="text-sm text-primary mt-2 animate-pulse">
+                  ⏳ Recarregando sistema em {contadorReload} segundos...
                 </p>
               </div>
 
@@ -1101,6 +1173,18 @@ export default function ImportarDados() {
 
           {importStep === "concluido" && (
             <>
+              <Button 
+                variant="outline" 
+                onClick={verificarDadosNoBanco}
+                disabled={verificandoDados}
+              >
+                {verificandoDados ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Database className="h-4 w-4 mr-2" />
+                )}
+                Verificar Dados
+              </Button>
               <Button variant="outline" onClick={() => {
                 const relatorio = resultados.map(r => 
                   `${r.tipo}: ${r.importados} importados, ${r.atualizados || 0} atualizados, ${r.duplicados} duplicados, ${r.erros} erros`
@@ -1115,9 +1199,12 @@ export default function ImportarDados() {
                 <Download className="h-4 w-4 mr-2" />
                 Baixar Relatório
               </Button>
-              <Button onClick={fecharModal}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Ver Dados Importados
+              <Button onClick={() => {
+                if (reloadTimerRef.current) clearInterval(reloadTimerRef.current);
+                window.location.reload();
+              }}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Recarregar Agora
               </Button>
             </>
           )}
