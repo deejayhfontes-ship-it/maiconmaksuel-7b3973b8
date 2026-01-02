@@ -247,9 +247,40 @@ export function ClienteSelector({
           </Button>
         </div>
 
-        {/* Dropdown de troca */}
+        {/* Dropdown de troca com campo de busca */}
         {isOpen && (
-          <div className="mt-3 pt-3 border-t">
+          <div className="mt-3 pt-3 border-t space-y-3">
+            {/* Campo de busca */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar por nome, CPF ou telefone..."
+                  className="pl-10 h-11"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => { setIsOpen(false); setSearchQuery(""); }}
+                className="h-11 w-11"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
             <ClienteSelectorDropdown
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -306,7 +337,38 @@ export function ClienteSelector({
         </div>
 
         {isOpen && (
-          <div className="mt-3 pt-3 border-t">
+          <div className="mt-3 pt-3 border-t space-y-3">
+            {/* Campo de busca */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar por nome, CPF ou telefone..."
+                  className="pl-10 h-11"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => { setIsOpen(false); setSearchQuery(""); }}
+                className="h-11 w-11"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
             <ClienteSelectorDropdown
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
