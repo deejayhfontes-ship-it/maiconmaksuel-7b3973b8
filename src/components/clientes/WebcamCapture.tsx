@@ -184,7 +184,7 @@ export function WebcamCapture({ open, onClose, onCapture }: WebcamCaptureProps) 
     });
   };
 
-  // Confirmar foto com crop - captura exatamente o que está na preview
+  // Confirmar foto com crop - renderiza exatamente como está na tela
   const confirmPhoto = () => {
     const cropCanvas = cropCanvasRef.current;
     const img = imageRef.current;
@@ -194,62 +194,53 @@ export function WebcamCapture({ open, onClose, onCapture }: WebcamCaptureProps) 
     const ctx = cropCanvas.getContext("2d");
     if (!ctx) return;
 
-    // Tamanho do container visual (256px)
+    // Tamanho do container visual
     const containerSize = 256;
-    // Tamanho de saída
+    // Tamanho de saída (2x para qualidade)
     const outputSize = 512;
+    const ratio = outputSize / containerSize;
     
     cropCanvas.width = outputSize;
     cropCanvas.height = outputSize;
 
-    // Calcular como a imagem está sendo exibida na preview
-    // A imagem tem height: 256px e width: auto
-    const displayHeight = containerSize;
-    const displayWidth = (img.width / img.height) * displayHeight;
-
-    // Aplicar escala
-    const scaledWidth = displayWidth * scale;
-    const scaledHeight = displayHeight * scale;
-
-    // A imagem está centralizada no container de 256x256
-    // position.x e position.y são offsets a partir do centro
-    
-    // Calcular onde a imagem começa em relação ao container
-    const imgLeft = (containerSize / 2) - (scaledWidth / 2) + position.x;
-    const imgTop = (containerSize / 2) - (scaledHeight / 2) + position.y;
-
-    // O crop é o quadrado de 256x256 começando em (0,0) do container
-    // Precisamos converter para coordenadas da imagem original
-    
-    // Ponto de crop no espaço da imagem escalada
-    const cropX = -imgLeft;
-    const cropY = -imgTop;
-
-    // Converter para coordenadas da imagem original
-    const ratioX = img.width / scaledWidth;
-    const ratioY = img.height / scaledHeight;
-
-    const srcX = cropX * ratioX;
-    const srcY = cropY * ratioY;
-    const srcW = containerSize * ratioX;
-    const srcH = containerSize * ratioY;
-
-    // Limpar canvas
+    // Fundo branco
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, outputSize, outputSize);
 
-    // Desenhar a porção visível da imagem
+    // A imagem no CSS tem height: 256px, width: auto
+    const displayHeight = containerSize;
+    const displayWidth = (img.width / img.height) * displayHeight;
+
+    // Escalar para o tamanho de saída
+    const scaledDisplayWidth = displayWidth * ratio;
+    const scaledDisplayHeight = displayHeight * ratio;
+
+    // Centro do canvas
+    const centerX = outputSize / 2;
+    const centerY = outputSize / 2;
+
+    // Aplicar transformações igual ao CSS
+    ctx.save();
+    
+    // Mover para o centro
+    ctx.translate(centerX, centerY);
+    
+    // Aplicar posição (escalada)
+    ctx.translate(position.x * ratio, position.y * ratio);
+    
+    // Aplicar zoom
+    ctx.scale(scale, scale);
+    
+    // Desenhar imagem centralizada
     ctx.drawImage(
       img,
-      Math.max(0, srcX),
-      Math.max(0, srcY),
-      Math.min(srcW, img.width - Math.max(0, srcX)),
-      Math.min(srcH, img.height - Math.max(0, srcY)),
-      srcX < 0 ? (-srcX / srcW) * outputSize : 0,
-      srcY < 0 ? (-srcY / srcH) * outputSize : 0,
-      srcX < 0 ? outputSize + (srcX / srcW) * outputSize : (Math.min(srcW, img.width - srcX) / srcW) * outputSize,
-      srcY < 0 ? outputSize + (srcY / srcH) * outputSize : (Math.min(srcH, img.height - srcY) / srcH) * outputSize
+      -scaledDisplayWidth / 2,
+      -scaledDisplayHeight / 2,
+      scaledDisplayWidth,
+      scaledDisplayHeight
     );
+    
+    ctx.restore();
 
     cropCanvas.toBlob(
       (blob) => {
