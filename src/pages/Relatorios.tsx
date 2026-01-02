@@ -83,17 +83,18 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // Tipos
-type ReportCategory = "vendas" | "clientes" | "profissionais" | "produtos" | "financeiro" | "lucros" | "caixa" | "consolidado";
+type ReportCategory = "vendas" | "clientes" | "profissionais" | "produtos" | "financeiro" | "crediario" | "lucros" | "caixa" | "consolidado";
 type VendasReport = "periodo" | "profissional" | "servico" | "forma_pgto" | "historico" | "itens_vendidos" | "clientes_ausentes" | "servicos_lucrativos" | "produtos_lucrativos" | "clientes_lucro";
 type ClientesReport = "novos" | "ativos" | "inativos" | "aniversariantes";
 type ProfissionaisReport = "performance" | "comissoes" | "atendimentos" | "top_lucro_servicos" | "top_lucro_produtos" | "vales_adiantamentos" | "valores_pagar" | "pagamentos_realizados";
 type ProdutosReport = "mais_vendidos" | "estoque" | "margem";
 type FinanceiroReport = "dre" | "fluxo" | "contas_pagar" | "contas_receber" | "extrato_cartoes";
+type CrediarioReport = "dividas_abertas" | "dividas_pagas" | "clientes_fiado" | "vencimentos";
 type LucrosReport = "lucro_bruto" | "grafico_lucro";
 type CaixaReport = "caixas_fechados" | "sangrias" | "reforcos";
 type ConsolidadoReport = "completo";
 
-type ReportType = VendasReport | ClientesReport | ProfissionaisReport | ProdutosReport | FinanceiroReport | LucrosReport | CaixaReport | ConsolidadoReport;
+type ReportType = VendasReport | ClientesReport | ProfissionaisReport | ProdutosReport | FinanceiroReport | CrediarioReport | LucrosReport | CaixaReport | ConsolidadoReport;
 
 interface DateRange {
   from: Date;
@@ -141,6 +142,12 @@ const menuItems = {
     { id: "contas_receber", label: "Contas a Receber", icon: TrendingUp },
     { id: "extrato_cartoes", label: "Extrato de Cartões", icon: CreditCard },
   ],
+  crediario: [
+    { id: "dividas_abertas", label: "Dívidas em Aberto", icon: FileText },
+    { id: "dividas_pagas", label: "Dívidas Pagas", icon: CheckCircle },
+    { id: "clientes_fiado", label: "Clientes com Fiado", icon: Users },
+    { id: "vencimentos", label: "Próximos Vencimentos", icon: Clock },
+  ],
   lucros: [
     { id: "lucro_bruto", label: "Lucro Bruto", icon: DollarSign },
     { id: "grafico_lucro", label: "Gráfico de Lucro", icon: BarChart3 },
@@ -161,6 +168,7 @@ const categoryLabels: Record<ReportCategory, string> = {
   profissionais: "De Profissionais",
   produtos: "De Estoque",
   financeiro: "Financeiros",
+  crediario: "De Crediário",
   lucros: "De Lucros",
   caixa: "Da Gaveta do Caixa",
   consolidado: "Consolidados",
@@ -205,6 +213,7 @@ const Relatorios = () => {
   const [contasPagar, setContasPagar] = useState<any[]>([]);
   const [contasReceber, setContasReceber] = useState<any[]>([]);
   const [vales, setVales] = useState<any[]>([]);
+  const [dividas, setDividas] = useState<any[]>([]);
   const [diasAusencia, setDiasAusencia] = useState(30);
 
   const fetchData = async () => {
@@ -279,6 +288,10 @@ const Relatorios = () => {
           .select("*, profissional:profissionais(nome, foto_url, cor_agenda)")
           .gte("data_lancamento", format(startDate, "yyyy-MM-dd"))
           .lte("data_lancamento", format(endDate, "yyyy-MM-dd")),
+        supabase
+          .from("dividas")
+          .select("*, cliente:clientes(nome, celular, elegivel_crediario)")
+          .order("data_vencimento", { ascending: true }),
       ]);
 
       if (atendimentosRes.data) setAtendimentos(atendimentosRes.data);
@@ -294,6 +307,13 @@ const Relatorios = () => {
       if (contasPagarRes.data) setContasPagar(contasPagarRes.data);
       if (contasReceberRes.data) setContasReceber(contasReceberRes.data);
       if (valesRes.data) setVales(valesRes.data);
+      
+      // Fetch dividas separado do array principal
+      const dividasRes = await supabase
+        .from("dividas")
+        .select("*, cliente:clientes(nome, celular, elegivel_crediario)")
+        .order("data_vencimento", { ascending: true });
+      if (dividasRes.data) setDividas(dividasRes.data);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar dados",
@@ -723,6 +743,8 @@ const Relatorios = () => {
         return renderProdutosReport();
       case "financeiro":
         return renderFinanceiroReport();
+      case "crediario":
+        return renderCrediarioReport();
       case "lucros":
         return renderLucrosReport();
       case "caixa":
@@ -3244,6 +3266,394 @@ const Relatorios = () => {
             </Card>
           </div>
         );
+    }
+  };
+
+  // Dados calculados para crediário
+  const crediarioData = useMemo(() => {
+    const abertas = dividas.filter(d => d.status === "aberta" || d.status === "pendente");
+    const pagas = dividas.filter(d => d.status === "quitada" || d.status === "paga");
+    const totalAberto = abertas.reduce((sum, d) => sum + (d.saldo || d.valor_original || 0), 0);
+    const totalPago = pagas.reduce((sum, d) => sum + (d.valor_original || 0), 0);
+    
+    // Clientes únicos com dívidas
+    const clientesComFiado = [...new Set(dividas.map(d => d.cliente_id))].length;
+    
+    // Próximos vencimentos (próximos 7 dias)
+    const hoje = new Date();
+    const em7Dias = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const proximosVencimentos = abertas.filter(d => {
+      const venc = new Date(d.data_vencimento);
+      return venc >= hoje && venc <= em7Dias;
+    });
+    
+    // Vencidas
+    const vencidas = abertas.filter(d => new Date(d.data_vencimento) < hoje);
+    const totalVencido = vencidas.reduce((sum, d) => sum + (d.saldo || d.valor_original || 0), 0);
+    
+    return {
+      abertas,
+      pagas,
+      totalAberto,
+      totalPago,
+      clientesComFiado,
+      proximosVencimentos,
+      vencidas,
+      totalVencido,
+    };
+  }, [dividas]);
+
+  const renderCrediarioReport = () => {
+    switch (reportType) {
+      case "dividas_abertas":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total em Aberto</p>
+                      <p className="text-2xl font-bold text-orange-600">{formatCurrency(crediarioData.totalAberto)}</p>
+                    </div>
+                    <FileText className="h-8 w-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Dívidas Abertas</p>
+                      <p className="text-2xl font-bold">{crediarioData.abertas.length}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Vencidas</p>
+                      <p className="text-2xl font-bold text-red-600">{crediarioData.vencidas.length}</p>
+                    </div>
+                    <Clock className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Vencido</p>
+                      <p className="text-2xl font-bold text-red-600">{formatCurrency(crediarioData.totalVencido)}</p>
+                    </div>
+                    <TrendingDown className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Dívidas em Aberto</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(crediarioData.abertas.map(d => ({
+                  Cliente: d.cliente?.nome || "-",
+                  Valor: d.valor_original,
+                  Saldo: d.saldo,
+                  Vencimento: format(new Date(d.data_vencimento), "dd/MM/yyyy"),
+                  Status: new Date(d.data_vencimento) < new Date() ? "Vencida" : "Em dia"
+                })), "dividas-abertas")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead className="text-right">Valor Original</TableHead>
+                      <TableHead className="text-right">Saldo</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {crediarioData.abertas.map((divida) => (
+                      <TableRow key={divida.id}>
+                        <TableCell className="font-medium">{divida.cliente?.nome || "-"}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(divida.valor_original || 0)}</TableCell>
+                        <TableCell className="text-right font-semibold text-orange-600">{formatCurrency(divida.saldo || 0)}</TableCell>
+                        <TableCell>{format(new Date(divida.data_vencimento), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={new Date(divida.data_vencimento) < new Date() ? "destructive" : "secondary"}>
+                            {new Date(divida.data_vencimento) < new Date() ? "Vencida" : "Em dia"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {crediarioData.abertas.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhuma dívida em aberto
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "dividas_pagas":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Recebido</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(crediarioData.totalPago)}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Dívidas Quitadas</p>
+                      <p className="text-2xl font-bold">{crediarioData.pagas.length}</p>
+                    </div>
+                    <CheckCircle className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Dívidas Pagas</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(crediarioData.pagas.map(d => ({
+                  Cliente: d.cliente?.nome || "-",
+                  Valor: d.valor_original,
+                  DataPagamento: d.updated_at ? format(new Date(d.updated_at), "dd/MM/yyyy") : "-"
+                })), "dividas-pagas")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead>Data Origem</TableHead>
+                      <TableHead>Pagamento</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {crediarioData.pagas.map((divida) => (
+                      <TableRow key={divida.id}>
+                        <TableCell className="font-medium">{divida.cliente?.nome || "-"}</TableCell>
+                        <TableCell className="text-right text-green-600">{formatCurrency(divida.valor_original || 0)}</TableCell>
+                        <TableCell>{format(new Date(divida.data_origem), "dd/MM/yyyy")}</TableCell>
+                        <TableCell>{divida.updated_at ? format(new Date(divida.updated_at), "dd/MM/yyyy") : "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                    {crediarioData.pagas.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          Nenhuma dívida paga encontrada
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "clientes_fiado":
+        // Agrupar dívidas por cliente
+        const dividasPorCliente: Record<string, { nome: string; celular: string; total: number; qtd: number }> = {};
+        crediarioData.abertas.forEach(d => {
+          const clienteId = d.cliente_id;
+          if (!dividasPorCliente[clienteId]) {
+            dividasPorCliente[clienteId] = {
+              nome: d.cliente?.nome || "-",
+              celular: d.cliente?.celular || "-",
+              total: 0,
+              qtd: 0,
+            };
+          }
+          dividasPorCliente[clienteId].total += d.saldo || d.valor_original || 0;
+          dividasPorCliente[clienteId].qtd += 1;
+        });
+        const clientesFiado = Object.values(dividasPorCliente).sort((a, b) => b.total - a.total);
+
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Clientes com Fiado</p>
+                      <p className="text-2xl font-bold">{clientesFiado.length}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Devendo</p>
+                      <p className="text-2xl font-bold text-orange-600">{formatCurrency(crediarioData.totalAberto)}</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Clientes com Crediário</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Celular</TableHead>
+                      <TableHead className="text-center">Dívidas</TableHead>
+                      <TableHead className="text-right">Total Devendo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clientesFiado.map((cliente, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{cliente.nome}</TableCell>
+                        <TableCell>{cliente.celular}</TableCell>
+                        <TableCell className="text-center">{cliente.qtd}</TableCell>
+                        <TableCell className="text-right font-semibold text-orange-600">{formatCurrency(cliente.total)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {clientesFiado.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          Nenhum cliente com fiado
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "vencimentos":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Vencendo em 7 dias</p>
+                      <p className="text-2xl font-bold text-yellow-600">{crediarioData.proximosVencimentos.length}</p>
+                    </div>
+                    <Clock className="h-8 w-8 text-yellow-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Já Vencidas</p>
+                      <p className="text-2xl font-bold text-red-600">{crediarioData.vencidas.length}</p>
+                    </div>
+                    <TrendingDown className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Próximos Vencimentos (7 dias)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {crediarioData.proximosVencimentos.map((divida) => (
+                      <TableRow key={divida.id}>
+                        <TableCell className="font-medium">{divida.cliente?.nome || "-"}</TableCell>
+                        <TableCell>{format(new Date(divida.data_vencimento), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(divida.saldo || divida.valor_original || 0)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {crediarioData.proximosVencimentos.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                          Nenhum vencimento nos próximos 7 dias
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {crediarioData.vencidas.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-red-600">Dívidas Vencidas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Venceu em</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {crediarioData.vencidas.map((divida) => (
+                        <TableRow key={divida.id}>
+                          <TableCell className="font-medium">{divida.cliente?.nome || "-"}</TableCell>
+                          <TableCell className="text-red-600">{format(new Date(divida.data_vencimento), "dd/MM/yyyy")}</TableCell>
+                          <TableCell className="text-right font-semibold text-red-600">{formatCurrency(divida.saldo || divida.valor_original || 0)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
