@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles, Bug } from "lucide-react";
+import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles } from "lucide-react";
 import AtalhosRapidos from "@/components/dashboard/AtalhosRapidos";
 import iconeMaicon from "@/assets/icone-maicon.svg";
 import {
