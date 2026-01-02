@@ -35,17 +35,18 @@ import {
   Settings,
   BarChart3,
   Package,
-  Scissors,
   Calendar,
   DollarSign,
   AlertCircle,
   GitMerge,
   Replace,
   Copy,
-  History
+  Info,
+  Shield,
+  SkipForward
 } from "lucide-react";
 import { toast } from "sonner";
-import { useImportData, type DadosEncontrados, type DadosSelecionados, type MergeStrategy } from "@/hooks/useImportData";
+import { useImportData, type DadosEncontrados, type DadosSelecionados, type MergeStrategy, type OpcoesImportacao } from "@/hooks/useImportData";
 import { ClientesIncompletosModal } from "./ClientesIncompletosModal";
 
 type ImportOption = "excel" | "sistema-antigo" | "json";
@@ -95,10 +96,13 @@ export default function ImportarDados() {
     clientesIncompletos,
     mergeStrategy,
     tempoDecorrido,
+    opcoesImportacao,
     setMergeStrategy,
+    setOpcoesImportacao,
     inicializarEtapas,
     executarImportacao,
-    cancelarImportacao
+    cancelarImportacao,
+    forcarImportacao
   } = useImportData();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -553,6 +557,157 @@ export default function ImportarDados() {
                 </div>
               </div>
 
+              {/* Resumo da Validação */}
+              {validacao && (
+                <div className="space-y-3">
+                  <Label className="text-base font-medium flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Resultado da Validação
+                  </Label>
+
+                  {/* Resumo */}
+                  <div className="flex gap-2 flex-wrap">
+                    {validacao.resumo.totalCriticos > 0 && (
+                      <Badge variant="destructive" className="gap-1">
+                        <XCircle className="h-3 w-3" />
+                        {validacao.resumo.totalCriticos} Crítico(s)
+                      </Badge>
+                    )}
+                    {validacao.resumo.totalAvisos > 0 && (
+                      <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                        <AlertTriangle className="h-3 w-3" />
+                        {validacao.resumo.totalAvisos} Aviso(s)
+                      </Badge>
+                    )}
+                    {validacao.resumo.totalInfo > 0 && (
+                      <Badge variant="outline" className="gap-1">
+                        <Info className="h-3 w-3" />
+                        {validacao.resumo.totalInfo} Info
+                      </Badge>
+                    )}
+                    {validacao.podeImportar && validacao.resumo.totalCriticos === 0 && (
+                      <Badge className="gap-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Pronto para importar
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Erros Críticos */}
+                  {validacao.criticos.length > 0 && (
+                    <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2 text-destructive font-medium">
+                        <XCircle className="h-4 w-4" />
+                        Erros Críticos (bloqueiam importação)
+                      </div>
+                      {validacao.criticos.map((erro, i) => (
+                        <div key={i} className="ml-6 text-sm">
+                          <p className="text-destructive">{erro.mensagem}</p>
+                          {erro.sugestao && (
+                            <p className="text-muted-foreground">💡 {erro.sugestao}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Avisos (não bloqueiam) */}
+                  {validacao.avisos.length > 0 && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-medium">
+                        <AlertTriangle className="h-4 w-4" />
+                        Avisos (não bloqueiam importação)
+                      </div>
+                      {validacao.avisos.map((aviso, i) => (
+                        <div key={i} className="ml-6 text-sm">
+                          <p className="text-amber-700 dark:text-amber-300">{aviso.mensagem}</p>
+                          {aviso.sugestao && (
+                            <p className="text-amber-600/80 dark:text-amber-400/80">💡 {aviso.sugestao}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Informações */}
+                  {validacao.info.length > 0 && (
+                    <div className="p-3 bg-muted/50 rounded-lg space-y-1">
+                      <div className="flex items-center gap-2 text-muted-foreground font-medium text-sm">
+                        <Info className="h-4 w-4" />
+                        Informações
+                      </div>
+                      {validacao.info.map((info, i) => (
+                        <div key={i} className="ml-6 text-sm text-muted-foreground">
+                          {info.mensagem}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Modo Seguro de Importação */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-blue-500" />
+                  Modo Seguro de Importação
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="flex items-center space-x-2 p-2 border rounded-lg">
+                    <Checkbox
+                      id="ignorar-erros"
+                      checked={opcoesImportacao.ignorarRegistrosComErro}
+                      onCheckedChange={(checked) => setOpcoesImportacao({
+                        ...opcoesImportacao,
+                        ignorarRegistrosComErro: checked === true
+                      })}
+                    />
+                    <Label htmlFor="ignorar-erros" className="text-sm cursor-pointer">
+                      Ignorar registros com erros
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-2 border rounded-lg">
+                    <Checkbox
+                      id="completar-vazios"
+                      checked={opcoesImportacao.completarCamposVazios}
+                      onCheckedChange={(checked) => setOpcoesImportacao({
+                        ...opcoesImportacao,
+                        completarCamposVazios: checked === true
+                      })}
+                    />
+                    <Label htmlFor="completar-vazios" className="text-sm cursor-pointer">
+                      Completar campos vazios automaticamente
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-2 border rounded-lg">
+                    <Checkbox
+                      id="mesclar-duplicatas"
+                      checked={opcoesImportacao.mesclarDuplicatas}
+                      onCheckedChange={(checked) => setOpcoesImportacao({
+                        ...opcoesImportacao,
+                        mesclarDuplicatas: checked === true
+                      })}
+                    />
+                    <Label htmlFor="mesclar-duplicatas" className="text-sm cursor-pointer">
+                      Mesclar duplicatas automaticamente
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2 p-2 border rounded-lg">
+                    <Checkbox
+                      id="pular-validacoes"
+                      checked={opcoesImportacao.pularValidacoesNaoCriticas}
+                      onCheckedChange={(checked) => setOpcoesImportacao({
+                        ...opcoesImportacao,
+                        pularValidacoesNaoCriticas: checked === true
+                      })}
+                    />
+                    <Label htmlFor="pular-validacoes" className="text-sm cursor-pointer">
+                      Pular validações não-críticas
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
               {/* Estratégia de Merge */}
               <div className="space-y-3">
                 <Label className="text-base font-medium">
@@ -603,40 +758,6 @@ export default function ImportarDados() {
                   </div>
                 </RadioGroup>
               </div>
-
-              {/* Avisos de validação */}
-              {validacao && (validacao.duplicatas.length > 0 || validacao.camposIncompletos.length > 0) && (
-                <div className="space-y-3">
-                  <Label className="text-base font-medium flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-500" />
-                    Avisos Detectados
-                  </Label>
-
-                  {validacao.duplicatas.map((dup, i) => (
-                    <div key={i} className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                        <span className="font-medium">{dup.quantidade} {dup.tipo} duplicados</span>
-                      </div>
-                      {dup.exemplos.length > 0 && (
-                        <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
-                          Exemplos: {dup.exemplos.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-
-                  {validacao.camposIncompletos.map((inc, i) => (
-                    <div key={i} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                        <span className="font-medium">{inc.quantidade} {inc.tipo} com dados incompletos</span>
-                      </div>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                        Campos faltando: {inc.campos.join(", ")}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
@@ -937,10 +1058,23 @@ export default function ImportarDados() {
               <Button variant="outline" onClick={() => setImportStep("selecionar")}>
                 Voltar
               </Button>
-              <Button onClick={prosseguirParaConfirmacao}>
-                <ArrowRight className="h-4 w-4 mr-2" />
-                Continuar
-              </Button>
+              {validacao && validacao.criticos.length > 0 ? (
+                <Button 
+                  variant="secondary"
+                  onClick={() => {
+                    forcarImportacao();
+                    prosseguirParaConfirmacao();
+                  }}
+                >
+                  <SkipForward className="h-4 w-4 mr-2" />
+                  Importar Mesmo Assim
+                </Button>
+              ) : (
+                <Button onClick={prosseguirParaConfirmacao}>
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Continuar
+                </Button>
+              )}
             </>
           )}
 
