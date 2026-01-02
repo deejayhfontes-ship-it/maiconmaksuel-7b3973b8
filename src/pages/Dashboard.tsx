@@ -39,43 +39,6 @@ interface Agendamento {
   servico: { nome: string };
 }
 
-// Dados mockados para o gráfico de faturamento
-const revenueData = [
-  { day: "01", value: 850 },
-  { day: "02", value: 1200 },
-  { day: "03", value: 980 },
-  { day: "04", value: 1450 },
-  { day: "05", value: 1100 },
-  { day: "06", value: 1350 },
-  { day: "07", value: 890 },
-  { day: "08", value: 1500 },
-  { day: "09", value: 1680 },
-  { day: "10", value: 1420 },
-  { day: "11", value: 1250 },
-  { day: "12", value: 1890 },
-  { day: "13", value: 2100 },
-  { day: "14", value: 1750 },
-  { day: "15", value: 1600 },
-  { day: "16", value: 1950 },
-  { day: "17", value: 2200 },
-  { day: "18", value: 1800 },
-  { day: "19", value: 2050 },
-  { day: "20", value: 1700 },
-  { day: "21", value: 1550 },
-  { day: "22", value: 1900 },
-  { day: "23", value: 2300 },
-  { day: "24", value: 1234 },
-];
-
-// Dados mockados para top serviços
-const topServicesData = [
-  { name: "Corte Feminino", value: 45 },
-  { name: "Escova", value: 38 },
-  { name: "Coloração", value: 32 },
-  { name: "Manicure", value: 28 },
-  { name: "Pedicure", value: 22 },
-];
-
 const barColors = ["hsl(239, 84%, 67%)", "hsl(239, 84%, 72%)", "hsl(239, 84%, 77%)", "hsl(239, 84%, 82%)", "hsl(239, 84%, 87%)"];
 
 // iOS Status Badges
@@ -127,6 +90,8 @@ const Dashboard = () => {
     agendamentosHoje: 0,
     novosClientes: 0,
   });
+  const [revenueData, setRevenueData] = useState<{ day: string; value: number }[]>([]);
+  const [topServicesData, setTopServicesData] = useState<{ name: string; value: number }[]>([]);
 
   // Update clock every second
   useEffect(() => {
@@ -134,73 +99,122 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    
+    // Buscar agendamentos de hoje
+    const hoje = new Date();
+    const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0).toISOString();
+    const fimHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999).toISOString();
+
+    const { data: agendamentos } = await supabase
+      .from("agendamentos")
+      .select(`
+        id,
+        data_hora,
+        status,
+        cliente:clientes(nome),
+        profissional:profissionais(nome, cor_agenda),
+        servico:servicos(nome)
+      `)
+      .gte("data_hora", inicioHoje)
+      .lte("data_hora", fimHoje)
+      .neq("status", "cancelado")
+      .order("data_hora", { ascending: true });
+
+    if (agendamentos) {
+      setAgendamentosHoje(agendamentos as unknown as Agendamento[]);
+    }
+
+    // Buscar atendimentos fechados hoje
+    const { data: atendimentos } = await supabase
+      .from("atendimentos")
+      .select("valor_final")
+      .eq("status", "fechado")
+      .gte("data_hora", inicioHoje)
+      .lte("data_hora", fimHoje);
+
+    // Novos clientes este mês
+    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const { count: clientesCount } = await supabase
+      .from("clientes")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", inicioMes);
+
+    // Atualizar stats de uma vez
+    setStats({
+      faturamentoHoje: atendimentos?.reduce((acc, at) => acc + Number(at.valor_final), 0) || 0,
+      atendimentosHoje: atendimentos?.length || 0,
+      agendamentosHoje: agendamentos?.length || 0,
+      novosClientes: clientesCount || 0,
+    });
+
+    // Buscar faturamento dos últimos 30 dias para o gráfico
+    const data30DiasAtras = new Date();
+    data30DiasAtras.setDate(data30DiasAtras.getDate() - 30);
+    
+    const { data: atendimentos30Dias } = await supabase
+      .from("atendimentos")
+      .select("valor_final, data_hora")
+      .eq("status", "fechado")
+      .gte("data_hora", data30DiasAtras.toISOString())
+      .order("data_hora", { ascending: true });
+
+    if (atendimentos30Dias && atendimentos30Dias.length > 0) {
+      // Agrupar por dia
+      const faturamentoPorDia: Record<string, number> = {};
+      atendimentos30Dias.forEach(at => {
+        const dia = format(parseISO(at.data_hora), "dd");
+        faturamentoPorDia[dia] = (faturamentoPorDia[dia] || 0) + Number(at.valor_final);
+      });
       
-      // Buscar agendamentos de hoje
-      const hoje = new Date();
-      const inicioHoje = new Date(hoje.setHours(0, 0, 0, 0)).toISOString();
-      const fimHoje = new Date(hoje.setHours(23, 59, 59, 999)).toISOString();
+      const dadosGrafico = Object.entries(faturamentoPorDia).map(([day, value]) => ({ day, value }));
+      setRevenueData(dadosGrafico);
+    } else {
+      setRevenueData([]);
+    }
 
-      const { data: agendamentos } = await supabase
-        .from("agendamentos")
-        .select(`
-          id,
-          data_hora,
-          status,
-          cliente:clientes(nome),
-          profissional:profissionais(nome, cor_agenda),
-          servico:servicos(nome)
-        `)
-        .gte("data_hora", inicioHoje)
-        .lte("data_hora", fimHoje)
-        .neq("status", "cancelado")
-        .order("data_hora", { ascending: true });
+    // Buscar top serviços do mês
+    const { data: servicosMes } = await supabase
+      .from("atendimento_servicos")
+      .select(`
+        quantidade,
+        servico:servicos(nome)
+      `)
+      .gte("created_at", inicioMes);
 
-      if (agendamentos) {
-        setAgendamentosHoje(agendamentos as unknown as Agendamento[]);
-        setStats(prev => ({
-          ...prev,
-          agendamentosHoje: agendamentos.length,
-        }));
-      }
+    if (servicosMes && servicosMes.length > 0) {
+      // Agrupar por serviço
+      const contagemServicos: Record<string, number> = {};
+      servicosMes.forEach(item => {
+        const nomeServico = (item.servico as any)?.nome || "Serviço";
+        contagemServicos[nomeServico] = (contagemServicos[nomeServico] || 0) + (item.quantidade || 1);
+      });
+      
+      const topServicos = Object.entries(contagemServicos)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+      
+      setTopServicesData(topServicos);
+    } else {
+      setTopServicesData([]);
+    }
 
-      // Buscar atendimentos fechados hoje
-      const { data: atendimentos } = await supabase
-        .from("atendimentos")
-        .select("valor_final")
-        .eq("status", "fechado")
-        .gte("data_hora", inicioHoje)
-        .lte("data_hora", fimHoje);
+    setLoading(false);
+  };
 
-      if (atendimentos) {
-        const faturamento = atendimentos.reduce((acc, at) => acc + Number(at.valor_final), 0);
-        setStats(prev => ({
-          ...prev,
-          faturamentoHoje: faturamento,
-          atendimentosHoje: atendimentos.length,
-        }));
-      }
-
-      // Novos clientes este mês
-      const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-      const { count } = await supabase
-        .from("clientes")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", inicioMes);
-
-      if (count) {
-        setStats(prev => ({
-          ...prev,
-          novosClientes: count,
-        }));
-      }
-
-      setLoading(false);
-    };
-
+  useEffect(() => {
     fetchDashboardData();
+    
+    // Escutar evento de dados atualizados (após reset/importação)
+    const handleDataUpdate = () => {
+      console.log("Dashboard: Evento data-updated recebido, recarregando dados...");
+      fetchDashboardData();
+    };
+    
+    window.addEventListener('data-updated', handleDataUpdate);
+    return () => window.removeEventListener('data-updated', handleDataUpdate);
   }, []);
 
   const statCards = [
@@ -506,7 +520,7 @@ const Dashboard = () => {
                   />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                     {topServicesData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={barColors[index]} />
+                      <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
                     ))}
                   </Bar>
                 </BarChart>

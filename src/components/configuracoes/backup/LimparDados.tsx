@@ -179,6 +179,10 @@ export default function LimparDados() {
 
       setCurrentStep("Concluído!");
       
+      // Disparar evento para atualizar todas as telas
+      console.log("Reset completo - disparando evento data-updated");
+      window.dispatchEvent(new Event('data-updated'));
+      
       toast.success("Sistema resetado com sucesso!", {
         description: "Todos os dados de teste foram removidos. O sistema está pronto para uso.",
         duration: 5000,
@@ -193,9 +197,9 @@ export default function LimparDados() {
       setMotivo("");
       setConfirmacoes({ entendo: false, fezBackup: false, responsabilidade: false });
 
-      // Redirecionar para dashboard
+      // Redirecionar para dashboard com reload forçado
       setTimeout(() => {
-        navigate("/dashboard");
+        window.location.href = "/dashboard";
       }, 2000);
 
     } catch (error) {
