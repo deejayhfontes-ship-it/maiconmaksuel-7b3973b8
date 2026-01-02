@@ -112,6 +112,18 @@ const SECOES: SecaoConfig[] = [
     ],
   },
   {
+    id: 'crediario',
+    label: 'Crediário',
+    icon: FileText,
+    cor: '#FF9500',
+    subsecoes: [
+      { id: 'cred-abertas', label: 'Dívidas em aberto' },
+      { id: 'cred-pagas', label: 'Dívidas pagas' },
+      { id: 'cred-clientes', label: 'Clientes com fiado' },
+      { id: 'cred-vencimentos', label: 'Vencimentos' },
+    ],
+  },
+  {
     id: 'metas',
     label: 'Metas',
     icon: Target,
@@ -266,6 +278,15 @@ export default function RelatorioCompleto() {
         .select('*')
         .eq('ativo', true);
 
+      // Buscar dívidas (crediário)
+      const { data: dividas } = await supabase
+        .from('dividas')
+        .select('*, cliente:clientes(nome)')
+        .order('data_vencimento', { ascending: true });
+
+      const dividasAbertas = dividas?.filter(d => d.status === 'aberta' || d.status === 'pendente') || [];
+      const totalCrediario = dividasAbertas.reduce((acc, d) => acc + Number(d.saldo || d.valor_original || 0), 0);
+
       setProgresso(90);
       setEtapaAtual('Gerando arquivos...');
 
@@ -278,6 +299,8 @@ export default function RelatorioCompleto() {
           { label: 'Faturamento Total', valor: `R$ ${(atendimentos?.reduce((acc, a) => acc + Number(a.valor_final), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
           { label: 'Clientes Ativos', valor: clientes?.length || 0 },
           { label: 'Profissionais Ativos', valor: profissionais?.length || 0 },
+          { label: 'Crediário em Aberto', valor: `R$ ${totalCrediario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+          { label: 'Dívidas Pendentes', valor: dividasAbertas.length },
         ],
         colunas: ['Data', 'Cliente', 'Valor', 'Status'],
         dados: (atendimentos || []).slice(0, 100).map(a => [
