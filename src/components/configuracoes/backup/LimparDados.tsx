@@ -129,60 +129,131 @@ export default function LimparDados() {
     setLoading(true);
     setProgress(0);
 
+    // ORDEM CRÍTICA: Deletar tabelas dependentes PRIMEIRO (por causa das foreign keys)
+    // Tabelas que referenciam outras devem ser deletadas antes das referenciadas
     const steps = [
+      // 1. Tabelas que referenciam atendimentos
       { name: "Limpando pagamentos...", table: "pagamentos" },
       { name: "Limpando gorjetas...", table: "gorjetas" },
       { name: "Limpando itens de atendimento...", table: "atendimento_servicos" },
       { name: "Limpando produtos de atendimento...", table: "atendimento_produtos" },
+      
+      // 2. Tabelas que referenciam agendamentos
       { name: "Limpando confirmações...", table: "confirmacoes_agendamento" },
       { name: "Limpando mensagens...", table: "mensagens_enviadas" },
+      
+      // 3. Notas fiscais (referencia atendimentos)
       { name: "Limpando itens notas fiscais...", table: "itens_nota_fiscal" },
       { name: "Limpando notas fiscais...", table: "notas_fiscais" },
+      
+      // 4. AGORA deletar atendimentos e agendamentos
       { name: "Limpando atendimentos...", table: "atendimentos" },
       { name: "Limpando agendamentos...", table: "agendamentos" },
+      
+      // 5. Dívidas (referencia clientes)
       { name: "Limpando dívidas pagamentos...", table: "dividas_pagamentos" },
       { name: "Limpando dívidas...", table: "dividas" },
+      
+      // 6. Cheques (referencia clientes)
       { name: "Limpando cheques...", table: "cheques" },
+      
+      // 7. Caixa
       { name: "Limpando movimentações caixa...", table: "caixa_movimentacoes" },
       { name: "Limpando caixa...", table: "caixa" },
       { name: "Limpando despesas rápidas...", table: "despesas_rapidas" },
+      
+      // 8. Contas
       { name: "Limpando contas a pagar...", table: "contas_pagar" },
       { name: "Limpando contas a receber...", table: "contas_receber" },
+      
+      // 9. Metas
       { name: "Limpando metas progresso...", table: "metas_progresso" },
       { name: "Limpando metas...", table: "metas" },
+      
+      // 10. Fechamentos
       { name: "Limpando fechamentos profissionais...", table: "fechamentos_profissionais" },
       { name: "Limpando fechamentos semanais...", table: "fechamentos_semanais" },
-      { name: "Limpando vales...", table: "vales" },
+      
+      // 11. RH - Ponto e funcionários
+      { name: "Limpando ponto profissionais...", table: "ponto_registros" },
+      { name: "Limpando ponto funcionários...", table: "ponto_funcionarios" },
+      { name: "Limpando itens folha...", table: "itens_folha_pagamento" },
+      { name: "Limpando folhas pagamento...", table: "folhas_pagamento" },
+      { name: "Limpando férias...", table: "ferias_funcionarios" },
+      { name: "Limpando ocorrências...", table: "ocorrencias_funcionarios" },
+      { name: "Limpando documentos...", table: "documentos_funcionarios" },
+      { name: "Limpando funcionários...", table: "funcionarios" },
+      
+      // 12. POR ÚLTIMO: Tabelas principais (sem dependentes)
       { name: "Limpando clientes...", table: "clientes" },
       { name: "Limpando profissionais...", table: "profissionais" },
       { name: "Limpando produtos...", table: "produtos" },
       { name: "Limpando serviços...", table: "servicos" },
+      
+      // 13. Logs de importação
+      { name: "Limpando logs importação...", table: "import_logs" },
     ];
 
     let deletedCounts: Record<string, number> = {};
+    let errors: string[] = [];
+
+    console.log("════════════════════════════════════");
+    console.log("🗑️ INICIANDO RESET TOTAL DO SISTEMA");
+    console.log("════════════════════════════════════");
 
     try {
       for (let i = 0; i < steps.length; i++) {
         setCurrentStep(steps[i].name);
         setProgress(((i + 1) / steps.length) * 100);
         
-        console.log(`🗑️ ${steps[i].name}`);
+        console.log(`\n${i + 1}/${steps.length} ${steps[i].name}`);
         
-        // MÉTODO CORRETO: Usar .not('id', 'is', null) para deletar TUDO
+        // Contar antes de deletar
+        const { count: countBefore } = await supabase
+          .from(steps[i].table as any)
+          .select('id', { count: 'exact', head: true });
+        
+        console.log(`   📊 Antes: ${countBefore || 0} registros`);
+        
+        if ((countBefore || 0) === 0) {
+          console.log(`   ⏭️ Tabela já está vazia`);
+          continue;
+        }
+        
+        // MÉTODO ALTERNATIVO: Usar gte com created_at ou neq com string vazia
+        // Isso garante que TODOS os registros sejam selecionados
         const { error, count } = await supabase
           .from(steps[i].table as any)
           .delete({ count: 'exact' })
-          .not('id', 'is', null);
+          .gte('id', '00000000-0000-0000-0000-000000000000'); // UUID mínimo
         
         if (error) {
-          console.warn(`⚠️ Aviso ao limpar ${steps[i].table}:`, error.message);
+          // Ignorar erro de tabela não existente
+          if (error.code === '42P01' || error.message.includes('does not exist')) {
+            console.log(`   ⏭️ Tabela ${steps[i].table} não existe, pulando...`);
+          } else if (error.message.includes('foreign key')) {
+            console.warn(`   ⚠️ Chave estrangeira impedindo delete: ${error.message}`);
+            errors.push(`${steps[i].table}: FK constraint`);
+          } else {
+            console.warn(`   ⚠️ Erro: ${error.message}`);
+            errors.push(`${steps[i].table}: ${error.message}`);
+          }
         } else {
           deletedCounts[steps[i].table] = count || 0;
-          console.log(`✅ ${steps[i].table}: ${count || 0} registros deletados`);
+          console.log(`   ✅ ${count || 0} registros deletados`);
+          
+          // Verificar se realmente deletou
+          const { count: countAfter } = await supabase
+            .from(steps[i].table as any)
+            .select('id', { count: 'exact', head: true });
+          
+          if ((countAfter || 0) > 0) {
+            console.warn(`   ⚠️ ATENÇÃO: Ainda restam ${countAfter} registros!`);
+          }
         }
         
         // Pequeno delay para feedback visual
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       // VERIFICAÇÃO FINAL: Conferir se realmente zerou
