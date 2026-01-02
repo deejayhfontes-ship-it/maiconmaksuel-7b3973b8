@@ -184,7 +184,7 @@ export function WebcamCapture({ open, onClose, onCapture }: WebcamCaptureProps) 
     });
   };
 
-  // Confirmar foto com crop - renderiza exatamente como está na tela
+  // Confirmar foto com crop - replica EXATAMENTE as transformações CSS
   const confirmPhoto = () => {
     const cropCanvas = cropCanvasRef.current;
     const img = imageRef.current;
@@ -194,54 +194,66 @@ export function WebcamCapture({ open, onClose, onCapture }: WebcamCaptureProps) 
     const ctx = cropCanvas.getContext("2d");
     if (!ctx) return;
 
-    // Tamanho do container visual
+    // Tamanho do container visual (256px - o círculo de preview)
     const containerSize = 256;
-    // Tamanho de saída (2x para qualidade)
+    // Tamanho de saída final
     const outputSize = 512;
-    const ratio = outputSize / containerSize;
     
     cropCanvas.width = outputSize;
     cropCanvas.height = outputSize;
 
-    // Fundo branco
+    // Limpar e fundo branco
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, outputSize, outputSize);
 
-    // A imagem no CSS tem height: 256px, width: auto
-    const displayHeight = containerSize;
-    const displayWidth = (img.width / img.height) * displayHeight;
-
-    // Escalar para o tamanho de saída
-    const scaledDisplayWidth = displayWidth * ratio;
-    const scaledDisplayHeight = displayHeight * ratio;
-
-    // Centro do canvas
+    // ========================================
+    // REPLICAR EXATAMENTE O CSS DO PREVIEW
+    // ========================================
+    
+    // No CSS a imagem tem height: 256px, width: auto
+    const imgAspect = img.width / img.height;
+    const displayHeight = containerSize; // 256
+    const displayWidth = displayHeight * imgAspect;
+    
+    // Fator de escala para 512px de saída
+    const outputScale = outputSize / containerSize; // 2
+    
+    // Dimensões finais da imagem (escaladas para output)
+    const finalImgWidth = displayWidth * outputScale;
+    const finalImgHeight = displayHeight * outputScale;
+    
+    // Centro do canvas de saída
     const centerX = outputSize / 2;
     const centerY = outputSize / 2;
-
-    // Aplicar transformações igual ao CSS
+    
+    // Aplicar as mesmas transformações CSS:
+    // transform: translate(position.x, position.y) scale(scale)
+    // transformOrigin: center
+    // A imagem está centralizada no container
+    
     ctx.save();
     
-    // Mover para o centro
+    // 1. Mover para o centro do canvas
     ctx.translate(centerX, centerY);
     
-    // Aplicar posição (escalada)
-    ctx.translate(position.x * ratio, position.y * ratio);
+    // 2. Aplicar a posição (offset do drag) - escalada para output
+    ctx.translate(position.x * outputScale, position.y * outputScale);
     
-    // Aplicar zoom
+    // 3. Aplicar o zoom do usuário
     ctx.scale(scale, scale);
     
-    // Desenhar imagem centralizada
+    // 4. Desenhar a imagem centrada (metade para cada lado)
     ctx.drawImage(
       img,
-      -scaledDisplayWidth / 2,
-      -scaledDisplayHeight / 2,
-      scaledDisplayWidth,
-      scaledDisplayHeight
+      -finalImgWidth / 2,
+      -finalImgHeight / 2,
+      finalImgWidth,
+      finalImgHeight
     );
     
     ctx.restore();
 
+    // Converter para blob e salvar
     cropCanvas.toBlob(
       (blob) => {
         if (blob) {
@@ -326,7 +338,7 @@ export function WebcamCapture({ open, onClose, onCapture }: WebcamCaptureProps) 
 
             {capturedImage && (
               <div 
-                className="relative w-64 h-64 mx-auto my-2 rounded-full overflow-hidden border-4 border-white/30 cursor-move"
+                className="relative w-64 h-64 mx-auto my-2 rounded-full overflow-hidden border-4 border-white/30 cursor-move bg-muted"
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -335,30 +347,27 @@ export function WebcamCapture({ open, onClose, onCapture }: WebcamCaptureProps) 
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleMouseUp}
               >
+                {/* Container centralizado para a imagem */}
                 <div 
-                  className="absolute select-none"
-                  style={{
-                    transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                    transformOrigin: 'center',
-                    left: '50%',
-                    top: '50%',
-                    marginLeft: '-50%',
-                    marginTop: '-50%',
-                  }}
+                  className="absolute inset-0 flex items-center justify-center select-none"
                 >
                   <img
                     src={capturedImage}
                     alt="Preview"
-                    className="max-w-none"
+                    className="max-w-none pointer-events-none"
                     style={{ 
-                      width: 'auto',
                       height: 256,
+                      width: 'auto',
+                      transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                      transformOrigin: 'center center',
                     }}
                     draggable={false}
                   />
                 </div>
+                
+                {/* Indicador de arrasto */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <Move className="h-8 w-8 text-white/50" />
+                  <Move className="h-8 w-8 text-white/40" />
                 </div>
               </div>
             )}
