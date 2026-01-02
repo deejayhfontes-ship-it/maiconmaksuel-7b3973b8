@@ -56,6 +56,9 @@ const clienteSchema = z.object({
   observacoes: z.string().optional(),
   ativo: z.boolean(),
   sempre_emitir_nf: z.boolean(),
+  elegivel_crediario: z.boolean(),
+  limite_crediario: z.number().min(0).optional(),
+  dia_vencimento_crediario: z.number().min(1).max(28).optional(),
 });
 
 type ClienteFormData = z.infer<typeof clienteSchema>;
@@ -79,6 +82,9 @@ interface Cliente {
   foto_url: string | null;
   ativo: boolean;
   sempre_emitir_nf?: boolean;
+  elegivel_crediario?: boolean;
+  limite_crediario?: number;
+  dia_vencimento_crediario?: number;
   ultima_visita: string | null;
   total_visitas?: number;
   created_at: string;
@@ -132,6 +138,9 @@ export default function ClienteFormDialog({
       observacoes: "",
       ativo: true,
       sempre_emitir_nf: false,
+      elegivel_crediario: false,
+      limite_crediario: 0,
+      dia_vencimento_crediario: 10,
     },
   });
 
@@ -153,6 +162,10 @@ export default function ClienteFormDialog({
         estado: cliente.estado || "",
         observacoes: cliente.observacoes || "",
         ativo: cliente.ativo,
+        sempre_emitir_nf: cliente.sempre_emitir_nf || false,
+        elegivel_crediario: cliente.elegivel_crediario || false,
+        limite_crediario: cliente.limite_crediario || 0,
+        dia_vencimento_crediario: cliente.dia_vencimento_crediario || 10,
       });
       setFotoPreview(cliente.foto_url);
     } else {
@@ -172,6 +185,10 @@ export default function ClienteFormDialog({
         estado: "",
         observacoes: "",
         ativo: true,
+        sempre_emitir_nf: false,
+        elegivel_crediario: false,
+        limite_crediario: 0,
+        dia_vencimento_crediario: 10,
       });
       setFotoPreview(null);
     }
@@ -301,6 +318,10 @@ export default function ClienteFormDialog({
         estado: data.estado || null,
         observacoes: data.observacoes || null,
         ativo: data.ativo,
+        sempre_emitir_nf: data.sempre_emitir_nf || false,
+        elegivel_crediario: data.elegivel_crediario || false,
+        limite_crediario: data.limite_crediario || 0,
+        dia_vencimento_crediario: data.dia_vencimento_crediario || 10,
       };
 
       if (isEditing && cliente) {
@@ -677,6 +698,80 @@ export default function ClienteFormDialog({
                   )}
                 />
               </div>
+            </div>
+
+            {/* Crediário */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Crediário (Fiado)
+              </h3>
+
+              <FormField
+                control={form.control}
+                name="elegivel_crediario"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4 bg-amber-50/50 dark:bg-amber-900/10">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Elegível para Crediário</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Permite que o cliente compre no fiado
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("elegivel_crediario") && (
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="limite_crediario"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Limite de Crédito (R$)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            min={0} 
+                            placeholder="0,00" 
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="dia_vencimento_crediario"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dia de Vencimento</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min={1} 
+                            max={28} 
+                            placeholder="10" 
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Outros */}
