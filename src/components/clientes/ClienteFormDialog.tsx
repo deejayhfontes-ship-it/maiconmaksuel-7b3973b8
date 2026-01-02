@@ -56,6 +56,7 @@ const clienteSchema = z.object({
   observacoes: z.string().optional(),
   ativo: z.boolean(),
   sempre_emitir_nf: z.boolean(),
+  receber_mensagens: z.boolean(),
   elegivel_crediario: z.boolean(),
   limite_crediario: z.number().min(0).optional(),
   dia_vencimento_crediario: z.number().min(1).max(28).optional(),
@@ -82,6 +83,7 @@ interface Cliente {
   foto_url: string | null;
   ativo: boolean;
   sempre_emitir_nf?: boolean;
+  receber_mensagens?: boolean;
   elegivel_crediario?: boolean;
   limite_crediario?: number;
   dia_vencimento_crediario?: number;
@@ -138,6 +140,7 @@ export default function ClienteFormDialog({
       observacoes: "",
       ativo: true,
       sempre_emitir_nf: false,
+      receber_mensagens: true,
       elegivel_crediario: false,
       limite_crediario: 0,
       dia_vencimento_crediario: 10,
@@ -163,6 +166,7 @@ export default function ClienteFormDialog({
         observacoes: cliente.observacoes || "",
         ativo: cliente.ativo,
         sempre_emitir_nf: cliente.sempre_emitir_nf || false,
+        receber_mensagens: cliente.receber_mensagens !== false,
         elegivel_crediario: cliente.elegivel_crediario || false,
         limite_crediario: cliente.limite_crediario || 0,
         dia_vencimento_crediario: cliente.dia_vencimento_crediario || 10,
@@ -186,6 +190,7 @@ export default function ClienteFormDialog({
         observacoes: "",
         ativo: true,
         sempre_emitir_nf: false,
+        receber_mensagens: true,
         elegivel_crediario: false,
         limite_crediario: 0,
         dia_vencimento_crediario: 10,
@@ -319,6 +324,7 @@ export default function ClienteFormDialog({
         observacoes: data.observacoes || null,
         ativo: data.ativo,
         sempre_emitir_nf: data.sempre_emitir_nf || false,
+        receber_mensagens: data.receber_mensagens !== false,
         elegivel_crediario: data.elegivel_crediario || false,
         limite_crediario: data.limite_crediario || 0,
         dia_vencimento_crediario: data.dia_vencimento_crediario || 10,
@@ -794,6 +800,27 @@ export default function ClienteFormDialog({
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="receber_mensagens"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Receber Mensagens</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Cliente aceita receber notificações e lembretes
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
