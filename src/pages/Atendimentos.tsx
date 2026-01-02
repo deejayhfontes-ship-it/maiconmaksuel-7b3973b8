@@ -439,8 +439,40 @@ const Atendimentos = () => {
         parcelas: pag.parcelas,
       }]);
 
-      // Registrar movimentação no caixa se estiver aberto
-      if (caixaAberto) {
+      // Se for fiado, criar registro na tabela de dívidas
+      if (pag.forma === "fiado" && selectedAtendimento.cliente_id) {
+        // Buscar dia de vencimento do cliente
+        const { data: clienteData } = await supabase
+          .from("clientes")
+          .select("dia_vencimento_crediario")
+          .eq("id", selectedAtendimento.cliente_id)
+          .single();
+
+        // Calcular data de vencimento (próximo dia de vencimento do cliente)
+        const hoje = new Date();
+        const diaVencimento = clienteData?.dia_vencimento_crediario || 10;
+        let dataVencimento = new Date(hoje.getFullYear(), hoje.getMonth(), diaVencimento);
+        
+        // Se o dia já passou neste mês, pegar o próximo mês
+        if (dataVencimento <= hoje) {
+          dataVencimento = new Date(hoje.getFullYear(), hoje.getMonth() + 1, diaVencimento);
+        }
+
+        await supabase.from("dividas").insert([{
+          cliente_id: selectedAtendimento.cliente_id,
+          atendimento_id: selectedAtendimento.id,
+          valor_original: pag.valor,
+          valor_pago: 0,
+          saldo: pag.valor,
+          data_origem: new Date().toISOString(),
+          data_vencimento: dataVencimento.toISOString(),
+          status: "aberta",
+          observacoes: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} - Fiado`,
+        }]);
+      }
+
+      // Registrar movimentação no caixa se estiver aberto (exceto fiado que não entra no caixa)
+      if (caixaAberto && pag.forma !== "fiado") {
         await supabase.from("caixa_movimentacoes").insert([{
           caixa_id: caixaAberto.id,
           tipo: "entrada",
