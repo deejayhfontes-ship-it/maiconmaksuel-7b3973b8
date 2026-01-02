@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 
-export function NotificationPermissionBanner() {
+export const NotificationPermissionBanner = forwardRef<HTMLDivElement>((_, ref) => {
   const { permission, requestPermission } = useBrowserNotifications();
   const [dismissed, setDismissed] = useState(false);
   const [show, setShow] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
 
   useEffect(() => {
     // Verificar se já foi dismissado antes
@@ -32,9 +33,14 @@ export function NotificationPermissionBanner() {
   };
 
   const handleEnable = async () => {
-    const granted = await requestPermission();
-    if (granted) {
-      setShow(false);
+    setIsRequesting(true);
+    try {
+      const granted = await requestPermission();
+      if (granted) {
+        setShow(false);
+      }
+    } finally {
+      setIsRequesting(false);
     }
   };
 
@@ -43,7 +49,7 @@ export function NotificationPermissionBanner() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 animate-fade-in max-w-sm">
+    <div ref={ref} className="fixed bottom-4 right-4 z-50 animate-fade-in max-w-sm">
       <div className="bg-card border rounded-xl shadow-lg p-4">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-full bg-primary/10 flex-shrink-0">
@@ -55,8 +61,8 @@ export function NotificationPermissionBanner() {
               Receba alertas sobre agendamentos próximos diretamente no navegador.
             </p>
             <div className="flex items-center gap-2 mt-3">
-              <Button size="sm" onClick={handleEnable}>
-                Ativar
+              <Button size="sm" onClick={handleEnable} disabled={isRequesting}>
+                {isRequesting ? "Solicitando..." : "Ativar"}
               </Button>
               <Button size="sm" variant="ghost" onClick={handleDismiss}>
                 Agora não
@@ -75,4 +81,6 @@ export function NotificationPermissionBanner() {
       </div>
     </div>
   );
-}
+});
+
+NotificationPermissionBanner.displayName = "NotificationPermissionBanner";
