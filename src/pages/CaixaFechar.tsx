@@ -10,6 +10,7 @@ import {
   AlertCircle,
   CheckCircle,
   Printer,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ export default function CaixaFechar() {
   const [loading, setLoading] = useState(true);
   const [caixa, setCaixa] = useState<CaixaData | null>(null);
   const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
+  const [dividasHoje, setDividasHoje] = useState<any[]>([]);
   
   // Contagem física
   const [contDinheiro, setContDinheiro] = useState(0);
@@ -86,6 +88,19 @@ export default function CaixaFechar() {
       .eq("caixa_id", caixaAberto.id);
 
     setMovimentacoes(movs || []);
+
+    // Buscar dívidas criadas hoje (fiado)
+    const hoje = new Date();
+    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
+    const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59).toISOString();
+
+    const { data: dividas } = await supabase
+      .from("dividas")
+      .select("*, clientes(nome)")
+      .gte("data_origem", inicioDia)
+      .lte("data_origem", fimDia);
+
+    setDividasHoje(dividas || []);
     setLoading(false);
   }, [navigate, toast]);
 
@@ -120,8 +135,12 @@ export default function CaixaFechar() {
       .filter((m) => m.forma_pagamento === "pix" && m.tipo === "entrada")
       .reduce((acc, m) => acc + Number(m.valor), 0);
 
+    // Total de fiado do dia
+    const fiado = dividasHoje.reduce((acc, d) => acc + Number(d.valor_original), 0);
+
     const saldoEsperado = valorInicial + entradas - saidas;
     const saldoDinheiroEsperado = valorInicial + dinheiro - saidas;
+    const totalVendas = entradas + fiado; // Vendas incluindo fiado
 
     return {
       valorInicial,
@@ -131,10 +150,12 @@ export default function CaixaFechar() {
       debito,
       credito,
       pix,
+      fiado,
       saldoEsperado,
       saldoDinheiroEsperado,
+      totalVendas,
     };
-  }, [movimentacoes, caixa]);
+  }, [movimentacoes, caixa, dividasHoje]);
 
   const diferenca = contDinheiro - totais.saldoDinheiroEsperado;
   const temDiferenca = Math.abs(diferenca) > 0.01;
@@ -255,10 +276,58 @@ export default function CaixaFechar() {
                 </div>
                 <span className="font-medium">{formatPrice(totais.pix)}</span>
               </div>
+              {totais.fiado > 0 && (
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-warning" />
+                    <span>Fiado/Crediário</span>
+                  </div>
+                  <span className="font-medium text-warning">{formatPrice(totais.fiado)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-2 border-t font-bold">
+                <span>Total Vendas do Dia</span>
+                <span className="text-primary">{formatPrice(totais.totalVendas)}</span>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Fiados do Dia */}
+      {dividasHoje.length > 0 && (
+        <Card className="border-warning/50 bg-warning/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-warning">
+              <Receipt className="h-5 w-5" />
+              Vendas a Prazo (Fiado) do Dia
+              <Badge variant="outline" className="ml-auto">
+                {dividasHoje.length} {dividasHoje.length === 1 ? 'venda' : 'vendas'}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {dividasHoje.map((divida) => (
+                <div key={divida.id} className="flex justify-between items-center p-2 bg-background rounded-lg">
+                  <div>
+                    <p className="font-medium">{divida.clientes?.nome || "Cliente"}</p>
+                    <p className="text-sm text-muted-foreground">{divida.observacoes}</p>
+                  </div>
+                  <span className="font-bold text-warning">{formatPrice(divida.valor_original)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between items-center pt-3 mt-3 border-t font-bold">
+                <span>Total Fiado Hoje</span>
+                <span className="text-warning text-lg">{formatPrice(totais.fiado)}</span>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-4">
+              Estes valores não entram no caixa físico, mas são registrados como dívidas a receber.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Contagem Física */}
       <Card className="border-primary">
