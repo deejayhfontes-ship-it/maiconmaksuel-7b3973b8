@@ -285,11 +285,11 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
           .eq("id", configFiscal.id);
       }
 
-      // Fechar atendimento (sempre executa)
+      // Fechar atendimento (sempre executa) - status deve ser 'fechado' (não 'finalizado')
       const { error } = await supabase
         .from("atendimentos")
         .update({
-          status: "finalizado",
+          status: "fechado",
           nota_fiscal_id: notaFiscalId,
           nota_fiscal_solicitada: emitirNota,
         })
