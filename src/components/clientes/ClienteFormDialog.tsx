@@ -31,7 +31,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Upload, X, Loader2 } from "lucide-react";
+import { Search, Upload, X, Loader2, Camera } from "lucide-react";
+import { WebcamCapture } from "./WebcamCapture";
 
 const estados = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -122,6 +123,7 @@ export default function ClienteFormDialog({
   const [loadingFoto, setLoadingFoto] = useState(false);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [showWebcam, setShowWebcam] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ClienteFormData>({
@@ -284,6 +286,14 @@ export default function ClienteFormDialog({
     }
   };
 
+  const handleWebcamCapture = (file: File) => {
+    setFotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setFotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+    setShowWebcam(false);
+  };
+
   const uploadFoto = async (clienteId: string): Promise<string | null> => {
     if (!fotoFile) return cliente?.foto_url || null;
 
@@ -416,7 +426,7 @@ export default function ClienteFormDialog({
                   </Button>
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -424,19 +434,38 @@ export default function ClienteFormDialog({
                   onChange={handleFotoChange}
                   className="hidden"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {fotoPreview ? "Alterar foto" : "Adicionar foto"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowWebcam(true)}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Tirar Foto
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   JPG, PNG até 5MB
                 </p>
               </div>
             </div>
+
+            {/* Modal de captura por webcam */}
+            <WebcamCapture
+              open={showWebcam}
+              onClose={() => setShowWebcam(false)}
+              onCapture={handleWebcamCapture}
+            />
 
             {/* Dados Pessoais e Contato */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
