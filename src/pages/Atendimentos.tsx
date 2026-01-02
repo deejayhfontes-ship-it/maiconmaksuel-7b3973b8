@@ -49,6 +49,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PagamentoModal } from "@/components/atendimentos/PagamentoModal";
 import { FecharComandaModal } from "@/components/atendimentos/FecharComandaModal";
+import { ClienteSelector } from "@/components/atendimentos/ClienteSelector";
 
 interface Cliente {
   id: string;
@@ -675,28 +676,16 @@ const Atendimentos = () => {
           </div>
         ) : (
           <>
-            <CardHeader className="pb-3 border-b">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <CardTitle className="text-xl">
-                    Comanda #{selectedAtendimento.numero_comanda.toString().padStart(3, "0")}
-                  </CardTitle>
-                  <Select
-                    value={selectedAtendimento.cliente_id || "anonimo"}
-                    onValueChange={handleClienteChange}
-                  >
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="anonimo">Anônimo</SelectItem>
-                      {clientes.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <CardHeader className="pb-3 border-b space-y-4">
+              <CardTitle className="text-xl">
+                Comanda #{selectedAtendimento.numero_comanda.toString().padStart(3, "0")}
+              </CardTitle>
+              <ClienteSelector
+                selectedClienteId={selectedAtendimento.cliente_id}
+                selectedClienteNome={selectedAtendimento.cliente?.nome}
+                onClienteChange={handleClienteChange}
+                clientes={clientes}
+              />
             </CardHeader>
 
             <div className="flex-1 overflow-auto p-4 space-y-4">
