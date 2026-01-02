@@ -310,70 +310,77 @@ export default function CaixaComandas() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredComandas.map((comanda) => {
             const minutos = differenceInMinutes(new Date(), parseISO(comanda.data_hora));
             
             return (
-              <Card key={comanda.id} className="overflow-hidden">
-                <CardHeader className="pb-2 flex flex-row items-start justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      Comanda #{comanda.numero_comanda}
-                      <Badge variant="outline" className="font-normal">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {formatDuration(minutos)}
-                      </Badge>
-                    </CardTitle>
-                    <p className="text-lg font-medium flex items-center gap-2 mt-1">
-                      <User className="h-4 w-4" />
-                      {comanda.cliente?.nome || "Cliente avulso"}
+              <Card key={comanda.id} className="overflow-hidden flex flex-col h-full">
+                <CardHeader className="p-4 pb-3 space-y-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                        <span className="whitespace-nowrap">Comanda #{comanda.numero_comanda}</span>
+                        <Badge variant="outline" className="font-normal text-xs shrink-0">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatDuration(minutos)}
+                        </Badge>
+                      </CardTitle>
+                      <p className="text-sm font-medium flex items-center gap-2 mt-2 text-muted-foreground">
+                        <User className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{comanda.cliente?.nome || "Cliente avulso"}</span>
+                      </p>
+                    </div>
+                    <p className="text-xl sm:text-2xl font-bold text-primary whitespace-nowrap shrink-0">
+                      {formatPrice(comanda.subtotal)}
                     </p>
                   </div>
-                  <p className="text-2xl font-bold text-primary">
-                    {formatPrice(comanda.subtotal)}
-                  </p>
                 </CardHeader>
-                <CardContent className="pt-2">
+                <CardContent className="p-4 pt-0 flex flex-col flex-1">
                   {/* Itens */}
-                  <div className="space-y-2 mb-4">
+                  <div className="space-y-1.5 mb-4 flex-1 min-h-0">
                     {comanda.servicos.map((s, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm">
-                        <Scissors className="h-3 w-3 text-muted-foreground" />
-                        <span>{s.servico?.nome}</span>
-                        <span className="text-muted-foreground">({s.profissional?.nome})</span>
-                        <span className="ml-auto font-medium">{formatPrice(s.subtotal)}</span>
+                        <Scissors className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate flex-1 min-w-0">{s.servico?.nome}</span>
+                        <span className="text-xs text-muted-foreground truncate max-w-[80px] hidden sm:inline">({s.profissional?.nome})</span>
+                        <span className="font-medium shrink-0">{formatPrice(s.subtotal)}</span>
                       </div>
                     ))}
                     {comanda.produtos.map((p, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm">
-                        <ShoppingBag className="h-3 w-3 text-muted-foreground" />
-                        <span>{p.quantidade}x {p.produto?.nome}</span>
-                        <span className="ml-auto font-medium">{formatPrice(p.subtotal)}</span>
+                        <ShoppingBag className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate flex-1 min-w-0">{p.quantidade}x {p.produto?.nome}</span>
+                        <span className="font-medium shrink-0">{formatPrice(p.subtotal)}</span>
                       </div>
                     ))}
+                    {comanda.servicos.length === 0 && comanda.produtos.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">Nenhum item adicionado</p>
+                    )}
                   </div>
 
                   {/* Ações */}
-                  <div className="flex gap-2 pt-3 border-t">
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/atendimentos?id=${comanda.id}`)}>
+                  <div className="flex flex-wrap gap-2 pt-3 border-t mt-auto">
+                    <Button variant="outline" size="sm" className="flex-1 min-w-[100px]" onClick={() => navigate(`/atendimentos?id=${comanda.id}`)}>
                       <Plus className="h-4 w-4 mr-1" />
-                      Adicionar
+                      <span className="hidden xs:inline">Adicionar</span>
                     </Button>
                     <Button 
                       size="sm" 
-                      className="bg-success hover:bg-success/90 flex-1"
+                      className="bg-success hover:bg-success/90 flex-1 min-w-[100px]"
                       onClick={() => handleFinalizar(comanda)}
                     >
                       <Check className="h-4 w-4 mr-1" />
                       Finalizar
                     </Button>
-                    <Button variant="ghost" size="sm">
-                      <Printer className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive">
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -385,14 +392,14 @@ export default function CaixaComandas() {
       {/* Resumo */}
       {filteredComandas.length > 0 && (
         <Card className="bg-muted/50">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total comandas abertas</p>
-              <p className="text-2xl font-bold">{formatPrice(totalValor)}</p>
+          <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-muted-foreground">Total comandas abertas</p>
+              <p className="text-xl sm:text-2xl font-bold truncate">{formatPrice(totalValor)}</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Tempo médio aberto</p>
-              <p className="text-lg font-medium">{formatDuration(tempoMedio)}</p>
+            <div className="text-left sm:text-right">
+              <p className="text-xs sm:text-sm text-muted-foreground">Tempo médio aberto</p>
+              <p className="text-base sm:text-lg font-medium">{formatDuration(tempoMedio)}</p>
             </div>
           </CardContent>
         </Card>
