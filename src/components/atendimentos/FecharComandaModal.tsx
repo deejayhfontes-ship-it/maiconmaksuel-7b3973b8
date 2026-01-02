@@ -204,11 +204,11 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
 
       let notaFiscalId: string | null = null;
 
-      // Se emitir nota
-      if (emitirNota && opcaoNota === "nfce") {
+      // Só processar nota fiscal se o usuário ESCOLHEU emitir
+      if (emitirNota) {
         setEmissaoStatus("validating");
 
-        // Validações
+        // Validações de configuração fiscal
         if (!configFiscal?.empresa_razao_social || !configFiscal?.cnpj) {
           throw new Error("Configure os dados fiscais da empresa em Configurações > Fiscal");
         }
@@ -285,7 +285,7 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
           .eq("id", configFiscal.id);
       }
 
-      // Fechar atendimento
+      // Fechar atendimento (sempre executa)
       const { error } = await supabase
         .from("atendimentos")
         .update({
@@ -315,7 +315,7 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
       setTimeout(() => {
         onOpenChange(false);
         onSuccess?.();
-      }, 1500);
+      }, emitirNota ? 1500 : 500);
     },
     onError: (error) => {
       setEmissaoStatus("error");
@@ -620,7 +620,11 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
           </Button>
           <Button 
             onClick={handleFechar}
-            disabled={fecharComandaMutation.isPending || (opcaoNota === "nfce" && cpfCnpj && !validarCpfCnpj(cpfCnpj))}
+            disabled={
+              fecharComandaMutation.isPending || 
+              (opcaoNota === "nfce" && cpfCnpj && !validarCpfCnpj(cpfCnpj)) ||
+              (isEmissaoAutomatica && cpfCnpj && !validarCpfCnpj(cpfCnpj))
+            }
           >
             {fecharComandaMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEmissaoAutomatica || opcaoNota === "nfce" ? "Fechar e Emitir NF" : "Fechar Comanda"}
