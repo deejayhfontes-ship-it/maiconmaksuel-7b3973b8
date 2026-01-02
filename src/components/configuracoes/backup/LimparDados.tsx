@@ -208,16 +208,32 @@ export default function LimparDados() {
         
         console.log(`\n${i + 1}/${steps.length} ${steps[i].name}`);
         
-        // Deletar TODOS os registros da tabela
+        // Contar antes de deletar
+        const { count: countBefore } = await supabase
+          .from(steps[i].table as any)
+          .select('id', { count: 'exact', head: true });
+        
+        console.log(`   📊 Antes: ${countBefore || 0} registros`);
+        
+        if ((countBefore || 0) === 0) {
+          console.log(`   ⏭️ Tabela já está vazia`);
+          continue;
+        }
+        
+        // MÉTODO ALTERNATIVO: Usar gte com created_at ou neq com string vazia
+        // Isso garante que TODOS os registros sejam selecionados
         const { error, count } = await supabase
           .from(steps[i].table as any)
           .delete({ count: 'exact' })
-          .not('id', 'is', null);
+          .gte('id', '00000000-0000-0000-0000-000000000000'); // UUID mínimo
         
         if (error) {
           // Ignorar erro de tabela não existente
           if (error.code === '42P01' || error.message.includes('does not exist')) {
             console.log(`   ⏭️ Tabela ${steps[i].table} não existe, pulando...`);
+          } else if (error.message.includes('foreign key')) {
+            console.warn(`   ⚠️ Chave estrangeira impedindo delete: ${error.message}`);
+            errors.push(`${steps[i].table}: FK constraint`);
           } else {
             console.warn(`   ⚠️ Erro: ${error.message}`);
             errors.push(`${steps[i].table}: ${error.message}`);
@@ -225,10 +241,19 @@ export default function LimparDados() {
         } else {
           deletedCounts[steps[i].table] = count || 0;
           console.log(`   ✅ ${count || 0} registros deletados`);
+          
+          // Verificar se realmente deletou
+          const { count: countAfter } = await supabase
+            .from(steps[i].table as any)
+            .select('id', { count: 'exact', head: true });
+          
+          if ((countAfter || 0) > 0) {
+            console.warn(`   ⚠️ ATENÇÃO: Ainda restam ${countAfter} registros!`);
+          }
         }
         
         // Pequeno delay para feedback visual
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       // VERIFICAÇÃO FINAL: Conferir se realmente zerou
