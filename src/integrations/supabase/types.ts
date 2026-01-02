@@ -442,11 +442,14 @@ export type Database = {
           cpf: string | null
           created_at: string
           data_nascimento: string | null
+          dia_vencimento_crediario: number | null
+          elegivel_crediario: boolean | null
           email: string | null
           endereco: string | null
           estado: string | null
           foto_url: string | null
           id: string
+          limite_crediario: number | null
           nome: string
           numero: string | null
           observacoes: string | null
@@ -467,11 +470,14 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
+          dia_vencimento_crediario?: number | null
+          elegivel_crediario?: boolean | null
           email?: string | null
           endereco?: string | null
           estado?: string | null
           foto_url?: string | null
           id?: string
+          limite_crediario?: number | null
           nome: string
           numero?: string | null
           observacoes?: string | null
@@ -492,11 +498,14 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
+          dia_vencimento_crediario?: number | null
+          elegivel_crediario?: boolean | null
           email?: string | null
           endereco?: string | null
           estado?: string | null
           foto_url?: string | null
           id?: string
+          limite_crediario?: number | null
           nome?: string
           numero?: string | null
           observacoes?: string | null
@@ -957,8 +966,10 @@ export type Database = {
           cliente_id: string
           created_at: string
           data_origem: string
+          data_ultima_notificacao: string | null
           data_vencimento: string
           id: string
+          notificacao_enviada: boolean | null
           observacoes: string | null
           saldo: number
           status: string
@@ -971,8 +982,10 @@ export type Database = {
           cliente_id: string
           created_at?: string
           data_origem?: string
+          data_ultima_notificacao?: string | null
           data_vencimento: string
           id?: string
+          notificacao_enviada?: boolean | null
           observacoes?: string | null
           saldo: number
           status?: string
@@ -985,8 +998,10 @@ export type Database = {
           cliente_id?: string
           created_at?: string
           data_origem?: string
+          data_ultima_notificacao?: string | null
           data_vencimento?: string
           id?: string
+          notificacao_enviada?: boolean | null
           observacoes?: string | null
           saldo?: number
           status?: string

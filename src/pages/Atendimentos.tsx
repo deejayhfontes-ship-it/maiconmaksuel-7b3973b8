@@ -131,6 +131,11 @@ const Atendimentos = () => {
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [isNfModalOpen, setIsNfModalOpen] = useState(false);
   const [atendimentoParaNf, setAtendimentoParaNf] = useState<Atendimento | null>(null);
+  const [clienteCredito, setClienteCredito] = useState<{
+    elegivel: boolean;
+    limite: number;
+    saldoDevedor: number;
+  }>({ elegivel: false, limite: 0, saldoDevedor: 0 });
 
   // Form states para adicionar itens
   const [servicoId, setServicoId] = useState("");
@@ -198,10 +203,39 @@ const Atendimentos = () => {
     if (selectedAtendimento) {
       fetchItems(selectedAtendimento.id);
       setDesconto(Number(selectedAtendimento.desconto) || 0);
+      
+      // Buscar info de crédito do cliente
+      if (selectedAtendimento.cliente_id) {
+        const fetchClienteCredito = async () => {
+          const { data: cliente } = await supabase
+            .from("clientes")
+            .select("elegivel_crediario, limite_crediario")
+            .eq("id", selectedAtendimento.cliente_id)
+            .single();
+          
+          const { data: dividas } = await supabase
+            .from("dividas")
+            .select("saldo")
+            .eq("cliente_id", selectedAtendimento.cliente_id)
+            .neq("status", "quitada");
+          
+          const saldoDevedor = (dividas || []).reduce((acc, d) => acc + Number(d.saldo), 0);
+          
+          setClienteCredito({
+            elegivel: cliente?.elegivel_crediario || false,
+            limite: cliente?.limite_crediario || 0,
+            saldoDevedor,
+          });
+        };
+        fetchClienteCredito();
+      } else {
+        setClienteCredito({ elegivel: false, limite: 0, saldoDevedor: 0 });
+      }
     } else {
       setItemsServicos([]);
       setItemsProdutos([]);
       setDesconto(0);
+      setClienteCredito({ elegivel: false, limite: 0, saldoDevedor: 0 });
     }
   }, [selectedAtendimento, fetchItems]);
 
@@ -831,6 +865,10 @@ const Atendimentos = () => {
         onOpenChange={setIsPaymentOpen}
         numeroComanda={selectedAtendimento?.numero_comanda || 0}
         clienteNome={selectedAtendimento?.cliente?.nome || null}
+        clienteId={selectedAtendimento?.cliente_id || null}
+        clienteElegivelCredito={clienteCredito.elegivel}
+        clienteLimiteCredito={clienteCredito.limite}
+        clienteSaldoDevedor={clienteCredito.saldoDevedor}
         totalComanda={valorFinal}
         profissionais={profissionais}
         onConfirmar={handleConfirmarPagamento}

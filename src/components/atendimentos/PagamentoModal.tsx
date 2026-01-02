@@ -12,6 +12,8 @@ import {
   QrCode,
   Gift,
   FileText,
+  Wallet,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,12 +62,16 @@ interface PagamentoModalProps {
   onOpenChange: (open: boolean) => void;
   numeroComanda: number;
   clienteNome: string | null;
+  clienteId: string | null;
+  clienteElegivelCredito?: boolean;
+  clienteLimiteCredito?: number;
+  clienteSaldoDevedor?: number;
   totalComanda: number;
   profissionais?: { id: string; nome: string }[];
   onConfirmar: (pagamentos: Omit<Pagamento, "id">[], gorjetas?: GorjetaProfissional[]) => Promise<void>;
 }
 
-type FormaPagamento = "dinheiro" | "debito" | "credito" | "pix" | "cheque" | "multiplas" | null;
+type FormaPagamento = "dinheiro" | "debito" | "credito" | "pix" | "cheque" | "fiado" | "multiplas" | null;
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -80,7 +86,8 @@ const formasPagamento = [
   { id: "credito", label: "Crédito", icon: CreditCard, color: "text-purple-600 bg-purple-500/10" },
   { id: "pix", label: "PIX", icon: Smartphone, color: "text-teal-600 bg-teal-500/10" },
   { id: "cheque", label: "Cheque", icon: FileText, color: "text-green-700 bg-green-600/10" },
-  { id: "multiplas", label: "Múltiplas", icon: Layers, color: "text-amber-600 bg-amber-500/10" },
+  { id: "fiado", label: "Fiado", icon: Wallet, color: "text-amber-600 bg-amber-500/10" },
+  { id: "multiplas", label: "Múltiplas", icon: Layers, color: "text-gray-600 bg-gray-500/10" },
 ];
 
 export function PagamentoModal({
@@ -88,10 +95,16 @@ export function PagamentoModal({
   onOpenChange,
   numeroComanda,
   clienteNome,
+  clienteId,
+  clienteElegivelCredito = false,
+  clienteLimiteCredito = 0,
+  clienteSaldoDevedor = 0,
   totalComanda,
   profissionais = [],
   onConfirmar,
 }: PagamentoModalProps) {
+  const creditoDisponivel = clienteLimiteCredito - clienteSaldoDevedor;
+  const podeUsarFiado = clienteElegivelCredito && clienteId && creditoDisponivel >= totalComanda;
   const [formaSelecionada, setFormaSelecionada] = useState<FormaPagamento>(null);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(false);
@@ -450,6 +463,55 @@ export function PagamentoModal({
                 onClick={() => handleAdicionarPagamento("cheque", faltando, 1)}
               >
                 Confirmar Cheque
+              </Button>
+            </div>
+          </div>
+        );
+
+      case "fiado":
+        return (
+          <div className="space-y-4 text-center">
+            <div className="py-6">
+              <Wallet className="h-16 w-16 mx-auto text-amber-600 mb-4" />
+              <p className="text-lg">Pagamento em Crediário</p>
+              <p className="text-3xl font-bold text-amber-600">{formatPrice(faltando)}</p>
+              {clienteElegivelCredito && (
+                <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                  <p>Limite: {formatPrice(clienteLimiteCredito)}</p>
+                  <p>Em uso: {formatPrice(clienteSaldoDevedor)}</p>
+                  <p className={cn(
+                    "font-medium",
+                    creditoDisponivel >= faltando ? "text-success" : "text-destructive"
+                  )}>
+                    Disponível: {formatPrice(creditoDisponivel)}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {!podeUsarFiado && (
+              <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center gap-2 text-destructive text-sm">
+                <AlertTriangle className="h-5 w-5 shrink-0" />
+                <span>
+                  {!clienteId 
+                    ? "Selecione um cliente para usar o crediário" 
+                    : !clienteElegivelCredito 
+                    ? "Cliente não elegível para crediário" 
+                    : "Limite de crédito insuficiente"}
+                </span>
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setFormaSelecionada(null)}>
+                Voltar
+              </Button>
+              <Button 
+                className="flex-1 bg-amber-600 hover:bg-amber-700" 
+                onClick={() => handleAdicionarPagamento("fiado", faltando, 1)}
+                disabled={!podeUsarFiado}
+              >
+                Confirmar Fiado
               </Button>
             </div>
           </div>
