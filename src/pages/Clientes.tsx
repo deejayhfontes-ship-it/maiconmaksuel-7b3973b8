@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Users, Plus, Search, Edit, Trash2, Eye, MessageCircle } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Users, Plus, Search, Edit, Trash2, Eye, MessageCircle, X, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -114,6 +114,30 @@ const getFrequencyBadge = (totalVisitas: number) => {
   return { label: "Prospect", color: "bg-muted text-muted-foreground" };
 };
 
+// Função para remover acentos
+const removeAccents = (str: string): string => {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
+
+// Função para destacar match na busca
+const highlightMatch = (text: string, query: string): React.ReactNode => {
+  if (!query || query.length < 1) return text;
+  const normalizedText = removeAccents(text.toLowerCase());
+  const normalizedQuery = removeAccents(query.toLowerCase());
+  const index = normalizedText.indexOf(normalizedQuery);
+  if (index === -1) return text;
+  
+  return (
+    <>
+      {text.slice(0, index)}
+      <span className="bg-yellow-200 dark:bg-yellow-900/50 text-foreground font-semibold rounded px-0.5">
+        {text.slice(index, index + query.length)}
+      </span>
+      {text.slice(index + query.length)}
+    </>
+  );
+};
+
 const Clientes = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,16 +177,35 @@ const Clientes = () => {
   const filteredClientes = useMemo(() => {
     let result = [...clientes];
 
-    // Filtro de busca
+    // Filtro de busca aprimorado
     if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.nome.toLowerCase().includes(term) ||
-          c.celular.includes(term) ||
-          c.telefone?.includes(term) ||
-          c.email?.toLowerCase().includes(term)
-      );
+      const term = removeAccents(searchTerm.toLowerCase());
+      const termNumbers = searchTerm.replace(/\D/g, ""); // Para busca em telefone/CPF
+      
+      result = result.filter((c) => {
+        // Busca em nome (ignora acentos)
+        const nomeMatch = removeAccents(c.nome.toLowerCase()).includes(term);
+        
+        // Busca em email
+        const emailMatch = c.email?.toLowerCase().includes(term);
+        
+        // Busca em telefone (remove formatação)
+        const celularClean = c.celular.replace(/\D/g, "");
+        const telefoneClean = c.telefone?.replace(/\D/g, "") || "";
+        const telefoneMatch = termNumbers && (
+          celularClean.includes(termNumbers) || 
+          telefoneClean.includes(termNumbers)
+        );
+        
+        // Busca em CPF (remove formatação)
+        const cpfClean = c.cpf?.replace(/\D/g, "") || "";
+        const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
+        
+        // Busca em observações
+        const obsMatch = c.observacoes && removeAccents(c.observacoes.toLowerCase()).includes(term);
+        
+        return nomeMatch || emailMatch || telefoneMatch || cpfMatch || obsMatch;
+      });
     }
 
     // Filtro de status
@@ -253,7 +296,14 @@ const Clientes = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Clientes</h1>
             <p className="text-muted-foreground">
-              {filteredClientes.length} cliente(s) encontrado(s)
+              {searchTerm ? (
+                <>
+                  <Search className="inline h-3 w-3 mr-1" />
+                  {filteredClientes.length} resultado(s) para "{searchTerm}"
+                </>
+              ) : (
+                <>{clientes.length} cliente(s) cadastrado(s)</>
+              )}
             </p>
           </div>
         </div>
@@ -270,14 +320,22 @@ const Clientes = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome, telefone..."
+                placeholder="Buscar por nome, telefone, CPF..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="pl-10"
+                className="pl-10 pr-10"
               />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
             <Select
               value={statusFilter}
@@ -320,8 +378,30 @@ const Clientes = () => {
               Carregando clientes...
             </div>
           ) : paginatedClientes.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              Nenhum cliente encontrado
+            <div className="p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Nenhum cliente encontrado</h3>
+              <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
+                {searchTerm ? (
+                  <>Nenhum cliente corresponde a "{searchTerm}". Tente outros termos.</>
+                ) : (
+                  <>Comece cadastrando seu primeiro cliente.</>
+                )}
+              </p>
+              <div className="flex gap-2 justify-center">
+                {searchTerm && (
+                  <Button variant="outline" onClick={() => setSearchTerm("")}>
+                    <X className="h-4 w-4 mr-2" />
+                    Limpar busca
+                  </Button>
+                )}
+                <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Novo Cliente
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -354,13 +434,17 @@ const Clientes = () => {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{cliente.nome}</p>
+                          <p className="font-medium">
+                            {highlightMatch(cliente.nome, searchTerm)}
+                          </p>
                           <p className="text-xs text-muted-foreground hidden md:block">
-                            {cliente.email || "-"}
+                            {cliente.email ? highlightMatch(cliente.email, searchTerm) : "-"}
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell>{formatPhone(cliente.celular)}</TableCell>
+                      <TableCell>
+                        {highlightMatch(formatPhone(cliente.celular), searchTerm)}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <span className="font-semibold">{cliente.total_visitas}</span>
                         <span className="text-muted-foreground text-sm"> visitas</span>
