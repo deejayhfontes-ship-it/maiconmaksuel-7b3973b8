@@ -2,13 +2,26 @@ import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useNavigate } from "react-router-dom";
 import InputMask from "react-input-mask";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -29,10 +42,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Upload, X, Loader2, Camera } from "lucide-react";
+import { Search, Upload, X, Loader2, Camera, AlertTriangle, DollarSign, ExternalLink } from "lucide-react";
 import { WebcamCapture } from "./WebcamCapture";
+
+// Interface para dívidas pendentes
+interface DividaPendente {
+  id: string;
+  data_origem: string;
+  data_vencimento: string;
+  valor_original: number;
+  saldo: number;
+  status: string;
+  vencida: boolean;
+}
 
 const estados = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -117,6 +142,7 @@ export default function ClienteFormDialog({
   onClose,
   cliente,
 }: ClienteFormDialogProps) {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const isEditing = !!cliente;
   const [loadingCep, setLoadingCep] = useState(false);
@@ -125,6 +151,11 @@ export default function ClienteFormDialog({
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [showWebcam, setShowWebcam] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Estados para validação de crediário
+  const [dividasPendentes, setDividasPendentes] = useState<DividaPendente[]>([]);
+  const [showDividasAlert, setShowDividasAlert] = useState(false);
+  const [loadingDividas, setLoadingDividas] = useState(false);
 
   const form = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
@@ -203,7 +234,77 @@ export default function ClienteFormDialog({
       setFotoPreview(null);
     }
     setFotoFile(null);
+    setDividasPendentes([]);
+    setShowDividasAlert(false);
   }, [cliente, form, open]);
+
+  // Buscar dívidas pendentes do cliente (quando editando)
+  useEffect(() => {
+    if (cliente?.id && isEditing) {
+      fetchDividasPendentes(cliente.id);
+    }
+  }, [cliente?.id, isEditing]);
+
+  const fetchDividasPendentes = async (clienteId: string) => {
+    setLoadingDividas(true);
+    try {
+      const { data, error } = await supabase
+        .from("dividas")
+        .select("*")
+        .eq("cliente_id", clienteId)
+        .in("status", ["pendente", "vencida"])
+        .order("data_vencimento", { ascending: true });
+
+      if (error) throw error;
+
+      const hoje = new Date();
+      const dividasComStatus = (data || []).map(d => ({
+        ...d,
+        vencida: new Date(d.data_vencimento) < hoje
+      }));
+
+      setDividasPendentes(dividasComStatus);
+    } catch (error) {
+      console.error("Erro ao buscar dívidas:", error);
+    } finally {
+      setLoadingDividas(false);
+    }
+  };
+
+  // Validação do toggle de crediário
+  const handleCrediarioChange = (novoValor: boolean) => {
+    const valorAtual = form.getValues("elegivel_crediario");
+    
+    // Se está tentando DESATIVAR (true → false) e tem dívidas pendentes
+    if (valorAtual && !novoValor && dividasPendentes.length > 0) {
+      setShowDividasAlert(true);
+      return; // Bloquear a alteração
+    }
+    
+    // Permitir a alteração
+    form.setValue("elegivel_crediario", novoValor);
+  };
+
+  const formatMoney = (valor: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(valor);
+  };
+
+  const calcularTotalDividas = () => {
+    return dividasPendentes.reduce((total, d) => total + d.saldo, 0);
+  };
+
+  const calcularDiasAtraso = () => {
+    const hoje = new Date();
+    const vencidas = dividasPendentes.filter(d => d.vencida);
+    if (vencidas.length === 0) return 0;
+    
+    const maisAntiga = new Date(vencidas[0].data_vencimento);
+    const diff = Math.floor((hoje.getTime() - maisAntiga.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
 
   const buscarCep = async () => {
     const cep = form.getValues("cep")?.replace(/\D/g, "");
@@ -748,19 +849,61 @@ export default function ClienteFormDialog({
                 control={form.control}
                 name="elegivel_crediario"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4 bg-amber-50/50 dark:bg-amber-900/10">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Elegível para Crediário</FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Permite que o cliente compre no fiado
-                      </p>
+                  <FormItem className="rounded-lg border p-4 bg-amber-50/50 dark:bg-amber-900/10">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <FormLabel className="text-base">Elegível para Crediário</FormLabel>
+                          {isEditing && dividasPendentes.length > 0 && (
+                            <Badge variant="destructive" className="flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              {dividasPendentes.length} dívida{dividasPendentes.length > 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Permite que o cliente compre no fiado
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={handleCrediarioChange}
+                          disabled={loadingDividas}
+                        />
+                      </FormControl>
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
+                    
+                    {/* Indicador de dívidas quando há pendências */}
+                    {isEditing && dividasPendentes.length > 0 && field.value && (
+                      <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                              Total devido: {formatMoney(calcularTotalDividas())}
+                            </span>
+                            {calcularDiasAtraso() > 0 && (
+                              <span className="text-xs text-destructive">
+                                ({calcularDiasAtraso()} dias em atraso)
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              onClose();
+                              navigate("/caixa/dividas");
+                            }}
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            Ver Dívidas
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </FormItem>
                 )}
               />
@@ -891,6 +1034,104 @@ export default function ClienteFormDialog({
           </form>
         </Form>
       </DialogContent>
+
+      {/* Modal de alerta - Dívidas pendentes */}
+      <AlertDialog open={showDividasAlert} onOpenChange={setShowDividasAlert}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Não é possível desativar o crediário
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-left">
+                <p className="text-foreground font-medium">
+                  Este cliente possui dívidas pendentes no crediário!
+                </p>
+                
+                {/* Resumo da Dívida */}
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Resumo da Dívida
+                  </h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Total devido:</span>
+                      <span className="font-bold text-destructive">
+                        {formatMoney(calcularTotalDividas())}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Parcelas em aberto:</span>
+                      <span className="font-medium">{dividasPendentes.length}</span>
+                    </div>
+                    {calcularDiasAtraso() > 0 && (
+                      <div className="flex justify-between">
+                        <span>Dias em atraso:</span>
+                        <span className="font-medium text-destructive">
+                          {calcularDiasAtraso()} dias
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Detalhamento */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-foreground">
+                    📋 Detalhamento:
+                  </h4>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {dividasPendentes.slice(0, 5).map((divida) => (
+                      <div 
+                        key={divida.id} 
+                        className="flex justify-between items-center text-sm bg-background rounded p-2 border"
+                      >
+                        <span className="text-muted-foreground">
+                          {new Date(divida.data_origem).toLocaleDateString("pt-BR")}
+                        </span>
+                        <span className="font-medium">
+                          {formatMoney(divida.saldo)}
+                        </span>
+                        <Badge 
+                          variant={divida.vencida ? "destructive" : "outline"}
+                          className="text-xs"
+                        >
+                          {divida.vencida ? "⚠️ Vencida" : "A vencer"}
+                        </Badge>
+                      </div>
+                    ))}
+                    {dividasPendentes.length > 5 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        +{dividasPendentes.length - 5} dívida(s)...
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-sm text-muted-foreground italic">
+                  💡 O crediário só pode ser desativado após a quitação total das dívidas pendentes.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Fechar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowDividasAlert(false);
+                onClose();
+                navigate("/caixa/dividas");
+              }}
+              className="bg-primary"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Ir para Pagamentos
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
