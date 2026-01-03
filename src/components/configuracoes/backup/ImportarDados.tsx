@@ -16,7 +16,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { 
@@ -30,7 +29,6 @@ import {
   CheckCircle2,
   XCircle,
   Download,
-  ExternalLink,
   RefreshCw,
   Users,
   ArrowRight,
@@ -49,6 +47,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useImportData, type DadosEncontrados, type DadosSelecionados, type MergeStrategy, type OpcoesImportacao } from "@/hooks/useImportData";
+import { useBelezaSoftParser, type DadosBelezaSoft } from "@/hooks/useBelezaSoftParser";
+import { useImportDataReal } from "@/hooks/useImportDataReal";
 import { ClientesIncompletosModal } from "./ClientesIncompletosModal";
 
 type ImportOption = "excel" | "sistema-antigo" | "json";
@@ -80,6 +80,7 @@ export default function ImportarDados() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [arquivoBkp, setArquivoBkp] = useState<File | null>(null);
   const [dadosEncontrados, setDadosEncontrados] = useState<DadosEncontrados | null>(null);
+  const [dadosParsed, setDadosParsed] = useState<DadosBelezaSoft | null>(null);
   const [dadosSelecionados, setDadosSelecionados] = useState<DadosSelecionados>({
     clientes: true,
     servicos: true,
@@ -92,8 +93,10 @@ export default function ImportarDados() {
   const [avisos, setAvisos] = useState<string[]>([]);
   const [contadorReload, setContadorReload] = useState(5);
   const [verificandoDados, setVerificandoDados] = useState(false);
+  const [resultadosImport, setResultadosImport] = useState<Array<{tipo: string; importados: number; atualizados?: number; duplicados: number; erros: number}>>([]);
+  const [tempoTotal, setTempoTotal] = useState(0);
 
-  // Hook de importação
+  // Hook de importação antigo (para compatibilidade)
   const {
     etapaAtual,
     progressoEtapas,
@@ -106,10 +109,14 @@ export default function ImportarDados() {
     setMergeStrategy,
     setOpcoesImportacao,
     inicializarEtapas,
-    executarImportacao,
+    executarImportacao: executarImportacaoAntiga,
     cancelarImportacao,
     forcarImportacao
   } = useImportData();
+
+  // Hooks para importação real
+  const { parseFile, parsing, error: parseError } = useBelezaSoftParser();
+  const { executarImportacao: executarImportacaoReal, importing, progress: importProgress } = useImportDataReal();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -250,26 +257,44 @@ export default function ImportarDados() {
     setArquivoBkp(file);
     setImportStep("analisando");
 
-    // Simular análise do arquivo
-    await analisarBackup(file);
+    // Parsear o arquivo real
+    await analisarBackupReal(file);
   };
 
-  const analisarBackup = async (file: File) => {
+  const analisarBackupReal = async (file: File) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const startTime = Date.now();
+      const result = await parseFile(file);
+      
+      if (!result.success) {
+        toast.error("Erro ao ler arquivo de backup", {
+          description: result.erros.join(', ')
+        });
+        setImportStep("selecionar");
+        return;
+      }
+
+      setDadosParsed(result.dados);
 
       const dados: DadosEncontrados = {
-        clientes: Math.floor(Math.random() * 2000) + 500,
-        servicos: Math.floor(Math.random() * 50) + 20,
-        produtos: Math.floor(Math.random() * 200) + 50,
-        profissionais: Math.floor(Math.random() * 15) + 5,
-        agendamentos: Math.floor(Math.random() * 500) + 100,
-        vendas: Math.floor(Math.random() * 5000) + 1000,
+        clientes: result.dados.clientes.length,
+        servicos: result.dados.servicos.length,
+        produtos: result.dados.produtos.length,
+        profissionais: result.dados.profissionais.length,
+        agendamentos: 0,
+        vendas: 0,
       };
+
+      console.log('📊 Dados encontrados no backup:', dados);
+      console.log('📋 Tabelas:', result.tabelas);
 
       setDadosEncontrados(dados);
       inicializarEtapas(dados, dadosSelecionados);
       setImportStep("validacao");
+
+      toast.success("Backup analisado com sucesso!", {
+        description: `${result.dados.clientes.length} clientes, ${result.dados.servicos.length} serviços, ${result.dados.produtos.length} produtos, ${result.dados.profissionais.length} profissionais`
+      });
 
     } catch (error) {
       console.error("Erro ao analisar backup:", error);
@@ -283,29 +308,46 @@ export default function ImportarDados() {
   };
 
   const iniciarImportacao = async () => {
-    if (!dadosEncontrados || !arquivoBkp) return;
+    if (!dadosEncontrados || !arquivoBkp || !dadosParsed) return;
 
     setImportStep("importando");
+    const startTime = Date.now();
     
-    inicializarEtapas(dadosEncontrados, dadosSelecionados);
-
-    const result = await executarImportacao(
-      dadosEncontrados,
-      dadosSelecionados,
-      arquivoBkp.name,
-      arquivoBkp.size
+    // Usar o hook de importação real
+    const result = await executarImportacaoReal(
+      dadosParsed,
+      {
+        clientes: dadosSelecionados.clientes,
+        servicos: dadosSelecionados.servicos,
+        produtos: dadosSelecionados.produtos,
+        profissionais: dadosSelecionados.profissionais,
+      },
+      mergeStrategy as 'substituir' | 'mesclar'
     );
 
+    const endTime = Date.now();
+    setTempoTotal(Math.round((endTime - startTime) / 1000));
+
     if (result.success) {
-      setAvisos(result.avisos || []);
+      // Converter resultados para o formato esperado
+      setResultadosImport([
+        { tipo: 'Clientes', importados: result.clientes.importados, duplicados: 0, erros: result.clientes.erros },
+        { tipo: 'Serviços', importados: result.servicos.importados, duplicados: 0, erros: result.servicos.erros },
+        { tipo: 'Produtos', importados: result.produtos.importados, duplicados: 0, erros: result.produtos.erros },
+        { tipo: 'Profissionais', importados: result.profissionais.importados, duplicados: 0, erros: result.profissionais.erros },
+      ]);
+      
+      setAvisos(result.erros);
       setImportStep("concluido");
       
-      // Verificar se há clientes incompletos
-      if (clientesIncompletos.length > 0) {
-        setTimeout(() => {
-          setShowClientesIncompletos(true);
-        }, 500);
-      }
+      toast.success("Importação concluída!", {
+        description: `${result.clientes.importados + result.servicos.importados + result.produtos.importados + result.profissionais.importados} registros importados`
+      });
+    } else {
+      toast.error("Erro na importação", {
+        description: result.erros.join(', ')
+      });
+      setImportStep("confirmar");
     }
   };
 
@@ -957,67 +999,29 @@ export default function ImportarDados() {
                 </span>
               </div>
 
-              <div className="space-y-3">
-                {progressoEtapas.map((etapa) => (
-                  <div key={etapa.etapa} className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      {etapa.status === "concluido" && (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      )}
-                      {etapa.status === "processando" && (
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      )}
-                      {etapa.status === "aguardando" && (
-                        <div className="h-4 w-4 rounded-full border-2 border-muted" />
-                      )}
-                      {etapa.status === "erro" && (
-                        <XCircle className="h-4 w-4 text-destructive" />
-                      )}
-                      
-                      <div className="flex items-center gap-2 flex-1">
-                        {getEtapaIcon(etapa.etapa)}
-                        <span className="font-medium">{etapa.label}</span>
-                      </div>
-                      
-                      <Badge
-                        variant={
-                          etapa.status === "concluido" ? "default" :
-                          etapa.status === "processando" ? "secondary" :
-                          etapa.status === "erro" ? "destructive" :
-                          "outline"
-                        }
-                        className="text-xs"
-                      >
-                        {etapa.status === "concluido" ? "Concluído" :
-                         etapa.status === "processando" ? `${etapa.atual}/${etapa.total}` :
-                         etapa.status === "erro" ? "Erro" :
-                         "Aguardando"}
-                      </Badge>
-                    </div>
-                    
-                    {etapa.status === "processando" && etapa.mensagem && (
-                      <div className="ml-7 text-sm text-muted-foreground">
-                        {etapa.mensagem}
-                      </div>
-                    )}
-                    
-                    {etapa.status === "processando" && (
-                      <Progress 
-                        value={(etapa.atual / etapa.total) * 100} 
-                        className="ml-7 h-1.5" 
-                      />
-                    )}
+              {importProgress && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="font-medium capitalize">{importProgress.etapa}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {importProgress.atual}/{importProgress.total}
+                    </Badge>
                   </div>
-                ))}
-              </div>
-
-              <div className="space-y-2 pt-4 border-t">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Tempo decorrido: {formatarTempo(tempoDecorrido)}</span>
-                  <span>{calcularProgressoTotal()}%</span>
+                  <p className="text-sm text-muted-foreground ml-7">{importProgress.mensagem}</p>
+                  <Progress 
+                    value={importProgress.total > 0 ? (importProgress.atual / importProgress.total) * 100 : 0} 
+                    className="h-2" 
+                  />
                 </div>
-                <Progress value={calcularProgressoTotal()} />
-              </div>
+              )}
+
+              {!importProgress && (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                  <p className="text-muted-foreground">Preparando importação...</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -1030,7 +1034,7 @@ export default function ImportarDados() {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Importação Concluída!</h3>
                 <p className="text-muted-foreground">
-                  {resultados.reduce((sum, r) => sum + r.importados, 0).toLocaleString()} registros importados no banco de dados
+                  {resultadosImport.reduce((sum, r) => sum + r.importados, 0).toLocaleString()} registros importados no banco de dados
                 </p>
                 <p className="text-sm text-primary mt-2 animate-pulse">
                   ⏳ Recarregando sistema em {contadorReload} segundos...
@@ -1039,7 +1043,7 @@ export default function ImportarDados() {
 
               <ScrollArea className="h-64">
                 <div className="space-y-3">
-                  {resultados.map((resultado, index) => (
+                  {resultadosImport.map((resultado, index) => (
                     <div key={index} className="border rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -1047,7 +1051,7 @@ export default function ImportarDados() {
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1 ml-6">
                         <p>• Importados: <span className="text-foreground font-medium">{resultado.importados.toLocaleString()}</span></p>
-                        {resultado.atualizados > 0 && (
+                        {resultado.atualizados && resultado.atualizados > 0 && (
                           <p>• Atualizados: <span className="text-blue-600">{resultado.atualizados}</span></p>
                         )}
                         {resultado.duplicados > 0 && (
@@ -1110,7 +1114,7 @@ export default function ImportarDados() {
                   )}
 
                   <p className="text-sm text-muted-foreground">
-                    ⏱ Tempo total: {formatarTempo(tempoDecorrido)}
+                    ⏱ Tempo total: {formatarTempo(tempoTotal)}
                   </p>
                 </div>
               </ScrollArea>
@@ -1186,7 +1190,7 @@ export default function ImportarDados() {
                 Verificar Dados
               </Button>
               <Button variant="outline" onClick={() => {
-                const relatorio = resultados.map(r => 
+                const relatorio = resultadosImport.map(r => 
                   `${r.tipo}: ${r.importados} importados, ${r.atualizados || 0} atualizados, ${r.duplicados} duplicados, ${r.erros} erros`
                 ).join('\n');
                 const blob = new Blob([relatorio], { type: 'text/plain' });
