@@ -60,12 +60,97 @@ export interface ParseResult {
   dados: DadosBelezaSoft;
   tabelas: string[];
   erros: string[];
-  formato: 'json' | 'texto' | 'desconhecido';
+  formato: 'json' | 'csv' | 'texto' | 'desconhecido';
 }
 
 export function useBelezaSoftParser() {
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ========== PARSE CSV ==========
+  const parseCSV = (content: string): Record<string, unknown>[] => {
+    const lines = content.split(/\r?\n/).filter(line => line.trim());
+    if (lines.length < 2) return [];
+
+    // Detectar separador (vírgula, ponto-e-vírgula ou tab)
+    const firstLine = lines[0];
+    let separator = ',';
+    if (firstLine.includes(';') && !firstLine.includes(',')) separator = ';';
+    if (firstLine.includes('\t')) separator = '\t';
+
+    // Parse header
+    const headers = parseCSVLine(lines[0], separator).map(h => 
+      h.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '')
+    );
+
+    console.log('📊 CSV Headers:', headers);
+
+    // Parse rows
+    const rows: Record<string, unknown>[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseCSVLine(lines[i], separator);
+      if (values.length === 0 || values.every(v => !v.trim())) continue;
+
+      const row: Record<string, unknown> = {};
+      headers.forEach((header, idx) => {
+        row[header] = values[idx]?.trim() || '';
+      });
+      rows.push(row);
+    }
+
+    return rows;
+  };
+
+  // Parse uma linha CSV considerando aspas
+  const parseCSVLine = (line: string, separator: string): string[] => {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === separator && !inQuotes) {
+        values.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current);
+
+    return values.map(v => v.replace(/^"|"$/g, '').trim());
+  };
+
+  // Detectar tipo de dados pelo nome do arquivo ou conteúdo
+  const detectarTipoDados = (filename: string, headers: string[]): 'clientes' | 'servicos' | 'produtos' | 'profissionais' | null => {
+    const lowerFilename = filename.toLowerCase();
+    
+    // Por nome do arquivo
+    if (lowerFilename.includes('cliente') || lowerFilename.includes('customer')) return 'clientes';
+    if (lowerFilename.includes('servico') || lowerFilename.includes('service')) return 'servicos';
+    if (lowerFilename.includes('produto') || lowerFilename.includes('product')) return 'produtos';
+    if (lowerFilename.includes('profissional') || lowerFilename.includes('funcionario') || lowerFilename.includes('employee')) return 'profissionais';
+
+    // Por colunas
+    const headerStr = headers.join(',');
+    if (headerStr.includes('cpf') || headerStr.includes('data_nascimento') || headerStr.includes('celular')) return 'clientes';
+    if (headerStr.includes('duracao') || headerStr.includes('tempo')) return 'servicos';
+    if (headerStr.includes('estoque') || headerStr.includes('codigo_barras') || headerStr.includes('preco_custo')) return 'produtos';
+    if (headerStr.includes('comissao') || headerStr.includes('especialidade')) return 'profissionais';
+
+    return null;
+  };
 
   // ========== PARSE JSON ==========
   const parseJsonBackup = (jsonData: Record<string, unknown>): DadosBelezaSoft => {
@@ -149,7 +234,69 @@ export function useBelezaSoftParser() {
     return dados;
   };
 
-  // ========== PARSE TEXTO (CSV/SQL) ==========
+  // ========== CONVERTER CSV ROWS PARA DADOS ==========
+  const convertCSVToDados = (rows: Record<string, unknown>[], tipo: 'clientes' | 'servicos' | 'produtos' | 'profissionais'): DadosBelezaSoft => {
+    const dados: DadosBelezaSoft = {
+      clientes: [],
+      servicos: [],
+      produtos: [],
+      profissionais: []
+    };
+
+    if (tipo === 'clientes') {
+      dados.clientes = rows.map((c, idx) => ({
+        id: idx + 1,
+        nome: String(c.nome || c.name || c.cliente || '').trim(),
+        celular: String(c.celular || c.cel || c.mobile || '').trim() || undefined,
+        telefone: String(c.telefone || c.tel || c.phone || c.fone || '').trim() || undefined,
+        email: String(c.email || c.e_mail || '').trim().toLowerCase() || undefined,
+        cpf: String(c.cpf || c.cpf_cnpj || c.documento || '').trim() || undefined,
+        data_nascimento: String(c.data_nascimento || c.nascimento || '').trim() || undefined,
+        endereco: String(c.endereco || c.address || c.rua || '').trim() || undefined,
+        bairro: String(c.bairro || '').trim() || undefined,
+        cidade: String(c.cidade || c.city || '').trim() || undefined,
+        estado: String(c.estado || c.uf || '').trim() || undefined,
+        cep: String(c.cep || '').trim() || undefined,
+        observacoes: String(c.observacoes || c.obs || '').trim() || undefined,
+      })).filter(c => c.nome && c.nome.length > 0);
+    } else if (tipo === 'servicos') {
+      dados.servicos = rows.map((s, idx) => ({
+        id: idx + 1,
+        nome: String(s.nome || s.name || s.servico || s.descricao || '').trim(),
+        preco: Number(s.preco || s.valor || s.price || 0),
+        duracao: Number(s.duracao || s.tempo || s.duration || 30),
+        comissao: Number(s.comissao || s.commission || 0),
+        descricao: String(s.descricao || s.description || '').trim() || undefined,
+        categoria: String(s.categoria || s.category || '').trim() || undefined,
+      })).filter(s => s.nome && s.nome.length > 0);
+    } else if (tipo === 'produtos') {
+      dados.produtos = rows.map((p, idx) => ({
+        id: idx + 1,
+        nome: String(p.nome || p.name || p.produto || p.descricao || '').trim(),
+        preco_venda: Number(p.preco_venda || p.preco || p.valor || p.price || 0),
+        preco_custo: Number(p.preco_custo || p.custo || p.cost || 0),
+        estoque: Number(p.estoque || p.quantidade || p.stock || p.qtd || 0),
+        estoque_minimo: Number(p.estoque_minimo || p.min_stock || 0),
+        codigo_barras: String(p.codigo_barras || p.barcode || p.ean || p.codigo || '').trim() || undefined,
+        categoria: String(p.categoria || p.category || '').trim() || undefined,
+        descricao: String(p.descricao || p.description || '').trim() || undefined,
+      })).filter(p => p.nome && p.nome.length > 0);
+    } else if (tipo === 'profissionais') {
+      dados.profissionais = rows.map((p, idx) => ({
+        id: idx + 1,
+        nome: String(p.nome || p.name || p.profissional || p.funcionario || '').trim(),
+        telefone: String(p.telefone || p.tel || p.celular || p.phone || '').trim() || undefined,
+        email: String(p.email || '').trim().toLowerCase() || undefined,
+        comissao: Number(p.comissao || p.commission || 0),
+        especialidade: String(p.especialidade || p.funcao || p.cargo || '').trim() || undefined,
+        ativo: true,
+      })).filter(p => p.nome && p.nome.length > 0);
+    }
+
+    return dados;
+  };
+
+  // ========== PARSE TEXTO (SQL) ==========
   const parseTextoBackup = (content: string): DadosBelezaSoft => {
     console.log('📄 Tentando parsear como texto estruturado...');
     
@@ -245,7 +392,7 @@ export function useBelezaSoftParser() {
     return dados;
   };
 
-  // ========== PARSE PRINCIPAL ==========
+  // ========== PARSE ARQUIVO ÚNICO ==========
   const parseFile = useCallback(async (file: File): Promise<ParseResult> => {
     setParsing(true);
     setError(null);
@@ -266,15 +413,14 @@ export function useBelezaSoftParser() {
     console.log('📁 Processando arquivo:', file.name, file.type, file.size);
 
     try {
-      // Ler arquivo como texto usando método nativo
       const textContent = await file.text();
       console.log('📄 Arquivo lido, tamanho:', textContent.length, 'caracteres');
       console.log('📄 Primeiros 200 caracteres:', textContent.substring(0, 200));
 
-      // Tentar parsear como JSON
       const trimmedContent = textContent.trim();
       const firstChar = trimmedContent[0];
       
+      // Tentar JSON
       if (firstChar === '{' || firstChar === '[') {
         try {
           console.log('📄 Tentando parsear como JSON...');
@@ -293,7 +439,32 @@ export function useBelezaSoftParser() {
         }
       }
 
-      // Tentar parsear como texto/SQL
+      // Tentar CSV
+      const lines = trimmedContent.split(/\r?\n/);
+      if (lines.length >= 2 && (lines[0].includes(',') || lines[0].includes(';') || lines[0].includes('\t'))) {
+        console.log('📄 Tentando parsear como CSV...');
+        
+        const rows = parseCSV(trimmedContent);
+        if (rows.length > 0) {
+          const headers = Object.keys(rows[0]);
+          const tipo = detectarTipoDados(file.name, headers);
+          
+          if (tipo) {
+            result.dados = convertCSVToDados(rows, tipo);
+            result.formato = 'csv';
+            result.tabelas = [tipo];
+            result.success = true;
+            
+            console.log(`✅ CSV parseado como ${tipo}: ${rows.length} registros`);
+            setParsing(false);
+            return result;
+          } else {
+            result.erros.push('Não foi possível identificar o tipo de dados do CSV. Renomeie o arquivo para conter: clientes, servicos, produtos ou profissionais');
+          }
+        }
+      }
+
+      // Tentar SQL/texto
       console.log('📄 Tentando parsear como texto/SQL...');
       result.dados = parseTextoBackup(textContent);
       result.formato = 'texto';
@@ -311,14 +482,91 @@ export function useBelezaSoftParser() {
         );
         console.log('✅ Arquivo texto/SQL parseado com sucesso!');
       } else {
-        result.erros.push('Não foi possível extrair dados do arquivo. Formatos suportados: JSON');
-        console.log('❌ Nenhum dado encontrado no arquivo');
+        result.erros.push('Não foi possível extrair dados do arquivo. Formatos suportados: JSON, CSV');
       }
 
     } catch (error) {
       console.error('❌ Erro ao processar arquivo:', error);
       result.erros.push(String(error));
       setError(String(error));
+    }
+
+    setParsing(false);
+    return result;
+  }, []);
+
+  // ========== PARSE MÚLTIPLOS ARQUIVOS CSV ==========
+  const parseMultipleFiles = useCallback(async (files: FileList): Promise<ParseResult> => {
+    setParsing(true);
+    setError(null);
+
+    const result: ParseResult = {
+      success: false,
+      dados: {
+        clientes: [],
+        servicos: [],
+        produtos: [],
+        profissionais: []
+      },
+      tabelas: [],
+      erros: [],
+      formato: 'csv'
+    };
+
+    console.log('📁 Processando', files.length, 'arquivos...');
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      console.log(`📄 Processando arquivo ${i + 1}/${files.length}: ${file.name}`);
+
+      try {
+        const textContent = await file.text();
+        const rows = parseCSV(textContent);
+        
+        if (rows.length > 0) {
+          const headers = Object.keys(rows[0]);
+          const tipo = detectarTipoDados(file.name, headers);
+          
+          if (tipo) {
+            const dadosArquivo = convertCSVToDados(rows, tipo);
+            
+            // Mesclar com dados existentes
+            result.dados.clientes.push(...dadosArquivo.clientes);
+            result.dados.servicos.push(...dadosArquivo.servicos);
+            result.dados.produtos.push(...dadosArquivo.produtos);
+            result.dados.profissionais.push(...dadosArquivo.profissionais);
+            
+            if (!result.tabelas.includes(tipo)) {
+              result.tabelas.push(tipo);
+            }
+            
+            console.log(`✅ ${file.name}: ${rows.length} ${tipo}`);
+          } else {
+            result.erros.push(`${file.name}: tipo não identificado`);
+          }
+        } else {
+          result.erros.push(`${file.name}: arquivo vazio ou inválido`);
+        }
+      } catch (error) {
+        console.error(`❌ Erro em ${file.name}:`, error);
+        result.erros.push(`${file.name}: ${String(error)}`);
+      }
+    }
+
+    const totalRegistros = 
+      result.dados.clientes.length + 
+      result.dados.servicos.length + 
+      result.dados.produtos.length + 
+      result.dados.profissionais.length;
+
+    if (totalRegistros > 0) {
+      result.success = true;
+      console.log('✅ Múltiplos arquivos parseados:', {
+        clientes: result.dados.clientes.length,
+        servicos: result.dados.servicos.length,
+        produtos: result.dados.produtos.length,
+        profissionais: result.dados.profissionais.length
+      });
     }
 
     setParsing(false);
@@ -393,6 +641,7 @@ export function useBelezaSoftParser() {
 
   return {
     parseFile,
+    parseMultipleFiles,
     parseText,
     parsing,
     error
