@@ -1,23 +1,4 @@
 import { useState, useCallback } from 'react';
-import pako from 'pako';
-
-// sql.js types
-interface SqlJsDatabase {
-  exec: (sql: string) => { columns: string[]; values: unknown[][] }[];
-  close: () => void;
-}
-
-interface SqlJsStatic {
-  Database: new (data?: ArrayLike<number>) => SqlJsDatabase;
-}
-
-// Carrega sql.js dinamicamente com WASM do CDN
-const loadSqlJs = async (): Promise<SqlJsStatic> => {
-  const initSqlJs = (await import('sql.js')).default;
-  return await initSqlJs({
-    locateFile: (file: string) => `https://sql.js.org/dist/${file}`
-  });
-};
 
 export interface BelezaSoftCliente {
   id?: number;
@@ -79,86 +60,12 @@ export interface ParseResult {
   dados: DadosBelezaSoft;
   tabelas: string[];
   erros: string[];
-  formato: 'json' | 'sqlite' | 'desconhecido';
+  formato: 'json' | 'texto' | 'desconhecido';
 }
-
-// Mapeamento de nomes de colunas possíveis
-const COLUMN_MAPPINGS = {
-  clientes: {
-    nome: ['nome', 'name', 'cliente', 'nomecliente', 'nome_cliente'],
-    celular: ['celular', 'cel', 'mobile', 'telefone_celular', 'fone_celular'],
-    telefone: ['telefone', 'tel', 'phone', 'fone', 'telefone_fixo'],
-    email: ['email', 'e_mail', 'e-mail', 'mail'],
-    cpf: ['cpf', 'cpf_cnpj', 'documento'],
-    data_nascimento: ['data_nascimento', 'nascimento', 'datanascimento', 'dt_nascimento', 'aniversario'],
-    endereco: ['endereco', 'rua', 'logradouro', 'address'],
-    bairro: ['bairro', 'neighborhood'],
-    cidade: ['cidade', 'city', 'municipio'],
-    estado: ['estado', 'uf', 'state'],
-    cep: ['cep', 'zipcode', 'codigo_postal'],
-    observacoes: ['observacoes', 'obs', 'notes', 'observacao']
-  },
-  servicos: {
-    nome: ['nome', 'name', 'servico', 'descricao', 'titulo'],
-    preco: ['preco', 'valor', 'price', 'preco_venda'],
-    duracao: ['duracao', 'tempo', 'duration', 'minutos'],
-    comissao: ['comissao', 'commission', 'percentual_comissao'],
-    descricao: ['descricao', 'description', 'obs'],
-    categoria: ['categoria', 'category', 'grupo']
-  },
-  produtos: {
-    nome: ['nome', 'name', 'produto', 'descricao', 'titulo'],
-    preco_venda: ['preco_venda', 'preco', 'valor', 'price'],
-    preco_custo: ['preco_custo', 'custo', 'cost'],
-    estoque: ['estoque', 'quantidade', 'qtd', 'stock'],
-    estoque_minimo: ['estoque_minimo', 'qtd_minima', 'min_stock'],
-    codigo_barras: ['codigo_barras', 'barcode', 'ean', 'codigo'],
-    categoria: ['categoria', 'category', 'grupo'],
-    descricao: ['descricao', 'description', 'obs']
-  },
-  profissionais: {
-    nome: ['nome', 'name', 'profissional', 'funcionario'],
-    telefone: ['telefone', 'tel', 'celular', 'phone'],
-    email: ['email', 'e_mail', 'e-mail'],
-    comissao: ['comissao', 'commission', 'percentual'],
-    especialidade: ['especialidade', 'funcao', 'cargo', 'specialty'],
-    ativo: ['ativo', 'active', 'status']
-  }
-};
-
-// Nomes de tabelas possíveis
-const TABLE_NAMES = {
-  clientes: ['clientes', 'cliente', 'customers', 'customer', 'tb_clientes', 'tbl_clientes', 'cadastro_clientes'],
-  servicos: ['servicos', 'servico', 'services', 'service', 'tb_servicos', 'tbl_servicos'],
-  produtos: ['produtos', 'produto', 'products', 'product', 'tb_produtos', 'tbl_produtos', 'estoque'],
-  profissionais: ['profissionais', 'profissional', 'funcionarios', 'funcionario', 'employees', 'tb_profissionais', 'tbl_funcionarios']
-};
 
 export function useBelezaSoftParser() {
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const findColumn = (columns: string[], mappings: string[]): string | null => {
-    const lowerColumns = columns.map(c => c.toLowerCase().trim());
-    for (const mapping of mappings) {
-      const index = lowerColumns.indexOf(mapping.toLowerCase());
-      if (index !== -1) {
-        return columns[index];
-      }
-    }
-    return null;
-  };
-
-  const findTable = (tables: string[], possibleNames: string[]): string | null => {
-    const lowerTables = tables.map(t => t.toLowerCase().trim());
-    for (const name of possibleNames) {
-      const index = lowerTables.indexOf(name.toLowerCase());
-      if (index !== -1) {
-        return tables[index];
-      }
-    }
-    return null;
-  };
 
   // ========== PARSE JSON ==========
   const parseJsonBackup = (jsonData: Record<string, unknown>): DadosBelezaSoft => {
@@ -242,193 +149,100 @@ export function useBelezaSoftParser() {
     return dados;
   };
 
-  // ========== PARSE SQLite ==========
-  const parseClientes = (db: SqlJsDatabase, tableName: string): BelezaSoftCliente[] => {
-    try {
-      const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
-      if (result.length === 0) return [];
+  // ========== PARSE TEXTO (CSV/SQL) ==========
+  const parseTextoBackup = (content: string): DadosBelezaSoft => {
+    console.log('📄 Tentando parsear como texto estruturado...');
+    
+    const dados: DadosBelezaSoft = {
+      clientes: [],
+      servicos: [],
+      produtos: [],
+      profissionais: []
+    };
 
-      const columns = result[0].columns;
-      const mapping = COLUMN_MAPPINGS.clientes;
+    // Tentar extrair dados de formato SQL INSERT
+    const insertPattern = /INSERT INTO\s+[`"']?(\w+)[`"']?\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)/gi;
+    let match;
+    
+    while ((match = insertPattern.exec(content)) !== null) {
+      const tableName = match[1].toLowerCase();
+      const columns = match[2].split(',').map(c => c.trim().replace(/[`"']/g, '').toLowerCase());
+      const valuesStr = match[3];
+      
+      // Parse values (considerando strings com aspas)
+      const values: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      let quoteChar = '';
+      
+      for (let i = 0; i < valuesStr.length; i++) {
+        const char = valuesStr[i];
+        
+        if ((char === '"' || char === "'") && !inQuotes) {
+          inQuotes = true;
+          quoteChar = char;
+        } else if (char === quoteChar && inQuotes) {
+          inQuotes = false;
+          quoteChar = '';
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      if (current.trim()) values.push(current.trim());
 
-      const nomeCol = findColumn(columns, mapping.nome);
-      if (!nomeCol) return [];
+      // Criar objeto a partir das colunas e valores
+      const obj: Record<string, unknown> = {};
+      columns.forEach((col, idx) => {
+        let val = values[idx] || '';
+        // Remover aspas
+        val = val.replace(/^['"]|['"]$/g, '');
+        obj[col] = val === 'NULL' ? null : val;
+      });
 
-      const celularCol = findColumn(columns, mapping.celular);
-      const telefoneCol = findColumn(columns, mapping.telefone);
-      const emailCol = findColumn(columns, mapping.email);
-      const cpfCol = findColumn(columns, mapping.cpf);
-      const nascimentoCol = findColumn(columns, mapping.data_nascimento);
-      const enderecoCol = findColumn(columns, mapping.endereco);
-      const bairroCol = findColumn(columns, mapping.bairro);
-      const cidadeCol = findColumn(columns, mapping.cidade);
-      const estadoCol = findColumn(columns, mapping.estado);
-      const cepCol = findColumn(columns, mapping.cep);
-      const obsCol = findColumn(columns, mapping.observacoes);
-
-      const allResults = db.exec(`SELECT * FROM "${tableName}"`);
-      if (allResults.length === 0) return [];
-
-      return allResults[0].values.map((row, idx) => {
-        const getVal = (col: string | null) => {
-          if (!col) return undefined;
-          const colIndex = columns.indexOf(col);
-          return colIndex !== -1 ? row[colIndex] : undefined;
-        };
-
-        return {
-          id: idx + 1,
-          nome: String(getVal(nomeCol) || '').trim(),
-          celular: getVal(celularCol) ? String(getVal(celularCol)).trim() : undefined,
-          telefone: getVal(telefoneCol) ? String(getVal(telefoneCol)).trim() : undefined,
-          email: getVal(emailCol) ? String(getVal(emailCol)).trim() : undefined,
-          cpf: getVal(cpfCol) ? String(getVal(cpfCol)).trim() : undefined,
-          data_nascimento: getVal(nascimentoCol) ? String(getVal(nascimentoCol)).trim() : undefined,
-          endereco: getVal(enderecoCol) ? String(getVal(enderecoCol)).trim() : undefined,
-          bairro: getVal(bairroCol) ? String(getVal(bairroCol)).trim() : undefined,
-          cidade: getVal(cidadeCol) ? String(getVal(cidadeCol)).trim() : undefined,
-          estado: getVal(estadoCol) ? String(getVal(estadoCol)).trim() : undefined,
-          cep: getVal(cepCol) ? String(getVal(cepCol)).trim() : undefined,
-          observacoes: getVal(obsCol) ? String(getVal(obsCol)).trim() : undefined,
-        };
-      }).filter(c => c.nome && c.nome.length > 0);
-    } catch (e) {
-      console.error('Erro ao parsear clientes:', e);
-      return [];
+      // Identificar tabela
+      if (tableName.includes('cliente') || tableName.includes('customer')) {
+        dados.clientes.push({
+          id: dados.clientes.length + 1,
+          nome: String(obj.nome || obj.name || ''),
+          celular: String(obj.celular || obj.telefone || '').trim() || undefined,
+          telefone: String(obj.telefone || obj.tel || '').trim() || undefined,
+          email: String(obj.email || '').trim() || undefined,
+          cpf: String(obj.cpf || '').trim() || undefined,
+        });
+      } else if (tableName.includes('servico') || tableName.includes('service')) {
+        dados.servicos.push({
+          id: dados.servicos.length + 1,
+          nome: String(obj.nome || obj.name || obj.descricao || ''),
+          preco: Number(obj.preco || obj.valor || 0),
+          duracao: Number(obj.duracao || obj.tempo || 30),
+        });
+      } else if (tableName.includes('produto') || tableName.includes('product')) {
+        dados.produtos.push({
+          id: dados.produtos.length + 1,
+          nome: String(obj.nome || obj.name || obj.descricao || ''),
+          preco_venda: Number(obj.preco_venda || obj.preco || obj.valor || 0),
+          estoque: Number(obj.estoque || obj.quantidade || 0),
+        });
+      } else if (tableName.includes('profissional') || tableName.includes('funcionario')) {
+        dados.profissionais.push({
+          id: dados.profissionais.length + 1,
+          nome: String(obj.nome || obj.name || ''),
+          telefone: String(obj.telefone || '').trim() || undefined,
+        });
+      }
     }
-  };
 
-  const parseServicos = (db: SqlJsDatabase, tableName: string): BelezaSoftServico[] => {
-    try {
-      const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
-      if (result.length === 0) return [];
+    console.log('📊 Dados extraídos de SQL:', {
+      clientes: dados.clientes.length,
+      servicos: dados.servicos.length,
+      produtos: dados.produtos.length,
+      profissionais: dados.profissionais.length
+    });
 
-      const columns = result[0].columns;
-      const mapping = COLUMN_MAPPINGS.servicos;
-
-      const nomeCol = findColumn(columns, mapping.nome);
-      if (!nomeCol) return [];
-
-      const precoCol = findColumn(columns, mapping.preco);
-      const duracaoCol = findColumn(columns, mapping.duracao);
-      const comissaoCol = findColumn(columns, mapping.comissao);
-      const descricaoCol = findColumn(columns, mapping.descricao);
-      const categoriaCol = findColumn(columns, mapping.categoria);
-
-      const allResults = db.exec(`SELECT * FROM "${tableName}"`);
-      if (allResults.length === 0) return [];
-
-      return allResults[0].values.map((row, idx) => {
-        const getVal = (col: string | null) => {
-          if (!col) return undefined;
-          const colIndex = columns.indexOf(col);
-          return colIndex !== -1 ? row[colIndex] : undefined;
-        };
-
-        return {
-          id: idx + 1,
-          nome: String(getVal(nomeCol) || '').trim(),
-          preco: precoCol ? Number(getVal(precoCol)) || 0 : undefined,
-          duracao: duracaoCol ? Number(getVal(duracaoCol)) || 30 : undefined,
-          comissao: comissaoCol ? Number(getVal(comissaoCol)) || 0 : undefined,
-          descricao: descricaoCol ? String(getVal(descricaoCol)).trim() : undefined,
-          categoria: categoriaCol ? String(getVal(categoriaCol)).trim() : undefined,
-        };
-      }).filter(s => s.nome && s.nome.length > 0);
-    } catch (e) {
-      console.error('Erro ao parsear serviços:', e);
-      return [];
-    }
-  };
-
-  const parseProdutos = (db: SqlJsDatabase, tableName: string): BelezaSoftProduto[] => {
-    try {
-      const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
-      if (result.length === 0) return [];
-
-      const columns = result[0].columns;
-      const mapping = COLUMN_MAPPINGS.produtos;
-
-      const nomeCol = findColumn(columns, mapping.nome);
-      if (!nomeCol) return [];
-
-      const precoVendaCol = findColumn(columns, mapping.preco_venda);
-      const precoCustoCol = findColumn(columns, mapping.preco_custo);
-      const estoqueCol = findColumn(columns, mapping.estoque);
-      const estoqueMinCol = findColumn(columns, mapping.estoque_minimo);
-      const codigoCol = findColumn(columns, mapping.codigo_barras);
-      const categoriaCol = findColumn(columns, mapping.categoria);
-      const descricaoCol = findColumn(columns, mapping.descricao);
-
-      const allResults = db.exec(`SELECT * FROM "${tableName}"`);
-      if (allResults.length === 0) return [];
-
-      return allResults[0].values.map((row, idx) => {
-        const getVal = (col: string | null) => {
-          if (!col) return undefined;
-          const colIndex = columns.indexOf(col);
-          return colIndex !== -1 ? row[colIndex] : undefined;
-        };
-
-        return {
-          id: idx + 1,
-          nome: String(getVal(nomeCol) || '').trim(),
-          preco_venda: precoVendaCol ? Number(getVal(precoVendaCol)) || 0 : undefined,
-          preco_custo: precoCustoCol ? Number(getVal(precoCustoCol)) || 0 : undefined,
-          estoque: estoqueCol ? Number(getVal(estoqueCol)) || 0 : undefined,
-          estoque_minimo: estoqueMinCol ? Number(getVal(estoqueMinCol)) || 0 : undefined,
-          codigo_barras: codigoCol ? String(getVal(codigoCol)).trim() : undefined,
-          categoria: categoriaCol ? String(getVal(categoriaCol)).trim() : undefined,
-          descricao: descricaoCol ? String(getVal(descricaoCol)).trim() : undefined,
-        };
-      }).filter(p => p.nome && p.nome.length > 0);
-    } catch (e) {
-      console.error('Erro ao parsear produtos:', e);
-      return [];
-    }
-  };
-
-  const parseProfissionais = (db: SqlJsDatabase, tableName: string): BelezaSoftProfissional[] => {
-    try {
-      const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
-      if (result.length === 0) return [];
-
-      const columns = result[0].columns;
-      const mapping = COLUMN_MAPPINGS.profissionais;
-
-      const nomeCol = findColumn(columns, mapping.nome);
-      if (!nomeCol) return [];
-
-      const telefoneCol = findColumn(columns, mapping.telefone);
-      const emailCol = findColumn(columns, mapping.email);
-      const comissaoCol = findColumn(columns, mapping.comissao);
-      const especialidadeCol = findColumn(columns, mapping.especialidade);
-      const ativoCol = findColumn(columns, mapping.ativo);
-
-      const allResults = db.exec(`SELECT * FROM "${tableName}"`);
-      if (allResults.length === 0) return [];
-
-      return allResults[0].values.map((row, idx) => {
-        const getVal = (col: string | null) => {
-          if (!col) return undefined;
-          const colIndex = columns.indexOf(col);
-          return colIndex !== -1 ? row[colIndex] : undefined;
-        };
-
-        return {
-          id: idx + 1,
-          nome: String(getVal(nomeCol) || '').trim(),
-          telefone: telefoneCol ? String(getVal(telefoneCol)).trim() : undefined,
-          email: emailCol ? String(getVal(emailCol)).trim() : undefined,
-          comissao: comissaoCol ? Number(getVal(comissaoCol)) || 0 : undefined,
-          especialidade: especialidadeCol ? String(getVal(especialidadeCol)).trim() : undefined,
-          ativo: ativoCol ? Boolean(getVal(ativoCol)) : true,
-        };
-      }).filter(p => p.nome && p.nome.length > 0);
-    } catch (e) {
-      console.error('Erro ao parsear profissionais:', e);
-      return [];
-    }
+    return dados;
   };
 
   // ========== PARSE PRINCIPAL ==========
@@ -452,14 +266,19 @@ export function useBelezaSoftParser() {
     console.log('📁 Processando arquivo:', file.name, file.type, file.size);
 
     try {
-      // 1. Tentar ler como JSON primeiro
-      try {
-        const textContent = await file.text();
-        const firstChar = textContent.trim()[0];
-        
-        if (firstChar === '{' || firstChar === '[') {
+      // Ler arquivo como texto usando método nativo
+      const textContent = await file.text();
+      console.log('📄 Arquivo lido, tamanho:', textContent.length, 'caracteres');
+      console.log('📄 Primeiros 200 caracteres:', textContent.substring(0, 200));
+
+      // Tentar parsear como JSON
+      const trimmedContent = textContent.trim();
+      const firstChar = trimmedContent[0];
+      
+      if (firstChar === '{' || firstChar === '[') {
+        try {
           console.log('📄 Tentando parsear como JSON...');
-          const jsonData = JSON.parse(textContent);
+          const jsonData = JSON.parse(trimmedContent);
           
           result.dados = parseJsonBackup(jsonData);
           result.formato = 'json';
@@ -469,94 +288,103 @@ export function useBelezaSoftParser() {
           console.log('✅ Arquivo JSON parseado com sucesso!');
           setParsing(false);
           return result;
-        }
-      } catch (jsonError) {
-        console.log('⚠️ Não é JSON válido, tentando SQLite...');
-      }
-
-      // 2. Tentar como SQLite
-      const SQL = await loadSqlJs();
-
-      const arrayBuffer = await file.arrayBuffer();
-      let data = new Uint8Array(arrayBuffer);
-
-      // Verificar assinatura SQLite
-      const sqliteSignature = [0x53, 0x51, 0x4c, 0x69, 0x74, 0x65, 0x20, 0x66, 0x6f, 0x72, 0x6d, 0x61, 0x74, 0x20, 0x33, 0x00];
-      const isSqlite = sqliteSignature.every((byte, i) => data[i] === byte);
-
-      if (!isSqlite) {
-        console.log('📦 Arquivo não é SQLite puro, tentando descomprimir...');
-        
-        // Tentar GZIP
-        try {
-          data = pako.ungzip(data);
-          console.log('✅ Descomprimido com GZIP');
-        } catch {
-          try {
-            data = pako.inflate(data);
-            console.log('✅ Descomprimido com DEFLATE');
-          } catch {
-            try {
-              data = pako.inflate(data, { raw: false });
-              console.log('✅ Descomprimido com ZLIB');
-            } catch {
-              console.log('⚠️ Não conseguiu descomprimir');
-            }
-          }
+        } catch (jsonError) {
+          console.log('⚠️ Falha ao parsear JSON:', jsonError);
         }
       }
 
-      let db: SqlJsDatabase;
-      try {
-        db = new SQL.Database(data);
-        result.formato = 'sqlite';
-      } catch (dbError) {
-        console.error('❌ Erro ao abrir SQLite:', dbError);
-        result.erros.push('Formato de arquivo não reconhecido. Use JSON ou SQLite.');
+      // Tentar parsear como texto/SQL
+      console.log('📄 Tentando parsear como texto/SQL...');
+      result.dados = parseTextoBackup(textContent);
+      result.formato = 'texto';
+      
+      const totalRegistros = 
+        result.dados.clientes.length + 
+        result.dados.servicos.length + 
+        result.dados.produtos.length + 
+        result.dados.profissionais.length;
+
+      if (totalRegistros > 0) {
+        result.success = true;
+        result.tabelas = ['clientes', 'servicos', 'produtos', 'profissionais'].filter(
+          t => result.dados[t as keyof DadosBelezaSoft].length > 0
+        );
+        console.log('✅ Arquivo texto/SQL parseado com sucesso!');
+      } else {
+        result.erros.push('Não foi possível extrair dados do arquivo. Formatos suportados: JSON');
+        console.log('❌ Nenhum dado encontrado no arquivo');
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao processar arquivo:', error);
+      result.erros.push(String(error));
+      setError(String(error));
+    }
+
+    setParsing(false);
+    return result;
+  }, []);
+
+  // ========== PARSE TEXTO DIRETO ==========
+  const parseText = useCallback((textContent: string): ParseResult => {
+    setParsing(true);
+    setError(null);
+
+    const result: ParseResult = {
+      success: false,
+      dados: {
+        clientes: [],
+        servicos: [],
+        produtos: [],
+        profissionais: []
+      },
+      tabelas: [],
+      erros: [],
+      formato: 'desconhecido'
+    };
+
+    try {
+      const trimmedContent = textContent.trim();
+      if (!trimmedContent) {
+        result.erros.push('Conteúdo vazio');
         setParsing(false);
         return result;
       }
 
-      // Listar tabelas
-      const tablesResult = db.exec("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
-      if (tablesResult.length > 0) {
-        result.tabelas = tablesResult[0].values.map(v => String(v[0]));
-      }
-
-      console.log('📋 Tabelas encontradas:', result.tabelas);
-
-      // Parsear cada tipo
-      const clientesTable = findTable(result.tabelas, TABLE_NAMES.clientes);
-      if (clientesTable) {
-        result.dados.clientes = parseClientes(db, clientesTable);
-        console.log(`✅ Clientes parseados: ${result.dados.clientes.length}`);
-      }
-
-      const servicosTable = findTable(result.tabelas, TABLE_NAMES.servicos);
-      if (servicosTable) {
-        result.dados.servicos = parseServicos(db, servicosTable);
-        console.log(`✅ Serviços parseados: ${result.dados.servicos.length}`);
-      }
-
-      const produtosTable = findTable(result.tabelas, TABLE_NAMES.produtos);
-      if (produtosTable) {
-        result.dados.produtos = parseProdutos(db, produtosTable);
-        console.log(`✅ Produtos parseados: ${result.dados.produtos.length}`);
-      }
-
-      const profissionaisTable = findTable(result.tabelas, TABLE_NAMES.profissionais);
-      if (profissionaisTable) {
-        result.dados.profissionais = parseProfissionais(db, profissionaisTable);
-        console.log(`✅ Profissionais parseados: ${result.dados.profissionais.length}`);
-      }
-
-      db.close();
-      result.success = true;
+      const firstChar = trimmedContent[0];
       
-    } catch (e) {
-      console.error('Erro ao parsear arquivo:', e);
-      result.erros.push(String(e));
-      setError(String(e));
+      if (firstChar === '{' || firstChar === '[') {
+        try {
+          const jsonData = JSON.parse(trimmedContent);
+          result.dados = parseJsonBackup(jsonData);
+          result.formato = 'json';
+          result.tabelas = Object.keys(jsonData);
+          result.success = true;
+        } catch (jsonError) {
+          result.erros.push('JSON inválido: ' + String(jsonError));
+        }
+      } else {
+        result.dados = parseTextoBackup(textContent);
+        result.formato = 'texto';
+        
+        const totalRegistros = 
+          result.dados.clientes.length + 
+          result.dados.servicos.length + 
+          result.dados.produtos.length + 
+          result.dados.profissionais.length;
+
+        if (totalRegistros > 0) {
+          result.success = true;
+          result.tabelas = ['clientes', 'servicos', 'produtos', 'profissionais'].filter(
+            t => result.dados[t as keyof DadosBelezaSoft].length > 0
+          );
+        } else {
+          result.erros.push('Não foi possível extrair dados do texto');
+        }
+      }
+    } catch (error) {
+      result.erros.push(String(error));
+      setError(String(error));
     }
 
     setParsing(false);
@@ -565,6 +393,7 @@ export function useBelezaSoftParser() {
 
   return {
     parseFile,
+    parseText,
     parsing,
     error
   };
