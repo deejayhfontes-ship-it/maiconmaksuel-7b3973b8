@@ -62,6 +62,7 @@ export interface ParseResult {
   dados: DadosBelezaSoft;
   tabelas: string[];
   erros: string[];
+  formato: 'json' | 'sqlite' | 'desconhecido';
 }
 
 // Mapeamento de nomes de colunas possíveis
@@ -142,6 +143,89 @@ export function useBelezaSoftParser() {
     return null;
   };
 
+  // ========== PARSE JSON ==========
+  const parseJsonBackup = (jsonData: Record<string, unknown>): DadosBelezaSoft => {
+    console.log('📄 Parseando backup JSON...');
+    
+    const dados: DadosBelezaSoft = {
+      clientes: [],
+      servicos: [],
+      produtos: [],
+      profissionais: []
+    };
+
+    // Mapear clientes
+    const clientesData = jsonData.clientes || jsonData.clients || jsonData.customers || [];
+    if (Array.isArray(clientesData)) {
+      dados.clientes = clientesData.map((c: Record<string, unknown>, idx: number) => ({
+        id: idx + 1,
+        nome: String(c.nome || c.name || c.cliente || '').trim(),
+        celular: String(c.celular || c.cel || c.mobile || c.telefone_celular || '').trim() || undefined,
+        telefone: String(c.telefone || c.tel || c.phone || c.fone || '').trim() || undefined,
+        email: String(c.email || c.e_mail || '').trim().toLowerCase() || undefined,
+        cpf: String(c.cpf || c.cpf_cnpj || c.documento || '').trim() || undefined,
+        data_nascimento: String(c.data_nascimento || c.nascimento || c.birthday || '').trim() || undefined,
+        endereco: String(c.endereco || c.address || c.rua || '').trim() || undefined,
+        bairro: String(c.bairro || '').trim() || undefined,
+        cidade: String(c.cidade || c.city || '').trim() || undefined,
+        estado: String(c.estado || c.uf || '').trim() || undefined,
+        cep: String(c.cep || '').trim() || undefined,
+        observacoes: String(c.observacoes || c.obs || c.notes || '').trim() || undefined,
+      })).filter(c => c.nome && c.nome.length > 0);
+      console.log(`✅ ${dados.clientes.length} clientes parseados do JSON`);
+    }
+
+    // Mapear serviços
+    const servicosData = jsonData.servicos || jsonData.services || [];
+    if (Array.isArray(servicosData)) {
+      dados.servicos = servicosData.map((s: Record<string, unknown>, idx: number) => ({
+        id: idx + 1,
+        nome: String(s.nome || s.name || s.servico || '').trim(),
+        preco: Number(s.preco || s.valor || s.price || 0),
+        duracao: Number(s.duracao || s.tempo || s.duration || 30),
+        comissao: Number(s.comissao || s.commission || 0),
+        descricao: String(s.descricao || s.description || '').trim() || undefined,
+        categoria: String(s.categoria || s.category || '').trim() || undefined,
+      })).filter(s => s.nome && s.nome.length > 0);
+      console.log(`✅ ${dados.servicos.length} serviços parseados do JSON`);
+    }
+
+    // Mapear produtos
+    const produtosData = jsonData.produtos || jsonData.products || [];
+    if (Array.isArray(produtosData)) {
+      dados.produtos = produtosData.map((p: Record<string, unknown>, idx: number) => ({
+        id: idx + 1,
+        nome: String(p.nome || p.name || p.produto || '').trim(),
+        preco_venda: Number(p.preco_venda || p.preco || p.price || 0),
+        preco_custo: Number(p.preco_custo || p.custo || p.cost || 0),
+        estoque: Number(p.estoque || p.quantidade || p.stock || 0),
+        estoque_minimo: Number(p.estoque_minimo || p.min_stock || 0),
+        codigo_barras: String(p.codigo_barras || p.barcode || p.ean || '').trim() || undefined,
+        categoria: String(p.categoria || p.category || '').trim() || undefined,
+        descricao: String(p.descricao || p.description || '').trim() || undefined,
+      })).filter(p => p.nome && p.nome.length > 0);
+      console.log(`✅ ${dados.produtos.length} produtos parseados do JSON`);
+    }
+
+    // Mapear profissionais
+    const profissionaisData = jsonData.profissionais || jsonData.professionals || jsonData.funcionarios || [];
+    if (Array.isArray(profissionaisData)) {
+      dados.profissionais = profissionaisData.map((p: Record<string, unknown>, idx: number) => ({
+        id: idx + 1,
+        nome: String(p.nome || p.name || p.profissional || '').trim(),
+        telefone: String(p.telefone || p.tel || p.celular || p.phone || '').trim() || undefined,
+        email: String(p.email || '').trim().toLowerCase() || undefined,
+        comissao: Number(p.comissao || p.commission || 0),
+        especialidade: String(p.especialidade || p.funcao || p.cargo || '').trim() || undefined,
+        ativo: p.ativo !== false && p.active !== false,
+      })).filter(p => p.nome && p.nome.length > 0);
+      console.log(`✅ ${dados.profissionais.length} profissionais parseados do JSON`);
+    }
+
+    return dados;
+  };
+
+  // ========== PARSE SQLite ==========
   const parseClientes = (db: Database, tableName: string): BelezaSoftCliente[] => {
     try {
       const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
@@ -330,6 +414,7 @@ export function useBelezaSoftParser() {
     }
   };
 
+  // ========== PARSE PRINCIPAL ==========
   const parseFile = useCallback(async (file: File): Promise<ParseResult> => {
     setParsing(true);
     setError(null);
@@ -343,21 +428,44 @@ export function useBelezaSoftParser() {
         profissionais: []
       },
       tabelas: [],
-      erros: []
+      erros: [],
+      formato: 'desconhecido'
     };
 
+    console.log('📁 Processando arquivo:', file.name, file.type, file.size);
+
     try {
-      // Inicializar sql.js
+      // 1. Tentar ler como JSON primeiro
+      try {
+        const textContent = await file.text();
+        const firstChar = textContent.trim()[0];
+        
+        if (firstChar === '{' || firstChar === '[') {
+          console.log('📄 Tentando parsear como JSON...');
+          const jsonData = JSON.parse(textContent);
+          
+          result.dados = parseJsonBackup(jsonData);
+          result.formato = 'json';
+          result.tabelas = Object.keys(jsonData);
+          result.success = true;
+          
+          console.log('✅ Arquivo JSON parseado com sucesso!');
+          setParsing(false);
+          return result;
+        }
+      } catch (jsonError) {
+        console.log('⚠️ Não é JSON válido, tentando SQLite...');
+      }
+
+      // 2. Tentar como SQLite
       const SQL = await initSqlJs({
-        locateFile: (file: string) => `https://sql.js.org/dist/${file}`
+        locateFile: (f: string) => `https://sql.js.org/dist/${f}`
       });
 
-      // Ler arquivo
       const arrayBuffer = await file.arrayBuffer();
       let data = new Uint8Array(arrayBuffer);
-      let db: Database;
 
-      // Verificar se começa com assinatura SQLite (SQLite format 3\0)
+      // Verificar assinatura SQLite
       const sqliteSignature = [0x53, 0x51, 0x4c, 0x69, 0x74, 0x65, 0x20, 0x66, 0x6f, 0x72, 0x6d, 0x61, 0x74, 0x20, 0x33, 0x00];
       const isSqlite = sqliteSignature.every((byte, i) => data[i] === byte);
 
@@ -369,28 +477,27 @@ export function useBelezaSoftParser() {
           data = pako.ungzip(data);
           console.log('✅ Descomprimido com GZIP');
         } catch {
-          // Tentar DEFLATE
           try {
             data = pako.inflate(data);
             console.log('✅ Descomprimido com DEFLATE');
           } catch {
-            // Tentar ZLIB  
             try {
               data = pako.inflate(data, { raw: false });
               console.log('✅ Descomprimido com ZLIB');
             } catch {
-              console.log('⚠️ Não conseguiu descomprimir, tentando como está...');
+              console.log('⚠️ Não conseguiu descomprimir');
             }
           }
         }
       }
 
+      let db: Database;
       try {
-        // Tentar abrir como SQLite
         db = new SQL.Database(data);
+        result.formato = 'sqlite';
       } catch (dbError) {
         console.error('❌ Erro ao abrir SQLite:', dbError);
-        result.erros.push('Arquivo pode estar em formato não reconhecido. Certifique-se de que é um backup SQLite válido do BelezaSoft.');
+        result.erros.push('Formato de arquivo não reconhecido. Use JSON ou SQLite.');
         setParsing(false);
         return result;
       }
@@ -403,7 +510,7 @@ export function useBelezaSoftParser() {
 
       console.log('📋 Tabelas encontradas:', result.tabelas);
 
-      // Encontrar e parsear cada tipo de dados
+      // Parsear cada tipo
       const clientesTable = findTable(result.tabelas, TABLE_NAMES.clientes);
       if (clientesTable) {
         result.dados.clientes = parseClientes(db, clientesTable);
@@ -430,6 +537,7 @@ export function useBelezaSoftParser() {
 
       db.close();
       result.success = true;
+      
     } catch (e) {
       console.error('Erro ao parsear arquivo:', e);
       result.erros.push(String(e));
