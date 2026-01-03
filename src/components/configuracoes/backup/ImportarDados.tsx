@@ -115,7 +115,7 @@ export default function ImportarDados() {
   } = useImportData();
 
   // Hooks para importação real
-  const { parseFile, parsing, error: parseError } = useBelezaSoftParser();
+  const { parseFile, parseMultipleFiles, parsing, error: parseError } = useBelezaSoftParser();
   const { executarImportacao: executarImportacaoReal, importing, progress: importProgress } = useImportDataReal();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -251,20 +251,27 @@ export default function ImportarDados() {
   };
 
   const handleArquivoBkpSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    setArquivoBkp(file);
+    // Pegar o primeiro arquivo para nome do backup
+    setArquivoBkp(files[0]);
     setImportStep("analisando");
 
-    // Parsear o arquivo real
-    await analisarBackupReal(file);
+    // Parsear arquivo(s)
+    await analisarBackupReal(files);
   };
 
-  const analisarBackupReal = async (file: File) => {
+  const analisarBackupReal = async (files: FileList) => {
     try {
-      const startTime = Date.now();
-      const result = await parseFile(file);
+      let result;
+      
+      // Se for múltiplos arquivos, usar parseMultipleFiles
+      if (files.length > 1) {
+        result = await parseMultipleFiles(files);
+      } else {
+        result = await parseFile(files[0]);
+      }
       
       if (!result.success) {
         toast.error("Erro ao ler arquivo de backup", {
@@ -286,14 +293,16 @@ export default function ImportarDados() {
       };
 
       console.log('📊 Dados encontrados no backup:', dados);
+      console.log('📋 Formato:', result.formato);
       console.log('📋 Tabelas:', result.tabelas);
 
       setDadosEncontrados(dados);
       inicializarEtapas(dados, dadosSelecionados);
       setImportStep("validacao");
 
-      toast.success("Backup analisado com sucesso!", {
-        description: `${result.dados.clientes.length} clientes, ${result.dados.servicos.length} serviços, ${result.dados.produtos.length} produtos, ${result.dados.profissionais.length} profissionais`
+      const totalRegistros = dados.clientes + dados.servicos + dados.produtos + dados.profissionais;
+      toast.success(`Backup analisado com sucesso!`, {
+        description: `${totalRegistros} registros encontrados (formato: ${result.formato.toUpperCase()})`
       });
 
     } catch (error) {
@@ -521,13 +530,13 @@ export default function ImportarDados() {
     <div className="space-y-4">
       <div className="p-6 border-2 border-dashed rounded-lg text-center bg-muted/30">
         <FileUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-        <h4 className="font-medium mb-2">Selecione o arquivo de backup</h4>
+        <h4 className="font-medium mb-2">Importar dados do sistema antigo</h4>
         <p className="text-sm text-muted-foreground mb-4">
-          Formatos aceitos: .bkp, .db, .sqlite
+          Formatos aceitos: JSON, CSV
         </p>
         <Button onClick={abrirSeletorArquivo}>
           <Upload className="h-4 w-4 mr-2" />
-          Escolher Arquivo
+          Escolher Arquivo(s)
         </Button>
       </div>
 
@@ -536,11 +545,12 @@ export default function ImportarDados() {
           <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-medium text-amber-800 dark:text-amber-200">
-              Onde encontrar o arquivo de backup?
+              Como exportar do BelezaSoft?
             </p>
             <p className="text-amber-700 dark:text-amber-300 mt-1">
-              No BelezaSoft, vá em <strong>Ferramentas → Backup</strong> e exporte os dados. 
-              O arquivo terá extensão <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">.bkp</code>
+              No BelezaSoft, vá em <strong>Ferramentas → Exportar</strong> e escolha o formato 
+              <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded mx-1">JSON</code> ou 
+              <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded mx-1">CSV</code>
             </p>
           </div>
         </div>
@@ -597,9 +607,20 @@ export default function ImportarDados() {
           {/* Etapa: Selecionar arquivo */}
           {importStep === "selecionar" && (
             <div className="space-y-4 py-4">
-              <p className="text-muted-foreground">
-                Selecione o arquivo de backup (.bkp) do BelezaSoft:
-              </p>
+              {/* Instruções de como exportar */}
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <h4 className="font-semibold mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                  <Info className="h-4 w-4" />
+                  Como exportar do BelezaSoft:
+                </h4>
+                <ol className="text-sm space-y-1 list-decimal list-inside text-blue-700 dark:text-blue-300">
+                  <li>Abra o BelezaSoft no seu computador</li>
+                  <li>Vá em <strong>Ferramentas → Exportar</strong> ou <strong>Backup</strong></li>
+                  <li>Escolha o formato: <strong>JSON</strong> ou <strong>CSV</strong></li>
+                  <li>Salve o(s) arquivo(s) no seu computador</li>
+                  <li>Faça upload aqui abaixo</li>
+                </ol>
+              </div>
               
               <div 
                 className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
@@ -608,24 +629,48 @@ export default function ImportarDados() {
                 <FileUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <Button type="button">
                   <Upload className="h-4 w-4 mr-2" />
-                  Escolher Arquivo
+                  Escolher Arquivo(s)
                 </Button>
                 <p className="text-sm text-muted-foreground mt-2">
-                  ou arraste o arquivo aqui
+                  ou arraste o(s) arquivo(s) aqui
                 </p>
               </div>
 
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".bkp,.db,.sqlite,.sql"
+                accept=".json,.csv,.txt,.sql"
+                multiple
                 onChange={handleArquivoBkpSelect}
                 className="hidden"
               />
 
-              <p className="text-xs text-muted-foreground">
-                Formatos aceitos: .bkp, .db, .sqlite, .sql
-              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2 font-medium mb-1">
+                    <FileJson className="h-4 w-4 text-green-600" />
+                    JSON (Recomendado)
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    Um único arquivo com todos os dados
+                  </p>
+                  <code className="text-xs bg-muted px-1 rounded block mt-1">
+                    {`{"clientes": [...], "servicos": [...]}`}
+                  </code>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2 font-medium mb-1">
+                    <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+                    CSV (Múltiplos arquivos)
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    Selecione vários: clientes.csv, servicos.csv...
+                  </p>
+                  <code className="text-xs bg-muted px-1 rounded block mt-1">
+                    nome,telefone,email...
+                  </code>
+                </div>
+              </div>
             </div>
           )}
 
