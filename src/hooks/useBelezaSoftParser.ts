@@ -1,6 +1,23 @@
 import { useState, useCallback } from 'react';
-import initSqlJs, { Database } from 'sql.js';
 import pako from 'pako';
+
+// sql.js types
+interface SqlJsDatabase {
+  exec: (sql: string) => { columns: string[]; values: unknown[][] }[];
+  close: () => void;
+}
+
+interface SqlJsStatic {
+  Database: new (data?: ArrayLike<number>) => SqlJsDatabase;
+}
+
+// Carrega sql.js dinamicamente com WASM do CDN
+const loadSqlJs = async (): Promise<SqlJsStatic> => {
+  const initSqlJs = (await import('sql.js')).default;
+  return await initSqlJs({
+    locateFile: (file: string) => `https://sql.js.org/dist/${file}`
+  });
+};
 
 export interface BelezaSoftCliente {
   id?: number;
@@ -226,7 +243,7 @@ export function useBelezaSoftParser() {
   };
 
   // ========== PARSE SQLite ==========
-  const parseClientes = (db: Database, tableName: string): BelezaSoftCliente[] => {
+  const parseClientes = (db: SqlJsDatabase, tableName: string): BelezaSoftCliente[] => {
     try {
       const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
       if (result.length === 0) return [];
@@ -281,7 +298,7 @@ export function useBelezaSoftParser() {
     }
   };
 
-  const parseServicos = (db: Database, tableName: string): BelezaSoftServico[] => {
+  const parseServicos = (db: SqlJsDatabase, tableName: string): BelezaSoftServico[] => {
     try {
       const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
       if (result.length === 0) return [];
@@ -324,7 +341,7 @@ export function useBelezaSoftParser() {
     }
   };
 
-  const parseProdutos = (db: Database, tableName: string): BelezaSoftProduto[] => {
+  const parseProdutos = (db: SqlJsDatabase, tableName: string): BelezaSoftProduto[] => {
     try {
       const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
       if (result.length === 0) return [];
@@ -371,7 +388,7 @@ export function useBelezaSoftParser() {
     }
   };
 
-  const parseProfissionais = (db: Database, tableName: string): BelezaSoftProfissional[] => {
+  const parseProfissionais = (db: SqlJsDatabase, tableName: string): BelezaSoftProfissional[] => {
     try {
       const result = db.exec(`SELECT * FROM "${tableName}" LIMIT 1`);
       if (result.length === 0) return [];
@@ -458,9 +475,7 @@ export function useBelezaSoftParser() {
       }
 
       // 2. Tentar como SQLite
-      const SQL = await initSqlJs({
-        locateFile: (f: string) => `https://sql.js.org/dist/${f}`
-      });
+      const SQL = await loadSqlJs();
 
       const arrayBuffer = await file.arrayBuffer();
       let data = new Uint8Array(arrayBuffer);
@@ -491,7 +506,7 @@ export function useBelezaSoftParser() {
         }
       }
 
-      let db: Database;
+      let db: SqlJsDatabase;
       try {
         db = new SQL.Database(data);
         result.formato = 'sqlite';
