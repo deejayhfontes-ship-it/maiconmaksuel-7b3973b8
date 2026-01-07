@@ -179,13 +179,25 @@ export default function ImportacaoMassaModal({ open, onOpenChange }: ImportacaoM
 
   // Processar arquivos selecionados
   const processarArquivos = async (files: FileList | File[]) => {
+    console.log('📁 Processando', Array.from(files).length, 'arquivos...');
     const novosArquivos: ArquivoMapeado[] = [];
 
     for (const file of Array.from(files)) {
       try {
+        console.log(`📄 Lendo arquivo: ${file.name} (${file.size} bytes)`);
         const content = await file.text();
+        console.log(`📄 Conteúdo lido: ${content.length} caracteres`);
+        console.log(`📄 Primeiros 200 chars:`, content.substring(0, 200));
+        
         const dados = parseCSV(content);
+        console.log(`📊 Dados parseados: ${dados.length} registros`);
+        if (dados.length > 0) {
+          console.log(`📊 Colunas:`, Object.keys(dados[0]));
+          console.log(`📊 Primeiro registro:`, dados[0]);
+        }
+        
         const { tipo, tabela, ordem } = detectarTipoArquivo(file.name);
+        console.log(`📋 Tipo detectado: ${tipo}, Tabela: ${tabela}`);
 
         novosArquivos.push({
           file,
@@ -198,8 +210,10 @@ export default function ImportacaoMassaModal({ open, onOpenChange }: ImportacaoM
           selecionado: !!tabela,
           ordem: ordem,
         });
+        
+        toast.success(`Arquivo "${file.name}" processado: ${dados.length} registros`);
       } catch (error) {
-        console.error(`Erro ao processar ${file.name}:`, error);
+        console.error(`❌ Erro ao processar ${file.name}:`, error);
         novosArquivos.push({
           file,
           nomeOriginal: file.name,
@@ -212,12 +226,14 @@ export default function ImportacaoMassaModal({ open, onOpenChange }: ImportacaoM
           selecionado: false,
           ordem: 999,
         });
+        toast.error(`Erro ao processar "${file.name}"`);
       }
     }
 
     // Ordenar por ordem de importação
     novosArquivos.sort((a, b) => a.ordem - b.ordem);
     
+    console.log('📊 Total de arquivos processados:', novosArquivos.length);
     setArquivos(prev => [...prev, ...novosArquivos].sort((a, b) => a.ordem - b.ordem));
     setStep('revisar');
   };
@@ -384,30 +400,37 @@ export default function ImportacaoMassaModal({ open, onOpenChange }: ImportacaoM
         const batchSize = 100;
         const mensagens: string[] = [];
 
+        console.log(`📥 Importando ${dadosMapeados.length} registros para ${arquivo.tabelaDestino}...`);
+        console.log('📋 Amostra dos dados:', dadosMapeados.slice(0, 2));
+
         for (let j = 0; j < dadosMapeados.length; j += batchSize) {
           const batch = dadosMapeados.slice(j, j + batchSize);
           
-          const { error, count } = await supabase
+          // Usar insert ao invés de upsert para evitar problemas de constraint
+          const { data, error } = await supabase
             .from(arquivo.tabelaDestino as 'clientes' | 'profissionais' | 'servicos' | 'produtos')
-            .upsert(batch as never[], {
-              onConflict: arquivo.tabelaDestino === 'clientes' ? 'celular' : 'nome',
-              ignoreDuplicates: false,
-            })
+            .insert(batch as never[])
             .select('id');
 
           if (error) {
-            console.error(`Erro ao importar batch:`, error);
+            console.error(`❌ Erro ao importar batch ${j / batchSize + 1}:`, error);
             erros += batch.length;
-            mensagens.push(`Erro: ${error.message}`);
+            mensagens.push(`Lote ${j / batchSize + 1}: ${error.message}`);
           } else {
-            importados += batch.length;
+            console.log(`✅ Lote ${j / batchSize + 1} importado: ${data?.length || batch.length} registros`);
+            importados += data?.length || batch.length;
           }
 
           // Atualizar progresso
           const progressoArquivo = ((j + batch.length) / dadosMapeados.length) * 100;
           const progressoTotal = ((i + progressoArquivo / 100) / arquivosSelecionados.length) * 100;
           setProgressoGeral(Math.round(progressoTotal));
+          
+          // Pequena pausa para não sobrecarregar
+          await new Promise(r => setTimeout(r, 50));
         }
+
+        console.log(`✅ ${arquivo.nomeOriginal}: ${importados} importados, ${erros} erros`);
 
         setArquivos(prev => prev.map(a => 
           a.nomeOriginal === arquivo.nomeOriginal 
