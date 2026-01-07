@@ -197,6 +197,82 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
     }
   };
 
+  // Função para enviar dados para o tablet
+  const enviarParaTablet = async (status: "fechando" | "finalizado", formaPagamento?: string) => {
+    if (!atendimento) return;
+
+    try {
+      // Buscar itens do atendimento
+      const { data: servicos } = await supabase
+        .from("atendimento_servicos")
+        .select(`
+          id,
+          quantidade,
+          preco_unitario,
+          subtotal,
+          servico:servicos(nome),
+          profissional:profissionais(nome)
+        `)
+        .eq("atendimento_id", atendimento.id);
+
+      const { data: produtos } = await supabase
+        .from("atendimento_produtos")
+        .select(`
+          id,
+          quantidade,
+          preco_unitario,
+          subtotal,
+          produto:produtos(nome)
+        `)
+        .eq("atendimento_id", atendimento.id);
+
+      // Calcular valores
+      const itensServicos = (servicos || []).map((s: any) => ({
+        id: s.id,
+        nome: s.servico?.nome || "Serviço",
+        quantidade: s.quantidade,
+        valorUnitario: s.preco_unitario,
+        profissional: s.profissional?.nome
+      }));
+
+      const itensProdutos = (produtos || []).map((p: any) => ({
+        id: p.id,
+        nome: p.produto?.nome || "Produto",
+        quantidade: p.quantidade,
+        valorUnitario: p.preco_unitario
+      }));
+
+      const subtotal = [...itensServicos, ...itensProdutos].reduce(
+        (acc, item) => acc + item.valorUnitario * item.quantidade,
+        0
+      );
+
+      const comandaData = {
+        numero: atendimento.numero_comanda,
+        cliente: cliente?.nome || "Consumidor",
+        status,
+        itens: [...itensServicos, ...itensProdutos],
+        subtotal,
+        desconto: subtotal - atendimento.valor_final,
+        total: atendimento.valor_final,
+        formaPagamento
+      };
+
+      // Enviar via broadcast para o tablet
+      const channel = supabase.channel('tablet-comanda');
+      await channel.send({
+        type: 'broadcast',
+        event: 'comanda-update',
+        payload: comandaData
+      });
+      
+      // Limpar canal
+      supabase.removeChannel(channel);
+    } catch (error) {
+      console.error("Erro ao enviar dados para tablet:", error);
+    }
+  };
+
   // Mutation para fechar comanda
   const fecharComandaMutation = useMutation({
     mutationFn: async (emitirNota: boolean) => {
@@ -299,10 +375,13 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
 
       return { notaFiscalId, emitirNota };
     },
-    onSuccess: ({ emitirNota }) => {
+    onSuccess: async ({ emitirNota }) => {
       setEmissaoStatus("success");
       queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
       queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
+      
+      // Enviar para tablet que finalizou
+      await enviarParaTablet("finalizado");
       
       if (emitirNota && notaEmitida) {
         toast.success(`Comanda fechada! Nota fiscal #${String(notaEmitida.numero).padStart(6, "0")} emitida`);
@@ -323,7 +402,9 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
     },
   });
 
-  const handleFechar = () => {
+  const handleFechar = async () => {
+    // Enviar para tablet que está fechando
+    await enviarParaTablet("fechando");
     fecharComandaMutation.mutate(opcaoNota === "nfce");
   };
 
