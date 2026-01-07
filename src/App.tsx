@@ -38,6 +38,8 @@ import RelatorioCompleto from "./pages/RelatorioCompleto";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesNotificacoes from "./pages/ConfiguracoesNotificacoes";
 import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
+import ConfiguracoesCaixaPDV from "./pages/ConfiguracoesCaixaPDV";
+import TabletCliente from "./pages/TabletCliente";
 import Perfil from "./pages/Perfil";
 import CaixaExtrato from "./pages/CaixaExtrato";
 import CaixaComandas from "./pages/CaixaComandas";
@@ -65,7 +67,7 @@ const App = () => (
               <Route path="/recuperar-senha" element={<RecuperarSenha />} />
               <Route path="/confirmar/:token" element={<ConfirmarAgendamento />} />
               <Route path="/ponto" element={<PontoEletronico />} />
-              
+              <Route path="/tablet/cliente" element={<TabletCliente />} />
               {/* Protected routes */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route element={
@@ -108,6 +110,7 @@ const App = () => (
                 <Route path="/configuracoes" element={<Configuracoes />} />
                 <Route path="/configuracoes/notificacoes" element={<ConfiguracoesNotificacoes />} />
                 <Route path="/configuracoes/integracoes" element={<ConfiguracoesIntegracoes />} />
+                <Route path="/configuracoes/caixa-pdv" element={<ConfiguracoesCaixaPDV />} />
                 <Route path="/perfil" element={<Perfil />} />
               </Route>
               

@@ -177,10 +177,10 @@ const menuSections: MenuSection[] = [
     title: "Caixa/PDV",
     icon: CreditCard,
     items: [
-      { id: "config-caixa", label: "Configurações Caixa", icon: CreditCard },
-      { id: "webcam", label: "Webcam", icon: Camera },
-      { id: "impressora-cupom", label: "Impressora/Cupom", icon: Printer },
-      { id: "tablet-ponto", label: "Tablet (ponto)", icon: Tablet },
+      { id: "config-caixa", label: "Configurações Caixa", icon: CreditCard, route: "/configuracoes/caixa-pdv" },
+      { id: "webcam", label: "Webcam", icon: Camera, route: "/configuracoes/caixa-pdv" },
+      { id: "impressora-cupom", label: "Impressora/Cupom", icon: Printer, route: "/configuracoes/caixa-pdv" },
+      { id: "tablet-ponto", label: "Tablet (ponto)", icon: Tablet, route: "/configuracoes/caixa-pdv" },
     ],
   },
   {
