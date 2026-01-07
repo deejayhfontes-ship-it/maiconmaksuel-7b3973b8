@@ -37,6 +37,7 @@ import MetasSalao from "./pages/MetasSalao";
 import RelatorioCompleto from "./pages/RelatorioCompleto";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesNotificacoes from "./pages/ConfiguracoesNotificacoes";
+import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
 import Perfil from "./pages/Perfil";
 import CaixaExtrato from "./pages/CaixaExtrato";
 import CaixaComandas from "./pages/CaixaComandas";
@@ -106,6 +107,7 @@ const App = () => (
                 <Route path="/gestao-rh" element={<GestaoRH />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
                 <Route path="/configuracoes/notificacoes" element={<ConfiguracoesNotificacoes />} />
+                <Route path="/configuracoes/integracoes" element={<ConfiguracoesIntegracoes />} />
                 <Route path="/perfil" element={<Perfil />} />
               </Route>
               
