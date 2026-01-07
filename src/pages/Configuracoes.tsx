@@ -63,6 +63,7 @@ import ImportarDados from "@/components/configuracoes/backup/ImportarDados";
 import ExportarDados from "@/components/configuracoes/backup/ExportarDados";
 import LimparDados from "@/components/configuracoes/backup/LimparDados";
 import WebcamConfig from "@/components/configuracoes/WebcamConfig";
+import DiagnosticoSistema from "@/components/configuracoes/DiagnosticoSistema";
 
 type SubItem = {
   id: string;
@@ -234,6 +235,7 @@ const menuSections: MenuSection[] = [
       { id: "licenca", label: "Licença", icon: Key },
       { id: "atualizacoes", label: "Atualizações", icon: RefreshCw },
       { id: "logs-sistema", label: "Logs do Sistema", icon: History },
+      { id: "diagnostico", label: "Diagnóstico", icon: Database },
       { id: "modo-dev", label: "Modo Desenvolvedor", icon: Settings },
     ],
   },
@@ -322,6 +324,8 @@ export default function Configuracoes() {
         return <LogsSistemaContent />;
       case "modo-dev":
         return <ModoDevContent />;
+      case "diagnostico":
+        return <DiagnosticoSistema />;
       case "versao":
         return <SobreContent />;
       case "webcam":
