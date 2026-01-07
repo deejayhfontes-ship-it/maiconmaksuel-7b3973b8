@@ -9,301 +9,107 @@ import {
   Smartphone, Receipt, Wallet, TrendingUp, ClipboardList, Key,
   Lock, Wifi, Printer, HardDrive, Upload, Trash2, Eye, Edit,
   Plus, Search, Filter, RefreshCw, CheckCircle, XCircle, AlertTriangle,
-  Mail, Phone, MapPin, Camera, Palette, Globe, Zap, Server
+  Mail, Phone, MapPin, Camera, Palette, Globe, Zap, Server, Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { useRef, useState } from "react";
 
 export default function MapaSistema() {
   const navigate = useNavigate();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
-  const handleExportPDF = () => {
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 15;
-    let yPosition = 20;
-
-    // Função auxiliar para adicionar nova página se necessário
-    const checkNewPage = (height: number) => {
-      if (yPosition + height > pageHeight - margin) {
-        pdf.addPage();
-        yPosition = 20;
-        return true;
-      }
-      return false;
-    };
-
-    // Título principal
-    pdf.setFontSize(22);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Sistema de Gestão para Salão de Beleza", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 10;
+  const handleExportPDF = async () => {
+    if (!contentRef.current) return;
     
-    pdf.setFontSize(12);
-    pdf.setFont("helvetica", "normal");
-    pdf.text("Documentação Completa de Funcionalidades", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 8;
+    setIsExporting(true);
     
-    pdf.setFontSize(10);
-    pdf.setTextColor(100);
-    pdf.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR', { 
-      day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    })}`, pageWidth / 2, yPosition, { align: "center" });
-    pdf.setTextColor(0);
-    yPosition += 15;
+    try {
+      // Captura o conteúdo em alta resolução
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: contentRef.current.scrollWidth,
+        windowHeight: contentRef.current.scrollHeight,
+      });
 
-    // Linha separadora
-    pdf.setDrawColor(200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
 
-    // SEÇÃO 1: Módulos do Sistema
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`Módulos do Sistema (${modulos.length})`, margin, yPosition);
-    yPosition += 8;
+      // Configuração do PDF A4
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
 
-    modulos.forEach((modulo) => {
-      checkNewPage(40);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const contentWidth = pdfWidth - (margin * 2);
       
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`• ${modulo.titulo}`, margin, yPosition);
+      // Calcula a altura proporcional da imagem
+      const ratio = contentWidth / imgWidth;
+      const scaledHeight = imgHeight * ratio;
       
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(100);
-      pdf.text(`Rota: ${modulo.rota}`, margin + 60, yPosition);
-      pdf.setTextColor(0);
-      yPosition += 5;
+      // Altura disponível por página (deixando espaço para margem e rodapé)
+      const pageContentHeight = pdfHeight - margin - 15;
       
-      pdf.setFontSize(10);
-      pdf.text(`  ${modulo.descricao}`, margin, yPosition);
-      yPosition += 5;
+      // Número de páginas necessárias
+      const totalPages = Math.ceil(scaledHeight / pageContentHeight);
       
-      pdf.setFontSize(9);
-      const funcText = modulo.funcionalidades.join(" | ");
-      const splitFunc = pdf.splitTextToSize(`  Funcionalidades: ${funcText}`, pageWidth - margin * 2 - 5);
-      pdf.text(splitFunc, margin, yPosition);
-      yPosition += splitFunc.length * 4 + 5;
-      
-      if (modulo.subRotas) {
-        const subRotasText = modulo.subRotas.map(s => s.nome).join(", ");
-        pdf.text(`  Sub-páginas: ${subRotasText}`, margin, yPosition);
-        yPosition += 8;
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) {
+          pdf.addPage();
+        }
+        
+        // Calcula a posição Y para esta página
+        const srcY = (page * pageContentHeight) / ratio;
+        const srcHeight = Math.min(pageContentHeight / ratio, imgHeight - srcY);
+        
+        // Cria um canvas temporário para esta página
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = imgWidth;
+        pageCanvas.height = srcHeight;
+        const ctx = pageCanvas.getContext('2d');
+        
+        if (ctx) {
+          ctx.drawImage(
+            canvas,
+            0, srcY,
+            imgWidth, srcHeight,
+            0, 0,
+            imgWidth, srcHeight
+          );
+          
+          const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+          const pageScaledHeight = srcHeight * ratio;
+          
+          pdf.addImage(pageImgData, 'JPEG', margin, margin, contentWidth, pageScaledHeight);
+        }
+        
+        // Adiciona rodapé
+        pdf.setFontSize(8);
+        pdf.setTextColor(150);
+        pdf.text(
+          `Página ${page + 1} de ${totalPages}`,
+          pdfWidth / 2,
+          pdfHeight - 5,
+          { align: 'center' }
+        );
       }
-    });
 
-    // SEÇÃO 2: Configurações
-    checkNewPage(20);
-    yPosition += 5;
-    pdf.setDrawColor(200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Configurações do Sistema", margin, yPosition);
-    yPosition += 8;
-
-    configuracoes.forEach((config) => {
-      checkNewPage(30);
-      
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`• ${config.titulo}`, margin, yPosition);
-      
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(100);
-      pdf.text(`Rota: ${config.rota}`, margin + 80, yPosition);
-      pdf.setTextColor(0);
-      yPosition += 5;
-      
-      const itensText = config.itens.join(" | ");
-      const splitItens = pdf.splitTextToSize(`  ${itensText}`, pageWidth - margin * 2 - 5);
-      pdf.setFontSize(9);
-      pdf.text(splitItens, margin, yPosition);
-      yPosition += splitItens.length * 4 + 5;
-    });
-
-    // SEÇÃO 3: Banco de Dados
-    checkNewPage(20);
-    yPosition += 5;
-    pdf.setDrawColor(200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`Estrutura do Banco de Dados (${tabelasBanco.length} tabelas)`, margin, yPosition);
-    yPosition += 8;
-
-    // Tabela de banco de dados
-    autoTable(pdf, {
-      startY: yPosition,
-      head: [['Tabela', 'Descrição']],
-      body: tabelasBanco.map(t => [t.nome, t.descricao]),
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246], fontSize: 9 },
-      bodyStyles: { fontSize: 8 },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 60 },
-        1: { cellWidth: 'auto' }
-      },
-      margin: { left: margin, right: margin },
-    });
-
-    yPosition = (pdf as any).lastAutoTable.finalY + 10;
-
-    // SEÇÃO 4: Formas de Pagamento
-    checkNewPage(30);
-    pdf.setDrawColor(200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Formas de Pagamento Aceitas", margin, yPosition);
-    yPosition += 8;
-
-    pdf.setFontSize(10);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(formasPagamento.join(" • "), margin, yPosition);
-    yPosition += 10;
-
-    // SEÇÃO 5: Status do Sistema
-    checkNewPage(40);
-    pdf.setDrawColor(200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Status e Estados do Sistema", margin, yPosition);
-    yPosition += 8;
-
-    statusSistema.forEach((item) => {
-      checkNewPage(15);
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`${item.status.replace('_', ' ').toUpperCase()}:`, margin, yPosition);
-      
-      pdf.setFont("helvetica", "normal");
-      pdf.text(item.valores.join(", "), margin + 40, yPosition);
-      yPosition += 6;
-    });
-
-    // SEÇÃO 6: Integrações
-    checkNewPage(40);
-    yPosition += 5;
-    pdf.setDrawColor(200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Integrações e Recursos Externos", margin, yPosition);
-    yPosition += 8;
-
-    const integracoes = [
-      { nome: "WhatsApp Business", itens: ["Confirmação de agendamentos", "Lembretes automáticos", "Envio de recibos", "Cobrança de dívidas", "Mensagens de aniversário"] },
-      { nome: "Nota Fiscal Eletrônica", itens: ["NF-e e NFC-e", "Emissão automática", "Envio por email/SMS", "Download XML/PDF", "Integração Focus NFe"] },
-      { nome: "Tablet Cliente", itens: ["Tela de espera", "Comanda em tempo real", "Ponto eletrônico", "Broadcast channel"] },
-    ];
-
-    integracoes.forEach((integ) => {
-      checkNewPage(20);
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`• ${integ.nome}`, margin, yPosition);
-      yPosition += 5;
-      
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`  ${integ.itens.join(" | ")}`, margin, yPosition);
-      yPosition += 8;
-    });
-
-    // SEÇÃO 7: Fluxos
-    checkNewPage(50);
-    yPosition += 5;
-    pdf.setDrawColor(200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Fluxos Principais", margin, yPosition);
-    yPosition += 10;
-
-    const fluxos = [
-      { nome: "Fluxo de Atendimento", etapas: "Agendamento → Confirmação WhatsApp → Check-in → Abrir Comanda → Serviços/Produtos → Fechar Comanda → Pagamento → Nota Fiscal" },
-      { nome: "Fluxo Financeiro Semanal", etapas: "Atendimentos → Calcular Comissões → Descontar Vales → Adicionar Gorjetas → Fechamento Semanal → Pagamento" },
-      { nome: "Fluxo de Caixa", etapas: "Abrir Caixa → Receber Pagamentos → Sangrias/Suprimentos → Conferir Cheques → Fechar Caixa → Conferência" },
-    ];
-
-    fluxos.forEach((fluxo) => {
-      checkNewPage(20);
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`• ${fluxo.nome}`, margin, yPosition);
-      yPosition += 5;
-      
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "normal");
-      const splitFluxo = pdf.splitTextToSize(`  ${fluxo.etapas}`, pageWidth - margin * 2 - 5);
-      pdf.text(splitFluxo, margin, yPosition);
-      yPosition += splitFluxo.length * 4 + 5;
-    });
-
-    // SEÇÃO 8: Segurança
-    checkNewPage(40);
-    yPosition += 5;
-    pdf.setDrawColor(200);
-    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-
-    pdf.setFontSize(16);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Recursos de Segurança", margin, yPosition);
-    yPosition += 8;
-
-    const seguranca = [
-      { titulo: "Autenticação", itens: "Login com email/senha, Recuperação de senha, Sessão segura" },
-      { titulo: "Proteção de Dados", itens: "RLS (Row Level Security), Criptografia de senhas, Backup automático" },
-      { titulo: "Infraestrutura", itens: "Supabase Cloud, Deploy automático, HTTPS/SSL" },
-    ];
-
-    seguranca.forEach((seg) => {
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`• ${seg.titulo}:`, margin, yPosition);
-      pdf.setFont("helvetica", "normal");
-      yPosition += 5;
-      pdf.setFontSize(9);
-      pdf.text(`  ${seg.itens}`, margin, yPosition);
-      yPosition += 8;
-    });
-
-    // Rodapé em cada página
-    const totalPages = pdf.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.setTextColor(150);
-      pdf.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: "center" });
-      pdf.text("Sistema de Gestão para Salão de Beleza", margin, pageHeight - 10);
+      pdf.save('mapa-sistema-completo.pdf');
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+    } finally {
+      setIsExporting(false);
     }
-
-    pdf.save("mapa-sistema-completo.pdf");
   };
 
   const modulos = [
@@ -760,14 +566,23 @@ export default function MapaSistema() {
           </Button>
           <h1 className="text-xl font-bold">Mapa Completo do Sistema</h1>
         </div>
-        <Button onClick={handleExportPDF} className="gap-2">
-          <Download className="h-4 w-4" />
-          Exportar PDF
+        <Button onClick={handleExportPDF} className="gap-2" disabled={isExporting}>
+          {isExporting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Gerando PDF...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Exportar PDF
+            </>
+          )}
         </Button>
       </div>
 
       {/* Conteúdo exportável */}
-      <div className="p-8 bg-white">
+      <div ref={contentRef} className="p-8 bg-white">
         {/* Cabeçalho do documento */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
