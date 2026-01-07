@@ -461,7 +461,7 @@ export default function MapaSistema() {
     {
       titulo: "Taxa de Falta",
       icone: AlertTriangle,
-      rota: "/confirmacoes-whatsapp",
+      rota: "/configuracoes/taxa-falta",
       itens: [
         "Cobrar taxa de falta",
         "Valor da taxa",
