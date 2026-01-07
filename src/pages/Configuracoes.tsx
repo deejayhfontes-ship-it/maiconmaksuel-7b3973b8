@@ -314,6 +314,10 @@ export default function Configuracoes() {
         return <AparenciaContent />;
       case "dados-salao":
         return <DadosSalaoContent />;
+      case "horarios-funcionamento":
+        return <HorariosFuncionamentoContent />;
+      case "imagens-logo":
+        return <ImagensLogoContent />;
       case "informacoes":
         return <InformacoesContent />;
       case "licenca":
@@ -1347,6 +1351,234 @@ function LogoSistemaContent() {
         <div className="flex gap-2 pt-4 border-t">
           <Button>Salvar Alterações</Button>
           <Button variant="outline">Restaurar Padrão</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Horários de Funcionamento
+function HorariosFuncionamentoContent() {
+  const diasSemana = [
+    { id: "dom", nome: "Domingo", aberto: false, inicio: "09:00", fim: "18:00" },
+    { id: "seg", nome: "Segunda-feira", aberto: true, inicio: "09:00", fim: "19:00" },
+    { id: "ter", nome: "Terça-feira", aberto: true, inicio: "09:00", fim: "19:00" },
+    { id: "qua", nome: "Quarta-feira", aberto: true, inicio: "09:00", fim: "19:00" },
+    { id: "qui", nome: "Quinta-feira", aberto: true, inicio: "09:00", fim: "19:00" },
+    { id: "sex", nome: "Sexta-feira", aberto: true, inicio: "09:00", fim: "19:00" },
+    { id: "sab", nome: "Sábado", aberto: true, inicio: "09:00", fim: "17:00" },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Clock className="h-5 w-5" />
+        Horários de Funcionamento
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Horários por Dia */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Horários por Dia da Semana</h3>
+          <div className="space-y-3">
+            {diasSemana.map((dia) => (
+              <div key={dia.id} className="flex items-center gap-4 p-3 border rounded-lg">
+                <label className="flex items-center gap-2 w-40">
+                  <input type="checkbox" defaultChecked={dia.aberto} className="h-4 w-4" />
+                  <span className={dia.aberto ? "font-medium" : "text-muted-foreground"}>{dia.nome}</span>
+                </label>
+                <div className="flex items-center gap-2 flex-1">
+                  <Input type="time" defaultValue={dia.inicio} className="w-28" disabled={!dia.aberto} />
+                  <span className="text-muted-foreground">até</span>
+                  <Input type="time" defaultValue={dia.fim} className="w-28" disabled={!dia.aberto} />
+                </div>
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  + Intervalo
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Horário de Almoço */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Horário de Almoço/Intervalo</h3>
+          <div className="p-4 bg-muted/50 rounded-lg">
+            <label className="flex items-center gap-2 mb-3">
+              <input type="checkbox" className="h-4 w-4" />
+              <span>Fechar para almoço</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <Input type="time" defaultValue="12:00" className="w-28" />
+              <span className="text-muted-foreground">até</span>
+              <Input type="time" defaultValue="13:00" className="w-28" />
+            </div>
+          </div>
+        </div>
+
+        {/* Feriados */}
+        <div className="space-y-4 border-t pt-6">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium">Feriados e Datas Especiais</h3>
+            <Button variant="outline" size="sm">
+              <Calendar className="h-4 w-4 mr-2" />
+              Adicionar Feriado
+            </Button>
+          </div>
+          <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" defaultChecked className="h-4 w-4" />
+              <span>Fechar em feriados nacionais</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" className="h-4 w-4" />
+              <span>Fechar em feriados estaduais</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" className="h-4 w-4" />
+              <span>Fechar em feriados municipais</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Configurações Adicionais */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Configurações da Agenda</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Intervalo entre agendamentos</label>
+              <select className="w-full mt-1 p-2 border rounded-lg">
+                <option>15 minutos</option>
+                <option>30 minutos</option>
+                <option>1 hora</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Antecedência mínima para agendar</label>
+              <select className="w-full mt-1 p-2 border rounded-lg">
+                <option>Sem limite</option>
+                <option>1 hora</option>
+                <option>2 horas</option>
+                <option>24 horas</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-4 border-t">
+          <Button>Salvar Horários</Button>
+          <Button variant="outline">Restaurar Padrão</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Imagens/Logo do Salão
+function ImagensLogoContent() {
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Image className="h-5 w-5" />
+        Imagens e Logo do Salão
+      </h2>
+      
+      <div className="space-y-8">
+        {/* Logo Principal */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Logo do Salão</h3>
+          <p className="text-sm text-muted-foreground">Este logo será exibido em cupons, relatórios e materiais do salão</p>
+          <div className="flex items-start gap-6">
+            <div className="w-40 h-40 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+              <div className="text-center">
+                <Image className="h-10 w-10 mx-auto text-muted-foreground" />
+                <p className="text-xs text-muted-foreground mt-2">200x200px</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Button>
+                <Upload className="h-4 w-4 mr-2" />
+                Carregar Logo
+              </Button>
+              <Button variant="outline" size="sm">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remover
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Formatos: PNG, JPG ou SVG<br />
+                Tamanho máximo: 2MB
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Imagem do Salão */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Foto do Salão</h3>
+          <p className="text-sm text-muted-foreground">Imagem principal que representa seu estabelecimento</p>
+          <div className="flex items-start gap-6">
+            <div className="w-64 h-40 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+              <div className="text-center">
+                <Store className="h-10 w-10 mx-auto text-muted-foreground" />
+                <p className="text-xs text-muted-foreground mt-2">800x500px</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Carregar Foto
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Recomendado: 800x500px ou proporcional<br />
+                Formatos: PNG ou JPG
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Banner WhatsApp */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Banner para WhatsApp</h3>
+          <p className="text-sm text-muted-foreground">Imagem enviada nas mensagens de confirmação</p>
+          <div className="flex items-start gap-6">
+            <div className="w-64 h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+              <div className="text-center">
+                <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="text-xs text-muted-foreground mt-2">600x300px</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Carregar Banner
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Galeria de Trabalhos */}
+        <div className="space-y-4 border-t pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium">Galeria de Trabalhos</h3>
+              <p className="text-sm text-muted-foreground">Fotos de serviços realizados</p>
+            </div>
+            <Button variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Adicionar Fotos
+            </Button>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="aspect-square border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+                <Camera className="h-6 w-6 text-muted-foreground" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-4 border-t">
+          <Button>Salvar Imagens</Button>
         </div>
       </div>
     </Card>
