@@ -36,6 +36,7 @@ import FechamentoSemanal from "./pages/FechamentoSemanal";
 import MetasSalao from "./pages/MetasSalao";
 import RelatorioCompleto from "./pages/RelatorioCompleto";
 import Configuracoes from "./pages/Configuracoes";
+import ConfiguracoesNotificacoes from "./pages/ConfiguracoesNotificacoes";
 import Perfil from "./pages/Perfil";
 import CaixaExtrato from "./pages/CaixaExtrato";
 import CaixaComandas from "./pages/CaixaComandas";
@@ -104,6 +105,7 @@ const App = () => (
                 <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
                 <Route path="/gestao-rh" element={<GestaoRH />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
+                <Route path="/configuracoes/notificacoes" element={<ConfiguracoesNotificacoes />} />
                 <Route path="/perfil" element={<Perfil />} />
               </Route>
               
