@@ -884,6 +884,7 @@ const Atendimentos = () => {
       <PagamentoModal
         open={isPaymentOpen}
         onOpenChange={setIsPaymentOpen}
+        atendimentoId={selectedAtendimento?.id}
         numeroComanda={selectedAtendimento?.numero_comanda || 0}
         clienteNome={selectedAtendimento?.cliente?.nome || null}
         clienteId={selectedAtendimento?.cliente_id || null}
