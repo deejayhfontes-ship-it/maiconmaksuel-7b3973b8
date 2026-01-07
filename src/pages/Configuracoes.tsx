@@ -361,6 +361,16 @@ export default function Configuracoes() {
         return <FornecedoresContent />;
       case "unidades-medida":
         return <UnidadesMedidaContent />;
+      case "horarios-disponiveis":
+        return <HorariosDisponiveisContent />;
+      case "intervalos":
+        return <IntervalosContent />;
+      case "cores-visualizacao":
+        return <CoresVisualizacaoContent />;
+      case "lembretes":
+        return <LembretesContent />;
+      case "bloqueios":
+        return <BloqueiosContent />;
       default:
         return (
           <div className="flex items-center justify-center h-64">
@@ -2391,6 +2401,407 @@ function UnidadesMedidaContent() {
                 <p className="font-medium">{u.nome}</p>
                 <p className="text-sm text-muted-foreground">{u.descricao}</p>
               </div>
+              <Button variant="ghost" size="sm">Editar</Button>
+              <Button variant="ghost" size="sm" className="text-destructive">Excluir</Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ========== AGENDA CONTENT COMPONENTS ==========
+
+function HorariosDisponiveisContent() {
+  const diasSemana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+  const [horarios, setHorarios] = useState(
+    diasSemana.map((dia, idx) => ({
+      dia,
+      ativo: idx < 6,
+      inicio: "08:00",
+      fim: "18:00",
+      intervaloInicio: "12:00",
+      intervaloFim: "13:00"
+    }))
+  );
+
+  return (
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" />
+            Horários Disponíveis
+          </h2>
+          <p className="text-muted-foreground text-sm">Configure os horários de funcionamento da agenda</p>
+        </div>
+
+        <div className="border rounded-lg divide-y">
+          {horarios.map((h, idx) => (
+            <div key={h.dia} className="p-4 flex items-center gap-4">
+              <label className="flex items-center gap-2 w-32">
+                <input 
+                  type="checkbox" 
+                  checked={h.ativo}
+                  onChange={(e) => {
+                    const newHorarios = [...horarios];
+                    newHorarios[idx].ativo = e.target.checked;
+                    setHorarios(newHorarios);
+                  }}
+                  className="h-4 w-4"
+                />
+                <span className="font-medium">{h.dia}</span>
+              </label>
+              {h.ativo && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Das</span>
+                    <Input 
+                      type="time" 
+                      value={h.inicio}
+                      onChange={(e) => {
+                        const newHorarios = [...horarios];
+                        newHorarios[idx].inicio = e.target.value;
+                        setHorarios(newHorarios);
+                      }}
+                      className="w-28"
+                    />
+                    <span className="text-sm text-muted-foreground">às</span>
+                    <Input 
+                      type="time" 
+                      value={h.fim}
+                      onChange={(e) => {
+                        const newHorarios = [...horarios];
+                        newHorarios[idx].fim = e.target.value;
+                        setHorarios(newHorarios);
+                      }}
+                      className="w-28"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <span className="text-sm text-muted-foreground">Intervalo:</span>
+                    <Input 
+                      type="time" 
+                      value={h.intervaloInicio}
+                      onChange={(e) => {
+                        const newHorarios = [...horarios];
+                        newHorarios[idx].intervaloInicio = e.target.value;
+                        setHorarios(newHorarios);
+                      }}
+                      className="w-28"
+                    />
+                    <span className="text-sm text-muted-foreground">-</span>
+                    <Input 
+                      type="time" 
+                      value={h.intervaloFim}
+                      onChange={(e) => {
+                        const newHorarios = [...horarios];
+                        newHorarios[idx].intervaloFim = e.target.value;
+                        setHorarios(newHorarios);
+                      }}
+                      className="w-28"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <Button>Salvar Horários</Button>
+      </div>
+    </Card>
+  );
+}
+
+function IntervalosContent() {
+  const [intervalos, setIntervalos] = useState([
+    { id: "1", nome: "Almoço", inicio: "12:00", fim: "13:00", aplicarTodos: true },
+    { id: "2", nome: "Lanche", inicio: "15:30", fim: "15:45", aplicarTodos: false },
+  ]);
+
+  return (
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Intervalos
+            </h2>
+            <p className="text-muted-foreground text-sm">Configure intervalos padrão na agenda</p>
+          </div>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Intervalo
+          </Button>
+        </div>
+
+        <div className="border rounded-lg divide-y">
+          {intervalos.map((i) => (
+            <div key={i.id} className="p-4 flex items-center gap-4">
+              <div className="flex-1">
+                <p className="font-medium">{i.nome}</p>
+                <p className="text-sm text-muted-foreground">{i.inicio} - {i.fim}</p>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full ${i.aplicarTodos ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                {i.aplicarTodos ? "Todos os profissionais" : "Selecionados"}
+              </span>
+              <Button variant="ghost" size="sm">Editar</Button>
+              <Button variant="ghost" size="sm" className="text-destructive">Excluir</Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function CoresVisualizacaoContent() {
+  const [config, setConfig] = useState({
+    visualizacaoPadrao: "semana",
+    corAgendado: "#3B82F6",
+    corConfirmado: "#10B981",
+    corCancelado: "#EF4444",
+    corConcluido: "#8B5CF6",
+    corAguardando: "#F59E0B",
+    mostrarFotoCliente: true,
+    mostrarTelefone: true,
+    mostrarServico: true,
+    tamanhoSlot: 30
+  });
+
+  return (
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Palette className="h-5 w-5 text-primary" />
+            Cores e Visualização
+          </h2>
+          <p className="text-muted-foreground text-sm">Personalize a aparência da agenda</p>
+        </div>
+
+        {/* Visualização */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Visualização Padrão</h3>
+          <div className="flex gap-2">
+            {["dia", "semana", "mes"].map((v) => (
+              <Button 
+                key={v}
+                variant={config.visualizacaoPadrao === v ? "default" : "outline"}
+                onClick={() => setConfig(prev => ({ ...prev, visualizacaoPadrao: v }))}
+                className="capitalize"
+              >
+                {v}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cores por Status */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Cores por Status</h3>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { key: "corAgendado", label: "Agendado" },
+              { key: "corConfirmado", label: "Confirmado" },
+              { key: "corCancelado", label: "Cancelado" },
+              { key: "corConcluido", label: "Concluído" },
+              { key: "corAguardando", label: "Aguardando" },
+            ].map((item) => (
+              <label key={item.key} className="flex items-center gap-3 p-3 border rounded-lg">
+                <Input 
+                  type="color" 
+                  value={config[item.key as keyof typeof config] as string}
+                  onChange={(e) => setConfig(prev => ({ ...prev, [item.key]: e.target.value }))}
+                  className="w-10 h-10 p-1"
+                />
+                <span>{item.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Opções de Exibição */}
+        <div className="space-y-3">
+          <h3 className="font-medium">Opções de Exibição</h3>
+          {[
+            { key: "mostrarFotoCliente", label: "Mostrar foto do cliente" },
+            { key: "mostrarTelefone", label: "Mostrar telefone" },
+            { key: "mostrarServico", label: "Mostrar nome do serviço" },
+          ].map((item) => (
+            <label key={item.key} className="flex items-center justify-between p-3 border rounded-lg">
+              <span>{item.label}</span>
+              <input 
+                type="checkbox" 
+                checked={config[item.key as keyof typeof config] as boolean}
+                onChange={(e) => setConfig(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                className="h-5 w-5"
+              />
+            </label>
+          ))}
+        </div>
+
+        {/* Tamanho do Slot */}
+        <div className="space-y-3">
+          <h3 className="font-medium">Tamanho do Slot (minutos)</h3>
+          <div className="flex gap-2">
+            {[15, 30, 45, 60].map((m) => (
+              <Button 
+                key={m}
+                variant={config.tamanhoSlot === m ? "default" : "outline"}
+                onClick={() => setConfig(prev => ({ ...prev, tamanhoSlot: m }))}
+              >
+                {m} min
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <Button>Salvar Configurações</Button>
+      </div>
+    </Card>
+  );
+}
+
+function LembretesContent() {
+  const [config, setConfig] = useState({
+    enviarLembrete: true,
+    antecedendia24h: true,
+    antecedencia2h: true,
+    antecedencia1h: false,
+    canalWhatsApp: true,
+    canalSMS: false,
+    canalEmail: true,
+    mensagemPersonalizada: "Olá {nome}, lembrando do seu agendamento amanhã às {hora} com {profissional}. Confirme sua presença!"
+  });
+
+  return (
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Bell className="h-5 w-5 text-primary" />
+              Lembretes
+            </h2>
+            <p className="text-muted-foreground text-sm">Configure lembretes automáticos de agendamentos</p>
+          </div>
+          <label className="flex items-center gap-2">
+            <span className="text-sm">Ativar lembretes</span>
+            <input 
+              type="checkbox" 
+              checked={config.enviarLembrete}
+              onChange={(e) => setConfig(prev => ({ ...prev, enviarLembrete: e.target.checked }))}
+              className="h-5 w-5"
+            />
+          </label>
+        </div>
+
+        {config.enviarLembrete && (
+          <>
+            {/* Antecedência */}
+            <div className="space-y-3">
+              <h3 className="font-medium">Antecedência do Envio</h3>
+              {[
+                { key: "antecedendia24h", label: "24 horas antes" },
+                { key: "antecedencia2h", label: "2 horas antes" },
+                { key: "antecedencia1h", label: "1 hora antes" },
+              ].map((item) => (
+                <label key={item.key} className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    checked={config[item.key as keyof typeof config] as boolean}
+                    onChange={(e) => setConfig(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                    className="h-4 w-4"
+                  />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Canais */}
+            <div className="space-y-3">
+              <h3 className="font-medium">Canais de Envio</h3>
+              {[
+                { key: "canalWhatsApp", label: "WhatsApp", icon: MessageSquare },
+                { key: "canalSMS", label: "SMS", icon: Phone },
+                { key: "canalEmail", label: "E-mail", icon: Mail },
+              ].map((item) => (
+                <label key={item.key} className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    checked={config[item.key as keyof typeof config] as boolean}
+                    onChange={(e) => setConfig(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                    className="h-4 w-4"
+                  />
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Mensagem */}
+            <div className="space-y-3">
+              <h3 className="font-medium">Mensagem Personalizada</h3>
+              <textarea 
+                value={config.mensagemPersonalizada}
+                onChange={(e) => setConfig(prev => ({ ...prev, mensagemPersonalizada: e.target.value }))}
+                className="w-full p-3 border rounded-lg min-h-[100px]"
+                placeholder="Use {nome}, {hora}, {profissional}, {servico} para personalizar"
+              />
+              <p className="text-xs text-muted-foreground">
+                Variáveis: {"{nome}"}, {"{hora}"}, {"{data}"}, {"{profissional}"}, {"{servico}"}
+              </p>
+            </div>
+          </>
+        )}
+
+        <Button>Salvar Configurações</Button>
+      </div>
+    </Card>
+  );
+}
+
+function BloqueiosContent() {
+  const [bloqueios, setBloqueios] = useState([
+    { id: "1", titulo: "Feriado - Natal", dataInicio: "2024-12-25", dataFim: "2024-12-25", profissional: "Todos", motivo: "Feriado nacional" },
+    { id: "2", titulo: "Férias Maria", dataInicio: "2024-01-15", dataFim: "2024-01-30", profissional: "Maria Silva", motivo: "Férias" },
+  ]);
+
+  return (
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <EyeOff className="h-5 w-5 text-primary" />
+              Bloqueios de Agenda
+            </h2>
+            <p className="text-muted-foreground text-sm">Gerencie bloqueios e indisponibilidades</p>
+          </div>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Bloqueio
+          </Button>
+        </div>
+
+        <div className="border rounded-lg divide-y">
+          {bloqueios.map((b) => (
+            <div key={b.id} className="p-4 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <EyeOff className="h-5 w-5 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">{b.titulo}</p>
+                <p className="text-sm text-muted-foreground">
+                  {b.dataInicio === b.dataFim ? b.dataInicio : `${b.dataInicio} até ${b.dataFim}`}
+                </p>
+              </div>
+              <span className="text-sm text-muted-foreground">{b.profissional}</span>
+              <span className="text-xs px-2 py-1 rounded-full bg-muted">{b.motivo}</span>
               <Button variant="ghost" size="sm">Editar</Button>
               <Button variant="ghost" size="sm" className="text-destructive">Excluir</Button>
             </div>
