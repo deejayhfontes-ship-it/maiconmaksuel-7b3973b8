@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { QrCode, CreditCard, Clock, Check, Loader2, Fingerprint, Banknote, Receipt, ChevronRight, User, Printer, ArrowLeft, X } from "lucide-react";
+import { QrCode, CreditCard, Clock, Check, Loader2, Fingerprint, Banknote, Receipt, ChevronRight, User, Printer, ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -119,25 +119,21 @@ export default function TabletCliente() {
     setPontoHoje(data || null);
   };
 
-  // Simulate comanda data (in production, use Supabase realtime)
+  // Listen for comanda updates (in production, use Supabase realtime)
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setComanda({
-        numero: 42,
-        cliente: "Maria Silva",
-        status: "fechando",
-        itens: [
-          { id: "1", nome: "Corte Feminino", quantidade: 1, valorUnitario: 85.00, profissional: "Ana" },
-          { id: "2", nome: "Escova Progressiva", quantidade: 1, valorUnitario: 250.00, profissional: "Ana" },
-          { id: "3", nome: "Hidratação Capilar", quantidade: 1, valorUnitario: 65.00, profissional: "Ana" },
-        ],
-        subtotal: 400.00,
-        desconto: 0,
-        total: 400.00,
-        formaPagamento: "PIX",
-      });
-    }, 3000);
-    return () => clearTimeout(timeout);
+    // Simulate receiving comanda data from the system
+    const channel = supabase
+      .channel('tablet-comanda')
+      .on('broadcast', { event: 'comanda-update' }, ({ payload }) => {
+        if (payload) {
+          setComanda(payload as ComandaData);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Handle finalized state
@@ -162,17 +158,7 @@ export default function TabletCliente() {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('pt-BR', { 
       hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('pt-BR', { 
-      weekday: 'long',
-      day: '2-digit', 
-      month: 'long',
-      year: 'numeric'
+      minute: '2-digit'
     });
   };
 
@@ -240,10 +226,8 @@ export default function TabletCliente() {
       let novoRegistro: PontoRegistro | null = null;
 
       if (pontoHoje) {
-        // Update existing record
         const updateData: Record<string, unknown> = { [proximoPonto.tipo]: agora };
         
-        // Calcular horas se for saída final
         if (proximoPonto.tipo === 'saida') {
           const newPonto = { ...pontoHoje, saida: agora };
           updateData.horas_trabalhadas = calcularHorasTrabalhadas(newPonto);
@@ -258,7 +242,6 @@ export default function TabletCliente() {
 
         novoRegistro = data;
       } else {
-        // Create new record
         const { data } = await supabase
           .from('ponto_registros')
           .insert({
@@ -273,7 +256,6 @@ export default function TabletCliente() {
         novoRegistro = data;
       }
 
-      // Gerar comprovante
       setComprovante({
         nome: selectedProfissional.nome,
         data: format(new Date(), "dd/MM/yyyy"),
@@ -330,7 +312,6 @@ export default function TabletCliente() {
     }
   };
 
-  // Fechar comprovante e resetar
   const handleFecharComprovante = () => {
     setShowComprovante(false);
     setComprovante(null);
@@ -340,12 +321,12 @@ export default function TabletCliente() {
 
   const proximoPonto = getProximoPonto();
 
-  // Finalized screen
+  // Finalized screen - Thank you message
   if (showFinalizado) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5 flex items-center justify-center p-8">
-        <div className="text-center animate-in fade-in zoom-in duration-500">
-          <div className="w-32 h-32 mx-auto mb-8 bg-green-500/10 rounded-full flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="w-32 h-32 mx-auto mb-8 bg-green-500/10 rounded-full flex items-center justify-center animate-scale-in">
             <Check className="h-16 w-16 text-green-500" />
           </div>
           <h1 className="text-5xl font-bold text-foreground mb-4">
@@ -354,247 +335,297 @@ export default function TabletCliente() {
           <p className="text-2xl text-muted-foreground">
             Volte sempre!
           </p>
-          {comanda && (
-            <p className="text-lg text-muted-foreground mt-4">
-              Comanda #{comanda.numero} - {comanda.cliente}
-            </p>
-          )}
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/30 flex flex-col select-none">
-      {/* Header */}
-      <header className="flex items-center justify-between p-6 border-b bg-card/80 backdrop-blur-sm">
-        <div className="flex items-center gap-4">
-          <img 
-            src={logoMaicon} 
-            alt="Maicon Maksuel Concept" 
-            className="h-16 w-auto rounded-lg shadow-md"
-          />
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Maicon Maksuel</h1>
-            <p className="text-sm text-muted-foreground">Concept</p>
+  // Active comanda view - Shows payment info (NO ponto button here)
+  if (comanda) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/30 flex flex-col select-none">
+        {/* Header */}
+        <header className="flex items-center justify-between p-6 border-b bg-card/80 backdrop-blur-sm">
+          <div className="flex items-center gap-4">
+            <img 
+              src={logoMaicon} 
+              alt="Maicon Maksuel Concept" 
+              className="h-14 w-auto rounded-lg shadow-md"
+            />
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">Maicon Maksuel</h1>
+              <p className="text-xs text-muted-foreground">Concept</p>
+            </div>
           </div>
-        </div>
-        <div className="text-right">
-          <p className="text-3xl font-bold text-primary tabular-nums">
-            {formatTime(currentTime)}
-          </p>
-          <p className="text-sm text-muted-foreground capitalize">
-            {formatDate(currentTime)}
-          </p>
-        </div>
-      </header>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-primary tabular-nums">
+              {formatTime(currentTime)}
+            </p>
+          </div>
+        </header>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 flex gap-6">
-        {/* Left Side - Comanda Info */}
-        <div className="flex-1 flex flex-col">
-          {!comanda ? (
-            // Waiting state
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="mb-8">
-                <img 
-                  src={logoMaicon} 
-                  alt="Logo" 
-                  className="h-40 w-auto rounded-2xl shadow-xl"
-                />
-              </div>
-              <h2 className="text-3xl font-bold text-foreground mb-4">
-                Bem-vindo(a)!
-              </h2>
-              <p className="text-xl text-muted-foreground flex items-center gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                Aguardando atendimento...
-              </p>
-            </div>
-          ) : (
-            // Active comanda
-            <div className="flex-1 flex flex-col bg-card rounded-2xl shadow-lg border overflow-hidden">
-              {/* Comanda Header */}
-              <div className="p-6 bg-primary/5 border-b">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Badge className="bg-primary text-primary-foreground text-lg px-4 py-1.5 mb-2">
-                      Comanda #{comanda.numero}
-                    </Badge>
-                    <h2 className="text-2xl font-bold text-foreground">
-                      {comanda.cliente}
-                    </h2>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground mb-1">Status</p>
-                    <Badge variant="outline" className="text-base">
-                      {comanda.status === 'fechando' ? 'Fechando conta' : comanda.status}
-                    </Badge>
-                  </div>
+        {/* Main Content */}
+        <main className="flex-1 p-6 flex gap-6">
+          {/* Left Side - Comanda Info */}
+          <div className="flex-1 flex flex-col bg-card rounded-2xl shadow-lg border overflow-hidden animate-fade-in">
+            {/* Comanda Header */}
+            <div className="p-6 bg-primary/5 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Badge className="bg-primary text-primary-foreground text-lg px-4 py-1.5 mb-2">
+                    Comanda #{comanda.numero}
+                  </Badge>
+                  <h2 className="text-2xl font-bold text-foreground">
+                    {comanda.cliente}
+                  </h2>
                 </div>
-              </div>
-
-              {/* Items List */}
-              <div className="flex-1 p-6 overflow-auto">
-                <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
-                  Serviços e Produtos
-                </h3>
-                <div className="space-y-3">
-                  {comanda.itens.map((item) => (
-                    <div 
-                      key={item.id}
-                      className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground text-lg">
-                          {item.nome}
-                        </p>
-                        {item.profissional && (
-                          <p className="text-sm text-muted-foreground">
-                            Profissional: {item.profissional}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-foreground text-lg">
-                          {formatCurrency(item.valorUnitario)}
-                        </p>
-                        {item.quantidade > 1 && (
-                          <p className="text-sm text-muted-foreground">
-                            Qtd: {item.quantidade}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Total Section */}
-              <div className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 border-t">
-                {comanda.desconto > 0 && (
-                  <>
-                    <div className="flex justify-between mb-2 text-muted-foreground">
-                      <span>Subtotal</span>
-                      <span>{formatCurrency(comanda.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between mb-2 text-green-600">
-                      <span>Desconto</span>
-                      <span>-{formatCurrency(comanda.desconto)}</span>
-                    </div>
-                    <Separator className="my-3" />
-                  </>
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="text-2xl font-bold text-foreground">
-                    TOTAL
-                  </span>
-                  <span className="text-4xl font-bold text-primary">
-                    {formatCurrency(comanda.total)}
-                  </span>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground mb-1">Status</p>
+                  <Badge variant="outline" className="text-base">
+                    {comanda.status === 'fechando' ? 'Fechando conta' : comanda.status}
+                  </Badge>
                 </div>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Right Side - Payment & Actions */}
-        <div className="w-80 flex flex-col gap-6">
-          {/* Payment Method Card */}
-          {comanda?.formaPagamento && (
-            <div className="bg-card rounded-2xl shadow-lg border p-6">
+            {/* Items List */}
+            <div className="flex-1 p-6 overflow-auto">
               <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
-                Forma de Pagamento
+                Serviços e Produtos
               </h3>
-              {(() => {
-                const paymentInfo = getPaymentInfo(comanda.formaPagamento);
-                const PaymentIcon = paymentInfo.icon;
-                return (
-                  <div className={`p-6 rounded-xl ${paymentInfo.color} text-white`}>
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                      <PaymentIcon className="h-12 w-12" />
+              <div className="space-y-3">
+                {comanda.itens.map((item) => (
+                  <div 
+                    key={item.id}
+                    className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground text-lg">
+                        {item.nome}
+                      </p>
+                      {item.profissional && (
+                        <p className="text-sm text-muted-foreground">
+                          Profissional: {item.profissional}
+                        </p>
+                      )}
                     </div>
-                    <p className="text-center text-2xl font-bold">
-                      {paymentInfo.label}
+                    <div className="text-right">
+                      <p className="font-semibold text-foreground text-lg">
+                        {formatCurrency(item.valorUnitario)}
+                      </p>
+                      {item.quantidade > 1 && (
+                        <p className="text-sm text-muted-foreground">
+                          Qtd: {item.quantidade}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Section */}
+            <div className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 border-t">
+              {comanda.desconto > 0 && (
+                <>
+                  <div className="flex justify-between mb-2 text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(comanda.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between mb-2 text-green-600">
+                    <span>Desconto</span>
+                    <span>-{formatCurrency(comanda.desconto)}</span>
+                  </div>
+                  <Separator className="my-3" />
+                </>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-2xl font-bold text-foreground">
+                  TOTAL
+                </span>
+                <span className="text-4xl font-bold text-primary">
+                  {formatCurrency(comanda.total)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side - Payment Info Only */}
+          <div className="w-80 flex flex-col gap-6">
+            {/* Payment Method Card */}
+            {comanda?.formaPagamento && (
+              <div className="bg-card rounded-2xl shadow-lg border p-6 animate-fade-in">
+                <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
+                  Forma de Pagamento
+                </h3>
+                {(() => {
+                  const paymentInfo = getPaymentInfo(comanda.formaPagamento);
+                  const PaymentIcon = paymentInfo.icon;
+                  return (
+                    <div className={`p-6 rounded-xl ${paymentInfo.color} text-white`}>
+                      <div className="flex items-center justify-center gap-3 mb-4">
+                        <PaymentIcon className="h-12 w-12" />
+                      </div>
+                      <p className="text-center text-2xl font-bold">
+                        {paymentInfo.label}
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                {/* QR Code for PIX */}
+                {comanda.formaPagamento?.toLowerCase() === 'pix' && (
+                  <div className="mt-6">
+                    <div className="bg-white p-4 rounded-xl flex items-center justify-center">
+                      <div className="w-40 h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                        <QrCode className="h-24 w-24 text-gray-700" />
+                      </div>
+                    </div>
+                    <p className="text-center text-sm text-muted-foreground mt-3">
+                      Escaneie para pagar
                     </p>
                   </div>
-                );
-              })()}
+                )}
+              </div>
+            )}
 
-              {/* QR Code for PIX */}
-              {comanda.formaPagamento?.toLowerCase() === 'pix' && (
-                <div className="mt-6">
-                  <div className="bg-white p-4 rounded-xl flex items-center justify-center">
-                    <div className="w-40 h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-                      <QrCode className="h-24 w-24 text-gray-700" />
-                    </div>
+            {/* Payment Methods Info */}
+            <div className="bg-card rounded-2xl shadow-lg border p-6 flex-1">
+              <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
+                Formas Aceitas
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
+                  <div className="w-10 h-10 bg-teal-500/10 rounded-full flex items-center justify-center">
+                    <QrCode className="h-5 w-5 text-teal-500" />
                   </div>
-                  <p className="text-center text-sm text-muted-foreground mt-3">
-                    Escaneie para pagar
-                  </p>
+                  <span className="font-medium">PIX</span>
                 </div>
-              )}
+                <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
+                    <CreditCard className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <span className="font-medium">Cartão Crédito/Débito</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
+                    <Banknote className="h-5 w-5 text-green-500" />
+                  </div>
+                  <span className="font-medium">Dinheiro</span>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
-          {/* Ponto Eletrônico Button - Only touchable element */}
-          <Button
-            size="lg"
-            variant="outline"
-            className="h-20 text-lg border-2 hover:bg-primary hover:text-primary-foreground transition-all duration-300 touch-manipulation active:scale-95"
-            onClick={() => setShowPontoModal(true)}
+  // IDLE STATE - Logo with animation and minimalist ponto button
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/20 flex flex-col items-center justify-center select-none overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+      </div>
+
+      {/* Main content */}
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Logo container with floating animation */}
+        <div className="relative mb-8">
+          {/* Glow effect */}
+          <div 
+            className="absolute inset-0 rounded-3xl bg-primary/20 blur-2xl animate-pulse"
+            style={{ animationDuration: '3s' }}
+          />
+          
+          {/* Logo with breathing animation */}
+          <div 
+            className="relative"
+            style={{
+              animation: 'floating 6s ease-in-out infinite'
+            }}
           >
-            <Fingerprint className="h-8 w-8 mr-3" />
+            <img 
+              src={logoMaicon} 
+              alt="Maicon Maksuel Concept" 
+              className="h-48 w-auto rounded-3xl shadow-2xl border-4 border-white/20"
+            />
+          </div>
+        </div>
+
+        {/* Salon name */}
+        <h1 
+          className="text-4xl font-bold text-foreground mb-2 opacity-0"
+          style={{ animation: 'fadeInUp 1s ease-out 0.5s forwards' }}
+        >
+          Maicon Maksuel
+        </h1>
+        <p 
+          className="text-xl text-muted-foreground mb-12 opacity-0"
+          style={{ animation: 'fadeInUp 1s ease-out 0.7s forwards' }}
+        >
+          Concept
+        </p>
+
+        {/* Clock */}
+        <div 
+          className="text-6xl font-bold text-primary tabular-nums mb-16 opacity-0"
+          style={{ 
+            animation: 'fadeInUp 1s ease-out 0.9s forwards',
+            textShadow: '0 4px 20px rgba(var(--primary), 0.3)'
+          }}
+        >
+          {formatTime(currentTime)}
+        </div>
+
+        {/* Minimalist Ponto Button */}
+        <button
+          onClick={() => setShowPontoModal(true)}
+          className="group flex flex-col items-center gap-3 p-6 rounded-2xl transition-all duration-500 hover:bg-card/50 hover:shadow-xl opacity-0 touch-manipulation active:scale-95"
+          style={{ animation: 'fadeInUp 1s ease-out 1.1s forwards' }}
+        >
+          <div 
+            className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center transition-all duration-300 group-hover:bg-primary group-hover:scale-110"
+          >
+            <Fingerprint className="h-8 w-8 text-primary transition-colors group-hover:text-primary-foreground" />
+          </div>
+          <span className="text-sm text-muted-foreground font-medium transition-colors group-hover:text-foreground">
             Registrar Ponto
-          </Button>
+          </span>
+        </button>
+      </div>
 
-          {/* Info Card */}
-          <div className="bg-card rounded-2xl shadow-lg border p-6 flex-1">
-            <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
-              Formas de Pagamento Aceitas
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
-                <div className="w-10 h-10 bg-teal-500/10 rounded-full flex items-center justify-center">
-                  <QrCode className="h-5 w-5 text-teal-500" />
-                </div>
-                <span className="font-medium">PIX</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
-                <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
-                  <CreditCard className="h-5 w-5 text-blue-500" />
-                </div>
-                <span className="font-medium">Cartão de Crédito</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
-                <div className="w-10 h-10 bg-purple-500/10 rounded-full flex items-center justify-center">
-                  <CreditCard className="h-5 w-5 text-purple-500" />
-                </div>
-                <span className="font-medium">Cartão de Débito</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
-                <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
-                  <Banknote className="h-5 w-5 text-green-500" />
-                </div>
-                <span className="font-medium">Dinheiro</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+      {/* Subtle footer */}
+      <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center">
+        <p className="text-xs text-muted-foreground/50">
+          Sistema de Gestão
+        </p>
+      </div>
 
-      {/* Footer */}
-      <footer className="p-4 border-t bg-card/80 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Maicon Maksuel Concept • Sistema de Gestão
-          </p>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            Atualizado em tempo real
-          </div>
-        </div>
-      </footer>
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes floating {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
 
       {/* Ponto Eletrônico Modal */}
       <Dialog open={showPontoModal} onOpenChange={(open) => {
@@ -623,7 +654,6 @@ export default function TabletCliente() {
           {/* Comprovante View */}
           {showComprovante && comprovante ? (
             <div className="py-4">
-              {/* Comprovante para impressão */}
               <div ref={comprovanteRef} className="bg-white text-black p-6 rounded-xl border-2 border-dashed">
                 <div className="header text-center mb-4">
                   <img src={logoMaicon} alt="Logo" className="logo w-20 h-20 rounded-lg mx-auto mb-3" />
@@ -654,7 +684,6 @@ export default function TabletCliente() {
 
                 <div className="divider border-t border-dashed border-gray-400 my-4" />
 
-                {/* Status do dia */}
                 {comprovante.registro && (
                   <div className="grid grid-cols-4 gap-2 text-xs">
                     <div className={`p-2 rounded text-center ${comprovante.registro.entrada_manha ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -690,7 +719,6 @@ export default function TabletCliente() {
                 </div>
               </div>
 
-              {/* Ações */}
               <div className="flex gap-3 mt-6">
                 <Button
                   variant="outline"
@@ -710,7 +738,6 @@ export default function TabletCliente() {
               </div>
             </div>
           ) : !selectedProfissional ? (
-            // Lista de profissionais
             <div className="grid gap-2 max-h-80 overflow-auto py-4">
               {profissionais.map((prof) => (
                 <Button
@@ -742,7 +769,6 @@ export default function TabletCliente() {
               )}
             </div>
           ) : (
-            // Registrar ponto
             <div className="py-4">
               <div className="text-center mb-6">
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
@@ -761,7 +787,6 @@ export default function TabletCliente() {
                 </p>
               </div>
 
-              {/* Status do ponto de hoje */}
               {pontoHoje && (
                 <div className="grid grid-cols-4 gap-2 mb-6 text-sm">
                   <div className={`p-3 rounded-xl text-center ${pontoHoje.entrada_manha ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
@@ -783,7 +808,6 @@ export default function TabletCliente() {
                 </div>
               )}
 
-              {/* Botão Registrar */}
               <Button
                 size="lg"
                 className={`w-full h-20 text-xl font-bold touch-manipulation active:scale-95 ${
