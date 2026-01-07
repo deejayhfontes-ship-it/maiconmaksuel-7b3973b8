@@ -1,16 +1,22 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
 import { NotificationPermissionBanner } from "./NotificationPermissionBanner";
 import { cn } from "@/lib/utils";
 import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
+import { GlobalSearch } from "@/components/GlobalSearch";
+import { KioskModeBadge } from "@/components/KioskModeBadge";
 
 interface SidebarContextType {
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  isSearchOpen: boolean;
+  setIsSearchOpen: (open: boolean) => void;
 }
 
 export const SidebarContext = createContext<SidebarContextType>({
@@ -18,6 +24,8 @@ export const SidebarContext = createContext<SidebarContextType>({
   setCollapsed: () => {},
   mobileOpen: false,
   setMobileOpen: () => {},
+  isSearchOpen: false,
+  setIsSearchOpen: () => {},
 });
 
 export const useSidebarContext = () => useContext(SidebarContext);
@@ -26,6 +34,12 @@ export function MainLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Keyboard shortcuts
+  const { isHelpOpen, setIsHelpOpen, isFullscreen, toggleFullscreen } = useKeyboardShortcuts({
+    onOpenSearch: () => setIsSearchOpen(true),
+  });
 
   useEffect(() => {
     const checkMobile = () => {
@@ -51,7 +65,7 @@ export function MainLayout() {
   useBrowserNotifications();
 
   return (
-    <SidebarContext.Provider value={{ collapsed, setCollapsed, mobileOpen, setMobileOpen }}>
+    <SidebarContext.Provider value={{ collapsed, setCollapsed, mobileOpen, setMobileOpen, isSearchOpen, setIsSearchOpen }}>
       <div className="min-h-screen bg-background theme-transition">
         {/* Mobile Overlay */}
         {mobileOpen && isMobile && (
@@ -77,6 +91,15 @@ export function MainLayout() {
 
         {/* Banner de permissão de notificações */}
         <NotificationPermissionBanner />
+
+        {/* Global Search (Cmd+K) */}
+        <GlobalSearch open={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+        {/* Keyboard Shortcuts Help (Shift+?) */}
+        <KeyboardShortcutsHelp open={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+
+        {/* Kiosk Mode Badge */}
+        <KioskModeBadge isFullscreen={isFullscreen} onToggle={toggleFullscreen} />
       </div>
     </SidebarContext.Provider>
   );
