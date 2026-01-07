@@ -340,6 +340,12 @@ export default function Configuracoes() {
         return <LogoSistemaContent />;
       case "tela-login":
         return <TelaLoginContent />;
+      case "categorias-servicos":
+        return <CategoriasServicosContent />;
+      case "pacotes-combos":
+        return <PacotesCombosContent />;
+      case "apenas-agenda":
+        return <ApenasAgendaContent />;
       default:
         return (
           <div className="flex items-center justify-center h-64">
@@ -1682,6 +1688,213 @@ function TelaLoginContent() {
         <div className="flex gap-2 pt-4 border-t">
           <Button>Salvar Alterações</Button>
           <Button variant="outline">Restaurar Padrão</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Categorias de Serviços
+function CategoriasServicosContent() {
+  const categorias = [
+    { id: 1, nome: "Cabelo", servicos: 12, ativo: true, cor: "#3b82f6" },
+    { id: 2, nome: "Unhas", servicos: 8, ativo: true, cor: "#ec4899" },
+    { id: 3, nome: "Estética", servicos: 6, ativo: true, cor: "#22c55e" },
+    { id: 4, nome: "Maquiagem", servicos: 4, ativo: true, cor: "#f97316" },
+    { id: 5, nome: "Depilação", servicos: 5, ativo: false, cor: "#8b5cf6" },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Layers className="h-5 w-5" />
+        Categorias de Serviços
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Adicionar Categoria */}
+        <div className="flex gap-2">
+          <Input placeholder="Nome da nova categoria..." className="flex-1" />
+          <div className="flex items-center gap-2">
+            <input type="color" defaultValue="#3b82f6" className="h-10 w-10 rounded border cursor-pointer" />
+            <Button>
+              Adicionar
+            </Button>
+          </div>
+        </div>
+
+        {/* Lista de Categorias */}
+        <div className="border rounded-lg divide-y">
+          {categorias.map((cat) => (
+            <div key={cat.id} className="p-4 flex items-center gap-4 hover:bg-muted/50">
+              <div 
+                className="w-4 h-4 rounded-full" 
+                style={{ backgroundColor: cat.cor }}
+              />
+              <div className="flex-1">
+                <p className={cn("font-medium", !cat.ativo && "text-muted-foreground")}>{cat.nome}</p>
+                <p className="text-sm text-muted-foreground">{cat.servicos} serviços</p>
+              </div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" defaultChecked={cat.ativo} className="h-4 w-4" />
+                <span className="text-sm">Ativo</span>
+              </label>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm">Editar</Button>
+                <Button variant="ghost" size="sm" className="text-destructive">Excluir</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Ordenação */}
+        <div className="p-4 bg-muted/50 rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            💡 Arraste as categorias para reordenar a exibição no sistema
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Pacotes e Combos
+function PacotesCombosContent() {
+  const pacotes = [
+    { id: 1, nome: "Dia da Noiva", servicos: 5, preco: 450, desconto: 15, ativo: true },
+    { id: 2, nome: "Combo Unhas", servicos: 3, preco: 120, desconto: 10, ativo: true },
+    { id: 3, nome: "Pacote Mensal Cabelo", servicos: 4, preco: 280, desconto: 20, ativo: false },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Package className="h-5 w-5" />
+        Pacotes e Combos
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Botão Adicionar */}
+        <div className="flex justify-between items-center">
+          <p className="text-muted-foreground">Crie combos de serviços com descontos especiais</p>
+          <Button>
+            <Package className="h-4 w-4 mr-2" />
+            Novo Pacote
+          </Button>
+        </div>
+
+        {/* Lista de Pacotes */}
+        <div className="space-y-3">
+          {pacotes.map((pacote) => (
+            <div key={pacote.id} className={cn(
+              "p-4 border rounded-lg",
+              !pacote.ativo && "opacity-60"
+            )}>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="font-medium">{pacote.nome}</h4>
+                  <p className="text-sm text-muted-foreground">{pacote.servicos} serviços incluídos</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="font-semibold text-lg">R$ {pacote.preco.toFixed(2)}</p>
+                    <p className="text-sm text-green-600">{pacote.desconto}% de desconto</p>
+                  </div>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" defaultChecked={pacote.ativo} className="h-4 w-4" />
+                  </label>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-3 border-t">
+                <Button variant="outline" size="sm">Editar</Button>
+                <Button variant="outline" size="sm">Ver Serviços</Button>
+                <Button variant="ghost" size="sm" className="text-destructive ml-auto">Excluir</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {pacotes.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>Nenhum pacote cadastrado</p>
+            <p className="text-sm">Crie combos para oferecer descontos aos clientes</p>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// Componente Apenas Agenda
+function ApenasAgendaContent() {
+  const servicosOcultos = [
+    { id: 1, nome: "Retoque Gratuito", duracao: 30, ativo: true },
+    { id: 2, nome: "Avaliação", duracao: 15, ativo: true },
+    { id: 3, nome: "Teste de Mecha", duracao: 20, ativo: false },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <EyeOff className="h-5 w-5" />
+        Serviços Apenas Agenda
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Explicação */}
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-sm text-blue-700 dark:text-blue-400">
+            ℹ️ Serviços marcados como "Apenas Agenda" aparecem na agenda mas <strong>não são cobrados</strong> e não aparecem no caixa.
+            Ideal para: retoques gratuitos, avaliações, intervalos, etc.
+          </p>
+        </div>
+
+        {/* Adicionar Serviço */}
+        <div className="flex gap-2">
+          <Input placeholder="Nome do serviço..." className="flex-1" />
+          <Input type="number" placeholder="Duração (min)" className="w-32" />
+          <Button>Adicionar</Button>
+        </div>
+
+        {/* Lista de Serviços */}
+        <div className="border rounded-lg divide-y">
+          {servicosOcultos.map((servico) => (
+            <div key={servico.id} className="p-4 flex items-center gap-4 hover:bg-muted/50">
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+              <div className="flex-1">
+                <p className="font-medium">{servico.nome}</p>
+                <p className="text-sm text-muted-foreground">{servico.duracao} minutos</p>
+              </div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" defaultChecked={servico.ativo} className="h-4 w-4" />
+                <span className="text-sm">Ativo</span>
+              </label>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm">Editar</Button>
+                <Button variant="ghost" size="sm" className="text-destructive">Excluir</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Configurações */}
+        <div className="space-y-3 border-t pt-6">
+          <h3 className="font-medium">Configurações</h3>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Mostrar na agenda do profissional</p>
+              <p className="text-sm text-muted-foreground">Exibir estes serviços na visão do profissional</p>
+            </div>
+            <input type="checkbox" defaultChecked className="h-5 w-5" />
+          </label>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Permitir agendamento online</p>
+              <p className="text-sm text-muted-foreground">Clientes podem agendar via link</p>
+            </div>
+            <input type="checkbox" className="h-5 w-5" />
+          </label>
         </div>
       </div>
     </Card>
