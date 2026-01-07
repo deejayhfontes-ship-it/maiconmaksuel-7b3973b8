@@ -61,6 +61,7 @@ interface GorjetaProfissional {
 interface PagamentoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  atendimentoId?: string;
   numeroComanda: number;
   clienteNome: string | null;
   clienteId: string | null;
@@ -94,6 +95,7 @@ const formasPagamento = [
 export function PagamentoModal({
   open,
   onOpenChange,
+  atendimentoId,
   numeroComanda,
   clienteNome,
   clienteId,
@@ -164,18 +166,63 @@ export function PagamentoModal({
   };
 
   // Função para enviar dados para o tablet
-  const enviarParaTablet = async (formaPagamento: string, status: "fechando" | "finalizado") => {
+  const enviarParaTablet = async (formaPagamento: string, status: "fechando" | "finalizado", atendimentoId?: string) => {
     try {
+      let itens: { id: string; nome: string; quantidade: number; valorUnitario: number; profissional?: string }[] = [];
+      
+      // Buscar itens se tivermos o atendimento_id
+      if (atendimentoId) {
+        const { data: servicos } = await supabase
+          .from("atendimento_servicos")
+          .select(`
+            id,
+            quantidade,
+            preco_unitario,
+            servico:servicos(nome),
+            profissional:profissionais(nome)
+          `)
+          .eq("atendimento_id", atendimentoId);
+
+        const { data: produtos } = await supabase
+          .from("atendimento_produtos")
+          .select(`
+            id,
+            quantidade,
+            preco_unitario,
+            produto:produtos(nome)
+          `)
+          .eq("atendimento_id", atendimentoId);
+
+        const itensServicos = (servicos || []).map((s: any) => ({
+          id: s.id,
+          nome: s.servico?.nome || "Serviço",
+          quantidade: s.quantidade,
+          valorUnitario: s.preco_unitario,
+          profissional: s.profissional?.nome
+        }));
+
+        const itensProdutos = (produtos || []).map((p: any) => ({
+          id: p.id,
+          nome: p.produto?.nome || "Produto",
+          quantidade: p.quantidade,
+          valorUnitario: p.preco_unitario
+        }));
+
+        itens = [...itensServicos, ...itensProdutos];
+      }
+
       const comandaData = {
         numero: numeroComanda,
         cliente: clienteNome || "Consumidor",
         status,
-        itens: [], // Itens já foram enviados anteriormente
+        itens,
         subtotal: totalComanda,
         desconto: 0,
         total: totalComanda,
         formaPagamento
       };
+
+      console.log("Enviando para tablet:", comandaData);
 
       const channel = supabase.channel('tablet-comanda');
       await channel.send({
@@ -201,7 +248,7 @@ export function PagamentoModal({
     
     // Enviar forma de pagamento para o tablet
     if (forma && forma !== "multiplas") {
-      await enviarParaTablet(forma, "fechando");
+      await enviarParaTablet(forma, "fechando", atendimentoId);
     }
   };
 
@@ -261,7 +308,7 @@ export function PagamentoModal({
       
       // Enviar para tablet que finalizou
       const formaPrincipal = pagamentos[0]?.forma || "pagamento";
-      await enviarParaTablet(formaPrincipal, "finalizado");
+      await enviarParaTablet(formaPrincipal, "finalizado", atendimentoId);
       
       setSucesso(true);
     } catch (error) {
