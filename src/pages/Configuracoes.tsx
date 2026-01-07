@@ -326,6 +326,12 @@ export default function Configuracoes() {
         return <SobreContent />;
       case "webcam":
         return <WebcamConfig />;
+      case "tema-cores":
+        return <TemasCoresContent />;
+      case "logo-sistema":
+        return <LogoSistemaContent />;
+      case "tela-login":
+        return <TelaLoginContent />;
       default:
         return (
           <div className="flex items-center justify-center h-64">
@@ -1131,6 +1137,316 @@ function SobreContent() {
         <p className="text-xs text-muted-foreground pt-4 border-t">
           © 2024 Maicon Maksuel - Todos os direitos reservados
         </p>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Temas e Cores
+function TemasCoresContent() {
+  const temas = [
+    { id: "light", nome: "Claro", desc: "Tema claro padrão", bg: "bg-white", text: "text-gray-900" },
+    { id: "dark", nome: "Escuro", desc: "Tema escuro moderno", bg: "bg-gray-900", text: "text-white" },
+    { id: "system", nome: "Sistema", desc: "Seguir preferência do sistema", bg: "bg-gradient-to-r from-white to-gray-900", text: "text-gray-600" },
+  ];
+
+  const cores = [
+    { id: "blue", cor: "#3b82f6", nome: "Azul" },
+    { id: "purple", cor: "#8b5cf6", nome: "Roxo" },
+    { id: "pink", cor: "#ec4899", nome: "Rosa" },
+    { id: "red", cor: "#ef4444", nome: "Vermelho" },
+    { id: "orange", cor: "#f97316", nome: "Laranja" },
+    { id: "green", cor: "#22c55e", nome: "Verde" },
+    { id: "teal", cor: "#14b8a6", nome: "Turquesa" },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Palette className="h-5 w-5" />
+        Tema e Cores
+      </h2>
+      
+      <div className="space-y-8">
+        {/* Seleção de Tema */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Tema do Sistema</h3>
+          <div className="grid grid-cols-3 gap-4">
+            {temas.map((tema) => (
+              <label key={tema.id} className="cursor-pointer">
+                <input type="radio" name="tema" defaultChecked={tema.id === "light"} className="sr-only peer" />
+                <div className="border-2 rounded-lg p-4 peer-checked:border-primary peer-checked:bg-primary/5 transition-all">
+                  <div className={cn("h-20 rounded-md mb-3", tema.bg, "border")} />
+                  <p className="font-medium">{tema.nome}</p>
+                  <p className="text-sm text-muted-foreground">{tema.desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Cor Principal */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Cor Principal</h3>
+          <div className="flex flex-wrap gap-3">
+            {cores.map((cor) => (
+              <label key={cor.id} className="cursor-pointer">
+                <input type="radio" name="cor" defaultChecked={cor.id === "blue"} className="sr-only peer" />
+                <div className="w-12 h-12 rounded-full border-4 border-transparent peer-checked:border-gray-400 transition-all flex items-center justify-center"
+                     style={{ backgroundColor: cor.cor }}>
+                </div>
+                <p className="text-xs text-center mt-1">{cor.nome}</p>
+              </label>
+            ))}
+            <label className="cursor-pointer">
+              <div className="w-12 h-12 rounded-full border-2 border-dashed flex items-center justify-center">
+                <input type="color" className="w-8 h-8 rounded cursor-pointer" />
+              </div>
+              <p className="text-xs text-center mt-1">Custom</p>
+            </label>
+          </div>
+        </div>
+
+        {/* Fonte */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Fonte do Sistema</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-muted-foreground">Família da Fonte</label>
+              <select className="w-full mt-1 p-2 border rounded-lg">
+                <option>Inter (Padrão)</option>
+                <option>Roboto</option>
+                <option>Open Sans</option>
+                <option>Poppins</option>
+                <option>Montserrat</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Tamanho Base</label>
+              <select className="w-full mt-1 p-2 border rounded-lg">
+                <option>Pequeno (14px)</option>
+                <option>Normal (16px)</option>
+                <option>Grande (18px)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Bordas e Cantos */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Estilo dos Elementos</h3>
+          <div>
+            <label className="text-sm text-muted-foreground">Arredondamento de Bordas</label>
+            <div className="flex items-center gap-4 mt-2">
+              <input type="range" min="0" max="20" defaultValue="8" className="flex-1" />
+              <div className="w-16 h-10 bg-primary rounded-lg" style={{ borderRadius: '8px' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-4 border-t">
+          <Button>Salvar Tema</Button>
+          <Button variant="outline">Restaurar Padrão</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Logo do Sistema
+function LogoSistemaContent() {
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Image className="h-5 w-5" />
+        Logo do Sistema
+      </h2>
+      
+      <div className="space-y-8">
+        {/* Logo Principal */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Logo Principal</h3>
+          <p className="text-sm text-muted-foreground">Usado na barra lateral e cabeçalho do sistema</p>
+          <div className="flex items-start gap-6">
+            <div className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+              <div className="text-center">
+                <Image className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="text-xs text-muted-foreground mt-2">180x180px</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Carregar Logo
+              </Button>
+              <p className="text-xs text-muted-foreground">PNG ou SVG, máximo 2MB</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Ícone/Favicon */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Ícone (Favicon)</h3>
+          <p className="text-sm text-muted-foreground">Ícone exibido na aba do navegador</p>
+          <div className="flex items-start gap-6">
+            <div className="w-16 h-16 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+              <div className="text-center">
+                <Image className="h-6 w-6 mx-auto text-muted-foreground" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Button variant="outline" size="sm">
+                <Upload className="h-4 w-4 mr-2" />
+                Carregar Ícone
+              </Button>
+              <p className="text-xs text-muted-foreground">32x32px ou 64x64px</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Logo para Impressão */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Logo para Impressão</h3>
+          <p className="text-sm text-muted-foreground">Usado em cupons, relatórios e notas fiscais</p>
+          <div className="flex items-start gap-6">
+            <div className="w-48 h-24 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+              <div className="text-center">
+                <Image className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="text-xs text-muted-foreground mt-2">300x150px</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Carregar Logo
+              </Button>
+              <p className="text-xs text-muted-foreground">PNG com fundo transparente</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Texto do Cabeçalho */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Texto do Cabeçalho</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-muted-foreground">Nome exibido no sistema</label>
+              <Input defaultValue="Maicon Maksuel Salão" className="mt-1" />
+            </div>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" defaultChecked />
+              <span className="text-sm">Exibir nome ao lado do logo</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-4 border-t">
+          <Button>Salvar Alterações</Button>
+          <Button variant="outline">Restaurar Padrão</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Tela de Login
+function TelaLoginContent() {
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Globe className="h-5 w-5" />
+        Personalização da Tela de Login
+      </h2>
+      
+      <div className="space-y-8">
+        {/* Preview */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Pré-visualização</h3>
+          <div className="border rounded-lg p-4 bg-gradient-to-br from-primary/10 to-primary/5">
+            <div className="bg-background rounded-lg p-6 max-w-sm mx-auto shadow-lg">
+              <div className="text-center mb-4">
+                <div className="w-16 h-16 bg-primary/20 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                  <Settings className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold">Bem-vindo(a)</h3>
+                <p className="text-xs text-muted-foreground">Maicon Maksuel Salão</p>
+              </div>
+              <div className="space-y-2">
+                <div className="h-8 bg-muted rounded" />
+                <div className="h-8 bg-muted rounded" />
+                <div className="h-8 bg-primary rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Imagem de Fundo */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Imagem de Fundo</h3>
+          <div className="grid grid-cols-4 gap-3">
+            {["Gradiente Padrão", "Imagem 1", "Imagem 2", "Personalizado"].map((item, i) => (
+              <label key={i} className="cursor-pointer">
+                <input type="radio" name="bg" defaultChecked={i === 0} className="sr-only peer" />
+                <div className="h-20 border-2 rounded-lg peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary/20 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  {i === 3 && <Upload className="h-5 w-5 text-muted-foreground" />}
+                </div>
+                <p className="text-xs text-center mt-1">{item}</p>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Textos */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Textos da Tela</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-muted-foreground">Título de Boas-vindas</label>
+              <Input defaultValue="Bem-vindo(a)" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Subtítulo</label>
+              <Input defaultValue="Faça login para continuar" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Texto do Rodapé</label>
+              <Input defaultValue="© 2024 Maicon Maksuel - Todos os direitos reservados" className="mt-1" />
+            </div>
+          </div>
+        </div>
+
+        {/* Opções */}
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Opções de Login</h3>
+          <div className="space-y-3">
+            <label className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <p className="font-medium">Mostrar "Lembrar-me"</p>
+                <p className="text-sm text-muted-foreground">Opção para manter usuário logado</p>
+              </div>
+              <input type="checkbox" defaultChecked className="h-5 w-5" />
+            </label>
+            <label className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <p className="font-medium">Mostrar "Esqueci a senha"</p>
+                <p className="text-sm text-muted-foreground">Link para recuperação de senha</p>
+              </div>
+              <input type="checkbox" defaultChecked className="h-5 w-5" />
+            </label>
+            <label className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <p className="font-medium">Permitir Cadastro</p>
+                <p className="text-sm text-muted-foreground">Novos usuários podem se cadastrar</p>
+              </div>
+              <input type="checkbox" className="h-5 w-5" />
+            </label>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-4 border-t">
+          <Button>Salvar Alterações</Button>
+          <Button variant="outline">Restaurar Padrão</Button>
+        </div>
       </div>
     </Card>
   );
