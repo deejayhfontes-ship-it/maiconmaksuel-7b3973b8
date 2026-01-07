@@ -1324,10 +1324,7 @@ export default function ImportarDados() {
             <Button
               variant={opcaoSelecionada === "sistema-antigo" ? "default" : "outline"}
               className="h-auto p-4 flex flex-col items-center gap-2"
-              onClick={() => {
-                setOpcaoSelecionada("sistema-antigo");
-                abrirSeletorArquivo();
-              }}
+              onClick={() => setOpcaoSelecionada("sistema-antigo")}
             >
               <Database className="h-8 w-8" />
               <span>Importar do Sistema Antigo</span>
