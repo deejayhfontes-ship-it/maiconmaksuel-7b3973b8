@@ -238,6 +238,7 @@ const menuSections: MenuSection[] = [
       { id: "logs-sistema", label: "Logs do Sistema", icon: History },
       { id: "diagnostico", label: "Diagnóstico", icon: Database },
       { id: "modo-dev", label: "Modo Desenvolvedor", icon: Settings },
+      { id: "mapa-sistema", label: "Mapa do Sistema", icon: Globe, route: "/mapa-sistema" },
     ],
   },
   {
