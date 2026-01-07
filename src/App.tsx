@@ -41,6 +41,7 @@ import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesNotificacoes from "./pages/ConfiguracoesNotificacoes";
 import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
 import ConfiguracoesCaixaPDV from "./pages/ConfiguracoesCaixaPDV";
+import ConfiguracoesTaxaFalta from "./pages/ConfiguracoesTaxaFalta";
 import TabletCliente from "./pages/TabletCliente";
 import Perfil from "./pages/Perfil";
 import CaixaExtrato from "./pages/CaixaExtrato";
@@ -114,6 +115,7 @@ const App = () => (
                 <Route path="/configuracoes/notificacoes" element={<ConfiguracoesNotificacoes />} />
                 <Route path="/configuracoes/integracoes" element={<ConfiguracoesIntegracoes />} />
                 <Route path="/configuracoes/caixa-pdv" element={<ConfiguracoesCaixaPDV />} />
+                <Route path="/configuracoes/taxa-falta" element={<ConfiguracoesTaxaFalta />} />
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/mapa-sistema" element={<MapaSistema />} />
               </Route>

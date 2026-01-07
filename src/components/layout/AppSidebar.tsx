@@ -43,13 +43,12 @@ const menuItems = [
   { title: "Confirmações", icon: Smartphone, path: "/confirmacoes-whatsapp" },
   { title: "Gestão RH", icon: Briefcase, path: "/gestao-rh" },
   { title: "Ponto", icon: Clock, path: "/ponto" },
+  { title: "Configurações", icon: Settings, path: "/configuracoes" },
 ];
 
 const adminItems = [
   { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
   { title: "Metas do Salão", icon: Target, path: "/configuracoes/metas" },
-  { title: "Config. Fiscal", icon: Settings, path: "/configuracoes/fiscal" },
-  { title: "Config. WhatsApp", icon: Smartphone, path: "/configuracoes/whatsapp" },
 ];
 
 

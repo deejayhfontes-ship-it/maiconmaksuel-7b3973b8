@@ -172,6 +172,7 @@ const menuSections: MenuSection[] = [
       { id: "cores-visualizacao", label: "Cores e Visualização", icon: Palette },
       { id: "lembretes", label: "Lembretes", icon: Bell },
       { id: "bloqueios", label: "Bloqueios", icon: EyeOff },
+      { id: "taxa-falta", label: "Taxa de Falta", icon: DollarSign, route: "/configuracoes/taxa-falta" },
     ],
   },
   {
