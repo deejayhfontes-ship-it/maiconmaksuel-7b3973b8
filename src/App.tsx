@@ -51,6 +51,7 @@ import CaixaHistorico from "./pages/CaixaHistorico";
 import CaixaGaveta from "./pages/CaixaGaveta";
 import CaixaFechar from "./pages/CaixaFechar";
 import CaixaPDV from "./pages/CaixaPDV";
+import MapaSistema from "./pages/MapaSistema";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,7 @@ const App = () => (
                 <Route path="/configuracoes/integracoes" element={<ConfiguracoesIntegracoes />} />
                 <Route path="/configuracoes/caixa-pdv" element={<ConfiguracoesCaixaPDV />} />
                 <Route path="/perfil" element={<Perfil />} />
+                <Route path="/mapa-sistema" element={<MapaSistema />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />
