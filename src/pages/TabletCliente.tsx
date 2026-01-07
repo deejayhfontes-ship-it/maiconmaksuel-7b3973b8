@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
-import { QrCode, CreditCard, DollarSign, Clock, Check, Loader2, Fingerprint, Banknote, Smartphone, Receipt, ChevronRight, User } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { QrCode, CreditCard, Clock, Check, Loader2, Fingerprint, Banknote, Receipt, ChevronRight, User, Printer, ArrowLeft, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import logoMaicon from "@/assets/logo-maicon.jpg";
 
 // Interface for comanda items
@@ -34,6 +36,26 @@ interface Profissional {
   id: string;
   nome: string;
   foto_url?: string | null;
+  especialidade?: string | null;
+}
+
+// Interface for ponto registro
+interface PontoRegistro {
+  id: string;
+  entrada_manha: string | null;
+  saida_almoco: string | null;
+  entrada_tarde: string | null;
+  saida: string | null;
+  horas_trabalhadas: number | null;
+}
+
+// Interface for comprovante
+interface Comprovante {
+  nome: string;
+  data: string;
+  tipo: string;
+  hora: string;
+  registro: PontoRegistro | null;
 }
 
 export default function TabletCliente() {
@@ -44,6 +66,10 @@ export default function TabletCliente() {
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [selectedProfissional, setSelectedProfissional] = useState<Profissional | null>(null);
   const [pontoLoading, setPontoLoading] = useState(false);
+  const [pontoHoje, setPontoHoje] = useState<PontoRegistro | null>(null);
+  const [showComprovante, setShowComprovante] = useState(false);
+  const [comprovante, setComprovante] = useState<Comprovante | null>(null);
+  const comprovanteRef = useRef<HTMLDivElement>(null);
 
   // Update time every second
   useEffect(() => {
@@ -58,7 +84,7 @@ export default function TabletCliente() {
     const loadProfissionais = async () => {
       const { data } = await supabase
         .from('profissionais')
-        .select('id, nome, foto_url')
+        .select('id, nome, foto_url, especialidade')
         .eq('ativo', true)
         .order('nome');
       
@@ -68,6 +94,30 @@ export default function TabletCliente() {
     };
     loadProfissionais();
   }, []);
+
+  // Load ponto for selected profissional
+  useEffect(() => {
+    if (selectedProfissional) {
+      loadPontoHoje();
+    } else {
+      setPontoHoje(null);
+    }
+  }, [selectedProfissional]);
+
+  const loadPontoHoje = async () => {
+    if (!selectedProfissional) return;
+
+    const hoje = format(new Date(), 'yyyy-MM-dd');
+    const { data } = await supabase
+      .from('ponto_registros')
+      .select('id, entrada_manha, saida_almoco, entrada_tarde, saida, horas_trabalhadas')
+      .eq('pessoa_id', selectedProfissional.id)
+      .eq('tipo_pessoa', 'profissional')
+      .eq('data', hoje)
+      .single();
+
+    setPontoHoje(data || null);
+  };
 
   // Simulate comanda data (in production, use Supabase realtime)
   useEffect(() => {
@@ -144,54 +194,151 @@ export default function TabletCliente() {
     }
   };
 
+  // Get próximo ponto
+  const getProximoPonto = () => {
+    if (!pontoHoje || !pontoHoje.entrada_manha) return { tipo: 'entrada_manha', label: 'Entrada' };
+    if (!pontoHoje.saida_almoco) return { tipo: 'saida_almoco', label: 'Saída Almoço' };
+    if (!pontoHoje.entrada_tarde) return { tipo: 'entrada_tarde', label: 'Retorno' };
+    if (!pontoHoje.saida) return { tipo: 'saida', label: 'Saída' };
+    return { tipo: 'completo', label: 'Dia Completo' };
+  };
+
+  // Calcular horas trabalhadas
+  const calcularHorasTrabalhadas = (ponto: PontoRegistro) => {
+    if (!ponto.entrada_manha || !ponto.saida) return 0;
+
+    const entrada = new Date(`2000-01-01T${ponto.entrada_manha}`);
+    const saida = new Date(`2000-01-01T${ponto.saida}`);
+
+    let totalMinutos = (saida.getTime() - entrada.getTime()) / 1000 / 60;
+
+    if (ponto.saida_almoco && ponto.entrada_tarde) {
+      const saidaAlmoco = new Date(`2000-01-01T${ponto.saida_almoco}`);
+      const entradaTarde = new Date(`2000-01-01T${ponto.entrada_tarde}`);
+      const minutosAlmoco = (entradaTarde.getTime() - saidaAlmoco.getTime()) / 1000 / 60;
+      totalMinutos -= minutosAlmoco;
+    }
+
+    return Number((totalMinutos / 60).toFixed(2));
+  };
+
   // Handle ponto registration
-  const handleRegistrarPonto = async (tipo: 'entrada' | 'saida') => {
+  const handleRegistrarPonto = async () => {
     if (!selectedProfissional) return;
     
+    const proximoPonto = getProximoPonto();
+    if (proximoPonto.tipo === 'completo') {
+      toast.info('Todos os pontos do dia já foram registrados');
+      return;
+    }
+
     setPontoLoading(true);
     try {
-      const hoje = new Date().toISOString().split('T')[0];
-      const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const hoje = format(new Date(), 'yyyy-MM-dd');
+      const agora = currentTime.toTimeString().slice(0, 5);
 
-      // Check if there's already a record for today
-      const { data: existingPonto } = await supabase
-        .from('ponto_registros')
-        .select('*')
-        .eq('pessoa_id', selectedProfissional.id)
-        .eq('data', hoje)
-        .single();
+      let novoRegistro: PontoRegistro | null = null;
 
-      if (existingPonto) {
+      if (pontoHoje) {
         // Update existing record
-        const updateData = tipo === 'entrada' 
-          ? { entrada_manha: agora }
-          : { saida: agora };
+        const updateData: Record<string, unknown> = { [proximoPonto.tipo]: agora };
         
-        await supabase
+        // Calcular horas se for saída final
+        if (proximoPonto.tipo === 'saida') {
+          const newPonto = { ...pontoHoje, saida: agora };
+          updateData.horas_trabalhadas = calcularHorasTrabalhadas(newPonto);
+        }
+
+        const { data } = await supabase
           .from('ponto_registros')
           .update(updateData)
-          .eq('id', existingPonto.id);
+          .eq('id', pontoHoje.id)
+          .select()
+          .single();
+
+        novoRegistro = data;
       } else {
         // Create new record
-        await supabase
+        const { data } = await supabase
           .from('ponto_registros')
           .insert({
             pessoa_id: selectedProfissional.id,
             tipo_pessoa: 'profissional',
             data: hoje,
-            entrada_manha: tipo === 'entrada' ? agora : null,
-          });
+            [proximoPonto.tipo]: agora
+          })
+          .select()
+          .single();
+
+        novoRegistro = data;
       }
 
-      toast.success(`${tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada para ${selectedProfissional.nome}!`);
-      setShowPontoModal(false);
-      setSelectedProfissional(null);
+      // Gerar comprovante
+      setComprovante({
+        nome: selectedProfissional.nome,
+        data: format(new Date(), "dd/MM/yyyy"),
+        tipo: proximoPonto.label,
+        hora: agora,
+        registro: novoRegistro
+      });
+
+      toast.success(`${proximoPonto.label} registrada às ${agora}!`);
+      await loadPontoHoje();
+      setShowComprovante(true);
     } catch (error) {
+      console.error('Erro ao registrar ponto:', error);
       toast.error('Erro ao registrar ponto');
     } finally {
       setPontoLoading(false);
     }
   };
+
+  // Imprimir comprovante
+  const handleImprimirComprovante = () => {
+    if (comprovanteRef.current) {
+      const printContent = comprovanteRef.current.innerHTML;
+      const printWindow = window.open('', '', 'width=400,height=600');
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Comprovante de Ponto</title>
+              <style>
+                body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .logo { width: 80px; height: 80px; border-radius: 10px; margin-bottom: 10px; }
+                .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+                .subtitle { font-size: 12px; color: #666; }
+                .divider { border-top: 1px dashed #000; margin: 15px 0; }
+                .row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
+                .label { color: #666; }
+                .value { font-weight: bold; }
+                .status { text-align: center; padding: 15px; background: #f0f9f0; border-radius: 10px; margin: 15px 0; }
+                .status-icon { font-size: 24px; margin-bottom: 5px; }
+                .status-text { color: #22c55e; font-weight: bold; }
+                .footer { text-align: center; font-size: 10px; color: #999; margin-top: 20px; }
+              </style>
+            </head>
+            <body>
+              ${printContent}
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+      }
+    }
+  };
+
+  // Fechar comprovante e resetar
+  const handleFecharComprovante = () => {
+    setShowComprovante(false);
+    setComprovante(null);
+    setSelectedProfissional(null);
+    setShowPontoModal(false);
+  };
+
+  const proximoPonto = getProximoPonto();
 
   // Finalized screen
   if (showFinalizado) {
@@ -450,19 +597,120 @@ export default function TabletCliente() {
       </footer>
 
       {/* Ponto Eletrônico Modal */}
-      <Dialog open={showPontoModal} onOpenChange={setShowPontoModal}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog open={showPontoModal} onOpenChange={(open) => {
+        setShowPontoModal(open);
+        if (!open) {
+          setSelectedProfissional(null);
+          setShowComprovante(false);
+          setComprovante(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <Fingerprint className="h-6 w-6 text-primary" />
-              Registrar Ponto
+              Ponto Eletrônico
             </DialogTitle>
             <DialogDescription>
-              Selecione seu nome para registrar entrada ou saída
+              {!selectedProfissional 
+                ? "Selecione seu nome para registrar o ponto" 
+                : showComprovante 
+                  ? "Comprovante de registro" 
+                  : "Registre sua entrada ou saída"}
             </DialogDescription>
           </DialogHeader>
 
-          {!selectedProfissional ? (
+          {/* Comprovante View */}
+          {showComprovante && comprovante ? (
+            <div className="py-4">
+              {/* Comprovante para impressão */}
+              <div ref={comprovanteRef} className="bg-white text-black p-6 rounded-xl border-2 border-dashed">
+                <div className="header text-center mb-4">
+                  <img src={logoMaicon} alt="Logo" className="logo w-20 h-20 rounded-lg mx-auto mb-3" />
+                  <div className="title text-lg font-bold">Maicon Maksuel Concept</div>
+                  <div className="subtitle text-sm text-gray-600">Comprovante de Ponto</div>
+                </div>
+                
+                <div className="divider border-t border-dashed border-gray-400 my-4" />
+                
+                <div className="space-y-3 text-sm">
+                  <div className="row flex justify-between">
+                    <span className="label text-gray-600">Colaborador:</span>
+                    <span className="value font-bold">{comprovante.nome}</span>
+                  </div>
+                  <div className="row flex justify-between">
+                    <span className="label text-gray-600">Data:</span>
+                    <span className="value font-bold">{comprovante.data}</span>
+                  </div>
+                  <div className="row flex justify-between">
+                    <span className="label text-gray-600">Tipo:</span>
+                    <span className="value font-bold">{comprovante.tipo}</span>
+                  </div>
+                  <div className="row flex justify-between">
+                    <span className="label text-gray-600">Horário:</span>
+                    <span className="value font-bold text-lg">{comprovante.hora}</span>
+                  </div>
+                </div>
+
+                <div className="divider border-t border-dashed border-gray-400 my-4" />
+
+                {/* Status do dia */}
+                {comprovante.registro && (
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div className={`p-2 rounded text-center ${comprovante.registro.entrada_manha ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      <div className="font-bold">{comprovante.registro.entrada_manha || '--:--'}</div>
+                      <div>Entrada</div>
+                    </div>
+                    <div className={`p-2 rounded text-center ${comprovante.registro.saida_almoco ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+                      <div className="font-bold">{comprovante.registro.saida_almoco || '--:--'}</div>
+                      <div>Almoço</div>
+                    </div>
+                    <div className={`p-2 rounded text-center ${comprovante.registro.entrada_tarde ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                      <div className="font-bold">{comprovante.registro.entrada_tarde || '--:--'}</div>
+                      <div>Retorno</div>
+                    </div>
+                    <div className={`p-2 rounded text-center ${comprovante.registro.saida ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'}`}>
+                      <div className="font-bold">{comprovante.registro.saida || '--:--'}</div>
+                      <div>Saída</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="divider border-t border-dashed border-gray-400 my-4" />
+
+                <div className="status text-center p-4 bg-green-50 rounded-lg">
+                  <div className="status-icon text-2xl mb-1">✅</div>
+                  <div className="status-text text-green-600 font-bold">
+                    Ponto Registrado com Sucesso!
+                  </div>
+                </div>
+
+                <div className="footer text-center text-xs text-gray-500 mt-4">
+                  Registrado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss")}
+                </div>
+              </div>
+
+              {/* Ações */}
+              <div className="flex gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-14 touch-manipulation"
+                  onClick={handleImprimirComprovante}
+                >
+                  <Printer className="h-5 w-5 mr-2" />
+                  Imprimir
+                </Button>
+                <Button
+                  className="flex-1 h-14 touch-manipulation"
+                  onClick={handleFecharComprovante}
+                >
+                  <Check className="h-5 w-5 mr-2" />
+                  Concluir
+                </Button>
+              </div>
+            </div>
+          ) : !selectedProfissional ? (
+            // Lista de profissionais
             <div className="grid gap-2 max-h-80 overflow-auto py-4">
               {profissionais.map((prof) => (
                 <Button
@@ -478,7 +726,12 @@ export default function TabletCliente() {
                       <User className="h-5 w-5 text-primary" />
                     )}
                   </div>
-                  {prof.nome}
+                  <div className="text-left">
+                    <div>{prof.nome}</div>
+                    {prof.especialidade && (
+                      <div className="text-xs text-muted-foreground">{prof.especialidade}</div>
+                    )}
+                  </div>
                   <ChevronRight className="ml-auto h-5 w-5 text-muted-foreground" />
                 </Button>
               ))}
@@ -489,6 +742,7 @@ export default function TabletCliente() {
               )}
             </div>
           ) : (
+            // Registrar ponto
             <div className="py-4">
               <div className="text-center mb-6">
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
@@ -499,47 +753,68 @@ export default function TabletCliente() {
                   )}
                 </div>
                 <h3 className="text-xl font-semibold">{selectedProfissional.nome}</h3>
-                <p className="text-muted-foreground">{formatTime(currentTime)}</p>
+                <p className="text-3xl font-bold text-primary tabular-nums mt-2">
+                  {currentTime.toTimeString().slice(0, 5)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Button
-                  size="lg"
-                  className="h-20 text-lg bg-green-500 hover:bg-green-600 touch-manipulation active:scale-95"
-                  onClick={() => handleRegistrarPonto('entrada')}
-                  disabled={pontoLoading}
-                >
-                  {pontoLoading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <>
-                      <Clock className="h-6 w-6 mr-2" />
-                      Entrada
-                    </>
-                  )}
-                </Button>
-                <Button
-                  size="lg"
-                  className="h-20 text-lg bg-red-500 hover:bg-red-600 touch-manipulation active:scale-95"
-                  onClick={() => handleRegistrarPonto('saida')}
-                  disabled={pontoLoading}
-                >
-                  {pontoLoading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <>
-                      <Clock className="h-6 w-6 mr-2" />
-                      Saída
-                    </>
-                  )}
-                </Button>
-              </div>
+              {/* Status do ponto de hoje */}
+              {pontoHoje && (
+                <div className="grid grid-cols-4 gap-2 mb-6 text-sm">
+                  <div className={`p-3 rounded-xl text-center ${pontoHoje.entrada_manha ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                    <div className="font-semibold">{pontoHoje.entrada_manha || '--:--'}</div>
+                    <div className="text-xs">Entrada</div>
+                  </div>
+                  <div className={`p-3 rounded-xl text-center ${pontoHoje.saida_almoco ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' : 'bg-muted text-muted-foreground'}`}>
+                    <div className="font-semibold">{pontoHoje.saida_almoco || '--:--'}</div>
+                    <div className="text-xs">Almoço</div>
+                  </div>
+                  <div className={`p-3 rounded-xl text-center ${pontoHoje.entrada_tarde ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-muted text-muted-foreground'}`}>
+                    <div className="font-semibold">{pontoHoje.entrada_tarde || '--:--'}</div>
+                    <div className="text-xs">Retorno</div>
+                  </div>
+                  <div className={`p-3 rounded-xl text-center ${pontoHoje.saida ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' : 'bg-muted text-muted-foreground'}`}>
+                    <div className="font-semibold">{pontoHoje.saida || '--:--'}</div>
+                    <div className="text-xs">Saída</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Botão Registrar */}
+              <Button
+                size="lg"
+                className={`w-full h-20 text-xl font-bold touch-manipulation active:scale-95 ${
+                  proximoPonto.tipo === 'completo' 
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                }`}
+                onClick={handleRegistrarPonto}
+                disabled={pontoLoading || proximoPonto.tipo === 'completo'}
+              >
+                {pontoLoading ? (
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                ) : proximoPonto.tipo === 'completo' ? (
+                  <>
+                    <Check className="h-8 w-8 mr-3" />
+                    Dia Completo
+                  </>
+                ) : (
+                  <>
+                    <Clock className="h-8 w-8 mr-3" />
+                    Registrar {proximoPonto.label}
+                  </>
+                )}
+              </Button>
 
               <Button
                 variant="ghost"
-                className="w-full mt-4"
+                className="w-full mt-4 touch-manipulation"
                 onClick={() => setSelectedProfissional(null)}
               >
+                <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar
               </Button>
             </div>
