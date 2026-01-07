@@ -45,7 +45,8 @@ import {
   ChevronRight,
   Search,
   ArrowLeft,
-  Camera
+  Camera,
+  Plus
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -354,6 +355,12 @@ export default function Configuracoes() {
         return <ContasBancariasContent />;
       case "comissoes":
         return <ComissoesContent />;
+      case "categorias-produtos":
+        return <CategoriasProdutosContent />;
+      case "fornecedores":
+        return <FornecedoresContent />;
+      case "unidades-medida":
+        return <UnidadesMedidaContent />;
       default:
         return (
           <div className="flex items-center justify-center h-64">
@@ -2195,6 +2202,199 @@ function ComissoesContent() {
 
         <div className="flex gap-2 pt-4 border-t">
           <Button>Salvar Configurações</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ========== PRODUTOS CONTENT COMPONENTS ==========
+
+function CategoriasProdutosContent() {
+  const [categorias, setCategorias] = useState([
+    { id: "1", nome: "Cabelo", descricao: "Produtos para cabelo", cor: "#8B5CF6", produtosCount: 25 },
+    { id: "2", nome: "Unhas", descricao: "Esmaltes e acessórios", cor: "#EC4899", produtosCount: 18 },
+    { id: "3", nome: "Pele", descricao: "Cremes e hidratantes", cor: "#10B981", produtosCount: 12 },
+    { id: "4", nome: "Maquiagem", descricao: "Produtos de maquiagem", cor: "#F59E0B", produtosCount: 30 },
+  ]);
+  const [novaCategoria, setNovaCategoria] = useState({ nome: "", descricao: "", cor: "#8B5CF6" });
+
+  return (
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              Categorias de Produtos
+            </h2>
+            <p className="text-muted-foreground text-sm">Organize seus produtos em categorias</p>
+          </div>
+        </div>
+
+        {/* Nova Categoria */}
+        <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+          <h3 className="font-medium">Nova Categoria</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <Input 
+              placeholder="Nome da categoria"
+              value={novaCategoria.nome}
+              onChange={(e) => setNovaCategoria(prev => ({ ...prev, nome: e.target.value }))}
+            />
+            <Input 
+              placeholder="Descrição"
+              value={novaCategoria.descricao}
+              onChange={(e) => setNovaCategoria(prev => ({ ...prev, descricao: e.target.value }))}
+            />
+            <div className="flex gap-2">
+              <Input 
+                type="color"
+                value={novaCategoria.cor}
+                onChange={(e) => setNovaCategoria(prev => ({ ...prev, cor: e.target.value }))}
+                className="w-16 p-1 h-10"
+              />
+              <Button className="flex-1">Adicionar</Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Lista de Categorias */}
+        <div className="border rounded-lg divide-y">
+          {categorias.map((cat) => (
+            <div key={cat.id} className="p-4 flex items-center gap-4">
+              <div 
+                className="w-4 h-4 rounded-full" 
+                style={{ backgroundColor: cat.cor }}
+              />
+              <div className="flex-1">
+                <p className="font-medium">{cat.nome}</p>
+                <p className="text-sm text-muted-foreground">{cat.descricao}</p>
+              </div>
+              <span className="text-sm text-muted-foreground">{cat.produtosCount} produtos</span>
+              <Button variant="ghost" size="sm">Editar</Button>
+              <Button variant="ghost" size="sm" className="text-destructive">Excluir</Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function FornecedoresContent() {
+  const [fornecedores, setFornecedores] = useState([
+    { id: "1", nome: "L'Oréal Brasil", cnpj: "12.345.678/0001-90", contato: "(11) 99999-0001", email: "contato@loreal.com", ativo: true },
+    { id: "2", nome: "Wella Professionals", cnpj: "23.456.789/0001-01", contato: "(11) 99999-0002", email: "contato@wella.com", ativo: true },
+    { id: "3", nome: "Distribuidora Beleza", cnpj: "34.567.890/0001-12", contato: "(11) 99999-0003", email: "contato@distbeleza.com", ativo: true },
+  ]);
+
+  return (
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Store className="h-5 w-5 text-primary" />
+              Fornecedores
+            </h2>
+            <p className="text-muted-foreground text-sm">Gerencie seus fornecedores de produtos</p>
+          </div>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Fornecedor
+          </Button>
+        </div>
+
+        {/* Lista de Fornecedores */}
+        <div className="border rounded-lg divide-y">
+          {fornecedores.map((f) => (
+            <div key={f.id} className="p-4 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Store className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">{f.nome}</p>
+                <p className="text-sm text-muted-foreground">CNPJ: {f.cnpj}</p>
+              </div>
+              <div className="text-sm text-right">
+                <p>{f.contato}</p>
+                <p className="text-muted-foreground">{f.email}</p>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full ${f.ativo ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                {f.ativo ? "Ativo" : "Inativo"}
+              </span>
+              <Button variant="ghost" size="sm">Editar</Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function UnidadesMedidaContent() {
+  const [unidades, setUnidades] = useState([
+    { id: "1", sigla: "UN", nome: "Unidade", descricao: "Quantidade unitária" },
+    { id: "2", sigla: "ML", nome: "Mililitro", descricao: "Volume em mililitros" },
+    { id: "3", sigla: "G", nome: "Grama", descricao: "Peso em gramas" },
+    { id: "4", sigla: "KG", nome: "Quilograma", descricao: "Peso em quilogramas" },
+    { id: "5", sigla: "L", nome: "Litro", descricao: "Volume em litros" },
+    { id: "6", sigla: "CX", nome: "Caixa", descricao: "Quantidade por caixa" },
+  ]);
+  const [novaUnidade, setNovaUnidade] = useState({ sigla: "", nome: "", descricao: "" });
+
+  return (
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Unidades de Medida
+            </h2>
+            <p className="text-muted-foreground text-sm">Configure as unidades de medida dos produtos</p>
+          </div>
+        </div>
+
+        {/* Nova Unidade */}
+        <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+          <h3 className="font-medium">Nova Unidade</h3>
+          <div className="grid grid-cols-4 gap-4">
+            <Input 
+              placeholder="Sigla (ex: UN)"
+              value={novaUnidade.sigla}
+              onChange={(e) => setNovaUnidade(prev => ({ ...prev, sigla: e.target.value.toUpperCase() }))}
+              maxLength={5}
+            />
+            <Input 
+              placeholder="Nome"
+              value={novaUnidade.nome}
+              onChange={(e) => setNovaUnidade(prev => ({ ...prev, nome: e.target.value }))}
+            />
+            <Input 
+              placeholder="Descrição"
+              value={novaUnidade.descricao}
+              onChange={(e) => setNovaUnidade(prev => ({ ...prev, descricao: e.target.value }))}
+            />
+            <Button>Adicionar</Button>
+          </div>
+        </div>
+
+        {/* Lista de Unidades */}
+        <div className="border rounded-lg divide-y">
+          {unidades.map((u) => (
+            <div key={u.id} className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary">
+                {u.sigla}
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">{u.nome}</p>
+                <p className="text-sm text-muted-foreground">{u.descricao}</p>
+              </div>
+              <Button variant="ghost" size="sm">Editar</Button>
+              <Button variant="ghost" size="sm" className="text-destructive">Excluir</Button>
+            </div>
+          ))}
         </div>
       </div>
     </Card>
