@@ -53,7 +53,23 @@ import { ClientesIncompletosModal } from "./ClientesIncompletosModal";
 import ImportacaoMassaModal from "./ImportacaoMassaModal";
 
 type ImportOption = "excel" | "sistema-antigo" | "json";
-type TipoDados = "clientes" | "produtos" | "servicos" | "profissionais";
+type TipoDados = 
+  | "clientes" 
+  | "profissionais" 
+  | "servicos" 
+  | "produtos" 
+  | "fornecedores"
+  | "agendamentos" 
+  | "atendimentos" 
+  | "atendimento_produtos" 
+  | "atendimento_servicos" 
+  | "pagamentos" 
+  | "caixa" 
+  | "comissoes" 
+  | "categorias" 
+  | "estoque_movimentos" 
+  | "cheques"
+  | "configuracoes";
 type ImportStep = "selecionar" | "analisando" | "validacao" | "confirmar" | "importando" | "sincronizando" | "concluido";
 
 type ColunaMapeamento = {
@@ -424,22 +440,70 @@ export default function ImportarDados() {
     <div className="space-y-4">
       <div>
         <Label className="mb-2 block">Tipo de dados:</Label>
-        <RadioGroup value={tipoDados} onValueChange={(v) => setTipoDados(v as TipoDados)} className="flex flex-wrap gap-4">
+        <RadioGroup value={tipoDados} onValueChange={(v) => setTipoDados(v as TipoDados)} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           <div className="flex items-center gap-2">
             <RadioGroupItem value="clientes" id="tipo-clientes" />
-            <Label htmlFor="tipo-clientes">Clientes</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="produtos" id="tipo-produtos" />
-            <Label htmlFor="tipo-produtos">Produtos</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="servicos" id="tipo-servicos" />
-            <Label htmlFor="tipo-servicos">Serviços</Label>
+            <Label htmlFor="tipo-clientes" className="text-sm">Clientes</Label>
           </div>
           <div className="flex items-center gap-2">
             <RadioGroupItem value="profissionais" id="tipo-profissionais" />
-            <Label htmlFor="tipo-profissionais">Profissionais</Label>
+            <Label htmlFor="tipo-profissionais" className="text-sm">Profissionais</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="servicos" id="tipo-servicos" />
+            <Label htmlFor="tipo-servicos" className="text-sm">Serviços</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="produtos" id="tipo-produtos" />
+            <Label htmlFor="tipo-produtos" className="text-sm">Produtos</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="fornecedores" id="tipo-fornecedores" />
+            <Label htmlFor="tipo-fornecedores" className="text-sm">Fornecedores</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="agendamentos" id="tipo-agendamentos" />
+            <Label htmlFor="tipo-agendamentos" className="text-sm">Agenda</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="atendimentos" id="tipo-atendimentos" />
+            <Label htmlFor="tipo-atendimentos" className="text-sm">Vendas</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="atendimento_produtos" id="tipo-atendimento-produtos" />
+            <Label htmlFor="tipo-atendimento-produtos" className="text-sm">Produtos Vendidos</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="atendimento_servicos" id="tipo-atendimento-servicos" />
+            <Label htmlFor="tipo-atendimento-servicos" className="text-sm">Serviços Vendidos</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="pagamentos" id="tipo-pagamentos" />
+            <Label htmlFor="tipo-pagamentos" className="text-sm">Pagamentos</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="caixa" id="tipo-caixa" />
+            <Label htmlFor="tipo-caixa" className="text-sm">Caixa</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="comissoes" id="tipo-comissoes" />
+            <Label htmlFor="tipo-comissoes" className="text-sm">Comissões</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="categorias" id="tipo-categorias" />
+            <Label htmlFor="tipo-categorias" className="text-sm">Categorias</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="estoque_movimentos" id="tipo-estoque" />
+            <Label htmlFor="tipo-estoque" className="text-sm">Mov. Estoque</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="cheques" id="tipo-cheques" />
+            <Label htmlFor="tipo-cheques" className="text-sm">Cheques</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="configuracoes" id="tipo-configuracoes" />
+            <Label htmlFor="tipo-configuracoes" className="text-sm">Configurações</Label>
           </div>
         </RadioGroup>
       </div>
