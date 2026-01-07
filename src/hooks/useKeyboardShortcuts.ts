@@ -76,12 +76,14 @@ export function useKeyboardShortcuts(handlers?: ShortcutHandlers) {
       // Não processar outros atalhos se estiver digitando
       if (isTyping && !modKey) return;
 
+      const modKeySymbol = isMac ? "⌘" : "Ctrl+";
+
       // Cmd/Ctrl+K - Abrir busca global
       if (modKey && key === "k") {
         event.preventDefault();
         handlers?.onOpenSearch?.();
         toast({
-          title: "⌘K",
+          title: `${modKeySymbol}K`,
           description: "Busca global",
         });
         return;
@@ -105,7 +107,7 @@ export function useKeyboardShortcuts(handlers?: ShortcutHandlers) {
           const action = routeActions[location.pathname];
           if (action) {
             toast({
-              title: "⌘N",
+              title: `${modKeySymbol}N`,
               description: action,
             });
           }
@@ -119,7 +121,7 @@ export function useKeyboardShortcuts(handlers?: ShortcutHandlers) {
         if (handlers?.onSave) {
           handlers.onSave();
           toast({
-            title: "⌘S",
+            title: `${modKeySymbol}S`,
             description: "Salvando...",
           });
         }
@@ -131,7 +133,7 @@ export function useKeyboardShortcuts(handlers?: ShortcutHandlers) {
         event.preventDefault();
         navigate("/caixa");
         toast({
-          title: "⌘B",
+          title: `${modKeySymbol}B`,
           description: "Abrindo Caixa",
         });
         return;
@@ -142,7 +144,7 @@ export function useKeyboardShortcuts(handlers?: ShortcutHandlers) {
         event.preventDefault();
         navigate("/atendimentos");
         toast({
-          title: "⌘A",
+          title: `${modKeySymbol}A`,
           description: "Abrindo Atendimentos",
         });
         return;
@@ -174,21 +176,25 @@ export function useKeyboardShortcuts(handlers?: ShortcutHandlers) {
   };
 }
 
+// Detectar se é Mac ou Windows
+const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+const modKey = isMac ? "⌘" : "Ctrl";
+
 // Lista de atalhos para exibição
 export const KEYBOARD_SHORTCUTS = [
   {
     category: "Navegação",
     shortcuts: [
-      { keys: ["⌘", "K"], description: "Busca global" },
-      { keys: ["⌘", "B"], description: "Ir para Caixa" },
-      { keys: ["⌘", "A"], description: "Ir para Atendimentos" },
+      { keys: [modKey, "K"], description: "Busca global" },
+      { keys: [modKey, "B"], description: "Ir para Caixa" },
+      { keys: [modKey, "A"], description: "Ir para Atendimentos" },
     ],
   },
   {
     category: "Ações",
     shortcuts: [
-      { keys: ["⌘", "N"], description: "Novo item (contexto da página)" },
-      { keys: ["⌘", "S"], description: "Salvar formulário" },
+      { keys: [modKey, "N"], description: "Novo item (contexto da página)" },
+      { keys: [modKey, "S"], description: "Salvar formulário" },
     ],
   },
   {
