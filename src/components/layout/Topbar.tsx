@@ -1,6 +1,5 @@
-import { Search, Moon, Sun, Menu, User, Settings, LogOut, Type, Plus } from "lucide-react";
+import { Search, Moon, Sun, Menu, User, Settings, LogOut, Type, Plus, Command, Maximize } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +27,7 @@ const fontSizes = [
 
 export function Topbar() {
   const { resolvedTheme, setTheme } = useTheme();
-  const { collapsed, mobileOpen, setMobileOpen } = useSidebarContext();
+  const { collapsed, mobileOpen, setMobileOpen, setIsSearchOpen } = useSidebarContext();
   const { profile, role, signOut } = useAuth();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
@@ -112,16 +111,20 @@ export function Topbar() {
           </Button>
         )}
 
-        {/* Search */}
+        {/* Search Button - Opens Global Search */}
         <div className={cn("flex-1 max-w-md", isMobile && "mx-2")}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar clientes, serviços..."
-              className="pl-10"
-            />
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+          >
+            <Search className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Buscar clientes, serviços...</span>
+            <span className="sm:hidden">Buscar...</span>
+            <kbd className="pointer-events-none ml-auto hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs font-medium opacity-100 sm:flex">
+              <Command className="h-3 w-3" />K
+            </kbd>
+          </Button>
         </div>
 
         {/* Actions */}
