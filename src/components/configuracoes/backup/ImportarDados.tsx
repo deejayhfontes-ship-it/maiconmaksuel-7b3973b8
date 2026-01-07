@@ -50,6 +50,7 @@ import { useImportData, type DadosEncontrados, type DadosSelecionados, type Merg
 import { useBelezaSoftParser, type DadosBelezaSoft } from "@/hooks/useBelezaSoftParser";
 import { useImportDataReal } from "@/hooks/useImportDataReal";
 import { ClientesIncompletosModal } from "./ClientesIncompletosModal";
+import ImportacaoMassaModal from "./ImportacaoMassaModal";
 
 type ImportOption = "excel" | "sistema-antigo" | "json";
 type TipoDados = "clientes" | "produtos" | "servicos" | "profissionais";
@@ -90,6 +91,7 @@ export default function ImportarDados() {
     vendas: false,
   });
   const [showClientesIncompletos, setShowClientesIncompletos] = useState(false);
+  const [showImportacaoMassa, setShowImportacaoMassa] = useState(false);
   const [avisos, setAvisos] = useState<string[]>([]);
   const [contadorReload, setContadorReload] = useState(5);
   const [verificandoDados, setVerificandoDados] = useState(false);
@@ -528,15 +530,46 @@ export default function ImportarDados() {
 
   const renderSistemaAntigoImport = () => (
     <div className="space-y-4">
+      {/* Botão de Importação em Massa destacado */}
+      <div className="p-4 bg-gradient-to-r from-[#007AFF]/10 to-[#34C759]/10 border-2 border-[#007AFF]/30 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-semibold text-lg flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-[#007AFF]" />
+              Importação em Massa
+            </h4>
+            <p className="text-sm text-muted-foreground mt-1">
+              Importe múltiplos arquivos CSV do BelezaSoft de uma só vez
+            </p>
+          </div>
+          <Button 
+            size="lg" 
+            onClick={() => setShowImportacaoMassa(true)}
+            className="bg-[#007AFF] hover:bg-[#0056b3]"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Importação em Massa
+          </Button>
+        </div>
+      </div>
+
+      {/* Separador */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-sm text-muted-foreground">ou</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      {/* Importação individual */}
       <div className="p-6 border-2 border-dashed rounded-lg text-center bg-muted/30">
         <FileUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-        <h4 className="font-medium mb-2">Importar dados do sistema antigo</h4>
+        <h4 className="font-medium mb-2">Importação Individual</h4>
         <p className="text-sm text-muted-foreground mb-4">
-          Formatos aceitos: JSON, CSV
+          Importe um único arquivo JSON ou CSV
         </p>
-        <Button onClick={abrirSeletorArquivo}>
+        <Button variant="outline" onClick={abrirSeletorArquivo}>
           <Upload className="h-4 w-4 mr-2" />
-          Escolher Arquivo(s)
+          Escolher Arquivo
         </Button>
       </div>
 
@@ -549,8 +582,9 @@ export default function ImportarDados() {
             </p>
             <p className="text-amber-700 dark:text-amber-300 mt-1">
               No BelezaSoft, vá em <strong>Ferramentas → Exportar</strong> e escolha o formato 
-              <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded mx-1">JSON</code> ou 
-              <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded mx-1">CSV</code>
+              <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded mx-1">CSV</code> ou 
+              <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded mx-1">JSON</code>. 
+              Para importação em massa, exporte cada tabela separadamente (clientes.csv, servicos.csv, etc.)
             </p>
           </div>
         </div>
@@ -1358,6 +1392,12 @@ export default function ImportarDados() {
         clientes={clientesIncompletos}
         onSave={handleSaveClientesIncompletos}
         onMarkForUpdate={handleMarkClientesForUpdate}
+      />
+
+      {/* Modal de importação em massa */}
+      <ImportacaoMassaModal
+        open={showImportacaoMassa}
+        onOpenChange={setShowImportacaoMassa}
       />
     </div>
   );
