@@ -346,6 +346,14 @@ export default function Configuracoes() {
         return <PacotesCombosContent />;
       case "apenas-agenda":
         return <ApenasAgendaContent />;
+      case "formas-pagamento":
+        return <FormasPagamentoContent />;
+      case "categorias-despesas":
+        return <CategoriasDespesasContent />;
+      case "contas-bancarias":
+        return <ContasBancariasContent />;
+      case "comissoes":
+        return <ComissoesContent />;
       default:
         return (
           <div className="flex items-center justify-center h-64">
@@ -1895,6 +1903,298 @@ function ApenasAgendaContent() {
             </div>
             <input type="checkbox" className="h-5 w-5" />
           </label>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Formas de Pagamento
+function FormasPagamentoContent() {
+  const formas = [
+    { id: 1, nome: "Dinheiro", icone: "💵", ativo: true, taxa: 0 },
+    { id: 2, nome: "PIX", icone: "📱", ativo: true, taxa: 0 },
+    { id: 3, nome: "Cartão de Débito", icone: "💳", ativo: true, taxa: 1.5 },
+    { id: 4, nome: "Cartão de Crédito", icone: "💳", ativo: true, taxa: 3.5 },
+    { id: 5, nome: "Crediário", icone: "📋", ativo: true, taxa: 0 },
+    { id: 6, nome: "Cheque", icone: "📄", ativo: false, taxa: 0 },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <CreditCard className="h-5 w-5" />
+        Formas de Pagamento
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Adicionar */}
+        <div className="flex gap-2">
+          <Input placeholder="Nome da forma de pagamento..." className="flex-1" />
+          <Input type="number" placeholder="Taxa %" className="w-24" step="0.1" />
+          <Button>Adicionar</Button>
+        </div>
+
+        {/* Lista */}
+        <div className="border rounded-lg divide-y">
+          {formas.map((forma) => (
+            <div key={forma.id} className="p-4 flex items-center gap-4 hover:bg-muted/50">
+              <span className="text-2xl">{forma.icone}</span>
+              <div className="flex-1">
+                <p className={cn("font-medium", !forma.ativo && "text-muted-foreground")}>{forma.nome}</p>
+                {forma.taxa > 0 && (
+                  <p className="text-sm text-muted-foreground">Taxa: {forma.taxa}%</p>
+                )}
+              </div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" defaultChecked={forma.ativo} className="h-4 w-4" />
+                <span className="text-sm">Ativo</span>
+              </label>
+              <Button variant="ghost" size="sm">Editar</Button>
+            </div>
+          ))}
+        </div>
+
+        {/* Configurações */}
+        <div className="space-y-3 border-t pt-6">
+          <h3 className="font-medium">Configurações</h3>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Permitir pagamento misto</p>
+              <p className="text-sm text-muted-foreground">Cliente pode pagar com múltiplas formas</p>
+            </div>
+            <input type="checkbox" defaultChecked className="h-5 w-5" />
+          </label>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Exigir comprovante em cartão</p>
+              <p className="text-sm text-muted-foreground">Solicitar número da autorização</p>
+            </div>
+            <input type="checkbox" className="h-5 w-5" />
+          </label>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Categorias de Despesas
+function CategoriasDespesasContent() {
+  const categorias = [
+    { id: 1, nome: "Aluguel", tipo: "fixa", cor: "#ef4444" },
+    { id: 2, nome: "Energia", tipo: "fixa", cor: "#f97316" },
+    { id: 3, nome: "Água", tipo: "fixa", cor: "#3b82f6" },
+    { id: 4, nome: "Internet/Telefone", tipo: "fixa", cor: "#8b5cf6" },
+    { id: 5, nome: "Produtos", tipo: "variavel", cor: "#22c55e" },
+    { id: 6, nome: "Manutenção", tipo: "variavel", cor: "#eab308" },
+    { id: 7, nome: "Marketing", tipo: "variavel", cor: "#ec4899" },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <PiggyBank className="h-5 w-5" />
+        Categorias de Despesas
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Adicionar */}
+        <div className="flex gap-2">
+          <Input placeholder="Nome da categoria..." className="flex-1" />
+          <select className="p-2 border rounded-lg">
+            <option value="fixa">Despesa Fixa</option>
+            <option value="variavel">Despesa Variável</option>
+          </select>
+          <input type="color" defaultValue="#3b82f6" className="h-10 w-10 rounded border" />
+          <Button>Adicionar</Button>
+        </div>
+
+        {/* Lista */}
+        <div className="grid grid-cols-2 gap-3">
+          {categorias.map((cat) => (
+            <div key={cat.id} className="p-3 border rounded-lg flex items-center gap-3 hover:bg-muted/50">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.cor }} />
+              <div className="flex-1">
+                <p className="font-medium">{cat.nome}</p>
+                <p className="text-xs text-muted-foreground">
+                  {cat.tipo === "fixa" ? "Despesa Fixa" : "Despesa Variável"}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm">Editar</Button>
+            </div>
+          ))}
+        </div>
+
+        {/* Info */}
+        <div className="p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+          💡 <strong>Despesas Fixas:</strong> valores recorrentes mensais (aluguel, energia)<br />
+          💡 <strong>Despesas Variáveis:</strong> valores que mudam conforme necessidade
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Contas Bancárias
+function ContasBancariasContent() {
+  const contas = [
+    { id: 1, banco: "Banco do Brasil", agencia: "1234-5", conta: "12345-6", tipo: "Corrente", saldo: 5430.50, principal: true },
+    { id: 2, banco: "Nubank", agencia: "0001", conta: "98765-4", tipo: "Corrente", saldo: 2150.00, principal: false },
+    { id: 3, banco: "Caixa", agencia: "0987", conta: "54321-0", tipo: "Poupança", saldo: 8000.00, principal: false },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <DollarSign className="h-5 w-5" />
+        Contas Bancárias
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Adicionar */}
+        <div className="flex justify-end">
+          <Button>
+            <DollarSign className="h-4 w-4 mr-2" />
+            Nova Conta
+          </Button>
+        </div>
+
+        {/* Lista */}
+        <div className="space-y-3">
+          {contas.map((conta) => (
+            <div key={conta.id} className={cn(
+              "p-4 border rounded-lg",
+              conta.principal && "border-primary bg-primary/5"
+            )}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium">{conta.banco}</h4>
+                  {conta.principal && (
+                    <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">Principal</span>
+                  )}
+                </div>
+                <p className="font-semibold text-lg">R$ {conta.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              </div>
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <p>Ag: {conta.agencia} | Conta: {conta.conta} | {conta.tipo}</p>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm">Editar</Button>
+                  {!conta.principal && (
+                    <Button variant="ghost" size="sm">Definir como Principal</Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Resumo */}
+        <div className="p-4 bg-muted/50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">Saldo Total:</span>
+            <span className="text-xl font-bold text-green-600">
+              R$ {contas.reduce((acc, c) => acc + c.saldo, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Comissões
+function ComissoesContent() {
+  const regras = [
+    { id: 1, nome: "Comissão Padrão Serviços", percentual: 40, tipo: "servicos" },
+    { id: 2, nome: "Comissão Padrão Produtos", percentual: 10, tipo: "produtos" },
+    { id: 3, nome: "Bônus Alcançar Meta", percentual: 5, tipo: "bonus" },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Percent className="h-5 w-5" />
+        Configurações de Comissões
+      </h2>
+      
+      <div className="space-y-6">
+        {/* Comissões Padrão */}
+        <div className="space-y-4">
+          <h3 className="font-medium">Comissões Padrão</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Scissors className="h-4 w-4 text-primary" />
+                <span className="font-medium">Serviços</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input type="number" defaultValue="40" className="w-20" />
+                <span>%</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Aplicado quando não há comissão específica</p>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="h-4 w-4 text-primary" />
+                <span className="font-medium">Produtos</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input type="number" defaultValue="10" className="w-20" />
+                <span>%</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Comissão sobre vendas de produtos</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Regras Especiais */}
+        <div className="space-y-4 border-t pt-6">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium">Regras Especiais</h3>
+            <Button variant="outline" size="sm">Adicionar Regra</Button>
+          </div>
+          <div className="border rounded-lg divide-y">
+            {regras.map((regra) => (
+              <div key={regra.id} className="p-3 flex items-center gap-4">
+                <div className="flex-1">
+                  <p className="font-medium">{regra.nome}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{regra.tipo}</p>
+                </div>
+                <span className="font-semibold text-primary">{regra.percentual}%</span>
+                <Button variant="ghost" size="sm">Editar</Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Configurações */}
+        <div className="space-y-3 border-t pt-6">
+          <h3 className="font-medium">Configurações</h3>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Comissão sobre valor líquido</p>
+              <p className="text-sm text-muted-foreground">Calcular após descontos</p>
+            </div>
+            <input type="checkbox" defaultChecked className="h-5 w-5" />
+          </label>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Deduzir vales automaticamente</p>
+              <p className="text-sm text-muted-foreground">Descontar vales do fechamento</p>
+            </div>
+            <input type="checkbox" defaultChecked className="h-5 w-5" />
+          </label>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Exibir comissão no fechamento</p>
+              <p className="text-sm text-muted-foreground">Mostrar valores ao fechar caixa</p>
+            </div>
+            <input type="checkbox" defaultChecked className="h-5 w-5" />
+          </label>
+        </div>
+
+        <div className="flex gap-2 pt-4 border-t">
+          <Button>Salvar Configurações</Button>
         </div>
       </div>
     </Card>
