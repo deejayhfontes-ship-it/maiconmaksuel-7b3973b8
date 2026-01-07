@@ -43,6 +43,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Pagamento {
   id: string;
@@ -162,13 +163,45 @@ export function PagamentoModal({
     setGorjetas(gorjetas.filter(g => g.profissional_id !== profId));
   };
 
-  const handleSelectForma = (forma: FormaPagamento) => {
+  // Função para enviar dados para o tablet
+  const enviarParaTablet = async (formaPagamento: string, status: "fechando" | "finalizado") => {
+    try {
+      const comandaData = {
+        numero: numeroComanda,
+        cliente: clienteNome || "Consumidor",
+        status,
+        itens: [], // Itens já foram enviados anteriormente
+        subtotal: totalComanda,
+        desconto: 0,
+        total: totalComanda,
+        formaPagamento
+      };
+
+      const channel = supabase.channel('tablet-comanda');
+      await channel.send({
+        type: 'broadcast',
+        event: 'comanda-update',
+        payload: comandaData
+      });
+      
+      supabase.removeChannel(channel);
+    } catch (error) {
+      console.error("Erro ao enviar dados para tablet:", error);
+    }
+  };
+
+  const handleSelectForma = async (forma: FormaPagamento) => {
     setFormaSelecionada(forma);
     if (forma === "dinheiro") {
       setValorRecebido(faltando);
     }
     if (forma === "multiplas") {
       setValorParcial(faltando);
+    }
+    
+    // Enviar forma de pagamento para o tablet
+    if (forma && forma !== "multiplas") {
+      await enviarParaTablet(forma, "fechando");
     }
   };
 
@@ -225,6 +258,11 @@ export function PagamentoModal({
     setLoading(true);
     try {
       await onConfirmar(pagamentos.map(({ id, ...rest }) => rest), gorjetas.length > 0 ? gorjetas : undefined);
+      
+      // Enviar para tablet que finalizou
+      const formaPrincipal = pagamentos[0]?.forma || "pagamento";
+      await enviarParaTablet(formaPrincipal, "finalizado");
+      
       setSucesso(true);
     } catch (error) {
       console.error("Erro ao confirmar pagamento:", error);
