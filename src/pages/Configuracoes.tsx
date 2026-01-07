@@ -314,6 +314,14 @@ export default function Configuracoes() {
         return <DadosSalaoContent />;
       case "informacoes":
         return <InformacoesContent />;
+      case "licenca":
+        return <LicencaContent />;
+      case "atualizacoes":
+        return <AtualizacoesContent />;
+      case "logs-sistema":
+        return <LogsSistemaContent />;
+      case "modo-dev":
+        return <ModoDevContent />;
       case "versao":
         return <SobreContent />;
       case "webcam":
@@ -784,6 +792,301 @@ function InformacoesContent() {
             <Trash2 className="h-4 w-4 mr-2" />
             Limpar Cache
           </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Licença
+function LicencaContent() {
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Key className="h-5 w-5" />
+        Licença do Sistema
+      </h2>
+      
+      <div className="space-y-6">
+        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-green-500 rounded-full flex items-center justify-center">
+              <Shield className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-green-700 dark:text-green-400">Licença Ativa</p>
+              <p className="text-sm text-green-600 dark:text-green-500">Seu sistema está licenciado e funcionando corretamente</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+          <h3 className="font-medium">Detalhes da Licença</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <span className="text-muted-foreground">Tipo:</span>
+            <span>Profissional</span>
+            <span className="text-muted-foreground">Código:</span>
+            <span className="font-mono">XXXX-XXXX-XXXX-XXXX</span>
+            <span className="text-muted-foreground">Validade:</span>
+            <span>31/12/2025</span>
+            <span className="text-muted-foreground">Usuários:</span>
+            <span>Ilimitados</span>
+            <span className="text-muted-foreground">Profissionais:</span>
+            <span>Ilimitados</span>
+          </div>
+        </div>
+
+        <div className="p-4 border rounded-lg space-y-3">
+          <h3 className="font-medium">Ativar Nova Licença</h3>
+          <div className="flex gap-2">
+            <Input placeholder="Digite o código da licença" className="font-mono" />
+            <Button>Ativar</Button>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Renovar Licença
+          </Button>
+          <Button variant="outline">
+            <FileText className="h-4 w-4 mr-2" />
+            Ver Histórico
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Atualizações
+function AtualizacoesContent() {
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <RefreshCw className="h-5 w-5" />
+        Atualizações do Sistema
+      </h2>
+      
+      <div className="space-y-6">
+        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-green-500 rounded-full flex items-center justify-center">
+                <Shield className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-green-700 dark:text-green-400">Sistema Atualizado</p>
+                <p className="text-sm text-green-600 dark:text-green-500">Versão 2.0.5 - Última verificação: hoje às 10:30</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Verificar Agora
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="font-medium">Configurações de Atualização</h3>
+          <div className="space-y-3">
+            <label className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <p className="font-medium">Atualização Automática</p>
+                <p className="text-sm text-muted-foreground">Instalar atualizações automaticamente</p>
+              </div>
+              <input type="checkbox" defaultChecked className="h-5 w-5" />
+            </label>
+            <label className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <p className="font-medium">Notificar sobre Atualizações</p>
+                <p className="text-sm text-muted-foreground">Receber notificações quando houver atualizações</p>
+              </div>
+              <input type="checkbox" defaultChecked className="h-5 w-5" />
+            </label>
+            <label className="flex items-center justify-between p-3 border rounded-lg">
+              <div>
+                <p className="font-medium">Incluir Versões Beta</p>
+                <p className="text-sm text-muted-foreground">Receber versões de teste antes do lançamento</p>
+              </div>
+              <input type="checkbox" className="h-5 w-5" />
+            </label>
+          </div>
+        </div>
+
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Histórico de Atualizações</h3>
+          <div className="space-y-2">
+            {[
+              { versao: "2.0.5", data: "28/12/2024", desc: "Correções de bugs e melhorias de performance" },
+              { versao: "2.0.4", data: "15/12/2024", desc: "Nova tela de configurações" },
+              { versao: "2.0.3", data: "01/12/2024", desc: "Integração com WhatsApp" },
+            ].map((item, i) => (
+              <div key={i} className="p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">v{item.versao}</span>
+                  <span className="text-sm text-muted-foreground">{item.data}</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Logs do Sistema
+function LogsSistemaContent() {
+  const logs = [
+    { tipo: "info", msg: "Sistema iniciado com sucesso", hora: "10:30:15" },
+    { tipo: "success", msg: "Backup automático realizado", hora: "10:00:00" },
+    { tipo: "warning", msg: "Tentativa de login com senha incorreta", hora: "09:45:22" },
+    { tipo: "info", msg: "Usuário admin fez login", hora: "09:30:00" },
+    { tipo: "success", msg: "Sincronização com servidor concluída", hora: "09:15:00" },
+    { tipo: "info", msg: "Verificação de atualizações realizada", hora: "09:00:00" },
+    { tipo: "error", msg: "Falha na conexão temporária - reconectado", hora: "08:45:30" },
+    { tipo: "success", msg: "Caixa fechado corretamente", hora: "22:00:00" },
+  ];
+
+  const getLogColor = (tipo: string) => {
+    switch (tipo) {
+      case "success": return "text-green-600 bg-green-100 dark:bg-green-900/30";
+      case "warning": return "text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30";
+      case "error": return "text-red-600 bg-red-100 dark:bg-red-900/30";
+      default: return "text-blue-600 bg-blue-100 dark:bg-blue-900/30";
+    }
+  };
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <History className="h-5 w-5" />
+        Logs do Sistema
+      </h2>
+      
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex gap-2">
+            <select className="p-2 border rounded-lg text-sm">
+              <option>Todos os tipos</option>
+              <option>Informação</option>
+              <option>Sucesso</option>
+              <option>Aviso</option>
+              <option>Erro</option>
+            </select>
+            <Input placeholder="Buscar nos logs..." className="w-64" />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+            <Button variant="outline" size="sm">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Limpar Logs
+            </Button>
+          </div>
+        </div>
+
+        <div className="border rounded-lg divide-y max-h-[500px] overflow-y-auto">
+          {logs.map((log, i) => (
+            <div key={i} className="p-3 flex items-center gap-3 hover:bg-muted/50">
+              <span className={cn("px-2 py-1 rounded text-xs font-medium", getLogColor(log.tipo))}>
+                {log.tipo.toUpperCase()}
+              </span>
+              <span className="flex-1">{log.msg}</span>
+              <span className="text-sm text-muted-foreground font-mono">{log.hora}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-sm text-muted-foreground">
+          Mostrando últimos 8 registros • Os logs são mantidos por 30 dias
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Modo Desenvolvedor
+function ModoDevContent() {
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Settings className="h-5 w-5" />
+        Modo Desenvolvedor
+      </h2>
+      
+      <div className="space-y-6">
+        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <p className="text-yellow-700 dark:text-yellow-400 text-sm">
+            ⚠️ <strong>Atenção:</strong> Estas opções são destinadas a desenvolvedores e podem afetar o funcionamento do sistema.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Modo Debug</p>
+              <p className="text-sm text-muted-foreground">Exibir informações de debug no console</p>
+            </div>
+            <input type="checkbox" className="h-5 w-5" />
+          </label>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Mostrar IDs</p>
+              <p className="text-sm text-muted-foreground">Exibir IDs dos registros na interface</p>
+            </div>
+            <input type="checkbox" className="h-5 w-5" />
+          </label>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Desabilitar Cache</p>
+              <p className="text-sm text-muted-foreground">Não usar cache para requisições</p>
+            </div>
+            <input type="checkbox" className="h-5 w-5" />
+          </label>
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Logs Detalhados</p>
+              <p className="text-sm text-muted-foreground">Registrar logs detalhados de todas as operações</p>
+            </div>
+            <input type="checkbox" className="h-5 w-5" />
+          </label>
+        </div>
+
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Ferramentas de Desenvolvedor</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline">
+              <Database className="h-4 w-4 mr-2" />
+              Ver Estrutura DB
+            </Button>
+            <Button variant="outline">
+              <History className="h-4 w-4 mr-2" />
+              Ver Requisições API
+            </Button>
+            <Button variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Recarregar Tipos
+            </Button>
+            <Button variant="outline">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Limpar Storage
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-4 border-t pt-6">
+          <h3 className="font-medium">Informações Técnicas</h3>
+          <div className="p-4 bg-muted/50 rounded-lg font-mono text-sm space-y-1">
+            <p><span className="text-muted-foreground">Ambiente:</span> Produção</p>
+            <p><span className="text-muted-foreground">Build:</span> 20241229</p>
+            <p><span className="text-muted-foreground">React:</span> 18.3.1</p>
+            <p><span className="text-muted-foreground">Backend:</span> Lovable Cloud</p>
+          </div>
         </div>
       </div>
     </Card>
