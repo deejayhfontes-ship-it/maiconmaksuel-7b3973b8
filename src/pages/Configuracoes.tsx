@@ -44,7 +44,8 @@ import {
   ChevronDown,
   ChevronRight,
   Search,
-  ArrowLeft
+  ArrowLeft,
+  Camera
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ import RestaurarBackup from "@/components/configuracoes/backup/RestaurarBackup";
 import ImportarDados from "@/components/configuracoes/backup/ImportarDados";
 import ExportarDados from "@/components/configuracoes/backup/ExportarDados";
 import LimparDados from "@/components/configuracoes/backup/LimparDados";
+import WebcamConfig from "@/components/configuracoes/WebcamConfig";
 
 type SubItem = {
   id: string;
@@ -176,6 +178,7 @@ const menuSections: MenuSection[] = [
     icon: CreditCard,
     items: [
       { id: "config-caixa", label: "Configurações Caixa", icon: CreditCard },
+      { id: "webcam", label: "Webcam", icon: Camera },
       { id: "impressora-cupom", label: "Impressora/Cupom", icon: Printer },
       { id: "tablet-ponto", label: "Tablet (ponto)", icon: Tablet },
     ],
@@ -313,6 +316,8 @@ export default function Configuracoes() {
         return <InformacoesContent />;
       case "versao":
         return <SobreContent />;
+      case "webcam":
+        return <WebcamConfig />;
       default:
         return (
           <div className="flex items-center justify-center h-64">
