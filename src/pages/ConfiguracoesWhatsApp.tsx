@@ -84,6 +84,7 @@ const variaveisDescricao: Record<string, string> = {
 };
 
 export default function ConfiguracoesWhatsApp() {
+  const navigate = useNavigate();
   const [config, setConfig] = useState<ConfiguracoesWhatsApp | null>(null);
   const [templates, setTemplates] = useState<MensagemTemplate[]>([]);
   const [configTaxa, setConfigTaxa] = useState<ConfiguracoesTaxaFalta | null>(null);
@@ -91,7 +92,6 @@ export default function ConfiguracoesWhatsApp() {
   const [saving, setSaving] = useState(false);
   const [testando, setTestando] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -270,7 +270,6 @@ export default function ConfiguracoesWhatsApp() {
     );
   }
 
-  const navigate = useNavigate();
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
