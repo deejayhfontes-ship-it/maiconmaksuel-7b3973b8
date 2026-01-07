@@ -198,11 +198,11 @@ const menuSections: MenuSection[] = [
     title: "Integrações",
     icon: Share2,
     items: [
-      { id: "whatsapp", label: "WhatsApp", icon: MessageSquare, route: "/configuracoes/whatsapp" },
-      { id: "email-integracao", label: "Email", icon: Mail },
-      { id: "sms", label: "SMS", icon: Phone },
-      { id: "google-calendar", label: "Google Calendar", icon: Calendar },
-      { id: "redes-sociais", label: "Redes Sociais", icon: Globe },
+      { id: "whatsapp", label: "WhatsApp", icon: MessageSquare, route: "/configuracoes/integracoes" },
+      { id: "email-integracao", label: "Email", icon: Mail, route: "/configuracoes/integracoes" },
+      { id: "sms", label: "SMS", icon: Phone, route: "/configuracoes/integracoes" },
+      { id: "google-calendar", label: "Google Calendar", icon: Calendar, route: "/configuracoes/integracoes" },
+      { id: "redes-sociais", label: "Redes Sociais", icon: Globe, route: "/configuracoes/integracoes" },
     ],
   },
   {
