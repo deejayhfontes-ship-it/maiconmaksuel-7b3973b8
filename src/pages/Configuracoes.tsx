@@ -210,9 +210,9 @@ const menuSections: MenuSection[] = [
     title: "Notificações",
     icon: Bell,
     items: [
-      { id: "lembretes-clientes", label: "Lembretes Clientes", icon: Bell },
-      { id: "alertas-funcionarios", label: "Alertas Funcionários", icon: Bell },
-      { id: "notificacoes-push", label: "Notificações Push", icon: Smartphone },
+      { id: "lembretes-clientes", label: "Lembretes Clientes", icon: Bell, route: "/configuracoes/notificacoes" },
+      { id: "alertas-funcionarios", label: "Alertas Funcionários", icon: Bell, route: "/configuracoes/notificacoes" },
+      { id: "notificacoes-push", label: "Notificações Push", icon: Smartphone, route: "/configuracoes/notificacoes" },
     ],
   },
   {
