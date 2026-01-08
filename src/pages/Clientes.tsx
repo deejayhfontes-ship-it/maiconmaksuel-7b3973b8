@@ -471,14 +471,15 @@ const Clientes = () => {
                                 size="icon"
                                 onClick={() => {
                                   const phone = cleanPhoneForWhatsApp(cliente.celular);
-                                  window.open(`https://wa.me/${phone}`, "_blank");
+                                  const mensagem = encodeURIComponent(`Olá ${cliente.nome.split(" ")[0]}, tudo bem? Aqui é do Maicon Maksuel!`);
+                                  window.open(`https://wa.me/${phone}?text=${mensagem}`, "_blank");
                                 }}
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                className="bg-[#25D366] hover:bg-[#128C7E] text-white"
                               >
                                 <MessageCircle className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>WhatsApp</TooltipContent>
+                            <TooltipContent>Enviar WhatsApp</TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
