@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { UpdateNotification } from "@/components/UpdateNotification";
 import Dashboard from "./pages/Dashboard";
 import Clientes from "./pages/Clientes";
 import Profissionais from "./pages/Profissionais";
@@ -61,6 +62,7 @@ const App = () => (
     <ThemeProvider defaultTheme="light" storageKey="beautypro-theme">
       <AuthProvider>
         <TooltipProvider>
+          <UpdateNotification />
           <Toaster />
           <Sonner position="top-right" expand closeButton richColors />
           <BrowserRouter>
