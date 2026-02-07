@@ -49,7 +49,7 @@ const categorias = [
 const servicoSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   descricao: z.string().optional(),
-  categoria: z.string().min(1, "Selecione uma categoria"),
+  categoria: z.string().optional(),
   duracao_minutos: z.number().min(5, "Mínimo 5 minutos").max(480, "Máximo 8 horas"),
   preco: z.number().min(0, "Preço inválido"),
   comissao_padrao: z.number().min(0, "Mínimo 0%").max(100, "Máximo 100%"),
