@@ -521,6 +521,348 @@ export type Database = {
         }
         Relationships: []
       }
+      comunicacao_avaliacoes: {
+        Row: {
+          atendimento_id: string | null
+          cliente_id: string | null
+          comentario: string | null
+          created_at: string
+          id: string
+          nota: number
+          respondida: boolean
+        }
+        Insert: {
+          atendimento_id?: string | null
+          cliente_id?: string | null
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          nota: number
+          respondida?: boolean
+        }
+        Update: {
+          atendimento_id?: string | null
+          cliente_id?: string | null
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          nota?: number
+          respondida?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comunicacao_avaliacoes_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comunicacao_avaliacoes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comunicacao_campanhas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          criterio_dias_inativo: number | null
+          data_fim: string | null
+          data_inicio: string | null
+          desconto_oferecido: number | null
+          descricao: string | null
+          id: string
+          nome: string
+          template_mensagem: string
+          tipo_segmentacao: string
+          total_enviados: number
+          total_respondidos: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          criterio_dias_inativo?: number | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          desconto_oferecido?: number | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          template_mensagem: string
+          tipo_segmentacao: string
+          total_enviados?: number
+          total_respondidos?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          criterio_dias_inativo?: number | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          desconto_oferecido?: number | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          template_mensagem?: string
+          tipo_segmentacao?: string
+          total_enviados?: number
+          total_respondidos?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      comunicacao_config_avancadas: {
+        Row: {
+          created_at: string
+          fallback_sms: boolean
+          foto_perfil_url: string | null
+          horario_silencio_fim: string
+          horario_silencio_inicio: string
+          id: string
+          limite_diario_mensagens: number
+          nome_remetente: string | null
+          opt_out_keyword: string
+          sms_api_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fallback_sms?: boolean
+          foto_perfil_url?: string | null
+          horario_silencio_fim?: string
+          horario_silencio_inicio?: string
+          id?: string
+          limite_diario_mensagens?: number
+          nome_remetente?: string | null
+          opt_out_keyword?: string
+          sms_api_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fallback_sms?: boolean
+          foto_perfil_url?: string | null
+          horario_silencio_fim?: string
+          horario_silencio_inicio?: string
+          id?: string
+          limite_diario_mensagens?: number
+          nome_remetente?: string | null
+          opt_out_keyword?: string
+          sms_api_key?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      comunicacao_creditos: {
+        Row: {
+          alerta_creditos_minimo: number
+          created_at: string
+          custo_por_mensagem: number
+          id: string
+          saldo_creditos: number
+          updated_at: string
+        }
+        Insert: {
+          alerta_creditos_minimo?: number
+          created_at?: string
+          custo_por_mensagem?: number
+          id?: string
+          saldo_creditos?: number
+          updated_at?: string
+        }
+        Update: {
+          alerta_creditos_minimo?: number
+          created_at?: string
+          custo_por_mensagem?: number
+          id?: string
+          saldo_creditos?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      comunicacao_estatisticas: {
+        Row: {
+          agendamentos_cancelados: number
+          agendamentos_confirmados: number
+          created_at: string
+          data: string
+          falhas_envio: number
+          id: string
+          mensagens_entregues: number
+          mensagens_enviadas: number
+          mensagens_lidas: number
+          mensagens_respondidas: number
+        }
+        Insert: {
+          agendamentos_cancelados?: number
+          agendamentos_confirmados?: number
+          created_at?: string
+          data?: string
+          falhas_envio?: number
+          id?: string
+          mensagens_entregues?: number
+          mensagens_enviadas?: number
+          mensagens_lidas?: number
+          mensagens_respondidas?: number
+        }
+        Update: {
+          agendamentos_cancelados?: number
+          agendamentos_confirmados?: number
+          created_at?: string
+          data?: string
+          falhas_envio?: number
+          id?: string
+          mensagens_entregues?: number
+          mensagens_enviadas?: number
+          mensagens_lidas?: number
+          mensagens_respondidas?: number
+        }
+        Relationships: []
+      }
+      comunicacao_lembretes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          horario_envio: string | null
+          horas_antes: number
+          id: string
+          incluir_endereco: boolean
+          nome: string
+          template_mensagem: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          horario_envio?: string | null
+          horas_antes?: number
+          id?: string
+          incluir_endereco?: boolean
+          nome: string
+          template_mensagem: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          horario_envio?: string | null
+          horas_antes?: number
+          id?: string
+          incluir_endereco?: boolean
+          nome?: string
+          template_mensagem?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      comunicacao_recargas: {
+        Row: {
+          created_at: string
+          creditos_adquiridos: number
+          forma_pagamento: string | null
+          id: string
+          status: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          creditos_adquiridos: number
+          forma_pagamento?: string | null
+          id?: string
+          status?: string
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          creditos_adquiridos?: number
+          forma_pagamento?: string | null
+          id?: string
+          status?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      comunicacao_respostas_automaticas: {
+        Row: {
+          acao: string | null
+          ativo: boolean
+          created_at: string
+          id: string
+          mensagem_resposta: string
+          palavras_chave: string[]
+          prioridade: number
+          tipo_resposta: string
+          updated_at: string
+        }
+        Insert: {
+          acao?: string | null
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          mensagem_resposta: string
+          palavras_chave: string[]
+          prioridade?: number
+          tipo_resposta: string
+          updated_at?: string
+        }
+        Update: {
+          acao?: string | null
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          mensagem_resposta?: string
+          palavras_chave?: string[]
+          prioridade?: number
+          tipo_resposta?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      comunicacao_templates_prontos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          estilo: string
+          id: string
+          mensagem: string
+          nome: string
+          tipo: string
+          variaveis: string[]
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          estilo: string
+          id?: string
+          mensagem: string
+          nome: string
+          tipo: string
+          variaveis?: string[]
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          estilo?: string
+          id?: string
+          mensagem?: string
+          nome?: string
+          tipo?: string
+          variaveis?: string[]
+        }
+        Relationships: []
+      }
       configuracoes_fiscal: {
         Row: {
           aliquota_icms: number | null
