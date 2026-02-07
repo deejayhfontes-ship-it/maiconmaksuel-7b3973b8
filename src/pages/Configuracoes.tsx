@@ -66,6 +66,12 @@ import LimparDados from "@/components/configuracoes/backup/LimparDados";
 import WebcamConfig from "@/components/configuracoes/WebcamConfig";
 import DiagnosticoSistema from "@/components/configuracoes/DiagnosticoSistema";
 import ControleAcesso from "@/components/configuracoes/ControleAcesso";
+// New settings components
+import CaixaSettings from "@/components/configuracoes/CaixaSettings";
+import AgendaSettings from "@/components/configuracoes/AgendaSettings";
+import ServicosProdutosSettings from "@/components/configuracoes/ServicosProdutosSettings";
+import DispositivosSettings from "@/components/configuracoes/DispositivosSettings";
+import SistemaInfo from "@/components/configuracoes/SistemaInfo";
 
 type SubItem = {
   id: string;
@@ -257,10 +263,33 @@ const menuSections: MenuSection[] = [
 
 export default function Configuracoes() {
   const navigate = useNavigate();
-  const { logout } = usePinAuth();
+  const { logout, session } = usePinAuth();
   const [selectedItem, setSelectedItem] = useState("backup-manual");
   const [expandedSections, setExpandedSections] = useState<string[]>(["backup"]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Only admin can access system settings
+  if (session && session.role !== 'admin') {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="p-4 rounded-full bg-destructive/10">
+              <Settings className="h-12 w-12 text-destructive" />
+            </div>
+          </div>
+          <h2 className="text-xl font-semibold">Acesso Restrito</h2>
+          <p className="text-muted-foreground max-w-md">
+            Apenas administradores podem acessar as configurações do sistema.
+          </p>
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => 
@@ -325,7 +354,7 @@ export default function Configuracoes() {
       case "imagens-logo":
         return <ImagensLogoContent />;
       case "informacoes":
-        return <InformacoesContent />;
+        return <SistemaInfo />;
       case "licenca":
         return <LicencaContent />;
       case "atualizacoes":
@@ -337,7 +366,7 @@ export default function Configuracoes() {
       case "diagnostico":
         return <DiagnosticoSistema />;
       case "versao":
-        return <SobreContent />;
+        return <SistemaInfo />;
       case "webcam":
         return <WebcamConfig />;
       case "tema-cores":
@@ -359,7 +388,7 @@ export default function Configuracoes() {
       case "contas-bancarias":
         return <ContasBancariasContent />;
       case "comissoes":
-        return <ComissoesContent />;
+        return <ServicosProdutosSettings />;
       case "categorias-produtos":
         return <CategoriasProdutosContent />;
       case "fornecedores":
@@ -367,15 +396,19 @@ export default function Configuracoes() {
       case "unidades-medida":
         return <UnidadesMedidaContent />;
       case "horarios-disponiveis":
-        return <HorariosDisponiveisContent />;
+        return <AgendaSettings />;
       case "intervalos":
-        return <IntervalosContent />;
+        return <AgendaSettings />;
       case "cores-visualizacao":
         return <CoresVisualizacaoContent />;
       case "lembretes":
         return <LembretesContent />;
       case "bloqueios":
         return <BloqueiosContent />;
+      case "config-caixa":
+        return <CaixaSettings />;
+      case "tablet-ponto":
+        return <DispositivosSettings />;
       default:
         return (
           <div className="flex items-center justify-center h-64">

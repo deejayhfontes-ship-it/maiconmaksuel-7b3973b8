@@ -1007,6 +1007,93 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_sistema: {
+        Row: {
+          agenda_dias_antecedencia_max: number | null
+          agenda_duracao_padrao_minutos: number | null
+          agenda_horario_fim: string | null
+          agenda_horario_inicio: string | null
+          agenda_intervalo_minutos: number | null
+          agenda_permitir_encaixe: boolean | null
+          ambiente: string | null
+          backup_criptografado: boolean | null
+          backup_formato_padrao: string | null
+          backup_modulos_selecionados: string[] | null
+          backup_ultimo_data: string | null
+          backup_ultimo_integridade: boolean | null
+          backup_ultimo_tamanho_bytes: number | null
+          caixa_permitir_multiplos_abertos: boolean | null
+          caixa_requer_confirmacao_abertura: boolean | null
+          caixa_requer_confirmacao_fechamento: boolean | null
+          caixa_valor_abertura_padrao: number | null
+          created_at: string
+          dispositivo_modo_padrao: string | null
+          id: string
+          produtos_alerta_estoque_minimo: number | null
+          produtos_comissao_padrao: number | null
+          produtos_vendas_habilitadas: boolean | null
+          servicos_comissao_padrao: number | null
+          updated_at: string
+          versao_atual: string | null
+        }
+        Insert: {
+          agenda_dias_antecedencia_max?: number | null
+          agenda_duracao_padrao_minutos?: number | null
+          agenda_horario_fim?: string | null
+          agenda_horario_inicio?: string | null
+          agenda_intervalo_minutos?: number | null
+          agenda_permitir_encaixe?: boolean | null
+          ambiente?: string | null
+          backup_criptografado?: boolean | null
+          backup_formato_padrao?: string | null
+          backup_modulos_selecionados?: string[] | null
+          backup_ultimo_data?: string | null
+          backup_ultimo_integridade?: boolean | null
+          backup_ultimo_tamanho_bytes?: number | null
+          caixa_permitir_multiplos_abertos?: boolean | null
+          caixa_requer_confirmacao_abertura?: boolean | null
+          caixa_requer_confirmacao_fechamento?: boolean | null
+          caixa_valor_abertura_padrao?: number | null
+          created_at?: string
+          dispositivo_modo_padrao?: string | null
+          id?: string
+          produtos_alerta_estoque_minimo?: number | null
+          produtos_comissao_padrao?: number | null
+          produtos_vendas_habilitadas?: boolean | null
+          servicos_comissao_padrao?: number | null
+          updated_at?: string
+          versao_atual?: string | null
+        }
+        Update: {
+          agenda_dias_antecedencia_max?: number | null
+          agenda_duracao_padrao_minutos?: number | null
+          agenda_horario_fim?: string | null
+          agenda_horario_inicio?: string | null
+          agenda_intervalo_minutos?: number | null
+          agenda_permitir_encaixe?: boolean | null
+          ambiente?: string | null
+          backup_criptografado?: boolean | null
+          backup_formato_padrao?: string | null
+          backup_modulos_selecionados?: string[] | null
+          backup_ultimo_data?: string | null
+          backup_ultimo_integridade?: boolean | null
+          backup_ultimo_tamanho_bytes?: number | null
+          caixa_permitir_multiplos_abertos?: boolean | null
+          caixa_requer_confirmacao_abertura?: boolean | null
+          caixa_requer_confirmacao_fechamento?: boolean | null
+          caixa_valor_abertura_padrao?: number | null
+          created_at?: string
+          dispositivo_modo_padrao?: string | null
+          id?: string
+          produtos_alerta_estoque_minimo?: number | null
+          produtos_comissao_padrao?: number | null
+          produtos_vendas_habilitadas?: boolean | null
+          servicos_comissao_padrao?: number | null
+          updated_at?: string
+          versao_atual?: string | null
+        }
+        Relationships: []
+      }
       configuracoes_taxa_falta: {
         Row: {
           aplicacao_taxa: string
@@ -1304,6 +1391,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dispositivos_registrados: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          device_id: string
+          id: string
+          ip_address: string | null
+          nome: string
+          tipo: string
+          ultimo_acesso: string | null
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          device_id: string
+          id?: string
+          ip_address?: string | null
+          nome: string
+          tipo?: string
+          ultimo_acesso?: string | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          device_id?: string
+          id?: string
+          ip_address?: string | null
+          nome?: string
+          tipo?: string
+          ultimo_acesso?: string | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: []
       }
       dividas: {
         Row: {
