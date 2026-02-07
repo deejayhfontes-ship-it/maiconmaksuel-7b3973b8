@@ -345,7 +345,7 @@ const Relatorios = () => {
 
   // Cálculos para relatórios
   const vendasPorPeriodo = useMemo(() => {
-    const finalizados = atendimentos.filter((a) => a.status === "finalizado");
+    const finalizados = atendimentos.filter((a) => a.status === "fechado");
     const totalVendas = finalizados.reduce((sum, a) => sum + (a.valor_final || 0), 0);
     const ticketMedio = finalizados.length > 0 ? totalVendas / finalizados.length : 0;
 
@@ -510,7 +510,7 @@ const Relatorios = () => {
 
   // Cálculo de Lucro Bruto
   const lucroBruto = useMemo(() => {
-    const finalizados = atendimentos.filter((a) => a.status === "finalizado");
+    const finalizados = atendimentos.filter((a) => a.status === "fechado");
     const receitaServicos = atendimentoServicos.reduce((sum, as) => sum + (as.subtotal || 0), 0);
     const receitaProdutos = atendimentoProdutos.reduce((sum, ap) => sum + (ap.subtotal || 0), 0);
     const custoProdutos = atendimentoProdutos.reduce((sum, ap) => {
@@ -564,7 +564,7 @@ const Relatorios = () => {
   const clientesMaisLucro = useMemo(() => {
     const agrupado: Record<string, { id: string; nome: string; celular: string; totalGasto: number; visitas: number }> = {};
     
-    atendimentos.filter(a => a.status === "finalizado" && a.cliente_id).forEach((a) => {
+    atendimentos.filter(a => a.status === "fechado" && a.cliente_id).forEach((a) => {
       const clienteId = a.cliente_id;
       const cliente = clientes.find(c => c.id === clienteId);
       if (!agrupado[clienteId]) {
@@ -1071,7 +1071,7 @@ const Relatorios = () => {
         );
 
       case "historico":
-        const historicoVendas = atendimentos.filter(a => a.status === "finalizado").sort((a, b) => 
+        const historicoVendas = atendimentos.filter(a => a.status === "fechado").sort((a, b) => 
           new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()
         );
         return (
