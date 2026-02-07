@@ -140,7 +140,7 @@ function ColorPicker({ label, value, onChange, presets }: ColorPickerProps) {
         </div>
         
         {presets && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {presets.map((preset, i) => (
               <button
                 key={i}
