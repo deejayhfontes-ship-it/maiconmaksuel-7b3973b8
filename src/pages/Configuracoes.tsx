@@ -65,6 +65,7 @@ import ExportarDados from "@/components/configuracoes/backup/ExportarDados";
 import LimparDados from "@/components/configuracoes/backup/LimparDados";
 import WebcamConfig from "@/components/configuracoes/WebcamConfig";
 import DiagnosticoSistema from "@/components/configuracoes/DiagnosticoSistema";
+import ControleAcesso from "@/components/configuracoes/ControleAcesso";
 
 type SubItem = {
   id: string;
@@ -311,6 +312,8 @@ export default function Configuracoes() {
         return <ExportarDados />;
       case "limpar":
         return <LimparDados />;
+      case "controle-acesso":
+        return <ControleAcesso />;
       case "preferencias":
         return <PreferenciasContent />;
       case "aparencia":

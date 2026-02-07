@@ -53,6 +53,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/configuracoes/notificacoes',
     '/configuracoes/taxa-falta',
     '/configuracoes/caixa-pdv',
+    '/configuracoes/metas',
     '/confirmacoes-whatsapp',
     '/usuarios',
     '/perfil',
