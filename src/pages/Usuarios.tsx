@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePinAuth } from "@/contexts/PinAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Search, Shield, ShieldCheck, User, Users } from "lucide-react";
+import { Search, Shield, ShieldCheck, User, Users, ShieldAlert } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -50,7 +50,7 @@ interface Usuario {
 }
 
 export default function Usuarios() {
-  const { role: currentUserRole, user: currentUser } = useAuth();
+  const { session } = usePinAuth();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -61,14 +61,24 @@ export default function Usuarios() {
     newRole: NivelAcesso | null;
   }>({ open: false, usuario: null, newRole: null });
 
-  // Only admins can access this page
-  if (currentUserRole !== "admin") {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   useEffect(() => {
-    fetchUsuarios();
-  }, []);
+    if (session?.role === "admin") {
+      fetchUsuarios();
+    }
+  }, [session?.role]);
+
+  // Only admins can access this page
+  if (session?.role !== "admin") {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <ShieldAlert className="h-12 w-12 mx-auto mb-4 text-destructive" />
+          <p className="text-lg font-medium">Acesso Restrito</p>
+          <p className="text-muted-foreground">Apenas administradores podem acessar esta página</p>
+        </div>
+      </div>
+    );
+  }
 
   const fetchUsuarios = async () => {
     setLoading(true);
@@ -274,9 +284,6 @@ export default function Usuarios() {
                         </Avatar>
                         <div className="flex flex-col">
                           <span className="font-medium">{usuario.nome}</span>
-                          {usuario.id === currentUser?.id && (
-                            <span className="text-xs text-muted-foreground">(você)</span>
-                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -301,7 +308,6 @@ export default function Usuarios() {
                             });
                           }
                         }}
-                        disabled={usuario.id === currentUser?.id}
                       >
                         <SelectTrigger className="w-[140px]">
                           <div className="flex items-center gap-2">
