@@ -27,6 +27,7 @@ import {
   Package,
   TrendingUp,
   DollarSign,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
@@ -37,13 +38,20 @@ import ProfissionalFormDialog from "@/components/profissionais/ProfissionalFormD
 import ProfissionalValesTab from "@/components/vales/ProfissionalValesTab";
 import { DualProgressCard, ProgressBar } from "@/components/profissionais/ProgressBar";
 import { useProfissionais, ComissaoDetalhada } from "@/hooks/useProfissionais";
+import { usePinAuth } from "@/contexts/PinAuthContext";
+import AccessDenied from "@/components/auth/AccessDenied";
+import NotFoundResource from "@/components/auth/NotFoundResource";
 
 const ProfissionalDetalhe = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "info";
+  const { canAccessRoute, isAuthenticated, loading: authLoading } = usePinAuth();
   
+  // Check permission before any data loading
+  const hasPermission = canAccessRoute('/profissional');
+
   const { profissionais, loading: profLoading, getComissoesDetalhadas, fetchProfissionais } = useProfissionais();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -59,10 +67,10 @@ const ProfissionalDetalhe = () => {
     profissionais.find(p => p.id === id) || null,
   [profissionais, id]);
 
-  // Fetch vales count
+  // Fetch vales count - only if has permission
   useEffect(() => {
     const fetchVales = async () => {
-      if (!id) return;
+      if (!id || !hasPermission || !isAuthenticated) return;
       const { count } = await supabase
         .from("vales")
         .select("*", { count: "exact", head: true })
@@ -71,19 +79,19 @@ const ProfissionalDetalhe = () => {
       setValesAbertos(count || 0);
     };
     fetchVales();
-  }, [id]);
+  }, [id, hasPermission, isAuthenticated]);
 
-  // Fetch commissions when tab changes
+  // Fetch commissions when tab changes - only if has permission
   useEffect(() => {
     const fetchComissoes = async () => {
-      if (!id || activeTab !== "comissoes") return;
+      if (!id || activeTab !== "comissoes" || !hasPermission || !isAuthenticated) return;
       setLoadingComissoes(true);
       const data = await getComissoesDetalhadas(id);
       setComissoes(data);
       setLoadingComissoes(false);
     };
     fetchComissoes();
-  }, [id, activeTab, getComissoesDetalhadas]);
+  }, [id, activeTab, getComissoesDetalhadas, hasPermission, isAuthenticated]);
 
   const getInitials = (nome: string) =>
     nome
@@ -116,6 +124,20 @@ const ProfissionalDetalhe = () => {
     if (refresh) fetchProfissionais();
   };
 
+  // Check auth loading state first
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Check permission before showing any content
+  if (!hasPermission) {
+    return <AccessDenied message="Você não tem permissão para visualizar detalhes de profissionais." />;
+  }
+
   if (profLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -127,10 +149,11 @@ const ProfissionalDetalhe = () => {
 
   if (!profissional) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-muted-foreground mb-4">Profissional não encontrado</p>
-        <Button onClick={() => navigate("/profissionais")}>Voltar</Button>
-      </div>
+      <NotFoundResource 
+        resourceName="Profissional"
+        backPath="/profissionais"
+        backLabel="Voltar para lista"
+      />
     );
   }
 
