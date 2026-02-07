@@ -45,42 +45,17 @@ import {
   ChevronLast,
   UserCheck,
   Zap,
+  Wifi,
+  WifiOff,
+  CloudOff,
+  UserX,
 } from "lucide-react";
 import { format, addDays, subDays, isSameDay, parseISO, addMonths, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import AgendamentoFormDialog from "@/components/agenda/AgendamentoFormDialog";
-
-interface Profissional {
-  id: string;
-  nome: string;
-  cor_agenda: string;
-  ativo: boolean;
-}
-
-interface Cliente {
-  id: string;
-  nome: string;
-  celular: string;
-  telefone: string | null;
-  data_nascimento: string | null;
-}
-
-interface AgendamentoCompleto {
-  id: string;
-  cliente_id: string;
-  profissional_id: string;
-  servico_id: string;
-  data_hora: string;
-  duracao_minutos: number;
-  status: string;
-  observacoes: string | null;
-  cliente: Cliente;
-  profissional: { nome: string; cor_agenda: string };
-  servico: { nome: string; preco: number };
-}
+import { useAgendamentos, AgendamentoCompleto } from "@/hooks/useAgendamentos";
 
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
@@ -96,7 +71,7 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
   confirmado: { label: "Confirmado", color: "text-success", bgColor: "bg-success/15", icon: <Check className="h-3 w-3" /> },
   atendido: { label: "Atendido", color: "text-primary", bgColor: "bg-primary/15", icon: <UserCheck className="h-3 w-3" /> },
   cancelado: { label: "Cancelado", color: "text-destructive", bgColor: "bg-destructive/15", icon: <X className="h-3 w-3" /> },
-  faltou: { label: "Faltou", color: "text-muted-foreground", bgColor: "bg-muted", icon: <User className="h-3 w-3" /> },
+  faltou: { label: "Faltou", color: "text-muted-foreground", bgColor: "bg-muted", icon: <UserX className="h-3 w-3" /> },
 };
 
 const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -105,9 +80,6 @@ const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [profissionalFilter, setProfissionalFilter] = useState<string>("todos");
-  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
-  const [agendamentos, setAgendamentos] = useState<AgendamentoCompleto[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoCompleto | null>(null);
@@ -117,54 +89,20 @@ const Agenda = () => {
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchProfissionais = async () => {
-    const { data } = await supabase
-      .from("profissionais")
-      .select("id, nome, cor_agenda, ativo")
-      .eq("ativo", true)
-      .order("nome");
-    if (data) setProfissionais(data);
-  };
-
-  const fetchAgendamentos = async () => {
-    setLoading(true);
-    
-    const startDate = new Date(selectedDate);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(selectedDate);
-    endDate.setHours(23, 59, 59, 999);
-
-    const { data, error } = await supabase
-      .from("agendamentos")
-      .select(`
-        *,
-        cliente:clientes(id, nome, celular, telefone, data_nascimento),
-        profissional:profissionais(nome, cor_agenda),
-        servico:servicos(nome, preco)
-      `)
-      .gte("data_hora", startDate.toISOString())
-      .lte("data_hora", endDate.toISOString())
-      .order("data_hora");
-
-    if (error) {
-      toast({
-        title: "Erro ao carregar agendamentos",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      setAgendamentos(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchProfissionais();
-  }, []);
-
-  useEffect(() => {
-    fetchAgendamentos();
-  }, [selectedDate]);
+  // Use offline-first hook
+  const {
+    agendamentos,
+    profissionais,
+    loading,
+    isOnline,
+    pendingSync,
+    refetch,
+    remove,
+    confirmAppointment,
+    cancelAppointment,
+    markAttended,
+    markNoShow,
+  } = useAgendamentos({ date: selectedDate, profissionalId: profissionalFilter });
 
   const displayedProfissionais = useMemo(() => {
     if (profissionalFilter === "todos") return profissionais;
@@ -177,11 +115,12 @@ const Agenda = () => {
     const confirmados = agendamentos.filter(a => a.status === "confirmado").length;
     const atendidos = agendamentos.filter(a => a.status === "atendido").length;
     const cancelados = agendamentos.filter(a => a.status === "cancelado").length;
+    const faltaram = agendamentos.filter(a => a.status === "faltou").length;
     const vagasTotal = displayedProfissionais.length * timeSlots.length;
     const ocupadas = agendamentos.filter(a => a.status !== "cancelado" && a.status !== "faltou").length;
     const taxaOcupacao = vagasTotal > 0 ? Math.round((ocupadas / vagasTotal) * 100) : 0;
     
-    return { total, confirmados, atendidos, cancelados, vagasLivres: vagasTotal - ocupadas, taxaOcupacao };
+    return { total, confirmados, atendidos, cancelados, faltaram, vagasLivres: vagasTotal - ocupadas, taxaOcupacao };
   }, [agendamentos, displayedProfissionais]);
 
   // Navegação
@@ -212,21 +151,28 @@ const Agenda = () => {
     setOpenPopoverId(null);
   };
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
-    const { error } = await supabase
-      .from("agendamentos")
-      .update({ status: newStatus })
-      .eq("id", id);
-
-    if (error) {
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    try {
+      switch (newStatus) {
+        case 'confirmado':
+          await confirmAppointment(id);
+          break;
+        case 'atendido':
+          await markAttended(id);
+          break;
+        case 'cancelado':
+          await cancelAppointment(id);
+          break;
+        case 'faltou':
+          await markNoShow(id);
+          break;
+      }
+    } catch (error: any) {
       toast({
         title: "Erro ao atualizar status",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({ title: `Status atualizado para ${statusConfig[newStatus].label}` });
-      fetchAgendamentos();
     }
     setOpenPopoverId(null);
   };
@@ -240,20 +186,15 @@ const Agenda = () => {
   const handleDelete = async () => {
     if (!selectedAgendamento) return;
 
-    const { error } = await supabase
-      .from("agendamentos")
-      .delete()
-      .eq("id", selectedAgendamento.id);
-
-    if (error) {
+    try {
+      await remove(selectedAgendamento.id);
+      toast({ title: "Agendamento excluído" });
+    } catch (error: any) {
       toast({
         title: "Erro ao excluir",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({ title: "Agendamento excluído" });
-      fetchAgendamentos();
     }
     setIsDeleteOpen(false);
     setSelectedAgendamento(null);
@@ -265,11 +206,11 @@ const Agenda = () => {
     setFormInitialDate(undefined);
     setFormInitialTime(undefined);
     setFormInitialProfissionalId(undefined);
-    if (refresh) fetchAgendamentos();
+    if (refresh) refetch();
   };
 
   // Verificar aniversário
-  const isBirthday = (cliente: Cliente) => {
+  const isBirthday = (cliente: { data_nascimento: string | null }) => {
     if (!cliente.data_nascimento) return false;
     const today = new Date();
     const birth = parseISO(cliente.data_nascimento);
@@ -380,6 +321,7 @@ const Agenda = () => {
                               </span>
                               {isBirthday(ag.cliente) && <Cake className="h-2.5 w-2.5 text-pink-600 flex-shrink-0" />}
                               {ag.status === "confirmado" && <Check className="h-2.5 w-2.5 text-green-700 flex-shrink-0" />}
+                              {ag.status === "atendido" && <UserCheck className="h-2.5 w-2.5 text-blue-700 flex-shrink-0" />}
                             </div>
                             <div className={cn("text-foreground/80", isMobile ? "text-[8px]" : "text-[10px]")}>
                               {startTime}-{endTime}
@@ -391,7 +333,7 @@ const Agenda = () => {
                             )}
                           </div>
                         </PopoverTrigger>
-                        <PopoverContent side={isMobile ? "bottom" : "right"} className="w-64 p-0" align="start">
+                        <PopoverContent side={isMobile ? "bottom" : "right"} className="w-72 p-0" align="start">
                           <div className="p-3 space-y-3">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
@@ -413,28 +355,80 @@ const Agenda = () => {
                               </div>
                             </div>
                             <Badge className={cn("text-xs", statusConfig[ag.status].bgColor, statusConfig[ag.status].color)}>
-                              {statusConfig[ag.status].label}
+                              {statusConfig[ag.status].icon}
+                              <span className="ml-1">{statusConfig[ag.status].label}</span>
                             </Badge>
+                            
+                            {/* Status Actions */}
                             <div className="flex flex-wrap gap-1 pt-2 border-t">
-                              <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={() => handleAgendamentoClick(ag)}>
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleAgendamentoClick(ag)}>
                                 <Edit className="h-3 w-3 mr-1" />
                                 Editar
                               </Button>
+                              
                               {ag.status === "agendado" && (
-                                <Button size="sm" variant="outline" className="h-7 text-xs flex-1 text-green-600" onClick={() => handleUpdateStatus(ag.id, "confirmado")}>
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Confirmar
-                                </Button>
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 text-xs text-success hover:text-success" 
+                                    onClick={() => handleStatusUpdate(ag.id, "confirmado")}
+                                  >
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Confirmar
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 text-xs text-destructive hover:text-destructive" 
+                                    onClick={() => handleStatusUpdate(ag.id, "cancelado")}
+                                  >
+                                    <X className="h-3 w-3 mr-1" />
+                                    Cancelar
+                                  </Button>
+                                </>
                               )}
+                              
                               {ag.status === "confirmado" && (
-                                <Button size="sm" variant="outline" className="h-7 text-xs flex-1 text-blue-600" onClick={() => handleUpdateStatus(ag.id, "atendido")}>
-                                  <UserCheck className="h-3 w-3 mr-1" />
-                                  Atendido
-                                </Button>
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 text-xs text-primary hover:text-primary" 
+                                    onClick={() => handleStatusUpdate(ag.id, "atendido")}
+                                  >
+                                    <UserCheck className="h-3 w-3 mr-1" />
+                                    Atendido
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 text-xs text-muted-foreground" 
+                                    onClick={() => handleStatusUpdate(ag.id, "faltou")}
+                                  >
+                                    <UserX className="h-3 w-3 mr-1" />
+                                    Faltou
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 text-xs text-destructive hover:text-destructive" 
+                                    onClick={() => handleStatusUpdate(ag.id, "cancelado")}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </>
                               )}
-                              {ag.status !== "cancelado" && ag.status !== "atendido" && (
-                                <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={() => handleUpdateStatus(ag.id, "cancelado")}>
-                                  <X className="h-3 w-3" />
+                              
+                              {(ag.status === "cancelado" || ag.status === "faltou") && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-7 text-xs text-destructive hover:text-destructive" 
+                                  onClick={() => handleDeleteClick(ag)}
+                                >
+                                  <X className="h-3 w-3 mr-1" />
+                                  Excluir
                                 </Button>
                               )}
                             </div>
@@ -451,6 +445,23 @@ const Agenda = () => {
       </div>
     );
   };
+
+  // Sync status indicator
+  const SyncIndicator = () => (
+    <div className="flex items-center gap-1.5">
+      {isOnline ? (
+        <Wifi className="h-4 w-4 text-success" />
+      ) : (
+        <WifiOff className="h-4 w-4 text-warning" />
+      )}
+      {pendingSync > 0 && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+          <CloudOff className="h-3 w-3 mr-1" />
+          {pendingSync}
+        </Badge>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)] gap-3 lg:gap-4 overflow-hidden">
@@ -475,8 +486,9 @@ const Agenda = () => {
           </h2>
 
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={fetchAgendamentos}>
-              <RefreshCw className="h-4 w-4" />
+            <SyncIndicator />
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => refetch()}>
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             </Button>
           </div>
         </div>
@@ -676,8 +688,9 @@ const Agenda = () => {
             </h2>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-10 w-10" onClick={fetchAgendamentos}>
-                <RefreshCw className="h-4 w-4" />
+              <SyncIndicator />
+              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => refetch()}>
+                <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
               </Button>
               <Button variant="outline" size="icon" className="h-10 w-10">
                 <Printer className="h-4 w-4" />
@@ -714,6 +727,11 @@ const Agenda = () => {
             <Badge variant="info" className="px-3 py-1 text-xs">
               Atendidos: {stats.atendidos}
             </Badge>
+            {stats.faltaram > 0 && (
+              <Badge variant="outline" className="px-3 py-1 text-xs text-muted-foreground">
+                Faltas: {stats.faltaram}
+              </Badge>
+            )}
             <Badge variant="outline" className="px-3 py-1 text-xs">
               Vagas: {stats.vagasLivres}
             </Badge>
