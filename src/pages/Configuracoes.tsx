@@ -54,7 +54,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePinAuth } from "@/contexts/PinAuthContext";
 
 // Backup components
 import BackupManual from "@/components/configuracoes/backup/BackupManual";
@@ -257,7 +257,7 @@ const menuSections: MenuSection[] = [
 
 export default function Configuracoes() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { logout } = usePinAuth();
   const [selectedItem, setSelectedItem] = useState("backup-manual");
   const [expandedSections, setExpandedSections] = useState<string[]>(["backup"]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -281,9 +281,9 @@ export default function Configuracoes() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
+  const handleSignOut = () => {
+    logout();
+    navigate("/");
   };
 
   // Filter sections based on search
