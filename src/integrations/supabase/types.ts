@@ -1474,6 +1474,68 @@ export type Database = {
           },
         ]
       }
+      conversas_whatsapp: {
+        Row: {
+          arquivada: boolean
+          atendente_id: string | null
+          cliente_id: string | null
+          created_at: string
+          etiqueta: string | null
+          favorita: boolean
+          foto_url: string | null
+          id: string
+          nao_lidas: number
+          nome_contato: string
+          status: string
+          telefone: string
+          ultima_mensagem: string | null
+          ultima_mensagem_hora: string | null
+          updated_at: string
+        }
+        Insert: {
+          arquivada?: boolean
+          atendente_id?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          etiqueta?: string | null
+          favorita?: boolean
+          foto_url?: string | null
+          id?: string
+          nao_lidas?: number
+          nome_contato: string
+          status?: string
+          telefone: string
+          ultima_mensagem?: string | null
+          ultima_mensagem_hora?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arquivada?: boolean
+          atendente_id?: string | null
+          cliente_id?: string | null
+          created_at?: string
+          etiqueta?: string | null
+          favorita?: boolean
+          foto_url?: string | null
+          id?: string
+          nao_lidas?: number
+          nome_contato?: string
+          status?: string
+          telefone?: string
+          ultima_mensagem?: string | null
+          ultima_mensagem_hora?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversas_whatsapp_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       despesas_rapidas: {
         Row: {
           caixa_id: string | null
@@ -2459,6 +2521,56 @@ export type Database = {
         }
         Relationships: []
       }
+      mensagens_whatsapp: {
+        Row: {
+          conversa_id: string
+          created_at: string
+          enviada: boolean
+          erro_mensagem: string | null
+          id: string
+          midia_nome: string | null
+          midia_url: string | null
+          status: string
+          texto: string | null
+          tipo: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          conversa_id: string
+          created_at?: string
+          enviada?: boolean
+          erro_mensagem?: string | null
+          id?: string
+          midia_nome?: string | null
+          midia_url?: string | null
+          status?: string
+          texto?: string | null
+          tipo?: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          conversa_id?: string
+          created_at?: string
+          enviada?: boolean
+          erro_mensagem?: string | null
+          id?: string
+          midia_nome?: string | null
+          midia_url?: string | null
+          status?: string
+          texto?: string | null
+          tipo?: string
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensagens_whatsapp_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "conversas_whatsapp"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       metas: {
         Row: {
           alerta_100: boolean | null
@@ -3164,6 +3276,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      respostas_rapidas_whatsapp: {
+        Row: {
+          atalho: string | null
+          ativo: boolean
+          categoria: string | null
+          created_at: string
+          id: string
+          mensagem: string
+          ordem: number
+          titulo: string
+        }
+        Insert: {
+          atalho?: string | null
+          ativo?: boolean
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          mensagem: string
+          ordem?: number
+          titulo: string
+        }
+        Update: {
+          atalho?: string | null
+          ativo?: boolean
+          categoria?: string | null
+          created_at?: string
+          id?: string
+          mensagem?: string
+          ordem?: number
+          titulo?: string
+        }
+        Relationships: []
       }
       servicos: {
         Row: {
