@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,26 +22,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useServicos, Servico } from "@/hooks/useServicos";
 import ServicoFormDialog from "@/components/servicos/ServicoFormDialog";
-
-interface Servico {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  categoria: string | null;
-  duracao_minutos: number;
-  preco: number;
-  comissao_padrao: number;
-  ativo: boolean;
-  tipo_servico: string;
-  apenas_agenda: boolean;
-  gera_receita: boolean;
-  gera_comissao: boolean;
-  aparece_pdv: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 // iOS Colors for Service Categories
 const categoriaColors: Record<string, string> = {
@@ -74,8 +56,14 @@ const formatPrice = (price: number) => {
 };
 
 const Servicos = () => {
-  const [servicos, setServicos] = useState<Servico[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { 
+    servicos, 
+    loading, 
+    syncing, 
+    loadServicos, 
+    deleteServico 
+  } = useServicos();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("todas");
   const [tipoFilter, setTipoFilter] = useState("todos");
@@ -83,29 +71,6 @@ const Servicos = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedServico, setSelectedServico] = useState<Servico | null>(null);
   const { toast } = useToast();
-
-  const fetchServicos = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("servicos")
-      .select("*")
-      .order("nome", { ascending: true });
-
-    if (error) {
-      toast({
-        title: "Erro ao carregar serviços",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      setServicos(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchServicos();
-  }, []);
 
   const filteredServicos = useMemo(() => {
     let result = [...servicos];
@@ -143,23 +108,12 @@ const Servicos = () => {
   const handleDelete = async () => {
     if (!selectedServico) return;
 
-    const { error } = await supabase
-      .from("servicos")
-      .delete()
-      .eq("id", selectedServico.id);
-
-    if (error) {
-      toast({
-        title: "Erro ao excluir serviço",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
+    const success = await deleteServico(selectedServico.id);
+    if (success) {
       toast({
         title: "Serviço excluído",
         description: "O serviço foi removido com sucesso.",
       });
-      fetchServicos();
     }
     setIsDeleteOpen(false);
     setSelectedServico(null);
@@ -168,7 +122,7 @@ const Servicos = () => {
   const handleFormClose = (refresh?: boolean) => {
     setIsFormOpen(false);
     setSelectedServico(null);
-    if (refresh) fetchServicos();
+    if (refresh) loadServicos();
   };
 
   const getTipoBadge = (servico: Servico) => {
@@ -206,10 +160,26 @@ const Servicos = () => {
             </p>
           </div>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Serviço
-        </Button>
+        <div className="flex items-center gap-2">
+          {syncing && (
+            <Badge variant="outline" className="gap-1 text-muted-foreground">
+              <RefreshCw className="h-3 w-3 animate-spin" />
+              Sincronizando
+            </Badge>
+          )}
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => loadServicos()}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Serviço
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}

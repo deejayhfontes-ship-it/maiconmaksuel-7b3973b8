@@ -15,7 +15,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useServicos, Servico } from "@/hooks/useServicos";
 import { Loader2, AlertCircle, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -63,24 +62,6 @@ const servicoSchema = z.object({
 });
 
 type ServicoFormData = z.infer<typeof servicoSchema>;
-
-interface Servico {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  categoria: string | null;
-  duracao_minutos: number;
-  preco: number;
-  comissao_padrao: number;
-  ativo: boolean;
-  tipo_servico: string;
-  apenas_agenda: boolean;
-  gera_receita: boolean;
-  gera_comissao: boolean;
-  aparece_pdv: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 interface ServicoFormDialogProps {
   open: boolean;
@@ -173,6 +154,8 @@ export default function ServicoFormDialog({
     }
   }, [tipoServico, form]);
 
+  const { createServico, updateServico } = useServicos();
+
   const onSubmit = async (data: ServicoFormData) => {
     setLoading(true);
 
@@ -193,31 +176,24 @@ export default function ServicoFormDialog({
       };
 
       if (isEditing && servico) {
-        const { error } = await supabase
-          .from("servicos")
-          .update(payload)
-          .eq("id", servico.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Serviço atualizado!",
-          description: "Os dados foram salvos com sucesso.",
-        });
+        const result = await updateServico(servico.id, payload);
+        if (result) {
+          toast({
+            title: "Serviço atualizado!",
+            description: "Os dados foram salvos com sucesso.",
+          });
+          onClose(true);
+        }
       } else {
-        const { error } = await supabase
-          .from("servicos")
-          .insert([payload]);
-
-        if (error) throw error;
-
-        toast({
-          title: "Serviço cadastrado!",
-          description: "Novo serviço adicionado com sucesso.",
-        });
+        const result = await createServico(payload);
+        if (result) {
+          toast({
+            title: "Serviço cadastrado!",
+            description: "Novo serviço adicionado com sucesso.",
+          });
+          onClose(true);
+        }
       }
-
-      onClose(true);
     } catch (error: any) {
       toast({
         title: "Erro ao salvar",
