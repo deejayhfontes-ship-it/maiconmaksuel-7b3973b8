@@ -863,6 +863,48 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_aparencia: {
+        Row: {
+          animacoes_reduzidas: boolean | null
+          cor_accent_custom: string | null
+          cor_destaque: string
+          cor_primaria: string
+          cor_secundaria: string
+          created_at: string
+          id: string
+          modo_alto_contraste: boolean | null
+          tema: string
+          tipografia_grande: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          animacoes_reduzidas?: boolean | null
+          cor_accent_custom?: string | null
+          cor_destaque?: string
+          cor_primaria?: string
+          cor_secundaria?: string
+          created_at?: string
+          id?: string
+          modo_alto_contraste?: boolean | null
+          tema?: string
+          tipografia_grande?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          animacoes_reduzidas?: boolean | null
+          cor_accent_custom?: string | null
+          cor_destaque?: string
+          cor_primaria?: string
+          cor_secundaria?: string
+          created_at?: string
+          id?: string
+          modo_alto_contraste?: boolean | null
+          tema?: string
+          tipografia_grande?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       configuracoes_fiscal: {
         Row: {
           aliquota_icms: number | null
@@ -1127,6 +1169,177 @@ export type Database = {
           tipografia_grande?: boolean | null
           ultimo_acesso_rotas?: Json | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      configuracoes_notificacoes: {
+        Row: {
+          alerta_admin_ativo: boolean | null
+          alerta_caixa_baixo_valor: number | null
+          alerta_estoque_ativo: boolean | null
+          alerta_estoque_minimo: number | null
+          alerta_financeiro_ativo: boolean | null
+          aniversario_ativo: boolean | null
+          aniversario_dias_antes: number | null
+          aniversario_template: string | null
+          canal_email: boolean | null
+          canal_in_app: boolean | null
+          canal_sms: boolean | null
+          canal_whatsapp: boolean | null
+          cancelamento_ativo: boolean | null
+          cancelamento_template: string | null
+          confirmacao_ativa: boolean | null
+          confirmacao_horas_antes: number | null
+          confirmacao_template: string | null
+          created_at: string
+          horario_silencio_ativo: boolean | null
+          horario_silencio_fim: string | null
+          horario_silencio_inicio: string | null
+          id: string
+          lembrete_24h: boolean | null
+          lembrete_2h: boolean | null
+          lembrete_template: string | null
+          sistema_ativo: boolean | null
+          sistema_sons: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          alerta_admin_ativo?: boolean | null
+          alerta_caixa_baixo_valor?: number | null
+          alerta_estoque_ativo?: boolean | null
+          alerta_estoque_minimo?: number | null
+          alerta_financeiro_ativo?: boolean | null
+          aniversario_ativo?: boolean | null
+          aniversario_dias_antes?: number | null
+          aniversario_template?: string | null
+          canal_email?: boolean | null
+          canal_in_app?: boolean | null
+          canal_sms?: boolean | null
+          canal_whatsapp?: boolean | null
+          cancelamento_ativo?: boolean | null
+          cancelamento_template?: string | null
+          confirmacao_ativa?: boolean | null
+          confirmacao_horas_antes?: number | null
+          confirmacao_template?: string | null
+          created_at?: string
+          horario_silencio_ativo?: boolean | null
+          horario_silencio_fim?: string | null
+          horario_silencio_inicio?: string | null
+          id?: string
+          lembrete_24h?: boolean | null
+          lembrete_2h?: boolean | null
+          lembrete_template?: string | null
+          sistema_ativo?: boolean | null
+          sistema_sons?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          alerta_admin_ativo?: boolean | null
+          alerta_caixa_baixo_valor?: number | null
+          alerta_estoque_ativo?: boolean | null
+          alerta_estoque_minimo?: number | null
+          alerta_financeiro_ativo?: boolean | null
+          aniversario_ativo?: boolean | null
+          aniversario_dias_antes?: number | null
+          aniversario_template?: string | null
+          canal_email?: boolean | null
+          canal_in_app?: boolean | null
+          canal_sms?: boolean | null
+          canal_whatsapp?: boolean | null
+          cancelamento_ativo?: boolean | null
+          cancelamento_template?: string | null
+          confirmacao_ativa?: boolean | null
+          confirmacao_horas_antes?: number | null
+          confirmacao_template?: string | null
+          created_at?: string
+          horario_silencio_ativo?: boolean | null
+          horario_silencio_fim?: string | null
+          horario_silencio_inicio?: string | null
+          id?: string
+          lembrete_24h?: boolean | null
+          lembrete_2h?: boolean | null
+          lembrete_template?: string | null
+          sistema_ativo?: boolean | null
+          sistema_sons?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      configuracoes_salao: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          email: string | null
+          endereco_bairro: string | null
+          endereco_cep: string | null
+          endereco_cidade: string | null
+          endereco_complemento: string | null
+          endereco_estado: string | null
+          endereco_logradouro: string | null
+          endereco_numero: string | null
+          facebook: string | null
+          id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          instagram: string | null
+          logo_updated_at: string | null
+          logo_url: string | null
+          nome_fantasia: string | null
+          nome_salao: string
+          site: string | null
+          telefone_principal: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_estado?: string | null
+          endereco_logradouro?: string | null
+          endereco_numero?: string | null
+          facebook?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          instagram?: string | null
+          logo_updated_at?: string | null
+          logo_url?: string | null
+          nome_fantasia?: string | null
+          nome_salao?: string
+          site?: string | null
+          telefone_principal?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_estado?: string | null
+          endereco_logradouro?: string | null
+          endereco_numero?: string | null
+          facebook?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          instagram?: string | null
+          logo_updated_at?: string | null
+          logo_url?: string | null
+          nome_fantasia?: string | null
+          nome_salao?: string
+          site?: string | null
+          telefone_principal?: string | null
+          updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -2794,6 +3007,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notificacoes_fila: {
+        Row: {
+          agendada_para: string | null
+          canal: string
+          created_at: string
+          dados_extras: Json | null
+          destinatario_id: string | null
+          destinatario_tipo: string | null
+          enviada_em: string | null
+          erro_mensagem: string | null
+          id: string
+          mensagem: string
+          status: string
+          tentativas: number | null
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          agendada_para?: string | null
+          canal?: string
+          created_at?: string
+          dados_extras?: Json | null
+          destinatario_id?: string | null
+          destinatario_tipo?: string | null
+          enviada_em?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          mensagem: string
+          status?: string
+          tentativas?: number | null
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          agendada_para?: string | null
+          canal?: string
+          created_at?: string
+          dados_extras?: Json | null
+          destinatario_id?: string | null
+          destinatario_tipo?: string | null
+          enviada_em?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          mensagem?: string
+          status?: string
+          tentativas?: number | null
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: []
       }
       ocorrencias_funcionarios: {
         Row: {

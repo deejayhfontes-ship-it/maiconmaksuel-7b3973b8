@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PinAuthProvider } from "@/contexts/PinAuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
+import { SalonSettingsProvider } from "@/contexts/SalonSettingsContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { UpdateNotification } from "@/components/UpdateNotification";
@@ -66,7 +67,8 @@ const App = () => (
     <ThemeProvider defaultTheme="light" storageKey="beautypro-theme">
       <OfflineProvider>
         <PinAuthProvider>
-          <TooltipProvider>
+          <SalonSettingsProvider>
+            <TooltipProvider>
             <UpdateNotification />
             <Toaster />
             <Sonner position="top-right" expand closeButton richColors />
@@ -145,7 +147,8 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
-          </TooltipProvider>
+            </TooltipProvider>
+          </SalonSettingsProvider>
         </PinAuthProvider>
       </OfflineProvider>
     </ThemeProvider>
