@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { Users, Plus, Search, Edit, Trash2, Eye, MessageCircle, X, UserPlus } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { Users, Plus, Search, Edit, Trash2, Eye, MessageCircle, X, UserPlus, Cloud, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -36,35 +36,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useClientes, Cliente } from "@/hooks/useClientes";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import ClienteViewDialog from "@/components/clientes/ClienteViewDialog";
-
-interface Cliente {
-  id: string;
-  nome: string;
-  telefone: string | null;
-  celular: string;
-  email: string | null;
-  cpf: string | null;
-  data_nascimento: string | null;
-  endereco: string | null;
-  numero: string | null;
-  complemento: string | null;
-  bairro: string | null;
-  cidade: string | null;
-  estado: string | null;
-  cep: string | null;
-  observacoes: string | null;
-  foto_url: string | null;
-  ativo: boolean;
-  ultima_visita: string | null;
-  total_visitas: number;
-  created_at: string;
-  updated_at: string;
-}
 
 const ITEMS_PER_PAGE = 10;
 
@@ -97,7 +73,6 @@ const formatPhone = (phone: string) => {
 
 const cleanPhoneForWhatsApp = (phone: string) => {
   const cleaned = phone.replace(/\D/g, "");
-  // Adiciona 55 (Brasil) se não tiver
   return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
 };
 
@@ -114,12 +89,10 @@ const getFrequencyBadge = (totalVisitas: number) => {
   return { label: "Prospect", color: "bg-muted text-muted-foreground" };
 };
 
-// Função para remover acentos
 const removeAccents = (str: string): string => {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
-// Função para destacar match na busca
 const highlightMatch = (text: string, query: string): React.ReactNode => {
   if (!query || query.length < 1) return text;
   const normalizedText = removeAccents(text.toLowerCase());
@@ -130,7 +103,7 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
   return (
     <>
       {text.slice(0, index)}
-      <span className="bg-yellow-200 dark:bg-yellow-900/50 text-foreground font-semibold rounded px-0.5">
+      <span className="bg-warning/30 text-foreground font-semibold rounded px-0.5">
         {text.slice(index, index + query.length)}
       </span>
       {text.slice(index + query.length)}
@@ -139,10 +112,8 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
 };
 
 const Clientes = () => {
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("todos");
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'inativos'>("todos");
   const [sortOrder, setSortOrder] = useState("nome-asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -151,71 +122,24 @@ const Clientes = () => {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const { toast } = useToast();
 
-  const fetchClientes = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("clientes")
-      .select("*")
-      .order("nome", { ascending: true });
-
-    if (error) {
-      toast({
-        title: "Erro ao carregar clientes",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      setClientes(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchClientes();
-  }, []);
+  // Use the offline-first hook
+  const { 
+    clientes, 
+    loading, 
+    isOnline, 
+    refetch, 
+    remove 
+  } = useClientes({
+    filter: statusFilter,
+    searchTerm,
+    orderBy: sortOrder === 'recentes' ? 'created_at' : 'nome',
+    orderDirection: sortOrder === 'nome-desc' ? 'desc' : sortOrder === 'recentes' ? 'desc' : 'asc',
+  });
 
   const filteredClientes = useMemo(() => {
     let result = [...clientes];
 
-    // Filtro de busca aprimorado
-    if (searchTerm) {
-      const term = removeAccents(searchTerm.toLowerCase());
-      const termNumbers = searchTerm.replace(/\D/g, ""); // Para busca em telefone/CPF
-      
-      result = result.filter((c) => {
-        // Busca em nome (ignora acentos)
-        const nomeMatch = removeAccents(c.nome.toLowerCase()).includes(term);
-        
-        // Busca em email
-        const emailMatch = c.email?.toLowerCase().includes(term);
-        
-        // Busca em telefone (remove formatação)
-        const celularClean = c.celular.replace(/\D/g, "");
-        const telefoneClean = c.telefone?.replace(/\D/g, "") || "";
-        const telefoneMatch = termNumbers && (
-          celularClean.includes(termNumbers) || 
-          telefoneClean.includes(termNumbers)
-        );
-        
-        // Busca em CPF (remove formatação)
-        const cpfClean = c.cpf?.replace(/\D/g, "") || "";
-        const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
-        
-        // Busca em observações
-        const obsMatch = c.observacoes && removeAccents(c.observacoes.toLowerCase()).includes(term);
-        
-        return nomeMatch || emailMatch || telefoneMatch || cpfMatch || obsMatch;
-      });
-    }
-
-    // Filtro de status
-    if (statusFilter === "ativos") {
-      result = result.filter((c) => c.ativo);
-    } else if (statusFilter === "inativos") {
-      result = result.filter((c) => !c.ativo);
-    }
-
-    // Ordenação
+    // Additional client-side sorting for compatibility
     result.sort((a, b) => {
       switch (sortOrder) {
         case "nome-asc":
@@ -230,7 +154,7 @@ const Clientes = () => {
     });
 
     return result;
-  }, [clientes, searchTerm, statusFilter, sortOrder]);
+  }, [clientes, sortOrder]);
 
   const paginatedClientes = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -257,23 +181,18 @@ const Clientes = () => {
   const handleDelete = async () => {
     if (!selectedCliente) return;
 
-    const { error } = await supabase
-      .from("clientes")
-      .delete()
-      .eq("id", selectedCliente.id);
-
-    if (error) {
+    try {
+      await remove(selectedCliente.id);
+      toast({
+        title: "Cliente excluído",
+        description: "O cliente foi removido com sucesso.",
+      });
+    } catch (error: any) {
       toast({
         title: "Erro ao excluir cliente",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Cliente excluído",
-        description: "O cliente foi removido com sucesso.",
-      });
-      fetchClientes();
     }
     setIsDeleteOpen(false);
     setSelectedCliente(null);
@@ -282,7 +201,7 @@ const Clientes = () => {
   const handleFormClose = (refresh?: boolean) => {
     setIsFormOpen(false);
     setSelectedCliente(null);
-    if (refresh) fetchClientes();
+    if (refresh) refetch();
   };
 
   return (
@@ -340,7 +259,7 @@ const Clientes = () => {
             <Select
               value={statusFilter}
               onValueChange={(v) => {
-                setStatusFilter(v);
+                setStatusFilter(v as 'todos' | 'ativos' | 'inativos');
                 setCurrentPage(1);
               }}
             >
