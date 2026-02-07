@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { 
   Download, 
   FolderOpen, 
@@ -18,12 +19,16 @@ import {
   UserCheck, 
   Scissors,
   Settings,
-  Image
+  Image,
+  AlertCircle,
+  CheckCircle2,
+  Clock
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 type BackupItem = {
   id: string;
@@ -36,13 +41,14 @@ type BackupItem = {
 };
 
 export default function BackupManual() {
+  const { settings, updateBackupInfo } = useSystemSettings();
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("");
-  const [formato, setFormato] = useState("zip");
+  const [formato, setFormato] = useState(settings.backup_formato_padrao || "zip");
   const [nomeArquivo, setNomeArquivo] = useState(`backup-salao-${format(new Date(), "dd-MM-yyyy")}`);
   const [opcoes, setOpcoes] = useState({
-    criptografar: false,
+    criptografar: settings.backup_criptografado || false,
     incluirDataHora: true,
     abrirPasta: true,
   });
@@ -59,7 +65,7 @@ export default function BackupManual() {
   ]);
 
   // Fetch counts on mount
-  useState(() => {
+  useEffect(() => {
     const fetchCounts = async () => {
       const tables = ["clientes", "agendamentos", "atendimentos", "produtos", "profissionais", "servicos"] as const;
       
@@ -73,7 +79,7 @@ export default function BackupManual() {
       }
     };
     fetchCounts();
-  });
+  }, []);
 
   const toggleItem = (id: string) => {
     setBackupItems(prev => prev.map(item =>
@@ -141,12 +147,16 @@ export default function BackupManual() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      // Update backup info in settings
+      updateBackupInfo(blob.size, true);
+
       toast.success("Backup criado com sucesso!", {
         description: `${nomeArquivo}.json (${getTotalEstimado()})`,
       });
 
     } catch (error) {
       console.error("Erro no backup:", error);
+      updateBackupInfo(0, false);
       toast.error("Erro ao criar backup");
     } finally {
       setLoading(false);
@@ -171,26 +181,47 @@ export default function BackupManual() {
           {/* Último Backup */}
           <div className="p-4 bg-muted/50 rounded-lg border">
             <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-success mt-0.5" />
+              {settings.backup_ultimo_integridade ? (
+                <CheckCircle2 className="h-5 w-5 text-success mt-0.5" />
+              ) : settings.backup_ultimo_data ? (
+                <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+              ) : (
+                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+              )}
               <div className="flex-1">
-                <p className="font-medium">Último backup realizado em:</p>
-                <p className="text-sm text-muted-foreground">
-                  {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                <p className="font-medium">
+                  {settings.backup_ultimo_data ? "Último backup realizado em:" : "Nenhum backup realizado"}
                 </p>
-                <div className="mt-2 text-sm text-muted-foreground">
-                  <p>Tamanho: {getTotalEstimado()}</p>
-                  <p>Status: ✓ Verificado e íntegro</p>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <FolderOpen className="h-4 w-4 mr-2" />
-                    Abrir Pasta
-                  </Button>
-                </div>
+                {settings.backup_ultimo_data && (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(settings.backup_ultimo_data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      <p>Tamanho: {settings.backup_ultimo_tamanho_bytes 
+                        ? `${(settings.backup_ultimo_tamanho_bytes / 1024 / 1024).toFixed(2)} MB`
+                        : getTotalEstimado()}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span>Status:</span>
+                        {settings.backup_ultimo_integridade ? (
+                          <Badge variant="success">Verificado e íntegro</Badge>
+                        ) : (
+                          <Badge variant="destructive">Erro na última verificação</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Baixar
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <FolderOpen className="h-4 w-4 mr-2" />
+                        Abrir Pasta
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
