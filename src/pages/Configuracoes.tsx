@@ -109,11 +109,7 @@ const menuSections: MenuSection[] = [
     title: "Usuários e Acesso",
     icon: Users,
     items: [
-      { id: "controle-acesso", label: "Controle de Acesso", icon: Shield },
-      { id: "permissoes", label: "Permissões", icon: Key },
-      { id: "minha-senha", label: "Minha Senha", icon: Key },
-      { id: "usuarios-cadastrados", label: "Usuários Cadastrados", icon: Users, route: "/usuarios" },
-      { id: "logs-acesso", label: "Logs de Acesso", icon: History },
+      { id: "controle-acesso", label: "Usuários e Acesso", icon: Shield },
     ],
   },
   {

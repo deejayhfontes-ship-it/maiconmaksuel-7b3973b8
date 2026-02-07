@@ -2644,6 +2644,53 @@ export type Database = {
           },
         ]
       }
+      logs_acesso: {
+        Row: {
+          created_at: string
+          dispositivo: string | null
+          id: string
+          ip_address: string | null
+          motivo_falha: string | null
+          nome_usuario: string
+          pino_id: string | null
+          role: string
+          sucesso: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          dispositivo?: string | null
+          id?: string
+          ip_address?: string | null
+          motivo_falha?: string | null
+          nome_usuario: string
+          pino_id?: string | null
+          role: string
+          sucesso?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          dispositivo?: string | null
+          id?: string
+          ip_address?: string | null
+          motivo_falha?: string | null
+          nome_usuario?: string
+          pino_id?: string | null
+          role?: string
+          sucesso?: boolean
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logs_acesso_pino_id_fkey"
+            columns: ["pino_id"]
+            isOneToOne: false
+            referencedRelation: "pinos_acesso"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mensagens_enviadas: {
         Row: {
           agendamento_id: string | null
@@ -3137,6 +3184,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      permissoes_modulos: {
+        Row: {
+          created_at: string
+          id: string
+          modulo: string
+          pode_editar: boolean
+          pode_excluir: boolean
+          pode_visualizar: boolean
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          modulo: string
+          pode_editar?: boolean
+          pode_excluir?: boolean
+          pode_visualizar?: boolean
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          modulo?: string
+          pode_editar?: boolean
+          pode_excluir?: boolean
+          pode_visualizar?: boolean
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       pinos_acesso: {
         Row: {
