@@ -3,7 +3,7 @@
  * Manages local persistence and Supabase sync for kiosk-specific settings
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -132,6 +132,10 @@ export function useKioskSettings() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'pending' | 'error'>('synced');
   const [kioskUptime, setKioskUptime] = useState<number>(0);
+  
+  // Debounce route access updates to batch multiple accesses into single PATCH
+  const pendingRouteAccessRef = useRef<Set<keyof KioskRoutesEnabled>>(new Set());
+  const routeAccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Track uptime
   useEffect(() => {
@@ -253,17 +257,45 @@ export function useKioskSettings() {
     },
   });
 
-  // Update route access timestamp
+  // Update route access timestamp - DEBOUNCED to batch multiple accesses
   const updateRouteAccess = useCallback((routeKey: keyof KioskRoutesEnabled) => {
     if (!settings) return;
     
-    const newAccess = {
-      ...settings.ultimo_acesso_rotas,
-      [routeKey]: new Date().toISOString(),
-    };
+    // Add to pending set
+    pendingRouteAccessRef.current.add(routeKey);
     
-    updateMutation.mutate({ ultimo_acesso_rotas: newAccess });
+    // Clear existing timeout
+    if (routeAccessTimeoutRef.current) {
+      clearTimeout(routeAccessTimeoutRef.current);
+    }
+    
+    // Debounce for 2 seconds to batch multiple route accesses
+    routeAccessTimeoutRef.current = setTimeout(() => {
+      const routesToUpdate = Array.from(pendingRouteAccessRef.current);
+      if (routesToUpdate.length === 0) return;
+      
+      // Create timestamp object for all pending routes
+      const now = new Date().toISOString();
+      const newAccess = { ...settings.ultimo_acesso_rotas };
+      routesToUpdate.forEach(key => {
+        newAccess[key] = now;
+      });
+      
+      // Clear pending set and send batched update
+      pendingRouteAccessRef.current.clear();
+      routeAccessTimeoutRef.current = null;
+      updateMutation.mutate({ ultimo_acesso_rotas: newAccess });
+    }, 2000);
   }, [settings, updateMutation]);
+  
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (routeAccessTimeoutRef.current) {
+        clearTimeout(routeAccessTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Check if a kiosk route is enabled
   const isRouteEnabled = useCallback((routeKey: keyof KioskRoutesEnabled): boolean => {
