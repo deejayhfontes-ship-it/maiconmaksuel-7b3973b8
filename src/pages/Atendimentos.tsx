@@ -54,6 +54,7 @@ import { ptBR } from "date-fns/locale";
 import { PagamentoModal } from "@/components/atendimentos/PagamentoModal";
 import { FecharComandaModal } from "@/components/atendimentos/FecharComandaModal";
 import { ClienteSelector } from "@/components/atendimentos/ClienteSelector";
+import { ProductSearchInput } from "@/components/atendimentos/ProductSearchInput";
 import { cn } from "@/lib/utils";
 import { useAtendimentos, AtendimentoServico, AtendimentoProduto } from "@/hooks/useAtendimentos";
 
@@ -709,19 +710,18 @@ const Atendimentos = () => {
                 <TabsContent value="produtos" className="space-y-3 mt-3">
                   <div className="grid grid-cols-4 gap-2 items-end">
                     <div className="col-span-2">
-                      <Label className="text-xs">Produto</Label>
-                      <Select value={produtoId} onValueChange={handleProdutoSelect}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {produtos.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.nome} - {formatPrice(Number(p.preco_venda))} (Est: {p.estoque_atual})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-xs">Produto (digite para buscar)</Label>
+                      <ProductSearchInput
+                        produtos={produtos}
+                        selectedProdutoId={produtoId}
+                        onProductSelect={handleProdutoSelect}
+                        onClear={() => {
+                          setProdutoId("");
+                          setProdutoQtd(1);
+                          setProdutoPreco(0);
+                        }}
+                        placeholder="Nome, código de barras..."
+                      />
                     </div>
                     <div>
                       <Label className="text-xs">Qtd</Label>
