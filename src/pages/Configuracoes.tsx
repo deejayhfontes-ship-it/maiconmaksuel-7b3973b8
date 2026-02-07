@@ -72,6 +72,7 @@ import AgendaSettings from "@/components/configuracoes/AgendaSettings";
 import ServicosProdutosSettings from "@/components/configuracoes/ServicosProdutosSettings";
 import DispositivosSettings from "@/components/configuracoes/DispositivosSettings";
 import SistemaInfo from "@/components/configuracoes/SistemaInfo";
+import KioskModeSettings from "@/components/configuracoes/kiosk/KioskModeSettings";
 
 type SubItem = {
   id: string;
@@ -233,6 +234,14 @@ const menuSections: MenuSection[] = [
       { id: "tema-cores", label: "Tema/Cores", icon: Palette },
       { id: "logo-sistema", label: "Logo do Sistema", icon: Image },
       { id: "tela-login", label: "Tela de Login", icon: Globe },
+    ],
+  },
+  {
+    id: "kiosk",
+    title: "Modo Kiosk",
+    icon: Tablet,
+    items: [
+      { id: "kiosk-config", label: "Configuração Kiosk", icon: Tablet },
     ],
   },
   {
@@ -409,6 +418,8 @@ export default function Configuracoes() {
         return <CaixaSettings />;
       case "tablet-ponto":
         return <DispositivosSettings />;
+      case "kiosk-config":
+        return <KioskModeSettings />;
       default:
         return (
           <div className="flex items-center justify-center h-64">

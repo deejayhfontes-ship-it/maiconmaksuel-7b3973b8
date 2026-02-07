@@ -89,6 +89,12 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
   ],
   kiosk: [
     // Limited kiosk routes
+    '/kiosk',
+    '/kiosk/caixa',
+    '/kiosk/caixa/comandas',
+    '/kiosk/agenda',
+    '/kiosk/ponto',
+    '/kiosk/espelho-cliente',
     '/caixa',
     '/caixa/pdv',
     '/caixa/comandas',

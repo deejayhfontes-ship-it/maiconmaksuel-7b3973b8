@@ -55,6 +55,8 @@ import CaixaGaveta from "./pages/CaixaGaveta";
 import CaixaFechar from "./pages/CaixaFechar";
 import CaixaPDV from "./pages/CaixaPDV";
 import MapaSistema from "./pages/MapaSistema";
+import KioskHome from "./pages/KioskHome";
+import KioskLayout from "./components/layout/KioskLayout";
 
 const queryClient = new QueryClient();
 
@@ -126,6 +128,16 @@ const App = () => (
                 <Route path="/metas-salao" element={<MetasSalao />} />
                 <Route path="/fechamento-semanal" element={<FechamentoSemanal />} />
                 <Route path="/relatorio-completo" element={<RelatorioCompleto />} />
+              </Route>
+              
+              {/* Kiosk routes */}
+              <Route element={<KioskLayout />}>
+                <Route path="/kiosk" element={<KioskHome />} />
+                <Route path="/kiosk/caixa" element={<Caixa />} />
+                <Route path="/kiosk/caixa/comandas" element={<CaixaComandas />} />
+                <Route path="/kiosk/agenda" element={<Agenda />} />
+                <Route path="/kiosk/ponto" element={<PontoEletronico />} />
+                <Route path="/kiosk/espelho-cliente" element={<TabletCliente />} />
               </Route>
               
                 <Route path="*" element={<NotFound />} />
