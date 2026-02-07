@@ -27,6 +27,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/atendimentos',
     '/clientes',
     '/profissionais',
+    '/profissional', // Dynamic: /profissional/:id
     '/servicos',
     '/produtos',
     '/caixa',
@@ -39,8 +40,14 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/caixa/dividas',
     '/caixa/gorjetas',
     '/financeiro',
+    '/financeiro/fechamento-semanal',
+    '/financeiro/dividas',
+    '/financeiro/cheques',
+    '/financeiro/vales',
     '/notas-fiscais',
+    '/nota-fiscal', // Dynamic: /nota-fiscal/:id
     '/relatorios',
+    '/relatorios/completo',
     '/relatorio-completo',
     '/fechamento-semanal',
     '/metas-salao',
@@ -62,12 +69,13 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/mapa-sistema',
   ],
   notebook: [
-    // Agenda + basic management (no financeiro)
+    // Agenda + basic management (no financeiro, except vales)
     '/dashboard',
     '/agenda',
     '/atendimentos',
     '/clientes',
     '/profissionais',
+    '/profissional', // Dynamic: /profissional/:id
     '/servicos',
     '/produtos',
     '/caixa',
@@ -75,6 +83,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/caixa/comandas',
     '/caixa/extrato',
     '/caixa/gaveta',
+    '/financeiro/vales',
     '/vales',
     '/perfil',
   ],
