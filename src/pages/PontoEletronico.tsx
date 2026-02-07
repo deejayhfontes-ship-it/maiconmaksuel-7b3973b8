@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Clock, Check, ArrowRight } from 'lucide-react';
+import { Clock, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 interface Pessoa {
   id: string;
@@ -20,6 +22,7 @@ interface PontoRegistro {
 }
 
 const PontoEletronico = () => {
+  const navigate = useNavigate();
   const [horaAtual, setHoraAtual] = useState(new Date());
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [pessoaSelecionada, setPessoaSelecionada] = useState<string>('');
@@ -189,11 +192,22 @@ const PontoEletronico = () => {
       }}
     >
       <div 
-        className="bg-background rounded-3xl p-8 sm:p-10 max-w-lg w-full text-center"
+        className="bg-background rounded-3xl p-8 sm:p-10 max-w-lg w-full text-center relative"
         style={{ boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)' }}
       >
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(-1)}
+          className="absolute top-4 left-4 gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Voltar
+        </Button>
+
         {/* Header */}
-        <div className="flex items-center justify-center gap-3 mb-2">
+        <div className="flex items-center justify-center gap-3 mb-2 mt-6">
           <Clock className="w-8 h-8 text-primary" />
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Ponto Eletrônico
