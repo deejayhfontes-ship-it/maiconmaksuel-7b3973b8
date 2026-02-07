@@ -1,14 +1,14 @@
-import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Navigate, useLocation } from 'react-router-dom';
+import { usePinAuth } from '@/contexts/PinAuthContext';
+import { Loader2, ShieldAlert } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: ("admin" | "gerente" | "operador")[];
 }
 
-export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated, loading, canAccessRoute, session, getDefaultRoute } = usePinAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,14 +19,30 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     // Save the attempted URL
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRoles && role && !requiredRoles.includes(role)) {
-    // User doesn't have required role
-    return <Navigate to="/dashboard" replace />;
+  // Check if user has permission for this route
+  if (!canAccessRoute(location.pathname)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ShieldAlert className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Negado</h1>
+          <p className="text-muted-foreground mb-6">
+            Seu perfil <span className="font-semibold text-foreground">({session?.role})</span> não tem 
+            permissão para acessar esta página.
+          </p>
+          <Button onClick={() => window.location.href = getDefaultRoute()}>
+            Voltar para {session?.role === 'admin' ? 'Dashboard' : session?.role === 'notebook' ? 'Agenda' : 'Caixa'}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

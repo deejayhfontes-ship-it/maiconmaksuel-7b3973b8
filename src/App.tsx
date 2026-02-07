@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { PinAuthProvider } from "@/contexts/PinAuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -62,7 +62,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="beautypro-theme">
       <OfflineProvider>
-        <AuthProvider>
+        <PinAuthProvider>
           <TooltipProvider>
             <UpdateNotification />
             <Toaster />
@@ -77,7 +77,7 @@ const App = () => (
               <Route path="/ponto" element={<PontoEletronico />} />
               <Route path="/tablet/cliente" element={<TabletCliente />} />
               {/* Protected routes */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route element={
                 <ProtectedRoute>
                   <MainLayout />
@@ -122,13 +122,17 @@ const App = () => (
                 <Route path="/configuracoes/taxa-falta" element={<ConfiguracoesTaxaFalta />} />
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/mapa-sistema" element={<MapaSistema />} />
+                <Route path="/vales" element={<Vales />} />
+                <Route path="/metas-salao" element={<MetasSalao />} />
+                <Route path="/fechamento-semanal" element={<FechamentoSemanal />} />
+                <Route path="/relatorio-completo" element={<RelatorioCompleto />} />
               </Route>
               
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
-        </AuthProvider>
+        </PinAuthProvider>
       </OfflineProvider>
     </ThemeProvider>
   </QueryClientProvider>

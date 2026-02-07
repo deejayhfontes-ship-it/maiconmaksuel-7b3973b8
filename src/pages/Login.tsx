@@ -1,32 +1,35 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import logoMaicon from "@/assets/logo.svg";
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { usePinAuth } from '@/contexts/PinAuthContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { Loader2, Delete, Lock, Shield, Monitor, Tablet } from 'lucide-react';
+import logoMaicon from '@/assets/logo.svg';
+import { cn } from '@/lib/utils';
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [pin, setPin] = useState<string[]>(['', '', '', '']);
   const [loading, setLoading] = useState(false);
-  const { signIn, user, loading: authLoading } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const { login, isAuthenticated, loading: authLoading, getDefaultRoute, session } = usePinAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const from = location.state?.from?.pathname || "/dashboard";
-
-  // Redirect if already logged in - use useEffect to avoid render issues
+  // Redirect if already logged in
   useEffect(() => {
-    if (!authLoading && user) {
-      navigate(from, { replace: true });
+    if (!authLoading && isAuthenticated) {
+      navigate(getDefaultRoute(), { replace: true });
     }
-  }, [user, authLoading, navigate, from]);
+  }, [isAuthenticated, authLoading, navigate, getDefaultRoute]);
+
+  // Focus first input on mount
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      inputRefs.current[0]?.focus();
+    }
+  }, [authLoading, isAuthenticated]);
 
   // Show loading state while auth is being checked
   if (authLoading) {
@@ -38,7 +41,7 @@ export default function Login() {
   }
 
   // Don't render login form if user is already logged in
-  if (user) {
+  if (isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -46,106 +49,230 @@ export default function Login() {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDigitInput = (index: number, value: string) => {
+    // Only allow digits
+    if (value && !/^\d$/.test(value)) return;
+
+    const newPin = [...pin];
+    newPin[index] = value;
+    setPin(newPin);
+    setError(null);
+
+    // Auto-focus next input
+    if (value && index < 3) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all 4 digits entered
+    if (value && index === 3 && newPin.every(d => d !== '')) {
+      handleSubmit(newPin.join(''));
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !pin[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleNumpadClick = (digit: string) => {
+    const emptyIndex = pin.findIndex(d => d === '');
+    if (emptyIndex !== -1) {
+      handleDigitInput(emptyIndex, digit);
+    }
+  };
+
+  const handleDelete = () => {
+    const lastFilledIndex = pin.map((d, i) => d !== '' ? i : -1).filter(i => i !== -1).pop();
+    if (lastFilledIndex !== undefined) {
+      const newPin = [...pin];
+      newPin[lastFilledIndex] = '';
+      setPin(newPin);
+      inputRefs.current[lastFilledIndex]?.focus();
+    }
+  };
+
+  const handleClear = () => {
+    setPin(['', '', '', '']);
+    setError(null);
+    inputRefs.current[0]?.focus();
+  };
+
+  const handleSubmit = async (pinCode?: string) => {
+    const code = pinCode || pin.join('');
     
-    if (!email || !password) {
-      toast.error("Preencha todos os campos");
+    if (code.length !== 4) {
+      setError('Digite os 4 dígitos do PIN');
       return;
     }
 
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const result = await login(code);
     setLoading(false);
 
-    if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        toast.error("Email ou senha incorretos");
-      } else {
-        toast.error("Erro ao fazer login. Tente novamente.");
-      }
-      return;
+    if (result.success) {
+      toast.success('Acesso autorizado!');
+      navigate(getDefaultRoute(), { replace: true });
+    } else {
+      setError(result.error || 'PIN inválido');
+      setPin(['', '', '', '']);
+      inputRefs.current[0]?.focus();
     }
+  };
 
-    toast.success("Login realizado com sucesso!");
-    navigate(from, { replace: true });
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'admin': return <Shield className="w-4 h-4" />;
+      case 'notebook': return <Monitor className="w-4 h-4" />;
+      case 'kiosk': return <Tablet className="w-4 h-4" />;
+      default: return <Lock className="w-4 h-4" />;
+    }
+  };
+
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'admin': return 'default';
+      case 'notebook': return 'secondary';
+      case 'kiosk': return 'outline';
+      default: return 'outline';
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <div className="w-full max-w-sm space-y-6">
         {/* Logo */}
         <div className="flex justify-center">
           <img 
             src={logoMaicon} 
             alt="Maicon Concept" 
-            className="h-16 object-contain dark:brightness-0 dark:invert"
+            className="h-14 object-contain dark:brightness-0 dark:invert"
           />
         </div>
 
         {/* Card */}
-        <Card className="border-border/50">
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4 pt-6">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                />
+        <Card className="border-border/50 shadow-lg">
+          <CardContent className="pt-6 pb-4">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Lock className="w-6 h-6 text-primary" />
               </div>
+              <h1 className="text-xl font-semibold text-foreground">Acesso ao Sistema</h1>
+              <p className="text-sm text-muted-foreground mt-1">Digite seu PIN de 4 dígitos</p>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
+            {/* PIN Input Display */}
+            <div className="flex justify-center gap-3 mb-6">
+              {pin.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={el => inputRefs.current[index] = el}
                   type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={e => handleDigitInput(index, e.target.value)}
+                  onKeyDown={e => handleKeyDown(index, e)}
+                  className={cn(
+                    'w-14 h-14 text-center text-2xl font-bold rounded-xl border-2 transition-all',
+                    'bg-background focus:outline-none focus:ring-2 focus:ring-primary/50',
+                    digit ? 'border-primary bg-primary/5' : 'border-border',
+                    error ? 'border-destructive animate-shake' : ''
+                  )}
                 />
-              </div>
+              ))}
+            </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="remember"
-                    checked={remember}
-                    onCheckedChange={(checked) => setRemember(checked as boolean)}
-                  />
-                  <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
-                    Lembrar-me
-                  </Label>
-                </div>
-                <Link 
-                  to="/recuperar-senha" 
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Esqueceu a senha?
-                </Link>
-              </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Entrar
-              </Button>
-
-              <p className="text-sm text-center text-muted-foreground">
-                Não tem uma conta?{" "}
-                <Link to="/cadastro" className="text-foreground hover:underline font-medium">
-                  Criar conta
-                </Link>
+            {/* Error Message */}
+            {error && (
+              <p className="text-sm text-destructive text-center mb-4 animate-in fade-in">
+                {error}
               </p>
-            </CardFooter>
-          </form>
+            )}
+
+            {/* Numpad */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(digit => (
+                <Button
+                  key={digit}
+                  variant="outline"
+                  size="lg"
+                  className="h-14 text-xl font-semibold hover:bg-primary/10"
+                  onClick={() => handleNumpadClick(digit)}
+                  disabled={loading}
+                >
+                  {digit}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14 text-muted-foreground"
+                onClick={handleClear}
+                disabled={loading}
+              >
+                Limpar
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14 text-xl font-semibold hover:bg-primary/10"
+                onClick={() => handleNumpadClick('0')}
+                disabled={loading}
+              >
+                0
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14"
+                onClick={handleDelete}
+                disabled={loading}
+              >
+                <Delete className="w-5 h-5" />
+              </Button>
+            </div>
+
+            {/* Submit Button */}
+            <Button 
+              className="w-full h-12" 
+              onClick={() => handleSubmit()}
+              disabled={loading || pin.some(d => d === '')}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verificando...
+                </>
+              ) : (
+                <>
+                  <Lock className="mr-2 h-4 w-4" />
+                  Entrar
+                </>
+              )}
+            </Button>
+          </CardContent>
         </Card>
+
+        {/* Role Legend */}
+        <div className="flex justify-center gap-2 flex-wrap">
+          {(['admin', 'notebook', 'kiosk'] as const).map(role => (
+            <Badge 
+              key={role} 
+              variant={getRoleBadgeVariant(role)} 
+              className="gap-1 text-xs"
+            >
+              {getRoleIcon(role)}
+              {role === 'admin' ? 'Admin' : role === 'notebook' ? 'Notebook' : 'Kiosk'}
+            </Badge>
+          ))}
+        </div>
+
+        {/* Help text */}
+        <p className="text-xs text-center text-muted-foreground">
+          Entre em contato com o administrador para obter seu PIN de acesso
+        </p>
       </div>
     </div>
   );

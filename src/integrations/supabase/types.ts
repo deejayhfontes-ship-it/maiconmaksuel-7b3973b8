@@ -2171,6 +2171,42 @@ export type Database = {
           },
         ]
       }
+      pinos_acesso: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          pin: string
+          role: Database["public"]["Enums"]["pin_role"]
+          ultimo_acesso: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          pin: string
+          role?: Database["public"]["Enums"]["pin_role"]
+          ultimo_acesso?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          pin?: string
+          role?: Database["public"]["Enums"]["pin_role"]
+          ultimo_acesso?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ponto_funcionarios: {
         Row: {
           atestado_url: string | null
@@ -2700,6 +2736,7 @@ export type Database = {
     }
     Enums: {
       nivel_acesso: "admin" | "gerente" | "operador"
+      pin_role: "admin" | "notebook" | "kiosk"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2828,6 +2865,7 @@ export const Constants = {
   public: {
     Enums: {
       nivel_acesso: ["admin", "gerente", "operador"],
+      pin_role: ["admin", "notebook", "kiosk"],
     },
   },
 } as const

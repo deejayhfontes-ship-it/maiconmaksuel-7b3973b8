@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { isKioskMode, getDeviceInfo } from '@/lib/deviceType';
+import { usePinAuth } from '@/contexts/PinAuthContext';
 import { usePonto, Pessoa } from '@/hooks/usePonto';
 import { cn } from '@/lib/utils';
 
@@ -21,7 +21,8 @@ const PontoEletronico = () => {
   const [tipoRegistro, setTipoRegistro] = useState<'entrada' | 'saida' | null>(null);
   const [observacao, setObservacao] = useState('');
   const [registering, setRegistering] = useState(false);
-  const [showAccessDenied, setShowAccessDenied] = useState(false);
+
+  const { session } = usePinAuth();
 
   const {
     pessoas,
@@ -35,13 +36,8 @@ const PontoEletronico = () => {
     getRegistrosPessoa,
   } = usePonto();
 
-  // Check kiosk mode
-  useEffect(() => {
-    const deviceInfo = getDeviceInfo();
-    if (deviceInfo.type !== 'kiosk') {
-      setShowAccessDenied(true);
-    }
-  }, []);
+  // Check if user has kiosk role (ponto is kiosk-only)
+  const isKioskRole = session?.role === 'kiosk' || session?.role === 'admin';
 
   // Update clock every second
   useEffect(() => {
@@ -104,18 +100,18 @@ const PontoEletronico = () => {
       .toUpperCase();
   };
 
-  // Access denied screen for non-kiosk devices
-  if (showAccessDenied) {
+  // Access denied screen for non-kiosk roles (allow admin too for testing)
+  if (!isKioskRole) {
     return (
       <div className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-br from-destructive/20 to-background">
         <div className="bg-card rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
           <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Restrito</h1>
           <p className="text-muted-foreground mb-6">
-            O Ponto Eletrônico está disponível apenas no modo Kiosk (tablet/totem).
+            O Ponto Eletrônico está disponível apenas para perfil Kiosk.
           </p>
           <p className="text-sm text-muted-foreground mb-6">
-            Dispositivo detectado: <Badge variant="outline">{getDeviceInfo().type}</Badge>
+            Perfil atual: <Badge variant="outline">{session?.role || 'Não autenticado'}</Badge>
           </p>
           <Button onClick={() => navigate('/login')} className="w-full">
             <ArrowLeft className="w-4 h-4 mr-2" />

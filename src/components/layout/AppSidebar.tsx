@@ -24,11 +24,17 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useSidebarContext } from "./MainLayout";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePinAuth, ROUTE_PERMISSIONS } from "@/contexts/PinAuthContext";
 import logoMaicon from "@/assets/logo.svg";
 import { useEffect, useState } from "react";
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
+}
+
+const allMenuItems: MenuItem[] = [
   { title: "Início", icon: Home, path: "/dashboard" },
   { title: "Agenda", icon: Calendar, path: "/agenda" },
   { title: "Atendimentos", icon: ClipboardList, path: "/atendimentos" },
@@ -43,24 +49,24 @@ const menuItems = [
   { title: "Confirmações", icon: Smartphone, path: "/confirmacoes-whatsapp" },
   { title: "Gestão RH", icon: Briefcase, path: "/gestao-rh" },
   { title: "Ponto", icon: Clock, path: "/ponto" },
-  { title: "Configurações", icon: Settings, path: "/configuracoes" },
-];
-
-const adminItems = [
+  { title: "Vales", icon: DollarSign, path: "/vales" },
+  { title: "Metas", icon: Target, path: "/metas-salao" },
   { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
-  { title: "Metas do Salão", icon: Target, path: "/configuracoes/metas" },
+  { title: "Configurações", icon: Settings, path: "/configuracoes" },
 ];
 
 
 export function AppSidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebarContext();
-  const { role } = useAuth();
+  const { session, canAccessRoute } = usePinAuth();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
   
-  const allMenuItems = role === "admin" 
-    ? [...menuItems, ...adminItems] 
-    : menuItems;
+  // Filter menu items based on role permissions
+  const filteredMenuItems = allMenuItems.filter(item => {
+    if (!session) return false;
+    return canAccessRoute(item.path);
+  });
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -129,8 +135,8 @@ export function AppSidebar() {
 
         {/* Navigation - scrollable area */}
         <nav className="flex-1 space-y-1 p-3 mt-2 overflow-y-auto custom-scrollbar">
-          {allMenuItems.map((item, index) => {
-            const isActive = location.pathname === item.path;
+          {filteredMenuItems.map((item, index) => {
+            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
             return (
               <NavLink
                 key={item.path}
