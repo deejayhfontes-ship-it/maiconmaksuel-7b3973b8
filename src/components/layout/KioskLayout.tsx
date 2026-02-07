@@ -4,6 +4,7 @@
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useKioskSettings, KIOSK_ROUTES, type KioskRoutesEnabled } from "@/hooks/useKioskSettings";
+import { useKioskFullscreen } from "@/hooks/useKioskFullscreen";
 import { usePinAuth } from "@/contexts/PinAuthContext";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -12,7 +13,11 @@ import {
   Calendar, 
   Clock, 
   Monitor,
-  LogOut
+  LogOut,
+  Maximize2,
+  Minimize2,
+  AlertCircle,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -28,7 +33,9 @@ export default function KioskLayout() {
   const location = useLocation();
   const { logout } = usePinAuth();
   const { settings, isRouteEnabled, updateRouteAccess } = useKioskSettings();
+  const { isFullscreen, isSupported, isFailed, requestFullscreen, toggleFullscreen } = useKioskFullscreen();
   const [showNav, setShowNav] = useState(true);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
 
   // Validate route access
   useEffect(() => {
@@ -63,14 +70,26 @@ export default function KioskLayout() {
     }
   }, [settings.tema_kiosk]);
 
-  // Apply fullscreen if configured
+  // Handle fullscreen based on setting
+  // Browser security requires user gesture, so we show prompt instead of auto-requesting
   useEffect(() => {
-    if (settings.forcar_fullscreen && !document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.().catch(() => {
-        // Fullscreen not supported or blocked
-      });
+    if (settings.forcar_fullscreen && isSupported && !isFullscreen && !isFailed) {
+      // Show prompt to user instead of forcing fullscreen
+      setShowFullscreenPrompt(true);
     }
-  }, [settings.forcar_fullscreen]);
+  }, [settings.forcar_fullscreen, isSupported, isFullscreen, isFailed]);
+
+  // Handle fullscreen prompt action
+  const handleFullscreenRequest = async () => {
+    const success = await requestFullscreen();
+    if (success) {
+      setShowFullscreenPrompt(false);
+    }
+  };
+
+  const handleDismissFullscreenPrompt = () => {
+    setShowFullscreenPrompt(false);
+  };
 
   const handleLogout = () => {
     logout();
@@ -101,6 +120,54 @@ export default function KioskLayout() {
         backgroundPosition: 'center',
       }}
     >
+      {/* Fullscreen Status Prompt - shown when fullscreen is required but not yet activated */}
+      {showFullscreenPrompt && isSupported && !isFailed && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] pointer-events-auto">
+          <div className="bg-background border border-primary rounded-lg p-6 max-w-sm mx-4 shadow-2xl">
+            <div className="flex items-start gap-3 mb-4">
+              <Maximize2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground">Modo Fullscreen</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Para melhor experiência no kiosk, ative o modo fullscreen.
+                </p>
+              </div>
+              <button
+                onClick={handleDismissFullscreenPrompt}
+                className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <Button
+              onClick={handleFullscreenRequest}
+              className="w-full gap-2"
+            >
+              <Maximize2 className="h-4 w-4" />
+              Ativar Fullscreen
+            </Button>
+            <p className="text-xs text-muted-foreground mt-3 text-center">
+              Pressione ESC para sair do fullscreen a qualquer momento.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Unavailable Warning - shown if fullscreen is required but not supported */}
+      {settings.forcar_fullscreen && !isSupported && (
+        <div className="fixed top-4 right-4 z-40 bg-amber-50 border border-amber-200 rounded-lg p-3 max-w-sm flex gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-900">
+              Fullscreen não suportado neste navegador
+            </p>
+            <p className="text-xs text-amber-800 mt-1">
+              O kiosk funcionará normalmente, mas sem modo fullscreen.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Top navigation */}
       {showNav && (
         <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
@@ -149,6 +216,26 @@ export default function KioskLayout() {
                   </Button>
                 );
               })}
+
+              {/* Fullscreen Toggle - only show if fullscreen is available */}
+              {isSupported && (
+                <Button
+                  variant="ghost"
+                  size={settings.alvos_touch_grandes ? "lg" : "default"}
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "Sair do fullscreen (ESC)" : "Ativar fullscreen"}
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground",
+                    settings.alvos_touch_grandes && "h-14 px-6"
+                  )}
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="h-5 w-5" />
+                  ) : (
+                    <Maximize2 className="h-5 w-5" />
+                  )}
+                </Button>
+              )}
 
               <Button
                 variant="ghost"
