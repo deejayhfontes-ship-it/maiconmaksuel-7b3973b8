@@ -17,6 +17,9 @@ import {
   ArrowLeft, Download, Mail, FileDown, Copy, CheckCircle2, Clock, 
   XCircle, X, FileText, AlertTriangle, Loader2, ExternalLink
 } from "lucide-react";
+import { usePinAuth } from "@/contexts/PinAuthContext";
+import AccessDenied from "@/components/auth/AccessDenied";
+import NotFoundResource from "@/components/auth/NotFoundResource";
 
 type NotaFiscal = {
   id: string;
@@ -76,13 +79,17 @@ export default function NotaFiscalDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { canAccessRoute, isAuthenticated, loading: authLoading } = usePinAuth();
   const [modalCancelarAberto, setModalCancelarAberto] = useState(false);
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
   const [cancelando, setCancelando] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
-  // Query para buscar nota fiscal
-  const { data: nota, isLoading } = useQuery({
+  // Check permission before any data loading
+  const hasPermission = canAccessRoute('/nota-fiscal');
+
+  // Query para buscar nota fiscal - only if has permission and valid id
+  const { data: nota, isLoading, error } = useQuery({
     queryKey: ["nota-fiscal", id],
     queryFn: async () => {
       if (!id) return null;
@@ -90,14 +97,14 @@ export default function NotaFiscalDetalhe() {
         .from("notas_fiscais")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
-      return data as NotaFiscal;
+      return data as NotaFiscal | null;
     },
-    enabled: !!id,
+    enabled: !!id && hasPermission && isAuthenticated && !authLoading,
   });
 
-  // Query para buscar itens
+  // Query para buscar itens - only if has permission
   const { data: itens } = useQuery({
     queryKey: ["itens-nota-fiscal", id],
     queryFn: async () => {
@@ -109,7 +116,7 @@ export default function NotaFiscalDetalhe() {
       if (error) throw error;
       return data as ItemNotaFiscal[];
     },
-    enabled: !!id,
+    enabled: !!id && hasPermission && isAuthenticated && !authLoading,
   });
 
   // Mutation para cancelar
@@ -174,6 +181,20 @@ export default function NotaFiscalDetalhe() {
     setCancelando(false);
   };
 
+  // Check auth loading state first
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Check permission before showing any content
+  if (!hasPermission) {
+    return <AccessDenied message="Você não tem permissão para visualizar notas fiscais." />;
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -184,13 +205,11 @@ export default function NotaFiscalDetalhe() {
 
   if (!nota) {
     return (
-      <div className="flex flex-col items-center justify-center h-96">
-        <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="font-medium">Nota fiscal não encontrada</h3>
-        <Button variant="link" onClick={() => navigate("/notas-fiscais")}>
-          Voltar para lista
-        </Button>
-      </div>
+      <NotFoundResource 
+        resourceName="Nota Fiscal"
+        backPath="/notas-fiscais"
+        backLabel="Voltar para lista"
+      />
     );
   }
 
