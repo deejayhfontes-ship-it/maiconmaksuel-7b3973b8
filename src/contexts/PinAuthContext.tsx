@@ -63,6 +63,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/configuracoes/metas',
     '/confirmacoes-whatsapp',
     '/atendimento-whatsapp',
+    '/whatsapp',
     '/usuarios',
     '/perfil',
     '/ponto',
@@ -186,6 +187,8 @@ export function PinAuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error || !data) {
+        // Log failed attempt
+        await logAccessAttempt(null, pin, false, 'PIN inválido ou inativo');
         return { success: false, error: 'PIN inválido ou inativo' };
       }
 
@@ -212,18 +215,44 @@ export function PinAuthProvider({ children }: { children: ReactNode }) {
         setDeviceMode('auto');
       }
 
-      // Update last access time in database (fire and forget)
+      // Update last access time in database
       supabase
         .from('pinos_acesso')
         .update({ ultimo_acesso: new Date().toISOString() })
         .eq('id', data.id)
         .then(() => {});
 
+      // Log successful access
+      await logAccessAttempt(data.id, data.nome, true, null, data.role);
+
       return { success: true };
     } catch {
       return { success: false, error: 'Erro ao verificar PIN' };
     }
   }, []);
+
+  // Helper to log access attempts
+  const logAccessAttempt = async (
+    pinoId: string | null,
+    nomeUsuario: string,
+    sucesso: boolean,
+    motivoFalha: string | null,
+    role: string = 'unknown'
+  ) => {
+    try {
+      await supabase.from('logs_acesso').insert([{
+        pino_id: pinoId,
+        nome_usuario: nomeUsuario,
+        role: role,
+        dispositivo: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',
+        user_agent: navigator.userAgent,
+        sucesso,
+        motivo_falha: motivoFalha,
+      }]);
+    } catch (e) {
+      console.error('Failed to log access attempt:', e);
+    }
+  };
 
   const logout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
