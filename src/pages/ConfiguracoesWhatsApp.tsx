@@ -15,7 +15,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { useComunicacao } from "@/hooks/useComunicacao";
-import { ComunicacaoDashboard } from "@/components/comunicacao/ComunicacaoDashboard";
+import { ComunicacaoDashboardCompacto } from "@/components/comunicacao/ComunicacaoDashboardCompacto";
 import { ComunicacaoLembretes } from "@/components/comunicacao/ComunicacaoLembretes";
 import { ComunicacaoChatbot } from "@/components/comunicacao/ComunicacaoChatbot";
 import { ComunicacaoCampanhas } from "@/components/comunicacao/ComunicacaoCampanhas";
@@ -165,11 +165,12 @@ export default function ConfiguracoesWhatsApp() {
         </div>
       </div>
 
-      {/* Dashboard sempre visível */}
-      <ComunicacaoDashboard
+      {/* Dashboard compacto */}
+      <ComunicacaoDashboardCompacto
         isConnected={configWhatsApp?.sessao_ativa || false}
         estatisticas={estatisticasHoje}
         creditos={creditos}
+        proximosEnvios={8}
         onTestarConexao={handleTestarConexao}
         onReconectar={handleReconectar}
         testando={testando}
