@@ -137,8 +137,12 @@ const App = () => (
                 <Route path="/relatorio-completo" element={<RelatorioCompleto />} />
               </Route>
               
-              {/* Kiosk routes */}
-              <Route element={<KioskLayout />}>
+              {/* Kiosk routes - Protected by PIN authentication */}
+              <Route element={
+                <ProtectedRoute>
+                  <KioskLayout />
+                </ProtectedRoute>
+              }>
                 <Route path="/kiosk" element={<KioskHome />} />
                 <Route path="/kiosk/caixa" element={<Caixa />} />
                 <Route path="/kiosk/caixa/comandas" element={<CaixaComandas />} />
