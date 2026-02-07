@@ -447,6 +447,7 @@ export type Database = {
           email: string | null
           endereco: string | null
           estado: string | null
+          foto_updated_at: string | null
           foto_url: string | null
           id: string
           limite_crediario: number | null
@@ -475,6 +476,7 @@ export type Database = {
           email?: string | null
           endereco?: string | null
           estado?: string | null
+          foto_updated_at?: string | null
           foto_url?: string | null
           id?: string
           limite_crediario?: number | null
@@ -503,6 +505,7 @@ export type Database = {
           email?: string | null
           endereco?: string | null
           estado?: string | null
+          foto_updated_at?: string | null
           foto_url?: string | null
           id?: string
           limite_crediario?: number | null
@@ -2285,6 +2288,7 @@ export type Database = {
           estoque_atual: number
           estoque_minimo: number
           foto_url: string | null
+          fotos_galeria: string[] | null
           id: string
           nome: string
           preco_custo: number | null
@@ -2300,6 +2304,7 @@ export type Database = {
           estoque_atual?: number
           estoque_minimo?: number
           foto_url?: string | null
+          fotos_galeria?: string[] | null
           id?: string
           nome: string
           preco_custo?: number | null
@@ -2315,6 +2320,7 @@ export type Database = {
           estoque_atual?: number
           estoque_minimo?: number
           foto_url?: string | null
+          fotos_galeria?: string[] | null
           id?: string
           nome?: string
           preco_custo?: number | null
@@ -2366,12 +2372,14 @@ export type Database = {
           endereco: string | null
           especialidade: string | null
           estado: string | null
+          foto_updated_at: string | null
           foto_url: string | null
           funcao: string | null
           id: string
           meta_produtos_mes: number
           meta_servicos_mes: number
           nome: string
+          pin_acesso: string | null
           pode_vender_produtos: boolean
           telefone: string | null
           updated_at: string
@@ -2391,12 +2399,14 @@ export type Database = {
           endereco?: string | null
           especialidade?: string | null
           estado?: string | null
+          foto_updated_at?: string | null
           foto_url?: string | null
           funcao?: string | null
           id?: string
           meta_produtos_mes?: number
           meta_servicos_mes?: number
           nome: string
+          pin_acesso?: string | null
           pode_vender_produtos?: boolean
           telefone?: string | null
           updated_at?: string
@@ -2416,12 +2426,14 @@ export type Database = {
           endereco?: string | null
           especialidade?: string | null
           estado?: string | null
+          foto_updated_at?: string | null
           foto_url?: string | null
           funcao?: string | null
           id?: string
           meta_produtos_mes?: number
           meta_servicos_mes?: number
           nome?: string
+          pin_acesso?: string | null
           pode_vender_produtos?: boolean
           telefone?: string | null
           updated_at?: string
