@@ -26,8 +26,8 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/agenda',
     '/atendimentos',
     '/clientes',
-    '/profissionais',
-    '/profissional', // Dynamic: /profissional/:id
+    '/profissionais', // Dynamic: /profissionais/:id also
+    '/profissional', // Legacy: /profissional/:id
     '/servicos',
     '/produtos',
     '/caixa',
@@ -76,8 +76,8 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/agenda',
     '/atendimentos',
     '/clientes',
-    '/profissionais',
-    '/profissional', // Dynamic: /profissional/:id
+    '/profissionais', // Dynamic: /profissionais/:id also
+    '/profissional', // Legacy: /profissional/:id
     '/servicos',
     '/produtos',
     '/caixa',
