@@ -157,13 +157,14 @@ export default function ServicoFormDialog({
   const { createServico, updateServico } = useServicos();
 
   const onSubmit = async (data: ServicoFormData) => {
+    console.log('ServicoFormDialog onSubmit called with data:', data);
     setLoading(true);
 
     try {
       const payload = {
         nome: data.nome,
         descricao: data.descricao || null,
-        categoria: data.categoria,
+        categoria: data.categoria || null,
         duracao_minutos: data.duracao_minutos,
         preco: data.preco,
         comissao_padrao: data.comissao_padrao,
@@ -175,26 +176,44 @@ export default function ServicoFormDialog({
         aparece_pdv: data.aparece_pdv,
       };
 
+      console.log('Payload to save:', payload);
+      console.log('isEditing:', isEditing, 'servico:', servico);
+
       if (isEditing && servico) {
         const result = await updateServico(servico.id, payload);
+        console.log('updateServico result:', result);
         if (result) {
           toast({
             title: "Serviço atualizado!",
             description: "Os dados foram salvos com sucesso.",
           });
           onClose(true);
+        } else {
+          toast({
+            title: "Erro ao atualizar",
+            description: "Não foi possível salvar as alterações.",
+            variant: "destructive",
+          });
         }
       } else {
         const result = await createServico(payload);
+        console.log('createServico result:', result);
         if (result) {
           toast({
             title: "Serviço cadastrado!",
             description: "Novo serviço adicionado com sucesso.",
           });
           onClose(true);
+        } else {
+          toast({
+            title: "Erro ao criar",
+            description: "Não foi possível cadastrar o serviço.",
+            variant: "destructive",
+          });
         }
       }
     } catch (error: any) {
+      console.error('Error in onSubmit:', error);
       toast({
         title: "Erro ao salvar",
         description: error.message,
@@ -203,6 +222,11 @@ export default function ServicoFormDialog({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Log validation errors
+  const onError = (errors: any) => {
+    console.log('Form validation errors:', errors);
   };
 
   return (
@@ -215,7 +239,7 @@ export default function ServicoFormDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-4">
             <FormField
               control={form.control}
               name="nome"
