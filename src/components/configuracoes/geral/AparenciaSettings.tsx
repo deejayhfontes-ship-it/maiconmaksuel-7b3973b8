@@ -275,6 +275,8 @@ export default function AparenciaSettings() {
                   '252 56% 57%',  // Purple
                   '340 82% 52%',  // Pink
                   '262 83% 58%',  // Violet
+                  '0 0% 10%',     // Preto
+                  '43 74% 49%',   // Dourado
                 ]}
               />
 
