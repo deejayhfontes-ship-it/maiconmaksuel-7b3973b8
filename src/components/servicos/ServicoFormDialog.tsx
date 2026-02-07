@@ -109,7 +109,7 @@ export default function ServicoFormDialog({
         duracao_minutos: servico.duracao_minutos,
         preco: Number(servico.preco),
         comissao_padrao: Number(servico.comissao_padrao),
-        ativo: servico.ativo,
+        ativo: servico.ativo ?? true,
         tipo_servico: (servico.tipo_servico as "normal" | "cortesia" | "controle_interno") || "normal",
         apenas_agenda: servico.apenas_agenda ?? false,
         gera_receita: servico.gera_receita ?? true,
