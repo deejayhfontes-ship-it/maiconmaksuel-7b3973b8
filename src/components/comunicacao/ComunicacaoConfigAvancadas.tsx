@@ -15,7 +15,10 @@ import {
   Save,
   Smartphone,
   Shield,
-  CreditCard
+  CreditCard,
+  QrCode,
+  RefreshCw,
+  Zap
 } from "lucide-react";
 import { ComunicacaoConfigAvancadas as ConfigType, ComunicacaoCreditos } from "@/hooks/useComunicacao";
 import {
@@ -32,6 +35,8 @@ interface ConfigWhatsApp {
   api_url: string | null;
   api_token: string | null;
   numero_whatsapp: string | null;
+  sessao_ativa?: boolean;
+  qrcode_conectado?: boolean;
 }
 
 interface Props {
@@ -55,6 +60,9 @@ export function ComunicacaoConfigAvancadas({
   onConfigWhatsAppChange,
   saving 
 }: Props) {
+  const [generatingQR, setGeneratingQR] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+
   if (!config) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -63,39 +71,111 @@ export function ComunicacaoConfigAvancadas({
     );
   }
 
+  const handleGerarQRCode = async () => {
+    setGeneratingQR(true);
+    try {
+      // Simula geração de QR Code
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      // QR Code placeholder (em produção viria da API)
+      setQrCodeData("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=whatsapp-connect-" + Date.now());
+    } finally {
+      setGeneratingQR(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Conexão WhatsApp */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Smartphone className="h-5 w-5" />
-            Conexão WhatsApp API
-          </CardTitle>
-          <CardDescription>
-            Configure o provedor de API para envio de mensagens
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Provedor de API</Label>
-            <Select
-              value={configWhatsApp?.api_provider || "evolution_api"}
-              onValueChange={(value) => onConfigWhatsAppChange({ api_provider: value })}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Conexão WhatsApp - QR Code */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Smartphone className="h-5 w-5 text-[#25D366]" />
+              Conexão WhatsApp
+            </CardTitle>
+            <CardDescription>
+              Status da conexão com a API do WhatsApp
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Badge 
+              variant={configWhatsApp?.sessao_ativa ? "default" : "destructive"}
+              className={configWhatsApp?.sessao_ativa ? "bg-success" : ""}
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="evolution_api">Evolution API (Gratuito)</SelectItem>
-                <SelectItem value="wppconnect">WPPConnect (Gratuito)</SelectItem>
-                <SelectItem value="baileys">Baileys (Gratuito)</SelectItem>
-                <SelectItem value="oficial">WhatsApp Business API (Pago)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              {configWhatsApp?.sessao_ativa ? "✅ Conectado" : "❌ Não conectado"}
+            </Badge>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p className="font-medium">Para conectar:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Clique em "Gerar QR Code"</li>
+                <li>Abra WhatsApp no celular</li>
+                <li>Vá em Aparelhos Conectados</li>
+                <li>Escaneie o QR Code</li>
+              </ol>
+            </div>
+
+            <Button 
+              onClick={handleGerarQRCode} 
+              disabled={generatingQR}
+              className="w-full bg-[#25D366] hover:bg-[#128C7E]"
+            >
+              {generatingQR ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <QrCode className="h-4 w-4 mr-2" />
+              )}
+              Gerar QR Code
+            </Button>
+
+            {/* QR Code Display */}
+            <div className="flex justify-center p-4 bg-white rounded-lg border min-h-[200px] items-center">
+              {qrCodeData ? (
+                <img 
+                  src={qrCodeData} 
+                  alt="QR Code WhatsApp" 
+                  className="w-48 h-48"
+                />
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  <QrCode className="h-16 w-16 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">Clique em "Gerar QR Code" para conectar</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Provedor de API */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Provedor de API
+            </CardTitle>
+            <CardDescription>
+              Configure o provedor de API do WhatsApp
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Selecione o Provedor</Label>
+              <Select
+                value={configWhatsApp?.api_provider || "evolution_api"}
+                onValueChange={(value) => onConfigWhatsAppChange({ api_provider: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="evolution_api">Evolution API (Recomendado - Gratuito)</SelectItem>
+                  <SelectItem value="wppconnect">WPPConnect (Gratuito)</SelectItem>
+                  <SelectItem value="baileys">Baileys (Gratuito)</SelectItem>
+                  <SelectItem value="oficial">WhatsApp Business API (Pago)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label>URL da API</Label>
               <Input
@@ -104,32 +184,39 @@ export function ComunicacaoConfigAvancadas({
                 onChange={(e) => onConfigWhatsAppChange({ api_url: e.target.value })}
               />
             </div>
+
             <div className="space-y-2">
               <Label>Token de Autenticação</Label>
               <Input
                 type="password"
-                placeholder="Seu token"
+                placeholder="Seu token aqui"
                 value={configWhatsApp?.api_token || ""}
                 onChange={(e) => onConfigWhatsAppChange({ api_token: e.target.value })}
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Número do WhatsApp</Label>
-            <Input
-              placeholder="(11) 99999-8888"
-              value={configWhatsApp?.numero_whatsapp || ""}
-              onChange={(e) => onConfigWhatsAppChange({ numero_whatsapp: e.target.value })}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label>Número do WhatsApp</Label>
+              <Input
+                placeholder="(11) 99999-8888"
+                value={configWhatsApp?.numero_whatsapp || ""}
+                onChange={(e) => onConfigWhatsAppChange({ numero_whatsapp: e.target.value })}
+              />
+            </div>
 
-          <Button onClick={onSaveWhatsApp} disabled={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            Salvar Configurações
-          </Button>
-        </CardContent>
-      </Card>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" disabled={saving}>
+                <Zap className="h-4 w-4 mr-2" />
+                Testar Conexão
+              </Button>
+              <Button onClick={onSaveWhatsApp} disabled={saving} className="flex-1">
+                <Save className="h-4 w-4 mr-2" />
+                Salvar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Horário de Silêncio */}
       <Card>
