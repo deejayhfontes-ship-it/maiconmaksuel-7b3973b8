@@ -115,6 +115,7 @@ export function isFeatureAllowed(feature: CaixaFeature): boolean {
     'editar-movimentacao': ['notebook'], // Only notebook can edit
     'ver-comissoes': ['notebook'], // Only notebook can see commissions
     'cheques': ['notebook'], // Only notebook can manage checks
+    'ponto-eletronico': ['kiosk'], // Only kiosk for time clock
   };
   
   return permissions[feature]?.includes(deviceType) ?? false;
@@ -133,4 +134,5 @@ export type CaixaFeature =
   | 'cancelar-atendimento'
   | 'editar-movimentacao'
   | 'ver-comissoes'
-  | 'cheques';
+  | 'cheques'
+  | 'ponto-eletronico';
