@@ -49,8 +49,8 @@ const ProfissionalDetalhe = () => {
   const initialTab = searchParams.get("tab") || "info";
   const { canAccessRoute, isAuthenticated, loading: authLoading } = usePinAuth();
   
-  // Check permission before any data loading
-  const hasPermission = canAccessRoute('/profissional');
+  // Check permission before any data loading - check both route variants
+  const hasPermission = canAccessRoute('/profissionais') || canAccessRoute('/profissional');
 
   const { profissionais, loading: profLoading, getComissoesDetalhadas, fetchProfissionais } = useProfissionais();
   const [activeTab, setActiveTab] = useState(initialTab);
