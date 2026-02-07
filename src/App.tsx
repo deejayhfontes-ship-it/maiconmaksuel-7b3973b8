@@ -59,6 +59,7 @@ import MapaSistema from "./pages/MapaSistema";
 import KioskHome from "./pages/KioskHome";
 import KioskLayout from "./components/layout/KioskLayout";
 import AtendimentoWhatsApp from "./pages/AtendimentoWhatsApp";
+import WhatsAppModule from "./pages/WhatsAppModule";
 
 const queryClient = new QueryClient();
 
@@ -118,7 +119,8 @@ const App = () => (
                 <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscal />} />
                 <Route path="/configuracoes/whatsapp" element={<ConfiguracoesWhatsApp />} />
                 <Route path="/configuracoes/metas" element={<MetasSalao />} />
-                <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
+                <Route path="/confirmacoes-whatsapp" element={<WhatsAppModule />} />
+                <Route path="/whatsapp" element={<WhatsAppModule />} />
                 <Route path="/atendimento-whatsapp" element={<AtendimentoWhatsApp />} />
                 <Route path="/gestao-rh" element={<GestaoRH />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
