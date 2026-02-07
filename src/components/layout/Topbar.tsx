@@ -1,4 +1,4 @@
-import { Search, Moon, Sun, Menu, User, Settings, LogOut, Type, Plus, Command } from "lucide-react";
+import { Search, Moon, Sun, Menu, Settings, LogOut, Type, Plus, Command, Shield, Monitor, Tablet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,12 +8,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTheme } from "@/components/ThemeProvider";
 import { useSidebarContext } from "./MainLayout";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePinAuth } from "@/contexts/PinAuthContext";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -29,7 +29,7 @@ const fontSizes = [
 export function Topbar() {
   const { resolvedTheme, setTheme } = useTheme();
   const { collapsed, mobileOpen, setMobileOpen, setIsSearchOpen } = useSidebarContext();
-  const { profile, role, signOut } = useAuth();
+  const { session, logout } = usePinAuth();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(false);
   const [fontSizeIndex, setFontSizeIndex] = useState(1);
@@ -64,8 +64,8 @@ export function Topbar() {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleSignOut = () => {
+    logout();
     navigate("/login");
   };
 
@@ -78,14 +78,27 @@ export function Topbar() {
       .toUpperCase();
   };
 
-  const getRoleBadge = (role: string | null) => {
+  const getRoleIcon = (role: string | undefined) => {
     switch (role) {
       case "admin":
-        return <Badge variant="default" className="text-xs">Admin</Badge>;
-      case "gerente":
-        return <Badge variant="info" className="text-xs">Gerente</Badge>;
-      case "operador":
-        return <Badge variant="outline" className="text-xs">Operador</Badge>;
+        return <Shield className="h-3 w-3" />;
+      case "notebook":
+        return <Monitor className="h-3 w-3" />;
+      case "kiosk":
+        return <Tablet className="h-3 w-3" />;
+      default:
+        return null;
+    }
+  };
+
+  const getRoleBadge = (role: string | undefined) => {
+    switch (role) {
+      case "admin":
+        return <Badge variant="default" className="text-xs gap-1">{getRoleIcon(role)} Admin</Badge>;
+      case "notebook":
+        return <Badge variant="secondary" className="text-xs gap-1">{getRoleIcon(role)} Notebook</Badge>;
+      case "kiosk":
+        return <Badge variant="outline" className="text-xs gap-1">{getRoleIcon(role)} Kiosk</Badge>;
       default:
         return null;
     }
@@ -173,42 +186,36 @@ export function Topbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2 ios-icon-button">
                 <Avatar className="h-8 w-8 ring-2 ring-primary/20 transition-transform duration-200 hover:scale-105">
-                  {profile?.foto_url && (
-                    <AvatarImage src={profile.foto_url} alt={profile.nome} />
-                  )}
                   <AvatarFallback className="ios-avatar-gradient text-primary-foreground text-sm font-semibold">
-                    {profile?.nome ? getInitials(profile.nome) : "U"}
+                    {session?.nome ? getInitials(session.nome) : "U"}
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-medium hidden md:inline">
-                  {profile?.nome?.split(" ")[0] || "Usuário"}
+                  {session?.nome?.split(" ")[0] || "Usuário"}
                 </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 ios-dropdown">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-semibold">{profile?.nome || "Usuário"}</p>
-                  <p className="text-xs text-muted-foreground">{profile?.email}</p>
-                  {role && <div className="pt-1">{getRoleBadge(role)}</div>}
+                  <p className="text-sm font-semibold">{session?.nome || "Usuário"}</p>
+                  <p className="text-xs text-muted-foreground">{session?.descricao || 'Acesso via PIN'}</p>
+                  {session?.role && <div className="pt-1">{getRoleBadge(session.role)}</div>}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="cursor-pointer rounded-ios-sm"
-                onClick={() => navigate("/perfil")}
-              >
-                <User className="mr-2 h-4 w-4" />
-                Perfil
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                className="cursor-pointer rounded-ios-sm"
-                onClick={() => navigate("/configuracoes")}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Configurações
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {session?.role === 'admin' && (
+                <>
+                  <DropdownMenuItem 
+                    className="cursor-pointer rounded-ios-sm"
+                    onClick={() => navigate("/configuracoes")}
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Configurações
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem 
                 className="text-destructive cursor-pointer rounded-ios-sm"
                 onClick={handleSignOut}
