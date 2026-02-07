@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { saveReportWithPdf, getReportCategory, type ReportSaveParams } from '@/lib/reportStorageService';
 
 // Types
 export interface ExportOptions {
@@ -360,19 +361,56 @@ export const downloadBlob = (blob: Blob, filename: string) => {
 
 // ==================== EXPORT HANDLER ====================
 
+export interface ExportReportMetadata {
+  reportSubtype?: string;
+  totalRecords?: number;
+  totalValue?: number;
+  generatedBy?: string;
+  saveToHistory?: boolean;
+}
+
 export const exportarRelatorio = async (
   data: ExportData,
   options: ExportOptions,
   nomeArquivo: string,
-  logoBase64?: string
+  logoBase64?: string,
+  metadata?: ExportReportMetadata
 ): Promise<void> => {
   const dataAtual = format(new Date(), 'yyyy-MM-dd');
   const nomeCompleto = `${nomeArquivo}-${dataAtual}`;
+  const shouldSave = metadata?.saveToHistory !== false; // Default to true
 
   switch (options.formato) {
     case 'pdf': {
       const pdfBlob = await gerarPDF(data, options, logoBase64);
       downloadBlob(pdfBlob, `${nomeCompleto}.pdf`);
+      
+      // Save to history if enabled
+      if (shouldSave) {
+        const reportParams: ReportSaveParams = {
+          report_type: getReportCategory(metadata?.reportSubtype || nomeArquivo),
+          report_subtype: metadata?.reportSubtype || nomeArquivo,
+          title: data.titulo,
+          date_start: options.periodoInicio,
+          date_end: options.periodoFim,
+          generated_by: metadata?.generatedBy || 'sistema',
+          total_records: metadata?.totalRecords || data.dados.length,
+          total_value: metadata?.totalValue || 0,
+          filters_applied: {
+            formato: options.formato,
+            orientacao: options.orientacao,
+            incluirResumo: options.incluirResumo,
+            incluirDetalhes: options.incluirDetalhes,
+          },
+        };
+        
+        // Save async - don't block the download
+        saveReportWithPdf(reportParams, pdfBlob).then(result => {
+          if (result.success) {
+            console.log('[Export] Report saved to history:', result.reportId);
+          }
+        });
+      }
       break;
     }
     case 'excel': {

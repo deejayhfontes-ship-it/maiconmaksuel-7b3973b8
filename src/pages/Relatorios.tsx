@@ -57,8 +57,10 @@ import {
   Trophy,
   ShoppingCart,
   FileDown,
+  History,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO, isWithinInterval } from "date-fns";
+import { RelatoriosHistorico } from "@/components/relatorios/RelatoriosHistorico";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -197,6 +199,7 @@ const Relatorios = () => {
     to: new Date(),
   });
   const [loading, setLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Data states
   const [atendimentos, setAtendimentos] = useState<any[]>([]);
@@ -3879,10 +3882,21 @@ const Relatorios = () => {
       <div className="lg:w-64 lg:flex-shrink-0">
         <Card className="lg:h-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Relatórios
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Relatórios
+              </CardTitle>
+              <Button
+                variant={showHistory ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowHistory(!showHistory)}
+                className="gap-2"
+              >
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">Histórico</span>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-2">
             {/* Mobile: horizontal scroll */}
@@ -3893,7 +3907,10 @@ const Relatorios = () => {
                     <Select
                       key={cat}
                       value={category === cat ? reportType : ""}
-                      onValueChange={(value) => selectReport(cat, value as ReportType)}
+                      onValueChange={(value) => {
+                        setShowHistory(false);
+                        selectReport(cat, value as ReportType);
+                      }}
                     >
                       <SelectTrigger className="w-[140px] flex-shrink-0">
                         <SelectValue placeholder={categoryLabels[cat]} />
@@ -3940,7 +3957,10 @@ const Relatorios = () => {
                                     ? "bg-primary text-primary-foreground"
                                     : "hover:bg-muted"
                                 )}
-                                onClick={() => selectReport(cat, item.id as ReportType)}
+                                onClick={() => {
+                                  setShowHistory(false);
+                                  selectReport(cat, item.id as ReportType);
+                                }}
                               >
                                 <Icon className="h-4 w-4" />
                                 {item.label}
@@ -3960,86 +3980,93 @@ const Relatorios = () => {
 
       {/* Conteúdo principal */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Filtros globais */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Mobile: apenas alguns presets */}
-            <div className="hidden sm:flex items-center gap-2 flex-wrap">
-              {periodPresets.map((preset) => (
-                <Button
-                  key={preset.label}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => applyPreset(preset)}
-                >
-                  {preset.label}
-                </Button>
-              ))}
-            </div>
-            {/* Mobile: select para presets */}
-            <div className="sm:hidden">
-              <Select onValueChange={(value) => {
-                const preset = periodPresets.find(p => p.label === value);
-                if (preset) applyPreset(preset);
-              }}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
+        {showHistory ? (
+          /* Histórico de Relatórios */
+          <RelatoriosHistorico />
+        ) : (
+          <>
+            {/* Filtros globais */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Mobile: apenas alguns presets */}
+                <div className="hidden sm:flex items-center gap-2 flex-wrap">
                   {periodPresets.map((preset) => (
-                    <SelectItem key={preset.label} value={preset.label}>
+                    <Button
+                      key={preset.label}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyPreset(preset)}
+                    >
                       {preset.label}
-                    </SelectItem>
+                    </Button>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {format(dateRange.from, "dd/MM/yy")} - {format(dateRange.to, "dd/MM/yy")}
-                  </span>
-                  <span className="sm:hidden">
-                    {format(dateRange.from, "dd/MM")} - {format(dateRange.to, "dd/MM")}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="range"
-                  selected={{ from: dateRange.from, to: dateRange.to }}
-                  onSelect={(range) => {
-                    if (range?.from && range?.to) {
-                      setDateRange({ from: range.from, to: range.to });
-                    }
-                  }}
-                  locale={ptBR}
-                  numberOfMonths={1}
-                  className="max-w-[280px] sm:max-w-none"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          <Button onClick={fetchData} disabled={loading} size="sm">
-            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-            <span className="hidden sm:inline">Atualizar</span>
-          </Button>
-        </div>
-
-        {/* Área de conteúdo do relatório */}
-        <ScrollArea className="flex-1">
-          <div className="pr-4">
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+                {/* Mobile: select para presets */}
+                <div className="sm:hidden">
+                  <Select onValueChange={(value) => {
+                    const preset = periodPresets.find(p => p.label === value);
+                    if (preset) applyPreset(preset);
+                  }}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {periodPresets.map((preset) => (
+                        <SelectItem key={preset.label} value={preset.label}>
+                          {preset.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span className="hidden sm:inline">
+                        {format(dateRange.from, "dd/MM/yy")} - {format(dateRange.to, "dd/MM/yy")}
+                      </span>
+                      <span className="sm:hidden">
+                        {format(dateRange.from, "dd/MM")} - {format(dateRange.to, "dd/MM")}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      onSelect={(range) => {
+                        if (range?.from && range?.to) {
+                          setDateRange({ from: range.from, to: range.to });
+                        }
+                      }}
+                      locale={ptBR}
+                      numberOfMonths={1}
+                      className="max-w-[280px] sm:max-w-none"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-            ) : (
-              renderReportContent()
-            )}
-          </div>
-        </ScrollArea>
+              <Button onClick={fetchData} disabled={loading} size="sm">
+                <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+                <span className="hidden sm:inline">Atualizar</span>
+              </Button>
+            </div>
+
+            {/* Área de conteúdo do relatório */}
+            <ScrollArea className="flex-1">
+              <div className="pr-4">
+                {loading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  renderReportContent()
+                )}
+              </div>
+            </ScrollArea>
+          </>
+        )}
       </div>
     </div>
   );
