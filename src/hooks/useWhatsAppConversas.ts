@@ -33,7 +33,8 @@ export interface Mensagem {
   id: string;
   conversa_id: string;
   texto: string | null;
-  tipo: "texto" | "imagem" | "audio" | "documento" | "localizacao" | "sistema";
+  conteudo?: string | null; // alias for texto
+  tipo: "texto" | "imagem" | "audio" | "documento" | "localizacao" | "sistema" | "recebida" | "enviada";
   midia_url: string | null;
   midia_nome: string | null;
   enviada: boolean;
@@ -41,6 +42,7 @@ export interface Mensagem {
   erro_mensagem: string | null;
   wa_message_id: string | null;
   created_at: string;
+  hora?: string; // computed field
 }
 
 export interface RespostaRapida {
@@ -315,8 +317,9 @@ export function useWhatsAppMensagens(conversaId: string | null) {
 
     if (!conversaId) return;
 
+    // Subscribe to new messages in realtime
     const channel = supabase
-      .channel(`mensagens_${conversaId}`)
+      .channel(`mensagens_whatsapp_${conversaId}`)
       .on(
         "postgres_changes",
         {
@@ -326,12 +329,30 @@ export function useWhatsAppMensagens(conversaId: string | null) {
           filter: `conversa_id=eq.${conversaId}`,
         },
         (payload) => {
+          console.log("New message received:", payload.new);
           setMensagens((prev) => {
             // Avoid duplicates
             const exists = prev.some((m) => m.id === payload.new.id);
             if (exists) return prev;
             return [...prev, payload.new as Mensagem];
           });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "mensagens_whatsapp",
+          filter: `conversa_id=eq.${conversaId}`,
+        },
+        (payload) => {
+          // Update message status (enviada -> entregue -> lida)
+          setMensagens((prev) =>
+            prev.map((m) =>
+              m.id === payload.new.id ? (payload.new as Mensagem) : m
+            )
+          );
         }
       )
       .subscribe();
