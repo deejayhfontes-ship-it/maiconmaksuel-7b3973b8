@@ -20,6 +20,7 @@ import {
   Briefcase,
   Clock,
   Target,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const allMenuItems: MenuItem[] = [
   { title: "Notas Fiscais", icon: FileText, path: "/notas-fiscais" },
   { title: "Financeiro", icon: TrendingUp, path: "/financeiro" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
+  { title: "WhatsApp", icon: MessageSquare, path: "/atendimento-whatsapp" },
   { title: "Confirmações", icon: Smartphone, path: "/confirmacoes-whatsapp" },
   { title: "Gestão RH", icon: Briefcase, path: "/gestao-rh" },
   { title: "Ponto", icon: Clock, path: "/ponto" },

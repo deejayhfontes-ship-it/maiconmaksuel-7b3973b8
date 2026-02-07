@@ -9,7 +9,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { KioskModeBadge } from "@/components/KioskModeBadge";
-import { WhatsAppFloatingButton } from "@/components/dashboard/WhatsAppWidget";
+import { WhatsAppFloatingButtonZendesk } from "@/components/dashboard/WhatsAppDrawer";
 
 interface SidebarContextType {
   collapsed: boolean;
@@ -102,8 +102,8 @@ export function MainLayout() {
         {/* Kiosk Mode Badge */}
         <KioskModeBadge isFullscreen={isFullscreen} onToggle={toggleFullscreen} />
 
-        {/* WhatsApp Floating Button */}
-        <WhatsAppFloatingButton />
+        {/* WhatsApp Floating Button - Zendesk Style */}
+        <WhatsAppFloatingButtonZendesk />
       </div>
     </SidebarContext.Provider>
   );
