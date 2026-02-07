@@ -73,6 +73,10 @@ import ServicosProdutosSettings from "@/components/configuracoes/ServicosProduto
 import DispositivosSettings from "@/components/configuracoes/DispositivosSettings";
 import SistemaInfo from "@/components/configuracoes/SistemaInfo";
 import KioskModeSettings from "@/components/configuracoes/kiosk/KioskModeSettings";
+// General settings components
+import DadosSalaoSettings from "@/components/configuracoes/geral/DadosSalaoSettings";
+import AparenciaSettings from "@/components/configuracoes/geral/AparenciaSettings";
+import NotificacoesSettings from "@/components/configuracoes/geral/NotificacoesSettings";
 
 type SubItem = {
   id: string;
@@ -353,11 +357,13 @@ export default function Configuracoes() {
       case "controle-acesso":
         return <ControleAcesso />;
       case "preferencias":
-        return <PreferenciasContent />;
+        return <DadosSalaoSettings />;
       case "aparencia":
-        return <AparenciaContent />;
+        return <AparenciaSettings />;
+      case "notificacoes":
+        return <NotificacoesSettings />;
       case "dados-salao":
-        return <DadosSalaoContent />;
+        return <DadosSalaoSettings />;
       case "horarios-funcionamento":
         return <HorariosFuncionamentoContent />;
       case "imagens-logo":
