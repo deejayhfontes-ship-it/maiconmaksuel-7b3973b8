@@ -62,6 +62,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/configuracoes/caixa-pdv',
     '/configuracoes/metas',
     '/confirmacoes-whatsapp',
+    '/atendimento-whatsapp',
     '/usuarios',
     '/perfil',
     '/ponto',
@@ -85,6 +86,8 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/caixa/gaveta',
     '/financeiro/vales',
     '/vales',
+    '/atendimento-whatsapp',
+    '/confirmacoes-whatsapp',
     '/perfil',
   ],
   kiosk: [

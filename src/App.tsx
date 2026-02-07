@@ -57,6 +57,7 @@ import CaixaPDV from "./pages/CaixaPDV";
 import MapaSistema from "./pages/MapaSistema";
 import KioskHome from "./pages/KioskHome";
 import KioskLayout from "./components/layout/KioskLayout";
+import AtendimentoWhatsApp from "./pages/AtendimentoWhatsApp";
 
 const queryClient = new QueryClient();
 
@@ -116,6 +117,7 @@ const App = () => (
                 <Route path="/configuracoes/whatsapp" element={<ConfiguracoesWhatsApp />} />
                 <Route path="/configuracoes/metas" element={<MetasSalao />} />
                 <Route path="/confirmacoes-whatsapp" element={<ConfirmacoesWhatsApp />} />
+                <Route path="/atendimento-whatsapp" element={<AtendimentoWhatsApp />} />
                 <Route path="/gestao-rh" element={<GestaoRH />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
                 <Route path="/configuracoes/notificacoes" element={<ConfiguracoesNotificacoes />} />
