@@ -463,7 +463,7 @@ export default function Configuracoes() {
 
       <div className="flex gap-6">
         {/* Menu Lateral */}
-        <Card className="w-72 flex-shrink-0 h-fit max-h-[calc(100vh-180px)] flex flex-col sticky top-6">
+        <Card className="w-72 flex-shrink-0 max-h-[calc(100vh-180px)] flex flex-col sticky top-6 overflow-hidden">
           <div className="p-4 border-b flex-shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -476,7 +476,7 @@ export default function Configuracoes() {
             </div>
           </div>
           
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             <nav className="p-4 space-y-2">
               {filteredSections.map((section) => {
                 const SectionIcon = section.icon;
