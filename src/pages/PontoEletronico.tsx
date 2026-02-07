@@ -1,318 +1,462 @@
 import { useState, useEffect } from 'react';
-import { Clock, Check, ArrowRight, ArrowLeft } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { Clock, LogIn, LogOut, ArrowLeft, Wifi, WifiOff, RefreshCw, User, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { isKioskMode, getDeviceInfo } from '@/lib/deviceType';
+import { usePonto, Pessoa } from '@/hooks/usePonto';
+import { cn } from '@/lib/utils';
 
-interface Pessoa {
-  id: string;
-  nome: string;
-  cargo_especialidade: string;
-  tipo: 'profissional' | 'funcionario';
-}
-
-interface PontoRegistro {
-  entrada_manha: string | null;
-  saida_almoco: string | null;
-  entrada_tarde: string | null;
-  saida: string | null;
-}
+type Step = 'select-employee' | 'select-action' | 'confirm' | 'success';
 
 const PontoEletronico = () => {
   const navigate = useNavigate();
   const [horaAtual, setHoraAtual] = useState(new Date());
-  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
-  const [pessoaSelecionada, setPessoaSelecionada] = useState<string>('');
-  const [pontoHoje, setPontoHoje] = useState<PontoRegistro | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<Step>('select-employee');
+  const [pessoaSelecionada, setPessoaSelecionada] = useState<Pessoa | null>(null);
+  const [tipoRegistro, setTipoRegistro] = useState<'entrada' | 'saida' | null>(null);
+  const [observacao, setObservacao] = useState('');
+  const [registering, setRegistering] = useState(false);
+  const [showAccessDenied, setShowAccessDenied] = useState(false);
 
-  // Atualiza relógio a cada segundo
+  const {
+    pessoas,
+    loading,
+    isOnline,
+    lastSync,
+    syncing,
+    deviceId,
+    registrarPonto,
+    getProximaAcao,
+    getRegistrosPessoa,
+  } = usePonto();
+
+  // Check kiosk mode
+  useEffect(() => {
+    const deviceInfo = getDeviceInfo();
+    if (deviceInfo.type !== 'kiosk') {
+      setShowAccessDenied(true);
+    }
+  }, []);
+
+  // Update clock every second
   useEffect(() => {
     const timer = setInterval(() => setHoraAtual(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Carrega funcionários e profissionais
+  // Auto-reset after success
   useEffect(() => {
-    carregarPessoas();
-  }, []);
-
-  // Carrega ponto quando seleciona pessoa
-  useEffect(() => {
-    if (pessoaSelecionada) {
-      carregarPontoHoje();
-    } else {
-      setPontoHoje(null);
+    if (step === 'success') {
+      const timer = setTimeout(() => {
+        resetFlow();
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  }, [pessoaSelecionada]);
+  }, [step]);
 
-  const carregarPessoas = async () => {
-    try {
-      const [funcRes, profRes] = await Promise.all([
-        supabase.from('funcionarios').select('id, nome, cargo').eq('ativo', true),
-        supabase.from('profissionais').select('id, nome, especialidade').eq('ativo', true)
-      ]);
+  const resetFlow = () => {
+    setStep('select-employee');
+    setPessoaSelecionada(null);
+    setTipoRegistro(null);
+    setObservacao('');
+  };
 
-      const funcionarios: Pessoa[] = (funcRes.data || []).map(f => ({
-        id: f.id,
-        nome: f.nome,
-        cargo_especialidade: f.cargo || 'Funcionário',
-        tipo: 'funcionario'
-      }));
+  const handleSelectEmployee = (pessoa: Pessoa) => {
+    setPessoaSelecionada(pessoa);
+    const nextAction = getProximaAcao(pessoa.id, pessoa.tipo);
+    setTipoRegistro(nextAction);
+    setStep('select-action');
+  };
 
-      const profissionais: Pessoa[] = (profRes.data || []).map(p => ({
-        id: p.id,
-        nome: p.nome,
-        cargo_especialidade: p.especialidade || 'Profissional',
-        tipo: 'profissional'
-      }));
+  const handleSelectAction = (tipo: 'entrada' | 'saida') => {
+    setTipoRegistro(tipo);
+    setStep('confirm');
+  };
 
-      setPessoas([...funcionarios, ...profissionais]);
-    } catch (error) {
-      console.error('Erro ao carregar pessoas:', error);
+  const handleConfirm = async () => {
+    if (!pessoaSelecionada || !tipoRegistro) return;
+
+    setRegistering(true);
+    const success = await registrarPonto(
+      pessoaSelecionada.id,
+      pessoaSelecionada.tipo,
+      tipoRegistro,
+      observacao || undefined
+    );
+
+    setRegistering(false);
+    if (success) {
+      setStep('success');
     }
   };
 
-  const carregarPontoHoje = async () => {
-    if (!pessoaSelecionada) return;
-
-    const [tipo, id] = pessoaSelecionada.split('-');
-    const hoje = format(new Date(), 'yyyy-MM-dd');
-
-    const { data } = await supabase
-      .from('ponto_registros')
-      .select('entrada_manha, saida_almoco, entrada_tarde, saida')
-      .eq('tipo_pessoa', tipo)
-      .eq('pessoa_id', id)
-      .eq('data', hoje)
-      .single();
-
-    setPontoHoje(data || null);
+  const getInitials = (nome: string) => {
+    return nome
+      .split(' ')
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
   };
 
-  const getProximoPonto = () => {
-    if (!pontoHoje || !pontoHoje.entrada_manha) return { tipo: 'entrada_manha', label: 'Entrada' };
-    if (!pontoHoje.saida_almoco) return { tipo: 'saida_almoco', label: 'Almoço' };
-    if (!pontoHoje.entrada_tarde) return { tipo: 'entrada_tarde', label: 'Retorno' };
-    if (!pontoHoje.saida) return { tipo: 'saida', label: 'Saída' };
-    return { tipo: 'completo', label: 'Completo' };
-  };
+  // Access denied screen for non-kiosk devices
+  if (showAccessDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-br from-destructive/20 to-background">
+        <div className="bg-card rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
+          <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Restrito</h1>
+          <p className="text-muted-foreground mb-6">
+            O Ponto Eletrônico está disponível apenas no modo Kiosk (tablet/totem).
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Dispositivo detectado: <Badge variant="outline">{getDeviceInfo().type}</Badge>
+          </p>
+          <Button onClick={() => navigate('/login')} className="w-full">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  const calcularHorasTrabalhadas = (ponto: PontoRegistro) => {
-    if (!ponto.entrada_manha || !ponto.saida) return 0;
-
-    const entrada = new Date(`2000-01-01T${ponto.entrada_manha}`);
-    const saida = new Date(`2000-01-01T${ponto.saida}`);
-
-    let totalMinutos = (saida.getTime() - entrada.getTime()) / 1000 / 60;
-
-    if (ponto.saida_almoco && ponto.entrada_tarde) {
-      const saidaAlmoco = new Date(`2000-01-01T${ponto.saida_almoco}`);
-      const entradaTarde = new Date(`2000-01-01T${ponto.entrada_tarde}`);
-      const minutosAlmoco = (entradaTarde.getTime() - saidaAlmoco.getTime()) / 1000 / 60;
-      totalMinutos -= minutosAlmoco;
-    }
-
-    return Number((totalMinutos / 60).toFixed(2));
-  };
-
-  const baterPonto = async () => {
-    if (!pessoaSelecionada) {
-      toast.error('Selecione uma pessoa primeiro');
-      return;
-    }
-
-    const proximoPonto = getProximoPonto();
-    if (proximoPonto.tipo === 'completo') {
-      toast.info('Todos os pontos do dia já foram registrados');
-      return;
-    }
-
-    setLoading(true);
-    const [tipo, id] = pessoaSelecionada.split('-');
-    const agora = horaAtual.toTimeString().slice(0, 5);
-    const hoje = format(new Date(), 'yyyy-MM-dd');
-
-    try {
-      const { data: registroExistente } = await supabase
-        .from('ponto_registros')
-        .select('id')
-        .eq('tipo_pessoa', tipo)
-        .eq('pessoa_id', id)
-        .eq('data', hoje)
-        .single();
-
-      if (registroExistente) {
-        const updateData: Record<string, unknown> = { [proximoPonto.tipo]: agora };
-        
-        // Calcular horas se for saída
-        if (proximoPonto.tipo === 'saida') {
-          const newPonto = { ...pontoHoje, saida: agora } as PontoRegistro;
-          updateData.horas_trabalhadas = calcularHorasTrabalhadas(newPonto);
-        }
-
-        await supabase
-          .from('ponto_registros')
-          .update(updateData)
-          .eq('id', registroExistente.id);
-      } else {
-        await supabase
-          .from('ponto_registros')
-          .insert({
-            tipo_pessoa: tipo,
-            pessoa_id: id,
-            data: hoje,
-            [proximoPonto.tipo]: agora
-          });
-      }
-
-      toast.success(`✅ ${proximoPonto.label} registrada às ${agora}`);
-      await carregarPontoHoje();
-    } catch (error) {
-      console.error('Erro ao bater ponto:', error);
-      toast.error('Erro ao registrar ponto');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const pessoaAtual = pessoas.find(p => `${p.tipo}-${p.id}` === pessoaSelecionada);
-  const proximoPonto = getProximoPonto();
-  const funcionarios = pessoas.filter(p => p.tipo === 'funcionario');
-  const profissionais = pessoas.filter(p => p.tipo === 'profissional');
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-background">
+        <div className="text-center">
+          <RefreshCw className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-5"
-      style={{
-        background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%)'
-      }}
-    >
-      <div 
-        className="bg-background rounded-3xl p-8 sm:p-10 max-w-lg w-full text-center relative"
-        style={{ boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)' }}
-      >
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/login')}
-          className="absolute top-4 left-4 gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar
-        </Button>
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4 md:p-6">
+      {/* Header */}
+      <div className="max-w-4xl mx-auto mb-6">
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/login')}
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar
+          </Button>
 
-        {/* Header */}
-        <div className="flex items-center justify-center gap-3 mb-2 mt-6">
+          <div className="flex items-center gap-3">
+            {/* Sync status */}
+            <div className="flex items-center gap-2">
+              {syncing && <RefreshCw className="w-4 h-4 animate-spin text-primary" />}
+              {isOnline ? (
+                <Badge variant="outline" className="gap-1 bg-green-500/10 text-green-700 border-green-500/30">
+                  <Wifi className="w-3 h-3" />
+                  Online
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 bg-orange-500/10 text-orange-700 border-orange-500/30">
+                  <WifiOff className="w-3 h-3" />
+                  Offline
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Clock and Date */}
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center gap-3 mb-2">
           <Clock className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-            Ponto Eletrônico
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Ponto Eletrônico</h1>
         </div>
-
-        <p className="text-muted-foreground mb-8">
-          {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+        <p className="text-muted-foreground capitalize mb-4">
+          {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
         </p>
-
-        {/* Relógio grande */}
-        <div 
-          className="text-6xl sm:text-7xl font-bold font-mono mb-8 text-foreground"
-          style={{ letterSpacing: '-2px' }}
-        >
-          {horaAtual.toTimeString().slice(0, 5)}
+        <div className="text-6xl md:text-7xl font-bold font-mono text-foreground tracking-tight">
+          {format(horaAtual, 'HH:mm:ss')}
         </div>
+      </div>
 
-        {/* Select Pessoa */}
-        <select
-          value={pessoaSelecionada}
-          onChange={(e) => setPessoaSelecionada(e.target.value)}
-          className="w-full h-14 text-lg px-5 border-2 border-border rounded-2xl mb-6 bg-background text-foreground focus:border-primary focus:outline-none transition-colors"
-        >
-          <option value="">Selecione seu nome...</option>
-          
-          {funcionarios.length > 0 && (
-            <optgroup label="👔 Funcionários RH">
-              {funcionarios.map(f => (
-                <option key={`funcionario-${f.id}`} value={`funcionario-${f.id}`}>
-                  {f.nome} - {f.cargo_especialidade}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          
-          {profissionais.length > 0 && (
-            <optgroup label="💇 Profissionais">
-              {profissionais.map(p => (
-                <option key={`profissional-${p.id}`} value={`profissional-${p.id}`}>
-                  {p.nome} - {p.cargo_especialidade}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto">
+        {/* Step 1: Select Employee */}
+        {step === 'select-employee' && (
+          <div className="bg-card rounded-2xl p-6 shadow-lg">
+            <h2 className="text-xl font-semibold text-foreground mb-4 text-center">
+              Selecione seu nome
+            </h2>
 
-        {/* Status do ponto */}
-        {pessoaSelecionada && pontoHoje && (
-          <div className="grid grid-cols-4 gap-2 mb-6 text-sm">
-            <div className={`p-3 rounded-xl ${pontoHoje.entrada_manha ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
-              <div className="font-semibold">{pontoHoje.entrada_manha?.slice(0, 5) || '--:--'}</div>
-              <div className="text-xs">Entrada</div>
+            {pessoas.length === 0 ? (
+              <div className="text-center py-8">
+                <User className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">Nenhum colaborador encontrado</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {pessoas.map((pessoa) => {
+                  const registrosHoje = getRegistrosPessoa(pessoa.id, pessoa.tipo);
+                  const ultimoRegistro = registrosHoje[registrosHoje.length - 1];
+                  const isWorking = ultimoRegistro?.tipo === 'entrada';
+
+                  return (
+                    <button
+                      key={`${pessoa.tipo}-${pessoa.id}`}
+                      onClick={() => handleSelectEmployee(pessoa)}
+                      className={cn(
+                        'flex flex-col items-center p-4 rounded-xl border-2 transition-all',
+                        'hover:scale-105 hover:shadow-md active:scale-95',
+                        isWorking
+                          ? 'border-green-500/50 bg-green-500/5'
+                          : 'border-border bg-background hover:border-primary/50'
+                      )}
+                    >
+                      <Avatar className="w-16 h-16 mb-2">
+                        {pessoa.foto_url ? (
+                          <AvatarImage src={pessoa.foto_url} alt={pessoa.nome} />
+                        ) : null}
+                        <AvatarFallback className="text-lg bg-primary/10 text-primary">
+                          {getInitials(pessoa.nome)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-foreground text-center line-clamp-2">
+                        {pessoa.nome}
+                      </span>
+                      <span className="text-xs text-muted-foreground mt-1">
+                        {pessoa.cargo_especialidade}
+                      </span>
+                      {isWorking && (
+                        <Badge className="mt-2 bg-green-500/20 text-green-700 border-green-500/30">
+                          Trabalhando
+                        </Badge>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Select Action */}
+        {step === 'select-action' && pessoaSelecionada && (
+          <div className="bg-card rounded-2xl p-6 shadow-lg">
+            <button
+              onClick={resetFlow}
+              className="text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar
+            </button>
+
+            <div className="text-center mb-8">
+              <Avatar className="w-24 h-24 mx-auto mb-3">
+                {pessoaSelecionada.foto_url ? (
+                  <AvatarImage src={pessoaSelecionada.foto_url} alt={pessoaSelecionada.nome} />
+                ) : null}
+                <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                  {getInitials(pessoaSelecionada.nome)}
+                </AvatarFallback>
+              </Avatar>
+              <h2 className="text-2xl font-bold text-foreground">{pessoaSelecionada.nome}</h2>
+              <p className="text-muted-foreground">{pessoaSelecionada.cargo_especialidade}</p>
             </div>
-            <div className={`p-3 rounded-xl ${pontoHoje.saida_almoco ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' : 'bg-muted text-muted-foreground'}`}>
-              <div className="font-semibold">{pontoHoje.saida_almoco?.slice(0, 5) || '--:--'}</div>
-              <div className="text-xs">Almoço</div>
-            </div>
-            <div className={`p-3 rounded-xl ${pontoHoje.entrada_tarde ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-muted text-muted-foreground'}`}>
-              <div className="font-semibold">{pontoHoje.entrada_tarde?.slice(0, 5) || '--:--'}</div>
-              <div className="text-xs">Retorno</div>
-            </div>
-            <div className={`p-3 rounded-xl ${pontoHoje.saida ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' : 'bg-muted text-muted-foreground'}`}>
-              <div className="font-semibold">{pontoHoje.saida?.slice(0, 5) || '--:--'}</div>
-              <div className="text-xs">Saída</div>
+
+            {/* Today's records */}
+            {(() => {
+              const registrosHoje = getRegistrosPessoa(pessoaSelecionada.id, pessoaSelecionada.tipo);
+              if (registrosHoje.length > 0) {
+                return (
+                  <div className="mb-6 p-4 bg-muted/50 rounded-xl">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Registros de hoje:</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {registrosHoje.map((reg) => (
+                        <Badge
+                          key={reg.id}
+                          variant="outline"
+                          className={cn(
+                            reg.tipo === 'entrada'
+                              ? 'bg-green-500/10 text-green-700 border-green-500/30'
+                              : 'bg-red-500/10 text-red-700 border-red-500/30'
+                          )}
+                        >
+                          {reg.tipo === 'entrada' ? '➡️' : '⬅️'}{' '}
+                          {format(new Date(reg.timestamp), 'HH:mm')}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            <h3 className="text-lg font-medium text-foreground text-center mb-4">
+              O que deseja registrar?
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => handleSelectAction('entrada')}
+                className={cn(
+                  'flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all',
+                  'hover:scale-105 active:scale-95',
+                  tipoRegistro === 'entrada'
+                    ? 'border-green-500 bg-green-500/10'
+                    : 'border-green-500/30 bg-green-500/5 hover:border-green-500/60'
+                )}
+              >
+                <LogIn className="w-16 h-16 text-green-600 mb-3" />
+                <span className="text-xl font-bold text-green-700">ENTRADA</span>
+              </button>
+
+              <button
+                onClick={() => handleSelectAction('saida')}
+                className={cn(
+                  'flex flex-col items-center justify-center p-8 rounded-2xl border-2 transition-all',
+                  'hover:scale-105 active:scale-95',
+                  tipoRegistro === 'saida'
+                    ? 'border-red-500 bg-red-500/10'
+                    : 'border-red-500/30 bg-red-500/5 hover:border-red-500/60'
+                )}
+              >
+                <LogOut className="w-16 h-16 text-red-600 mb-3" />
+                <span className="text-xl font-bold text-red-700">SAÍDA</span>
+              </button>
             </div>
           </div>
         )}
 
-        {/* Botão Bater Ponto */}
-        <button
-          onClick={baterPonto}
-          disabled={loading || !pessoaSelecionada || proximoPonto.tipo === 'completo'}
-          className="w-full h-20 text-xl font-bold border-none rounded-2xl text-primary-foreground cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
-          style={{
-            background: proximoPonto.tipo === 'completo' 
-              ? 'hsl(var(--muted))' 
-              : 'linear-gradient(135deg, hsl(142.1, 76.2%, 36.3%) 0%, hsl(142.1, 76.2%, 30%) 100%)',
-            boxShadow: proximoPonto.tipo !== 'completo' ? '0 4px 20px rgba(52, 199, 89, 0.4)' : 'none',
-            color: proximoPonto.tipo === 'completo' ? 'hsl(var(--muted-foreground))' : 'white'
-          }}
-        >
-          {loading ? (
-            'Registrando...'
-          ) : proximoPonto.tipo === 'completo' ? (
-            <>
-              <Check className="w-6 h-6" />
-              DIA COMPLETO
-            </>
-          ) : (
-            <>
-              <ArrowRight className="w-6 h-6" />
-              REGISTRAR {proximoPonto.label.toUpperCase()}
-            </>
-          )}
-        </button>
+        {/* Step 3: Confirm */}
+        {step === 'confirm' && pessoaSelecionada && tipoRegistro && (
+          <div className="bg-card rounded-2xl p-6 shadow-lg">
+            <button
+              onClick={() => setStep('select-action')}
+              className="text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar
+            </button>
 
-        {pessoaAtual && (
-          <p className="text-sm text-muted-foreground mt-4">
-            {pessoaAtual.tipo === 'profissional' ? '💇' : '👔'} {pessoaAtual.nome}
-          </p>
+            <div className="text-center mb-6">
+              <div
+                className={cn(
+                  'w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4',
+                  tipoRegistro === 'entrada' ? 'bg-green-500/20' : 'bg-red-500/20'
+                )}
+              >
+                {tipoRegistro === 'entrada' ? (
+                  <LogIn className="w-10 h-10 text-green-600" />
+                ) : (
+                  <LogOut className="w-10 h-10 text-red-600" />
+                )}
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-1">
+                Confirmar {tipoRegistro === 'entrada' ? 'Entrada' : 'Saída'}
+              </h2>
+              <p className="text-muted-foreground">{pessoaSelecionada.nome}</p>
+              <p className="text-3xl font-bold font-mono text-foreground mt-2">
+                {format(horaAtual, 'HH:mm')}
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="text-sm font-medium text-foreground mb-2 block">
+                Observação (opcional)
+              </label>
+              <Textarea
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                placeholder="Ex: Chegando de reunião externa..."
+                className="resize-none"
+                rows={3}
+              />
+            </div>
+
+            <Button
+              onClick={handleConfirm}
+              disabled={registering}
+              className={cn(
+                'w-full h-16 text-xl font-bold',
+                tipoRegistro === 'entrada'
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-red-600 hover:bg-red-700'
+              )}
+            >
+              {registering ? (
+                <>
+                  <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                  Registrando...
+                </>
+              ) : (
+                <>
+                  {tipoRegistro === 'entrada' ? (
+                    <LogIn className="w-5 h-5 mr-2" />
+                  ) : (
+                    <LogOut className="w-5 h-5 mr-2" />
+                  )}
+                  CONFIRMAR {tipoRegistro.toUpperCase()}
+                </>
+              )}
+            </Button>
+          </div>
         )}
 
-        <p className="text-xs text-muted-foreground mt-6">
-          Seu ponto será registrado automaticamente
+        {/* Step 4: Success */}
+        {step === 'success' && pessoaSelecionada && tipoRegistro && (
+          <div className="bg-card rounded-2xl p-8 shadow-lg text-center">
+            <div
+              className={cn(
+                'w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6',
+                tipoRegistro === 'entrada' ? 'bg-green-500' : 'bg-red-500'
+              )}
+            >
+              {tipoRegistro === 'entrada' ? (
+                <LogIn className="w-12 h-12 text-white" />
+              ) : (
+                <LogOut className="w-12 h-12 text-white" />
+              )}
+            </div>
+
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              {tipoRegistro === 'entrada' ? 'Entrada' : 'Saída'} Registrada!
+            </h2>
+            <p className="text-muted-foreground mb-4">{pessoaSelecionada.nome}</p>
+            <p className="text-4xl font-bold font-mono text-foreground mb-6">
+              {format(new Date(), 'HH:mm')}
+            </p>
+
+            {!isOnline && (
+              <Badge variant="outline" className="bg-orange-500/10 text-orange-700 border-orange-500/30">
+                <WifiOff className="w-3 h-3 mr-1" />
+                Salvo localmente - será sincronizado quando online
+              </Badge>
+            )}
+
+            <p className="text-sm text-muted-foreground mt-6">
+              Retornando à tela inicial em 3 segundos...
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="max-w-4xl mx-auto mt-6 text-center">
+        <p className="text-xs text-muted-foreground">
+          {lastSync ? (
+            <>Última sincronização: {format(lastSync, 'HH:mm:ss')}</>
+          ) : (
+            <>Dispositivo: {deviceId.slice(0, 12)}...</>
+          )}
         </p>
       </div>
     </div>
