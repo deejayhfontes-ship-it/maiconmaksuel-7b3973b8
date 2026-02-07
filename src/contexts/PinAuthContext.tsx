@@ -227,11 +227,15 @@ export function PinAuthProvider({ children }: { children: ReactNode }) {
 
     const allowedRoutes = ROUTE_PERMISSIONS[session.role];
     
-    // Check exact match or if route starts with allowed route
+    // Normalize route (remove trailing slash, query params)
+    const normalizedRoute = route.split('?')[0].replace(/\/$/, '') || '/';
+    
+    // Check exact match or if route starts with allowed route (for dynamic routes)
     return allowedRoutes.some(allowed => {
-      if (route === allowed) return true;
-      // Handle dynamic routes like /profissional/:id
-      if (route.startsWith(allowed + '/')) return true;
+      // Exact match
+      if (normalizedRoute === allowed) return true;
+      // Dynamic routes like /profissional/:id or /nota-fiscal/:id
+      if (normalizedRoute.startsWith(allowed + '/')) return true;
       return false;
     });
   }, [session]);
