@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles } from "lucide-react";
 import AtalhosRapidos from "@/components/dashboard/AtalhosRapidos";
+import { WhatsAppDashboardCard } from "@/components/dashboard/WhatsAppWidget";
 import iconeMaicon from "@/assets/icone-maicon.svg";
 import {
   LineChart,
@@ -439,8 +440,11 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* WhatsApp Widget + Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* WhatsApp Card */}
+        <WhatsAppDashboardCard />
+        
         {/* Gráfico de Faturamento */}
         <Card className="lg:col-span-2">
           <CardHeader>
