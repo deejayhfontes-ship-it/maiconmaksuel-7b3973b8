@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { OfflineProvider } from "@/contexts/OfflineContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { UpdateNotification } from "@/components/UpdateNotification";
@@ -60,13 +61,14 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="beautypro-theme">
-      <AuthProvider>
-        <TooltipProvider>
-          <UpdateNotification />
-          <Toaster />
-          <Sonner position="top-right" expand closeButton richColors />
-          <BrowserRouter>
-            <Routes>
+      <OfflineProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <UpdateNotification />
+            <Toaster />
+            <Sonner position="top-right" expand closeButton richColors />
+            <BrowserRouter>
+              <Routes>
               {/* Public routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/cadastro" element={<Cadastro />} />
@@ -122,11 +124,12 @@ const App = () => (
                 <Route path="/mapa-sistema" element={<MapaSistema />} />
               </Route>
               
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </OfflineProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

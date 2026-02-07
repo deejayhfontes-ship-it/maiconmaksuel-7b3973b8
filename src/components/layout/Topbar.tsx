@@ -1,4 +1,4 @@
-import { Search, Moon, Sun, Menu, User, Settings, LogOut, Type, Plus, Command, Maximize } from "lucide-react";
+import { Search, Moon, Sun, Menu, User, Settings, LogOut, Type, Plus, Command } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 const fontSizes = [
   { label: "1x", root: "14px" },
@@ -129,6 +130,9 @@ export function Topbar() {
 
         {/* Actions */}
         <div className="flex items-center gap-1 md:gap-3">
+          {/* Offline Status Indicator */}
+          <OfflineIndicator />
+
           {/* Notifications */}
           <NotificationsDropdown />
 
