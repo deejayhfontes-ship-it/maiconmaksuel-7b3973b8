@@ -3621,6 +3621,66 @@ export type Database = {
           },
         ]
       }
+      relatorios_gerados: {
+        Row: {
+          created_at: string
+          date_end: string | null
+          date_start: string | null
+          filters_applied: Json | null
+          generated_at: string
+          generated_by: string
+          id: string
+          pdf_path: string | null
+          pdf_url: string | null
+          report_subtype: string
+          report_type: Database["public"]["Enums"]["report_category"]
+          status: string
+          synced: boolean
+          title: string
+          total_records: number | null
+          total_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_end?: string | null
+          date_start?: string | null
+          filters_applied?: Json | null
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          pdf_path?: string | null
+          pdf_url?: string | null
+          report_subtype: string
+          report_type: Database["public"]["Enums"]["report_category"]
+          status?: string
+          synced?: boolean
+          title: string
+          total_records?: number | null
+          total_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_end?: string | null
+          date_start?: string | null
+          filters_applied?: Json | null
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          pdf_path?: string | null
+          pdf_url?: string | null
+          report_subtype?: string
+          report_type?: Database["public"]["Enums"]["report_category"]
+          status?: string
+          synced?: boolean
+          title?: string
+          total_records?: number | null
+          total_value?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       respostas_rapidas_whatsapp: {
         Row: {
           atalho: string | null
@@ -3817,6 +3877,15 @@ export type Database = {
     Enums: {
       nivel_acesso: "admin" | "gerente" | "operador"
       pin_role: "admin" | "notebook" | "kiosk"
+      report_category:
+        | "vendas"
+        | "clientes"
+        | "profissionais"
+        | "estoque"
+        | "financeiro"
+        | "crediario"
+        | "caixa"
+        | "consolidado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3946,6 +4015,16 @@ export const Constants = {
     Enums: {
       nivel_acesso: ["admin", "gerente", "operador"],
       pin_role: ["admin", "notebook", "kiosk"],
+      report_category: [
+        "vendas",
+        "clientes",
+        "profissionais",
+        "estoque",
+        "financeiro",
+        "crediario",
+        "caixa",
+        "consolidado",
+      ],
     },
   },
 } as const
