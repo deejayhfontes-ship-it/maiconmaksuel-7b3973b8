@@ -2490,6 +2490,54 @@ export type Database = {
           },
         ]
       }
+      registro_ponto: {
+        Row: {
+          aprovado_por: string | null
+          created_at: string
+          foto_comprovante: string | null
+          id: string
+          observacao: string | null
+          profissional_id: string
+          timestamp: string
+          tipo: string
+        }
+        Insert: {
+          aprovado_por?: string | null
+          created_at?: string
+          foto_comprovante?: string | null
+          id?: string
+          observacao?: string | null
+          profissional_id: string
+          timestamp?: string
+          tipo: string
+        }
+        Update: {
+          aprovado_por?: string | null
+          created_at?: string
+          foto_comprovante?: string | null
+          id?: string
+          observacao?: string | null
+          profissional_id?: string
+          timestamp?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_ponto_aprovado_por_fkey"
+            columns: ["aprovado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_ponto_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       servicos: {
         Row: {
           aparece_pdv: boolean
