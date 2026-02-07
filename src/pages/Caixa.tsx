@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Lock,
   Unlock,
@@ -23,6 +24,11 @@ import {
   FileText,
   Gift,
   Clock,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Monitor,
+  Tablet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,7 +71,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useCaixa, CaixaMovimentacao } from "@/hooks/useCaixa";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -74,58 +80,7 @@ import { ComandasAbertasSection } from "@/components/caixa/ComandasAbertasSectio
 import { AcoesRapidasSection } from "@/components/caixa/AcoesRapidasSection";
 import { ChequesListModal } from "@/components/caixa/ChequesListModal";
 import { ChequeFormModal } from "@/components/caixa/ChequeFormModal";
-
-interface CaixaData {
-  id: string;
-  data_abertura: string;
-  data_fechamento: string | null;
-  valor_inicial: number;
-  valor_final: number | null;
-  status: string;
-  observacoes_abertura: string | null;
-}
-
-interface Movimentacao {
-  id: string;
-  caixa_id: string;
-  tipo: string;
-  categoria: string | null;
-  descricao: string;
-  valor: number;
-  forma_pagamento: string | null;
-  data_hora: string;
-}
-
-interface DespesaRapida {
-  id: string;
-  descricao: string;
-  categoria: string;
-  valor: number;
-  data_hora: string;
-  pago_por: string;
-}
-
-interface ComissaoProfissional {
-  id: string;
-  nome: string;
-  foto_url: string | null;
-  cor_agenda: string;
-  comissao_servicos: number;
-  comissao_produtos: number;
-  total_comissao: number;
-  vales_abertos: number;
-  comissao_liquida: number;
-}
-
-interface ValeProfissional {
-  id: string;
-  profissional_id: string;
-  valor_total: number;
-  saldo_restante: number;
-  status: string;
-  motivo: string;
-  data_lancamento: string;
-}
+import { isFeatureAllowed, getDeviceInfo, DeviceInfo } from "@/lib/deviceType";
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -148,14 +103,29 @@ const getCategoriaIcon = (categoria: string) => {
 };
 
 const Caixa = () => {
-  const [caixaAberto, setCaixaAberto] = useState<CaixaData | null>(null);
-  const [ultimoCaixaFechado, setUltimoCaixaFechado] = useState<CaixaData | null>(null);
-  const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
-  const [despesas, setDespesas] = useState<DespesaRapida[]>([]);
-  const [comissoesProfissionais, setComissoesProfissionais] = useState<ComissaoProfissional[]>([]);
-  const [valesProfissionais, setValesProfissionais] = useState<ValeProfissional[]>([]);
-  const [descontarVales, setDescontarVales] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // Use the offline-first hook
+  const {
+    caixaAberto,
+    movimentacoes,
+    despesas,
+    totais,
+    loading,
+    syncing,
+    isOnline,
+    lastSync,
+    abrirCaixa,
+    fecharCaixa,
+    registrarSangria,
+    registrarReforco,
+    registrarDespesa,
+    refresh,
+  } = useCaixa();
+
+  // Device info for access control
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>(getDeviceInfo());
   const [tabAtiva, setTabAtiva] = useState("todas");
 
   // Modals
@@ -175,233 +145,43 @@ const Caixa = () => {
   const [despesaDesc, setDespesaDesc] = useState("");
   const [despesaCat, setDespesaCat] = useState("cafe");
   const [despesaValor, setDespesaValor] = useState(0);
-  const [despesaPagoPor, setDespesaPagoPor] = useState("caixa");
+  const [despesaPagoPor, setDespesaPagoPor] = useState<"caixa" | "dono">("caixa");
   const [despesaObs, setDespesaObs] = useState("");
   const [sangriaValor, setSangriaValor] = useState(0);
   const [sangriaMotivo, setSangriaMotivo] = useState("");
   const [reforcoValor, setReforcoValor] = useState(0);
   const [reforcoMotivo, setReforcoMotivo] = useState("");
 
-  const { toast } = useToast();
-
-  const fetchCaixa = useCallback(async () => {
-    setLoading(true);
-
-    // Buscar caixa aberto
-    const { data: aberto } = await supabase
-      .from("caixa")
-      .select("*")
-      .eq("status", "aberto")
-      .order("data_abertura", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (aberto) {
-      setCaixaAberto(aberto);
-
-      // Buscar movimentações do caixa aberto
-      const { data: movs } = await supabase
-        .from("caixa_movimentacoes")
-        .select("*")
-        .eq("caixa_id", aberto.id)
-        .order("data_hora", { ascending: false });
-
-      setMovimentacoes(movs || []);
-
-      // Buscar despesas do dia
-      const hoje = new Date();
-      const inicioHoje = new Date(hoje.setHours(0, 0, 0, 0)).toISOString();
-      const { data: desps } = await supabase
-        .from("despesas_rapidas")
-        .select("*")
-        .gte("data_hora", inicioHoje)
-        .order("data_hora", { ascending: false });
-
-      setDespesas(desps || []);
-
-      // Buscar comissões dos profissionais do dia (atendimentos finalizados)
-      const fimHoje = new Date();
-      fimHoje.setHours(23, 59, 59, 999);
-      
-      const { data: atendimentosHoje } = await supabase
-        .from("atendimentos")
-        .select("id")
-        .eq("status", "finalizado")
-        .gte("data_hora", inicioHoje)
-        .lte("data_hora", fimHoje.toISOString());
-
-      // Buscar vales abertos de todos os profissionais
-      const { data: valesAbertos } = await supabase
-        .from("vales")
-        .select("*")
-        .eq("status", "aberto");
-      
-      setValesProfissionais(valesAbertos || []);
-
-      if (atendimentosHoje && atendimentosHoje.length > 0) {
-        const atendimentoIds = atendimentosHoje.map(a => a.id);
-
-        // Buscar serviços com comissões
-        const { data: servicosComissoes } = await supabase
-          .from("atendimento_servicos")
-          .select(`
-            profissional_id,
-            comissao_valor,
-            profissionais:profissional_id (
-              id,
-              nome,
-              foto_url,
-              cor_agenda
-            )
-          `)
-          .in("atendimento_id", atendimentoIds);
-
-        // Agrupar por profissional
-        const comissoesMap = new Map<string, ComissaoProfissional>();
-        
-        servicosComissoes?.forEach((item: any) => {
-          const prof = item.profissionais;
-          if (!prof) return;
-          
-          if (!comissoesMap.has(prof.id)) {
-            // Calcular vales abertos deste profissional
-            const valesProf = (valesAbertos || []).filter(v => v.profissional_id === prof.id);
-            const totalVales = valesProf.reduce((sum, v) => sum + Number(v.saldo_restante || 0), 0);
-            
-            comissoesMap.set(prof.id, {
-              id: prof.id,
-              nome: prof.nome,
-              foto_url: prof.foto_url,
-              cor_agenda: prof.cor_agenda,
-              comissao_servicos: 0,
-              comissao_produtos: 0,
-              total_comissao: 0,
-              vales_abertos: totalVales,
-              comissao_liquida: 0,
-            });
-          }
-          
-          const existing = comissoesMap.get(prof.id)!;
-          existing.comissao_servicos += Number(item.comissao_valor);
-          existing.total_comissao += Number(item.comissao_valor);
-          existing.comissao_liquida = existing.total_comissao - existing.vales_abertos;
-        });
-
-        setComissoesProfissionais(Array.from(comissoesMap.values()));
-      } else {
-        setComissoesProfissionais([]);
-      }
-    } else {
-      setCaixaAberto(null);
-      setMovimentacoes([]);
-      setDespesas([]);
-      setComissoesProfissionais([]);
-
-      // Buscar último caixa fechado
-      const { data: fechado } = await supabase
-        .from("caixa")
-        .select("*")
-        .eq("status", "fechado")
-        .order("data_fechamento", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      setUltimoCaixaFechado(fechado);
-    }
-
-    setLoading(false);
+  // Update device info on resize
+  useEffect(() => {
+    const handleResize = () => setDeviceInfo(getDeviceInfo());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  useEffect(() => {
-    fetchCaixa();
-  }, [fetchCaixa]);
-
-  // Calcular totais
-  const totais = useMemo(() => {
-    const entradas = movimentacoes
-      .filter((m) => m.tipo === "entrada" || m.tipo === "reforco")
-      .reduce((acc, m) => acc + Number(m.valor), 0);
-
-    const saidas = movimentacoes
-      .filter((m) => m.tipo === "saida" || m.tipo === "sangria")
-      .reduce((acc, m) => acc + Number(m.valor), 0);
-
-    const valorInicialCaixa = Number(caixaAberto?.valor_inicial || 0);
-    const saldo = valorInicialCaixa + entradas - saidas;
-
-    const dinheiro = movimentacoes
-      .filter((m) => m.forma_pagamento === "dinheiro" && m.tipo === "entrada")
-      .reduce((acc, m) => acc + Number(m.valor), 0);
-
-    const debito = movimentacoes
-      .filter((m) => m.forma_pagamento === "debito" && m.tipo === "entrada")
-      .reduce((acc, m) => acc + Number(m.valor), 0);
-
-    const credito = movimentacoes
-      .filter((m) => m.forma_pagamento === "credito" && m.tipo === "entrada")
-      .reduce((acc, m) => acc + Number(m.valor), 0);
-
-    const pix = movimentacoes
-      .filter((m) => m.forma_pagamento === "pix" && m.tipo === "entrada")
-      .reduce((acc, m) => acc + Number(m.valor), 0);
-
-    const despesasTotal = despesas
-      .filter((d) => d.pago_por === "caixa")
-      .reduce((acc, d) => acc + Number(d.valor), 0);
-
-    const saldoDinheiro = valorInicialCaixa + dinheiro - saidas;
-
-    return { entradas, saidas, saldo, dinheiro, debito, credito, pix, despesasTotal, saldoDinheiro };
-  }, [movimentacoes, despesas, caixaAberto]);
+  // Check permissions
+  const canOpenCaixa = isFeatureAllowed("abrir-caixa");
+  const canCloseCaixa = isFeatureAllowed("fechar-caixa");
+  const canSangria = isFeatureAllowed("sangria");
+  const canReforco = isFeatureAllowed("reforco");
+  const canDespesa = isFeatureAllowed("despesa-rapida");
+  const canCheques = isFeatureAllowed("cheques");
 
   const handleAbrirCaixa = async () => {
-    const { data, error } = await supabase
-      .from("caixa")
-      .insert([{
-        valor_inicial: valorInicial,
-        observacoes_abertura: obsAbertura || null,
-        status: "aberto",
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      toast({ title: "Erro ao abrir caixa", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Caixa aberto com sucesso!" });
+    const result = await abrirCaixa(valorInicial, obsAbertura);
+    if (result) {
       setIsAbrirOpen(false);
       setValorInicial(0);
       setObsAbertura("");
-      fetchCaixa();
     }
   };
 
   const handleFecharCaixa = async () => {
-    if (!caixaAberto) return;
-
-    const valorEsperado = totais.saldo;
-    const diferenca = valorFechamento - valorEsperado;
-
-    const { error } = await supabase
-      .from("caixa")
-      .update({
-        status: "fechado",
-        data_fechamento: new Date().toISOString(),
-        valor_final: valorFechamento,
-        valor_esperado: valorEsperado,
-        diferenca: diferenca,
-        observacoes_fechamento: obsFechamento || null,
-      })
-      .eq("id", caixaAberto.id);
-
-    if (error) {
-      toast({ title: "Erro ao fechar caixa", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Caixa fechado com sucesso!" });
+    const result = await fecharCaixa(valorFechamento, obsFechamento);
+    if (result) {
       setIsFecharOpen(false);
       setValorFechamento(0);
       setObsFechamento("");
-      fetchCaixa();
     }
   };
 
@@ -411,97 +191,50 @@ const Caixa = () => {
       return;
     }
 
-    // Criar despesa rápida
-    const { error: despError } = await supabase.from("despesas_rapidas").insert([{
+    const result = await registrarDespesa({
       caixa_id: caixaAberto?.id || null,
       descricao: despesaDesc,
       categoria: despesaCat,
       valor: despesaValor,
       pago_por: despesaPagoPor,
       observacoes: despesaObs || null,
-    }]);
+    });
 
-    if (despError) {
-      toast({ title: "Erro ao registrar despesa", description: despError.message, variant: "destructive" });
-      return;
+    if (result) {
+      setIsDespesaOpen(false);
+      setDespesaDesc("");
+      setDespesaCat("cafe");
+      setDespesaValor(0);
+      setDespesaPagoPor("caixa");
+      setDespesaObs("");
     }
-
-    // Se pago do caixa, criar movimentação de saída
-    if (despesaPagoPor === "caixa" && caixaAberto) {
-      await supabase.from("caixa_movimentacoes").insert([{
-        caixa_id: caixaAberto.id,
-        tipo: "saida",
-        categoria: "despesa",
-        descricao: `Despesa: ${despesaDesc}`,
-        valor: despesaValor,
-        forma_pagamento: "dinheiro",
-      }]);
-    }
-
-    toast({ title: "Despesa registrada!" });
-    setIsDespesaOpen(false);
-    setDespesaDesc("");
-    setDespesaCat("cafe");
-    setDespesaValor(0);
-    setDespesaPagoPor("caixa");
-    setDespesaObs("");
-    fetchCaixa();
   };
 
   const handleSangria = async () => {
-    if (!caixaAberto || sangriaValor <= 0 || !sangriaMotivo) {
+    if (sangriaValor <= 0 || !sangriaMotivo) {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
 
-    if (sangriaValor > totais.saldoDinheiro) {
-      toast({ title: "Valor maior que saldo em dinheiro", variant: "destructive" });
-      return;
-    }
-
-    const { error } = await supabase.from("caixa_movimentacoes").insert([{
-      caixa_id: caixaAberto.id,
-      tipo: "sangria",
-      categoria: "sangria",
-      descricao: sangriaMotivo,
-      valor: sangriaValor,
-      forma_pagamento: "dinheiro",
-    }]);
-
-    if (error) {
-      toast({ title: "Erro ao registrar sangria", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `Sangria de ${formatPrice(sangriaValor)} registrada` });
+    const result = await registrarSangria(sangriaValor, sangriaMotivo);
+    if (result) {
       setIsSangriaOpen(false);
       setSangriaValor(0);
       setSangriaMotivo("");
-      fetchCaixa();
     }
   };
 
   const handleReforco = async () => {
-    if (!caixaAberto || reforcoValor <= 0 || !reforcoMotivo) {
+    if (reforcoValor <= 0 || !reforcoMotivo) {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
 
-    const { error } = await supabase.from("caixa_movimentacoes").insert([{
-      caixa_id: caixaAberto.id,
-      tipo: "reforco",
-      categoria: "reforco",
-      descricao: reforcoMotivo,
-      valor: reforcoValor,
-      forma_pagamento: "dinheiro",
-    }]);
-
-    if (error) {
-      toast({ title: "Erro ao registrar reforço", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `Reforço de ${formatPrice(reforcoValor)} registrado` });
+    const result = await registrarReforco(reforcoValor, reforcoMotivo);
+    if (result) {
       setIsReforcoOpen(false);
       setReforcoValor(0);
       setReforcoMotivo("");
-      fetchCaixa();
     }
   };
 
@@ -516,7 +249,6 @@ const Caixa = () => {
     }
   }, [movimentacoes, tabAtiva]);
 
-  // iOS Status Badges with icons
   const getTipoBadge = (tipo: string, categoria?: string | null) => {
     switch (tipo) {
       case "entrada":
@@ -568,6 +300,42 @@ const Caixa = () => {
     }
   };
 
+  // Sync status indicator
+  const SyncIndicator = () => (
+    <div className="flex items-center gap-2 text-sm">
+      {syncing ? (
+        <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+      ) : isOnline ? (
+        <Wifi className="h-4 w-4 text-success" />
+      ) : (
+        <WifiOff className="h-4 w-4 text-warning" />
+      )}
+      <span className="text-muted-foreground">
+        {syncing ? "Sincronizando..." : isOnline ? "Online" : "Offline"}
+      </span>
+      {lastSync && (
+        <span className="text-xs text-muted-foreground">
+          • Última sync: {format(lastSync, "HH:mm")}
+        </span>
+      )}
+      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refresh}>
+        <RefreshCw className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+
+  // Device indicator
+  const DeviceIndicator = () => (
+    <div className="flex items-center gap-2 text-sm">
+      {deviceInfo.type === "kiosk" ? (
+        <Tablet className="h-4 w-4 text-info" />
+      ) : (
+        <Monitor className="h-4 w-4 text-primary" />
+      )}
+      <span className="text-muted-foreground capitalize">{deviceInfo.type}</span>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -580,6 +348,11 @@ const Caixa = () => {
   if (!caixaAberto) {
     return (
       <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <SyncIndicator />
+          <DeviceIndicator />
+        </div>
+
         <div className="flex items-center justify-center min-h-[60vh]">
           <Card className="w-full max-w-md text-center">
             <CardContent className="pt-8 pb-8 space-y-6">
@@ -588,24 +361,28 @@ const Caixa = () => {
               </div>
               <div>
                 <h2 className="text-2xl font-bold">Caixa Fechado</h2>
-                {ultimoCaixaFechado && (
-                  <div className="text-sm text-muted-foreground mt-2 space-y-1">
-                    <p>
-                      Último fechamento:{" "}
-                      {format(parseISO(ultimoCaixaFechado.data_fechamento!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                    <p>Saldo final: {formatPrice(Number(ultimoCaixaFechado.valor_final))}</p>
-                  </div>
-                )}
+                <p className="text-sm text-muted-foreground mt-2">
+                  {!isOnline && "Modo offline ativo. Os dados serão sincronizados quando reconectar."}
+                </p>
               </div>
-              <Button
-                size="lg"
-                className="w-full bg-success hover:bg-success/90 text-lg h-14"
-                onClick={() => setIsAbrirOpen(true)}
-              >
-                <Unlock className="h-5 w-5 mr-2" />
-                Abrir Novo Caixa
-              </Button>
+              {canOpenCaixa ? (
+                <Button
+                  size="lg"
+                  className="w-full bg-success hover:bg-success/90 text-lg h-14"
+                  onClick={() => setIsAbrirOpen(true)}
+                >
+                  <Unlock className="h-5 w-5 mr-2" />
+                  Abrir Novo Caixa
+                </Button>
+              ) : (
+                <div className="p-4 bg-warning/10 rounded-lg border border-warning/30">
+                  <AlertTriangle className="h-6 w-6 text-warning mx-auto mb-2" />
+                  <p className="text-sm text-warning">
+                    Este dispositivo ({deviceInfo.type}) não tem permissão para abrir o caixa.
+                    Use um notebook para esta operação.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -673,7 +450,15 @@ const Caixa = () => {
             <p>Valor inicial: {formatPrice(Number(caixaAberto.valor_inicial))}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-4">
+          <SyncIndicator />
+          <DeviceIndicator />
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-2">
+        {canDespesa && (
           <Button 
             variant="outline" 
             className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-semibold" 
@@ -682,6 +467,8 @@ const Caixa = () => {
             <Receipt className="h-5 w-5 mr-2" />
             Despesa Rápida
           </Button>
+        )}
+        {canSangria && (
           <Button 
             variant="outline" 
             className="border-2 border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold" 
@@ -690,6 +477,8 @@ const Caixa = () => {
             <ArrowDownCircle className="h-5 w-5 mr-2" />
             Sangria
           </Button>
+        )}
+        {canReforco && (
           <Button 
             variant="outline" 
             className="border-2 border-cyan-500 text-cyan-600 hover:bg-cyan-50 font-semibold" 
@@ -698,6 +487,18 @@ const Caixa = () => {
             <ArrowUpCircle className="h-5 w-5 mr-2" />
             Reforço
           </Button>
+        )}
+        {canCheques && (
+          <Button 
+            variant="outline" 
+            className="border-2 border-gray-500 text-gray-600 hover:bg-gray-50 font-semibold" 
+            onClick={() => setIsChequesListOpen(true)}
+          >
+            <FileText className="h-5 w-5 mr-2" />
+            Cheques
+          </Button>
+        )}
+        {canCloseCaixa ? (
           <Button 
             className="bg-red-500 hover:bg-red-600 text-white font-semibold" 
             onClick={() => setIsFecharOpen(true)}
@@ -705,7 +506,12 @@ const Caixa = () => {
             <Lock className="h-5 w-5 mr-2" />
             Fechar Caixa
           </Button>
-        </div>
+        ) : (
+          <Badge variant="outline" className="px-4 py-2">
+            <AlertTriangle className="h-4 w-4 mr-1 text-warning" />
+            Fechar caixa disponível apenas no notebook
+          </Badge>
+        )}
       </div>
 
       {/* Cards de Resumo */}
@@ -760,7 +566,7 @@ const Caixa = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-muted-foreground mb-1 truncate">Despesas do Dia</p>
-                <p className="text-2xl font-bold text-purple-700 dark:text-purple-400 truncate">{formatPrice(totais.despesasTotal)}</p>
+                <p className="text-2xl font-bold text-purple-700 dark:text-purple-400 truncate">{formatPrice(totais.despesas)}</p>
                 <p className="text-xs text-muted-foreground">{despesas.filter(d => d.pago_por === "caixa").length} despesas</p>
               </div>
             </div>
@@ -770,7 +576,7 @@ const Caixa = () => {
 
       {/* Cards de Formas de Pagamento */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-green-100 dark:border-green-800/50 hover:shadow-md transition-shadow min-h-[100px]">
+        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-green-100 dark:border-green-800/50">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2.5 bg-green-50 dark:bg-green-900/30 rounded-xl shrink-0">
               <Banknote className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -782,7 +588,7 @@ const Caixa = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-blue-100 dark:border-blue-800/50 hover:shadow-md transition-shadow min-h-[100px]">
+        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-blue-100 dark:border-blue-800/50">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl shrink-0">
               <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -794,7 +600,7 @@ const Caixa = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-purple-100 dark:border-purple-800/50 hover:shadow-md transition-shadow min-h-[100px]">
+        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-purple-100 dark:border-purple-800/50">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2.5 bg-purple-50 dark:bg-purple-900/30 rounded-xl shrink-0">
               <CreditCard className="w-6 h-6 text-purple-600 dark:text-purple-400" />
@@ -806,7 +612,7 @@ const Caixa = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-cyan-100 dark:border-cyan-800/50 hover:shadow-md transition-shadow min-h-[100px]">
+        <Card className="bg-white dark:bg-card rounded-2xl shadow-sm border-2 border-cyan-100 dark:border-cyan-800/50">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2.5 bg-cyan-50 dark:bg-cyan-900/30 rounded-xl shrink-0">
               <Smartphone className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
@@ -820,235 +626,90 @@ const Caixa = () => {
       </div>
 
       {/* Comandas Abertas */}
-      <ComandasAbertasSection onComandaFinalizada={fetchCaixa} />
-
-      {/* Ações Rápidas */}
-      <AcoesRapidasSection caixaId={caixaAberto.id} onActionComplete={fetchCaixa} />
+      <ComandasAbertasSection onComandaFinalizada={refresh} />
 
       {/* Movimentações */}
       <Card>
         <CardHeader>
-          <CardTitle>Movimentações</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Movimentações do Dia</span>
+            <Badge variant="outline">{movimentacoes.length} registros</Badge>
+          </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent>
           <Tabs value={tabAtiva} onValueChange={setTabAtiva}>
-            <div className="px-6">
-              <TabsList>
-                <TabsTrigger value="todas">Todas</TabsTrigger>
-                <TabsTrigger value="entradas">Entradas</TabsTrigger>
-                <TabsTrigger value="saidas">Saídas</TabsTrigger>
-              </TabsList>
-            </div>
+            <TabsList className="grid grid-cols-3 mb-4">
+              <TabsTrigger value="todas">Todas</TabsTrigger>
+              <TabsTrigger value="entradas">Entradas</TabsTrigger>
+              <TabsTrigger value="saidas">Saídas</TabsTrigger>
+            </TabsList>
 
-            <TabsContent value={tabAtiva} className="mt-0">
-              <ScrollArea className="h-[400px]">
+            <ScrollArea className="h-[300px]">
+              {movimentacoesFiltradas.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhuma movimentação encontrada
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-20">Hora</TableHead>
-                      <TableHead className="w-24">Tipo</TableHead>
+                      <TableHead>Hora</TableHead>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Descrição</TableHead>
-                      <TableHead>Pagamento</TableHead>
+                      <TableHead>Forma</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {movimentacoesFiltradas.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          Nenhuma movimentação
+                    {movimentacoesFiltradas.map((mov) => (
+                      <TableRow key={mov.id}>
+                        <TableCell className="text-sm">
+                          {format(parseISO(mov.data_hora), "HH:mm")}
+                        </TableCell>
+                        <TableCell>{getTipoBadge(mov.tipo, mov.categoria)}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{mov.descricao}</TableCell>
+                        <TableCell className="capitalize">{mov.forma_pagamento || "-"}</TableCell>
+                        <TableCell className={cn(
+                          "text-right font-medium",
+                          mov.tipo === "entrada" || mov.tipo === "reforco" 
+                            ? "text-success" 
+                            : "text-destructive"
+                        )}>
+                          {mov.tipo === "entrada" || mov.tipo === "reforco" ? "+" : "-"}
+                          {formatPrice(mov.valor)}
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      movimentacoesFiltradas.map((mov) => (
-                        <TableRow key={mov.id}>
-                          <TableCell className="font-medium">
-                            {format(parseISO(mov.data_hora), "HH:mm")}
-                          </TableCell>
-                          <TableCell>{getTipoBadge(mov.tipo, mov.categoria)}</TableCell>
-                          <TableCell>{mov.descricao}</TableCell>
-                          <TableCell>
-                            {mov.forma_pagamento && (
-                              <Badge variant="outline" className="capitalize">
-                                {mov.forma_pagamento}
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className={cn(
-                            "text-right font-semibold",
-                            mov.tipo === "entrada" || mov.tipo === "reforco" ? "text-success" : "text-destructive"
-                          )}>
-                            {mov.tipo === "entrada" || mov.tipo === "reforco" ? "+" : "-"}
-                            {formatPrice(Number(mov.valor))}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
-              </ScrollArea>
-            </TabsContent>
+              )}
+            </ScrollArea>
           </Tabs>
         </CardContent>
       </Card>
 
-      {/* Despesas Rápidas */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Despesas Rápidas de Hoje</CardTitle>
-            <p className="text-sm text-muted-foreground">Gastos pequenos do dia a dia</p>
-          </div>
-          <Button variant="outline" className="text-info" onClick={() => setIsDespesaOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Despesa
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {despesas.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhuma despesa registrada hoje</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {despesas.map((despesa) => {
-                const Icon = getCategoriaIcon(despesa.categoria);
-                return (
-                  <Card key={despesa.id} className="bg-muted/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-info/10">
-                          <Icon className="h-4 w-4 text-info" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium">{despesa.descricao}</p>
-                          <p className="text-lg font-bold text-info">{formatPrice(Number(despesa.valor))}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {despesa.pago_por === "caixa" ? "Caixa" : "Próprio"} - {format(parseISO(despesa.data_hora), "HH:mm")}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-          {despesas.length > 0 && (
-            <div className="mt-4 pt-4 border-t text-right">
-              <p className="text-sm text-muted-foreground">Total gasto hoje:</p>
-              <p className="text-xl font-bold text-purple-600">{formatPrice(totais.despesasTotal)}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Ações Rápidas */}
+      {caixaAberto && (
+        <AcoesRapidasSection caixaId={caixaAberto.id} onActionComplete={refresh} />
+      )}
 
-      {/* Card de Comissões a Pagar */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Comissões a Pagar Hoje
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Valores de comissão por profissional dos atendimentos finalizados</p>
-        </CardHeader>
-        <CardContent>
-          {comissoesProfissionais.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhuma comissão registrada hoje</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {comissoesProfissionais.map((prof) => (
-                  <Card key={prof.id} className={cn("bg-muted/30", prof.vales_abertos > 0 && "border-amber-500/50")}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={prof.foto_url || undefined} />
-                          <AvatarFallback 
-                            className="text-white font-medium"
-                            style={{ backgroundColor: prof.cor_agenda }}
-                          >
-                            {prof.nome.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="font-medium">{prof.nome}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-xl font-bold text-success">{formatPrice(prof.total_comissao)}</p>
-                          </div>
-                          {prof.comissao_servicos > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              Serviços: {formatPrice(prof.comissao_servicos)}
-                            </p>
-                          )}
-                          {prof.vales_abertos > 0 && (
-                            <div className="mt-2 pt-2 border-t border-dashed">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-amber-600">Vales abertos:</span>
-                                <span className="text-xs font-medium text-amber-600">-{formatPrice(prof.vales_abertos)}</span>
-                              </div>
-                              <div className="flex items-center justify-between mt-1">
-                                <span className="text-xs font-medium">Líquido:</span>
-                                <span className={cn("text-sm font-bold", prof.comissao_liquida >= 0 ? "text-success" : "text-destructive")}>
-                                  {formatPrice(prof.comissao_liquida)}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                <div>
-                  {comissoesProfissionais.some(p => p.vales_abertos > 0) && (
-                    <p className="text-sm text-amber-600">
-                      Total em vales: {formatPrice(comissoesProfissionais.reduce((acc, p) => acc + p.vales_abertos, 0))}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Total a pagar:</p>
-                  <p className="text-xl font-bold text-success">
-                    {formatPrice(comissoesProfissionais.reduce((acc, p) => acc + p.total_comissao, 0))}
-                  </p>
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
+      {/* === MODALS === */}
+      
       {/* Modal Fechar Caixa */}
       <AlertDialog open={isFecharOpen} onOpenChange={setIsFecharOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Fechar Caixa</AlertDialogTitle>
             <AlertDialogDescription>
-              Confira o valor em caixa antes de fechar.
+              Informe o valor contado em dinheiro na gaveta
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4 py-4">
-            <div className="p-4 bg-muted rounded-lg space-y-2">
-              <div className="flex justify-between">
-                <span>Valor inicial:</span>
-                <span className="font-medium">{formatPrice(Number(caixaAberto.valor_inicial))}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total entradas:</span>
-                <span className="font-medium text-success">+{formatPrice(totais.entradas)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total saídas:</span>
-                <span className="font-medium text-destructive">-{formatPrice(totais.saidas)}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t">
-                <span className="font-bold">Saldo esperado:</span>
-                <span className="font-bold text-primary">{formatPrice(totais.saldo)}</span>
-              </div>
+            <div className="p-3 bg-muted rounded-lg text-sm">
+              <p>Saldo esperado em dinheiro: <strong>{formatPrice(totais.saldoDinheiro)}</strong></p>
             </div>
             <div className="space-y-2">
-              <Label>Valor contado em caixa (R$)</Label>
+              <Label>Valor contado (R$)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -1060,22 +721,26 @@ const Caixa = () => {
             </div>
             {valorFechamento > 0 && (
               <div className={cn(
-                "p-3 rounded-lg text-center",
-                valorFechamento === totais.saldo ? "bg-success/10 text-success" :
-                valorFechamento > totais.saldo ? "bg-blue-500/10 text-blue-600" :
-                "bg-destructive/10 text-destructive"
+                "p-3 rounded-lg text-sm",
+                Math.abs(valorFechamento - totais.saldoDinheiro) < 0.01
+                  ? "bg-success/10 text-success"
+                  : valorFechamento > totais.saldoDinheiro
+                    ? "bg-success/10 text-success"
+                    : "bg-destructive/10 text-destructive"
               )}>
-                <p className="text-sm">Diferença:</p>
-                <p className="text-xl font-bold">
-                  {valorFechamento >= totais.saldo ? "+" : ""}
-                  {formatPrice(valorFechamento - totais.saldo)}
-                </p>
+                {Math.abs(valorFechamento - totais.saldoDinheiro) < 0.01 ? (
+                  "✓ Caixa conferido - sem diferenças"
+                ) : valorFechamento > totais.saldoDinheiro ? (
+                  `Sobra de ${formatPrice(valorFechamento - totais.saldoDinheiro)}`
+                ) : (
+                  `Falta de ${formatPrice(totais.saldoDinheiro - valorFechamento)}`
+                )}
               </div>
             )}
             <div className="space-y-2">
               <Label>Observações (opcional)</Label>
               <Textarea
-                placeholder="Observações sobre o fechamento..."
+                placeholder="Observações do fechamento..."
                 value={obsFechamento}
                 onChange={(e) => setObsFechamento(e.target.value)}
                 rows={2}
@@ -1084,8 +749,9 @@ const Caixa = () => {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogAction 
               onClick={handleFecharCaixa}
+              disabled={valorFechamento <= 0}
               className="bg-destructive hover:bg-destructive/90"
             >
               Confirmar Fechamento
@@ -1094,64 +760,66 @@ const Caixa = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal Despesa Rápida */}
+      {/* Modal Despesa */}
       <Dialog open={isDespesaOpen} onOpenChange={setIsDespesaOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova Despesa Rápida</DialogTitle>
+            <DialogTitle>Registrar Despesa Rápida</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label>Descrição *</Label>
+              <Label>Descrição</Label>
               <Input
-                placeholder="Ex: Café da manhã"
+                placeholder="Ex: Café, material de limpeza..."
                 value={despesaDesc}
                 onChange={(e) => setDespesaDesc(e.target.value)}
               />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select value={despesaCat} onValueChange={setDespesaCat}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoriasDespesa.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        <div className="flex items-center gap-2">
+                          <cat.icon className="h-4 w-4" />
+                          {cat.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Valor (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  placeholder="0,00"
+                  value={despesaValor || ""}
+                  onChange={(e) => setDespesaValor(Number(e.target.value))}
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label>Categoria *</Label>
-              <Select value={despesaCat} onValueChange={setDespesaCat}>
+              <Label>Pago por</Label>
+              <Select value={despesaPagoPor} onValueChange={(v) => setDespesaPagoPor(v as "caixa" | "dono")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoriasDespesa.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      <div className="flex items-center gap-2">
-                        <cat.icon className="h-4 w-4" />
-                        {cat.label}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="caixa">Caixa</SelectItem>
+                  <SelectItem value="dono">Dono/Pessoal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Valor *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                placeholder="0,00"
-                value={despesaValor || ""}
-                onChange={(e) => setDespesaValor(Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Pago com *</Label>
-              <Select value={despesaPagoPor} onValueChange={setDespesaPagoPor}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="caixa">Dinheiro do caixa</SelectItem>
-                  <SelectItem value="proprio">Dinheiro próprio</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Observações</Label>
+              <Label>Observações (opcional)</Label>
               <Textarea
                 placeholder="Detalhes adicionais..."
                 value={despesaObs}
@@ -1163,8 +831,8 @@ const Caixa = () => {
               <Button variant="outline" className="flex-1" onClick={() => setIsDespesaOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="flex-1 bg-purple-600 hover:bg-purple-700" onClick={handleAddDespesa}>
-                Salvar Despesa
+              <Button className="flex-1" onClick={handleAddDespesa}>
+                Registrar Despesa
               </Button>
             </div>
           </div>
@@ -1175,18 +843,17 @@ const Caixa = () => {
       <Dialog open={isSangriaOpen} onOpenChange={setIsSangriaOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sangria de Caixa</DialogTitle>
-            <DialogDescription>Retirada de dinheiro do caixa</DialogDescription>
+            <DialogTitle>Registrar Sangria</DialogTitle>
+            <DialogDescription>
+              Retirada de dinheiro do caixa
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              <span className="text-sm text-amber-600">
-                Saldo em dinheiro atual: {formatPrice(totais.saldoDinheiro)}
-              </span>
+            <div className="p-3 bg-muted rounded-lg text-sm">
+              <p>Saldo disponível em dinheiro: <strong>{formatPrice(totais.saldoDinheiro)}</strong></p>
             </div>
             <div className="space-y-2">
-              <Label>Valor *</Label>
+              <Label>Valor (R$)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -1198,20 +865,24 @@ const Caixa = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Motivo *</Label>
+              <Label>Motivo</Label>
               <Textarea
-                placeholder="Ex: Pagamento fornecedor, depósito banco..."
+                placeholder="Ex: Pagamento fornecedor, depósito bancário..."
                 value={sangriaMotivo}
                 onChange={(e) => setSangriaMotivo(e.target.value)}
-                rows={3}
+                rows={2}
               />
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setIsSangriaOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="flex-1 bg-amber-600 hover:bg-amber-700" onClick={handleSangria}>
-                Confirmar Sangria
+              <Button 
+                className="flex-1 bg-warning hover:bg-warning/90" 
+                onClick={handleSangria}
+                disabled={sangriaValor > totais.saldoDinheiro}
+              >
+                Registrar Sangria
               </Button>
             </div>
           </div>
@@ -1222,18 +893,14 @@ const Caixa = () => {
       <Dialog open={isReforcoOpen} onOpenChange={setIsReforcoOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reforço de Caixa</DialogTitle>
-            <DialogDescription>Adicionar dinheiro ao caixa</DialogDescription>
+            <DialogTitle>Registrar Reforço</DialogTitle>
+            <DialogDescription>
+              Adicionar dinheiro ao caixa
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center gap-2">
-              <ArrowDownCircle className="h-5 w-5 text-blue-600" />
-              <span className="text-sm text-blue-600">
-                Reforço aumentará o saldo do caixa
-              </span>
-            </div>
             <div className="space-y-2">
-              <Label>Valor *</Label>
+              <Label>Valor (R$)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -1244,25 +911,35 @@ const Caixa = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Motivo *</Label>
+              <Label>Motivo</Label>
               <Textarea
-                placeholder="Ex: Troco adicional, entrada de sócio..."
+                placeholder="Ex: Troco adicional, reposição..."
                 value={reforcoMotivo}
                 onChange={(e) => setReforcoMotivo(e.target.value)}
-                rows={3}
+                rows={2}
               />
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" className="flex-1" onClick={() => setIsReforcoOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleReforco}>
-                Confirmar Reforço
+              <Button className="flex-1 bg-info hover:bg-info/90" onClick={handleReforco}>
+                Registrar Reforço
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Cheques Modals */}
+      <ChequesListModal 
+        open={isChequesListOpen} 
+        onOpenChange={setIsChequesListOpen}
+      />
+      <ChequeFormModal 
+        open={isNovoChequeOpen} 
+        onOpenChange={setIsNovoChequeOpen}
+      />
     </div>
   );
 };
