@@ -192,8 +192,31 @@ export function useServicos() {
     id: string,
     data: Partial<ServicoInput>
   ): Promise<Servico | null> => {
-    const existing = servicos.find((s) => s.id === id);
-    if (!existing) return null;
+    // Try to find in local state first, then fetch from DB if not found
+    let existing = servicos.find((s) => s.id === id);
+    
+    if (!existing) {
+      // Fetch from Supabase if not in local state
+      const { data: fetchedData } = await supabase
+        .from('servicos')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchedData) {
+        existing = fetchedData as Servico;
+      }
+    }
+    
+    if (!existing) {
+      console.error('Serviço não encontrado:', id);
+      toast({
+        title: 'Erro ao atualizar',
+        description: 'Serviço não encontrado.',
+        variant: 'destructive',
+      });
+      return null;
+    }
 
     const updated: Servico = {
       ...existing,
