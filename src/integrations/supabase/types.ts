@@ -1007,6 +1007,129 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_kiosk: {
+        Row: {
+          agenda_intervalo_tempo: string | null
+          agenda_modo_privacidade: boolean | null
+          agenda_mostrar_nomes_servicos: boolean | null
+          agenda_profissionais_visiveis: string[] | null
+          agenda_somente_leitura: boolean | null
+          agenda_visivel: boolean | null
+          alvos_touch_grandes: boolean | null
+          apenas_touch: boolean | null
+          auto_relancar_se_fechado: boolean | null
+          bloquear_arraste_janela: boolean | null
+          bloquear_atalhos_sistema: boolean | null
+          bloquear_posicao_janela: boolean | null
+          bloquear_tamanho_janela: boolean | null
+          created_at: string
+          desabilitar_teclado: boolean | null
+          forcar_fullscreen: boolean | null
+          fundo_tipo: string | null
+          fundo_valor: string | null
+          id: string
+          logo_animacao: string | null
+          logo_animacao_velocidade: number | null
+          logo_url: string | null
+          modulo_comandas_abertas: boolean | null
+          modulo_espelho_caixa: boolean | null
+          modulo_mini_agenda: boolean | null
+          modulo_ponto: boolean | null
+          modulo_tela_espera: boolean | null
+          ocultar_controles_janela: boolean | null
+          ponto_habilitado: boolean | null
+          ponto_metodo: string | null
+          ponto_mostrar_foto_nome: boolean | null
+          ponto_prevenir_duplicados: boolean | null
+          ponto_requer_confirmacao: boolean | null
+          rotas_habilitadas: Json | null
+          tema_kiosk: string | null
+          tipografia_grande: boolean | null
+          ultimo_acesso_rotas: Json | null
+          updated_at: string
+        }
+        Insert: {
+          agenda_intervalo_tempo?: string | null
+          agenda_modo_privacidade?: boolean | null
+          agenda_mostrar_nomes_servicos?: boolean | null
+          agenda_profissionais_visiveis?: string[] | null
+          agenda_somente_leitura?: boolean | null
+          agenda_visivel?: boolean | null
+          alvos_touch_grandes?: boolean | null
+          apenas_touch?: boolean | null
+          auto_relancar_se_fechado?: boolean | null
+          bloquear_arraste_janela?: boolean | null
+          bloquear_atalhos_sistema?: boolean | null
+          bloquear_posicao_janela?: boolean | null
+          bloquear_tamanho_janela?: boolean | null
+          created_at?: string
+          desabilitar_teclado?: boolean | null
+          forcar_fullscreen?: boolean | null
+          fundo_tipo?: string | null
+          fundo_valor?: string | null
+          id?: string
+          logo_animacao?: string | null
+          logo_animacao_velocidade?: number | null
+          logo_url?: string | null
+          modulo_comandas_abertas?: boolean | null
+          modulo_espelho_caixa?: boolean | null
+          modulo_mini_agenda?: boolean | null
+          modulo_ponto?: boolean | null
+          modulo_tela_espera?: boolean | null
+          ocultar_controles_janela?: boolean | null
+          ponto_habilitado?: boolean | null
+          ponto_metodo?: string | null
+          ponto_mostrar_foto_nome?: boolean | null
+          ponto_prevenir_duplicados?: boolean | null
+          ponto_requer_confirmacao?: boolean | null
+          rotas_habilitadas?: Json | null
+          tema_kiosk?: string | null
+          tipografia_grande?: boolean | null
+          ultimo_acesso_rotas?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          agenda_intervalo_tempo?: string | null
+          agenda_modo_privacidade?: boolean | null
+          agenda_mostrar_nomes_servicos?: boolean | null
+          agenda_profissionais_visiveis?: string[] | null
+          agenda_somente_leitura?: boolean | null
+          agenda_visivel?: boolean | null
+          alvos_touch_grandes?: boolean | null
+          apenas_touch?: boolean | null
+          auto_relancar_se_fechado?: boolean | null
+          bloquear_arraste_janela?: boolean | null
+          bloquear_atalhos_sistema?: boolean | null
+          bloquear_posicao_janela?: boolean | null
+          bloquear_tamanho_janela?: boolean | null
+          created_at?: string
+          desabilitar_teclado?: boolean | null
+          forcar_fullscreen?: boolean | null
+          fundo_tipo?: string | null
+          fundo_valor?: string | null
+          id?: string
+          logo_animacao?: string | null
+          logo_animacao_velocidade?: number | null
+          logo_url?: string | null
+          modulo_comandas_abertas?: boolean | null
+          modulo_espelho_caixa?: boolean | null
+          modulo_mini_agenda?: boolean | null
+          modulo_ponto?: boolean | null
+          modulo_tela_espera?: boolean | null
+          ocultar_controles_janela?: boolean | null
+          ponto_habilitado?: boolean | null
+          ponto_metodo?: string | null
+          ponto_mostrar_foto_nome?: boolean | null
+          ponto_prevenir_duplicados?: boolean | null
+          ponto_requer_confirmacao?: boolean | null
+          rotas_habilitadas?: Json | null
+          tema_kiosk?: string | null
+          tipografia_grande?: boolean | null
+          ultimo_acesso_rotas?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       configuracoes_sistema: {
         Row: {
           agenda_dias_antecedencia_max: number | null
