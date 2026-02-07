@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { UserCheck, Plus, Search, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,43 +23,16 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useProfissionais, ProfissionalComMetas } from "@/hooks/useProfissionais";
 import ProfissionalFormDialog from "@/components/profissionais/ProfissionalFormDialog";
 import { ProfissionalCard } from "@/components/profissionais/ProfissionalCard";
 import { ProfissionalTable } from "@/components/profissionais/ProfissionalTable";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-
-interface Profissional {
-  id: string;
-  nome: string;
-  telefone: string | null;
-  cpf: string | null;
-  data_admissao: string | null;
-  funcao: string | null;
-  endereco: string | null;
-  bairro: string | null;
-  cidade: string | null;
-  estado: string | null;
-  cep: string | null;
-  comissao_servicos: number;
-  comissao_produtos: number;
-  cor_agenda: string;
-  foto_url: string | null;
-  pode_vender_produtos: boolean;
-  meta_servicos_mes: number;
-  meta_produtos_mes: number;
-  ativo: boolean;
-  created_at: string;
-  updated_at: string;
-  // Calculados
-  realizado_servicos?: number;
-  realizado_produtos?: number;
-}
+import { useNavigate } from "react-router-dom";
 
 const Profissionais = () => {
-  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { profissionais, loading, deleteProfissional, fetchProfissionais } = useProfissionais();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [perfServicosFilter, setPerfServicosFilter] = useState("todos");
@@ -68,105 +41,34 @@ const Profissionais = () => {
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedProfissional, setSelectedProfissional] = useState<Profissional | null>(null);
+  const [selectedProfissional, setSelectedProfissional] = useState<ProfissionalComMetas | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const mesAtual = format(new Date(), "MMMM/yyyy", { locale: ptBR });
-
-  const fetchProfissionais = async () => {
-    setLoading(true);
-    
-    // Buscar profissionais
-    const { data: profData, error } = await supabase
-      .from("profissionais")
-      .select("*")
-      .order("nome", { ascending: true });
-
-    if (error) {
-      toast({
-        title: "Erro ao carregar profissionais",
-        description: error.message,
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
-
-    // Buscar realizados do mês atual
-    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-    const fimMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59).toISOString();
-
-    // Buscar atendimentos fechados com serviços
-    const { data: servicosData } = await supabase
-      .from("atendimento_servicos")
-      .select(`
-        profissional_id,
-        subtotal,
-        atendimento:atendimentos!inner(status, data_hora)
-      `)
-      .eq("atendimento.status", "fechado")
-      .gte("atendimento.data_hora", inicioMes)
-      .lte("atendimento.data_hora", fimMes);
-
-    // Buscar produtos vendidos (através de atendimentos)
-    const { data: produtosData } = await supabase
-      .from("atendimento_produtos")
-      .select(`
-        subtotal,
-        atendimento:atendimentos!inner(status, data_hora, cliente_id)
-      `)
-      .eq("atendimento.status", "fechado")
-      .gte("atendimento.data_hora", inicioMes)
-      .lte("atendimento.data_hora", fimMes);
-
-    // Calcular realizados por profissional
-    const realizadoServicos: Record<string, number> = {};
-    servicosData?.forEach((item: any) => {
-      const profId = item.profissional_id;
-      if (!realizadoServicos[profId]) realizadoServicos[profId] = 0;
-      realizadoServicos[profId] += Number(item.subtotal);
-    });
-
-    // Mapear profissionais com dados calculados
-    const profissionaisComMetas = (profData || []).map((prof: any) => ({
-      ...prof,
-      comissao_servicos: Number(prof.comissao_servicos || 30),
-      comissao_produtos: Number(prof.comissao_produtos || 10),
-      meta_servicos_mes: Number(prof.meta_servicos_mes || 0),
-      meta_produtos_mes: Number(prof.meta_produtos_mes || 0),
-      realizado_servicos: realizadoServicos[prof.id] || 0,
-      realizado_produtos: 0, // Simplificado por enquanto
-    }));
-
-    setProfissionais(profissionaisComMetas);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchProfissionais();
-  }, []);
 
   const filteredProfissionais = useMemo(() => {
     let result = [...profissionais];
 
-    // Filtro de busca
+    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
         (p) =>
           p.nome.toLowerCase().includes(term) ||
-          p.telefone?.includes(term)
+          p.telefone?.includes(term) ||
+          p.funcao?.toLowerCase().includes(term)
       );
     }
 
-    // Filtro de status
+    // Status filter
     if (statusFilter === "ativos") {
       result = result.filter((p) => p.ativo);
     } else if (statusFilter === "inativos") {
       result = result.filter((p) => !p.ativo);
     }
 
-    // Filtro de performance serviços
+    // Services performance filter
     if (perfServicosFilter !== "todos") {
       result = result.filter((p) => {
         if (p.meta_servicos_mes === 0) return perfServicosFilter === "todos";
@@ -175,7 +77,7 @@ const Profissionais = () => {
       });
     }
 
-    // Filtro de performance produtos
+    // Products performance filter
     if (perfProdutosFilter !== "todos") {
       result = result.filter((p) => {
         if (p.meta_produtos_mes === 0) return perfProdutosFilter === "todos";
@@ -184,7 +86,7 @@ const Profissionais = () => {
       });
     }
 
-    // Ordenação
+    // Sorting
     result.sort((a, b) => {
       switch (sortOrder) {
         case "nome-asc":
@@ -210,16 +112,16 @@ const Profissionais = () => {
   }, [profissionais, searchTerm, statusFilter, perfServicosFilter, perfProdutosFilter, sortOrder]);
 
   const handleView = (id: string) => {
-    toast({ title: "Em breve", description: "Página de detalhes será implementada." });
+    navigate(`/profissional/${id}`);
   };
 
-  const handleEdit = (profissional: Profissional) => {
+  const handleEdit = (profissional: ProfissionalComMetas) => {
     setSelectedProfissional(profissional);
     setIsFormOpen(true);
   };
 
   const handleVendas = (id: string) => {
-    toast({ title: "Em breve", description: "Histórico de vendas será implementado." });
+    navigate(`/profissionais/${id}?tab=comissoes`);
   };
 
   const handleDeleteClick = (id: string) => {
@@ -233,24 +135,21 @@ const Profissionais = () => {
   const handleDelete = async () => {
     if (!selectedProfissional) return;
 
-    const { error } = await supabase
-      .from("profissionais")
-      .delete()
-      .eq("id", selectedProfissional.id);
-
-    if (error) {
-      toast({
-        title: "Erro ao excluir profissional",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
+    const success = await deleteProfissional(selectedProfissional.id);
+    
+    if (success) {
       toast({
         title: "Profissional excluído",
         description: "O profissional foi removido com sucesso.",
       });
-      fetchProfissionais();
+    } else {
+      toast({
+        title: "Erro ao excluir profissional",
+        description: "Não foi possível remover o profissional.",
+        variant: "destructive",
+      });
     }
+    
     setIsDeleteOpen(false);
     setSelectedProfissional(null);
   };
@@ -303,7 +202,7 @@ const Profissionais = () => {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -363,7 +262,7 @@ const Profissionais = () => {
         </CardContent>
       </Card>
 
-      {/* Lista */}
+      {/* List */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (

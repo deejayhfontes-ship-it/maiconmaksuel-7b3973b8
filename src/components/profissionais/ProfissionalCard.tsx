@@ -133,7 +133,7 @@ export function ProfissionalCard({
             variant="outline" 
             size="sm" 
             className="flex-1"
-            onClick={() => navigate(`/profissional/${profissional.id}`)}
+            onClick={() => navigate(`/profissionais/${profissional.id}`)}
           >
             <Eye className="h-4 w-4 mr-2" />
             Ver
