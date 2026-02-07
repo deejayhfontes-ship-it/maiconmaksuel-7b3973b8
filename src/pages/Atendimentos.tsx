@@ -10,6 +10,10 @@ import {
   Trash2,
   Receipt,
   FileText,
+  Wifi,
+  WifiOff,
+  CloudOff,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +54,8 @@ import { ptBR } from "date-fns/locale";
 import { PagamentoModal } from "@/components/atendimentos/PagamentoModal";
 import { FecharComandaModal } from "@/components/atendimentos/FecharComandaModal";
 import { ClienteSelector } from "@/components/atendimentos/ClienteSelector";
+import { cn } from "@/lib/utils";
+import { useAtendimentos, AtendimentoServico, AtendimentoProduto } from "@/hooks/useAtendimentos";
 
 interface Cliente {
   id: string;
@@ -118,15 +124,33 @@ const formatPrice = (price: number) => {
 };
 
 const Atendimentos = () => {
-  const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
+  // Use offline-first hook
+  const {
+    atendimentos,
+    clientes,
+    servicos,
+    produtos,
+    profissionais,
+    loading,
+    isOnline,
+    pendingSync,
+    refetch,
+    createComanda,
+    updateCliente,
+    addServico,
+    addProduto,
+    removeServico,
+    removeProduto,
+    updateDesconto,
+    fecharComanda,
+    cancelarComanda,
+    getItemsServicos,
+    getItemsProdutos,
+  } = useAtendimentos();
+
   const [selectedAtendimento, setSelectedAtendimento] = useState<Atendimento | null>(null);
   const [itemsServicos, setItemsServicos] = useState<ItemServico[]>([]);
   const [itemsProdutos, setItemsProdutos] = useState<ItemProduto[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [servicos, setServicos] = useState<Servico[]>([]);
-  const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
-  const [loading, setLoading] = useState(true);
   const [desconto, setDesconto] = useState(0);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
@@ -149,56 +173,16 @@ const Atendimentos = () => {
 
   const { toast } = useToast();
 
-  const fetchData = useCallback(async () => {
-    const [clientesRes, servicosRes, produtosRes, profissionaisRes] = await Promise.all([
-      supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
-      supabase.from("servicos").select("id, nome, preco, comissao_padrao").eq("ativo", true).order("nome"),
-      supabase.from("produtos").select("id, nome, preco_venda, estoque_atual").eq("ativo", true).order("nome"),
-      supabase.from("profissionais").select("id, nome, cor_agenda").eq("ativo", true).order("nome"),
-    ]);
-
-    if (clientesRes.data) setClientes(clientesRes.data);
-    if (servicosRes.data) setServicos(servicosRes.data);
-    if (produtosRes.data) setProdutos(produtosRes.data);
-    if (profissionaisRes.data) setProfissionais(profissionaisRes.data);
-  }, []);
-
-  const fetchAtendimentos = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("atendimentos")
-      .select("*, cliente:clientes(nome)")
-      .eq("status", "aberto")
-      .order("data_hora", { ascending: false });
-
-    if (error) {
-      toast({ title: "Erro ao carregar comandas", description: error.message, variant: "destructive" });
-    } else {
-      setAtendimentos(data || []);
-    }
-    setLoading(false);
-  }, [toast]);
-
   const fetchItems = useCallback(async (atendimentoId: string) => {
-    const [servicosRes, produtosRes] = await Promise.all([
-      supabase
-        .from("atendimento_servicos")
-        .select("*, servico:servicos(nome), profissional:profissionais(nome)")
-        .eq("atendimento_id", atendimentoId),
-      supabase
-        .from("atendimento_produtos")
-        .select("*, produto:produtos(nome)")
-        .eq("atendimento_id", atendimentoId),
+    const [servicosData, produtosData] = await Promise.all([
+      getItemsServicos(atendimentoId),
+      getItemsProdutos(atendimentoId),
     ]);
+    setItemsServicos(servicosData as unknown as ItemServico[]);
+    setItemsProdutos(produtosData as unknown as ItemProduto[]);
+  }, [getItemsServicos, getItemsProdutos]);
 
-    if (servicosRes.data) setItemsServicos(servicosRes.data);
-    if (produtosRes.data) setItemsProdutos(produtosRes.data);
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-    fetchAtendimentos();
-  }, [fetchData, fetchAtendimentos]);
+  // No initial fetch needed - useAtendimentos handles it
 
   useEffect(() => {
     if (selectedAtendimento) {
@@ -244,39 +228,28 @@ const Atendimentos = () => {
   const valorFinal = Math.max(0, subtotal - desconto);
 
   const handleNovaComanda = async () => {
-    const { data, error } = await supabase
-      .from("atendimentos")
-      .insert([{}])
-      .select("*, cliente:clientes(nome)")
-      .single();
-
-    if (error) {
-      toast({ title: "Erro ao criar comanda", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      const data = await createComanda();
       toast({ title: "Comanda criada!", description: `Comanda #${data.numero_comanda.toString().padStart(3, "0")}` });
-      setAtendimentos([data, ...atendimentos]);
-      setSelectedAtendimento(data);
+      setSelectedAtendimento(data as unknown as Atendimento);
+    } catch (error: any) {
+      toast({ title: "Erro ao criar comanda", description: error.message, variant: "destructive" });
     }
   };
 
   const handleClienteChange = async (clienteId: string) => {
     if (!selectedAtendimento) return;
 
-    const { error } = await supabase
-      .from("atendimentos")
-      .update({ cliente_id: clienteId === "anonimo" ? null : clienteId })
-      .eq("id", selectedAtendimento.id);
-
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      await updateCliente(selectedAtendimento.id, clienteId === "anonimo" ? null : clienteId);
       const cliente = clientes.find(c => c.id === clienteId);
       setSelectedAtendimento({
         ...selectedAtendimento,
         cliente_id: clienteId === "anonimo" ? null : clienteId,
         cliente: cliente ? { nome: cliente.nome } : null,
       });
-      fetchAtendimentos();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
   };
 
@@ -378,23 +351,11 @@ const Atendimentos = () => {
 
   const updateAtendimentoTotals = async () => {
     if (!selectedAtendimento) return;
-
-    // Recalcular após um pequeno delay para pegar os dados atualizados
+    
+    // Use the hook's recalculate method - it updates local and syncs
     setTimeout(async () => {
-      const [servicosRes, produtosRes] = await Promise.all([
-        supabase.from("atendimento_servicos").select("subtotal").eq("atendimento_id", selectedAtendimento.id),
-        supabase.from("atendimento_produtos").select("subtotal").eq("atendimento_id", selectedAtendimento.id),
-      ]);
-
-      const newSubtotal = [...(servicosRes.data || []), ...(produtosRes.data || [])]
-        .reduce((acc, item) => acc + Number(item.subtotal), 0);
-
-      await supabase.from("atendimentos").update({
-        subtotal: newSubtotal,
-        valor_final: Math.max(0, newSubtotal - desconto),
-      }).eq("id", selectedAtendimento.id);
-
-      fetchAtendimentos();
+      await fetchItems(selectedAtendimento.id);
+      refetch();
     }, 100);
   };
 
@@ -402,12 +363,11 @@ const Atendimentos = () => {
     setDesconto(value);
     if (!selectedAtendimento) return;
 
-    await supabase.from("atendimentos").update({
-      desconto: value,
-      valor_final: Math.max(0, subtotal - value),
-    }).eq("id", selectedAtendimento.id);
-
-    fetchAtendimentos();
+    try {
+      await updateDesconto(selectedAtendimento.id, value);
+    } catch (error) {
+      console.error('Error updating desconto:', error);
+    }
   };
 
   const handleFecharComanda = () => {
@@ -545,8 +505,7 @@ const Atendimentos = () => {
       description: `Total: ${formatPrice(valorFinal)}` 
     });
     
-    fetchAtendimentos();
-    fetchData(); // Atualizar estoque na lista
+    refetch(); // Refresh using the hook
   };
 
   const handleNfModalClose = () => {
@@ -558,11 +517,13 @@ const Atendimentos = () => {
   const handleCancelarComanda = async () => {
     if (!selectedAtendimento) return;
 
-    await supabase.from("atendimentos").update({ status: "cancelado" }).eq("id", selectedAtendimento.id);
-    toast({ title: "Comanda cancelada" });
-    setIsCancelOpen(false);
-    setSelectedAtendimento(null);
-    fetchAtendimentos();
+    try {
+      await cancelarComanda(selectedAtendimento.id);
+      setIsCancelOpen(false);
+      setSelectedAtendimento(null);
+    } catch (error: any) {
+      toast({ title: "Erro ao cancelar", description: error.message, variant: "destructive" });
+    }
   };
 
   return (
