@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Package, Plus, Search, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Package, Plus, Search, Edit, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,24 +36,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useProdutos, Produto } from "@/hooks/useProdutos";
 import ProdutoFormDialog from "@/components/produtos/ProdutoFormDialog";
-
-interface Produto {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  codigo_barras: string | null;
-  preco_custo: number | null;
-  preco_venda: number;
-  estoque_atual: number;
-  estoque_minimo: number;
-  categoria: string | null;
-  foto_url: string | null;
-  ativo: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 const ITEMS_PER_PAGE = 10;
 
@@ -70,8 +54,15 @@ const calculateMargin = (custo: number | null, venda: number) => {
 };
 
 const Produtos = () => {
-  const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { 
+    produtos, 
+    loading, 
+    syncing, 
+    loadProdutos, 
+    deleteProduto,
+    getLowStockProdutos
+  } = useProdutos();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [estoqueFilter, setEstoqueFilter] = useState("todos");
   const [sortOrder, setSortOrder] = useState("nome-asc");
@@ -80,29 +71,6 @@ const Produtos = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const { toast } = useToast();
-
-  const fetchProdutos = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("produtos")
-      .select("*")
-      .order("nome", { ascending: true });
-
-    if (error) {
-      toast({
-        title: "Erro ao carregar produtos",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      setProdutos(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchProdutos();
-  }, []);
 
   const filteredProdutos = useMemo(() => {
     let result = [...produtos];
@@ -153,8 +121,8 @@ const Produtos = () => {
   const totalPages = Math.ceil(filteredProdutos.length / ITEMS_PER_PAGE);
 
   const lowStockCount = useMemo(() => {
-    return produtos.filter((p) => p.estoque_atual < p.estoque_minimo).length;
-  }, [produtos]);
+    return getLowStockProdutos().length;
+  }, [getLowStockProdutos]);
 
   const handleEdit = (produto: Produto) => {
     setSelectedProduto(produto);
@@ -169,23 +137,12 @@ const Produtos = () => {
   const handleDelete = async () => {
     if (!selectedProduto) return;
 
-    const { error } = await supabase
-      .from("produtos")
-      .delete()
-      .eq("id", selectedProduto.id);
-
-    if (error) {
-      toast({
-        title: "Erro ao excluir produto",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
+    const success = await deleteProduto(selectedProduto.id);
+    if (success) {
       toast({
         title: "Produto excluído",
         description: "O produto foi removido com sucesso.",
       });
-      fetchProdutos();
     }
     setIsDeleteOpen(false);
     setSelectedProduto(null);
@@ -194,7 +151,7 @@ const Produtos = () => {
   const handleFormClose = (refresh?: boolean) => {
     setIsFormOpen(false);
     setSelectedProduto(null);
-    if (refresh) fetchProdutos();
+    if (refresh) loadProdutos();
   };
 
   return (
@@ -217,10 +174,26 @@ const Produtos = () => {
             </p>
           </div>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Produto
-        </Button>
+        <div className="flex items-center gap-2">
+          {syncing && (
+            <Badge variant="outline" className="gap-1 text-muted-foreground">
+              <RefreshCw className="h-3 w-3 animate-spin" />
+              Sincronizando
+            </Badge>
+          )}
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => loadProdutos()}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Produto
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}

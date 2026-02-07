@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { useProdutos, Produto } from "@/hooks/useProdutos";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, X, Loader2, Package } from "lucide-react";
 
@@ -38,6 +39,9 @@ const categorias = [
   "Tintura",
   "Máscara",
   "Esmalte",
+  "Creme",
+  "Óleo",
+  "Finalizador",
   "Outros",
 ];
 
@@ -54,22 +58,6 @@ const produtoSchema = z.object({
 });
 
 type ProdutoFormData = z.infer<typeof produtoSchema>;
-
-interface Produto {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  codigo_barras: string | null;
-  preco_custo: number | null;
-  preco_venda: number;
-  estoque_atual: number;
-  estoque_minimo: number;
-  categoria: string | null;
-  foto_url: string | null;
-  ativo: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 interface ProdutoFormDialogProps {
   open: boolean;
@@ -193,6 +181,8 @@ export default function ProdutoFormDialog({
     return urlData.publicUrl;
   };
 
+  const { createProduto, updateProduto } = useProdutos();
+
   const onSubmit = async (data: ProdutoFormData) => {
     setLoading(true);
 
@@ -207,46 +197,39 @@ export default function ProdutoFormDialog({
         estoque_atual: data.estoque_atual,
         estoque_minimo: data.estoque_minimo,
         ativo: data.ativo,
+        foto_url: null as string | null,
       };
 
       if (isEditing && produto) {
         const fotoUrl = await uploadFoto(produto.id);
+        payload.foto_url = fotoUrl;
         
-        const { error } = await supabase
-          .from("produtos")
-          .update({ ...payload, foto_url: fotoUrl })
-          .eq("id", produto.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Produto atualizado!",
-          description: "Os dados foram salvos com sucesso.",
-        });
-      } else {
-        const { data: newProduto, error } = await supabase
-          .from("produtos")
-          .insert([payload])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        if (fotoFile && newProduto) {
-          const fotoUrl = await uploadFoto(newProduto.id);
-          await supabase
-            .from("produtos")
-            .update({ foto_url: fotoUrl })
-            .eq("id", newProduto.id);
+        const result = await updateProduto(produto.id, payload);
+        if (result) {
+          toast({
+            title: "Produto atualizado!",
+            description: "Os dados foram salvos com sucesso.",
+          });
+          onClose(true);
         }
-
-        toast({
-          title: "Produto cadastrado!",
-          description: "Novo produto adicionado com sucesso.",
-        });
+      } else {
+        // Create product first to get ID for photo upload
+        const tempId = crypto.randomUUID();
+        
+        if (fotoFile) {
+          const fotoUrl = await uploadFoto(tempId);
+          payload.foto_url = fotoUrl;
+        }
+        
+        const result = await createProduto(payload);
+        if (result) {
+          toast({
+            title: "Produto cadastrado!",
+            description: "Novo produto adicionado com sucesso.",
+          });
+          onClose(true);
+        }
       }
-
-      onClose(true);
     } catch (error: any) {
       toast({
         title: "Erro ao salvar",
