@@ -19,17 +19,17 @@ import {
   Bell,
   X,
   ArrowRight,
-  User,
   Phone,
-  Clock,
-  Check,
-  CheckCheck,
   MessageCircle,
+  CheckCheck,
+  Wifi,
+  WifiOff,
+  Loader2,
+  Settings,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { useComunicacao } from "@/hooks/useComunicacao";
 
 interface Cliente {
@@ -50,19 +50,76 @@ interface Notificacao {
   lida: boolean;
 }
 
+interface ConfigWhatsApp {
+  api_url: string | null;
+  api_token: string | null;
+  sessao_ativa: boolean;
+}
+
+// Hook para verificar status da conexão WhatsApp
+function useWhatsAppStatus() {
+  const [config, setConfig] = useState<ConfigWhatsApp | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
+  const fetchConfig = async () => {
+    const { data } = await supabase
+      .from("configuracoes_whatsapp")
+      .select("api_url, api_token, sessao_ativa")
+      .single();
+    setConfig(data);
+    setLoading(false);
+  };
+
+  const isConfigured = !!(config?.api_url && config?.api_token);
+
+  return { config, isConfigured, loading, refetch: fetchConfig };
+}
+
+// Função para enviar mensagem via Edge Function
+async function enviarMensagemWhatsApp(
+  telefone: string,
+  mensagem: string,
+  clienteNome?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+      body: {
+        telefone,
+        mensagem,
+        cliente_nome: clienteNome,
+      },
+    });
+
+    if (error) {
+      console.error("Edge function error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return data;
+  } catch (err) {
+    console.error("Error calling edge function:", err);
+    return { success: false, error: "Erro ao conectar com o servidor" };
+  }
+}
+
 export function WhatsAppDashboardCard() {
   const { estatisticasHoje, creditos, lembretes } = useComunicacao();
+  const { isConfigured, loading: configLoading } = useWhatsAppStatus();
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // Simular notificações pendentes
+    // Simular notificações pendentes (em produção, viriam de webhooks)
     const mockNotificacoes: Notificacao[] = [
       {
         id: "1",
         tipo: "resposta",
         titulo: "Nova resposta",
-        mensagem: "Cliente respondeu à confirmação de agendamento",
+        mensagem: "Cliente respondeu à confirmação",
         cliente: "Maria Silva",
         data: new Date(),
         lida: false,
@@ -70,20 +127,11 @@ export function WhatsAppDashboardCard() {
       {
         id: "2",
         tipo: "confirmacao",
-        titulo: "Agendamento confirmado",
-        mensagem: "Cliente confirmou agendamento para amanhã",
+        titulo: "Confirmado",
+        mensagem: "Agendamento confirmado",
         cliente: "João Santos",
         data: new Date(Date.now() - 3600000),
         lida: false,
-      },
-      {
-        id: "3",
-        tipo: "cancelamento",
-        titulo: "Cancelamento",
-        mensagem: "Cliente solicitou cancelamento",
-        cliente: "Ana Costa",
-        data: new Date(Date.now() - 7200000),
-        lida: true,
       },
     ];
     setNotificacoes(mockNotificacoes);
@@ -117,19 +165,46 @@ export function WhatsAppDashboardCard() {
               <CardTitle className="text-base font-semibold">
                 Central WhatsApp
               </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {lembretesAtivos} lembretes ativos
-              </p>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                {configLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : isConfigured ? (
+                  <>
+                    <Wifi className="h-3 w-3 text-success" />
+                    <span>Conectado</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-3 w-3 text-destructive" />
+                    <span>Não configurado</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           {unreadCount > 0 && (
             <Badge variant="destructive" className="animate-pulse">
-              {unreadCount} nova{unreadCount > 1 ? "s" : ""}
+              {unreadCount}
             </Badge>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Status da API */}
+        {!isConfigured && !configLoading && (
+          <div className="rounded-lg bg-destructive/10 p-2 text-center">
+            <p className="text-xs text-destructive font-medium">
+              Configure a API do WhatsApp
+            </p>
+            <Button asChild variant="link" size="sm" className="h-6 px-0">
+              <Link to="/configuracoes/whatsapp">
+                <Settings className="h-3 w-3 mr-1" />
+                Configurar
+              </Link>
+            </Button>
+          </div>
+        )}
+
         {/* Estatísticas rápidas */}
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-lg bg-muted/50 p-2 text-center">
@@ -157,7 +232,7 @@ export function WhatsAppDashboardCard() {
           <p className="text-xs font-medium text-muted-foreground">
             Notificações Recentes
           </p>
-          <ScrollArea className="h-[120px]">
+          <ScrollArea className="h-[100px]">
             <div className="space-y-1.5">
               {notificacoes.slice(0, 5).map((notif) => (
                 <div
@@ -166,9 +241,7 @@ export function WhatsAppDashboardCard() {
                     notif.lida ? "bg-muted/30" : "bg-primary/10"
                   }`}
                 >
-                  <div className="mt-0.5">
-                    {getNotificacaoIcon(notif.tipo)}
-                  </div>
+                  <div className="mt-0.5">{getNotificacaoIcon(notif.tipo)}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">
                       {notif.cliente || notif.titulo}
@@ -177,15 +250,15 @@ export function WhatsAppDashboardCard() {
                       {notif.mensagem}
                     </p>
                   </div>
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  <span className="text-[10px] text-muted-foreground">
                     {format(notif.data, "HH:mm")}
                   </span>
                 </div>
               ))}
               {notificacoes.length === 0 && (
                 <div className="text-center py-4 text-muted-foreground">
-                  <Bell className="h-8 w-8 mx-auto mb-1 opacity-50" />
-                  <p className="text-xs">Nenhuma notificação</p>
+                  <Bell className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                  <p className="text-xs">Sem notificações</p>
                 </div>
               )}
             </div>
@@ -193,20 +266,18 @@ export function WhatsAppDashboardCard() {
         </div>
 
         {/* Ações */}
-        <div className="flex gap-2">
-          <Button asChild variant="default" size="sm" className="flex-1">
-            <Link to="/configuracoes/whatsapp">
-              <MessageSquare className="h-4 w-4 mr-1" />
-              Abrir Central
-            </Link>
-          </Button>
-        </div>
+        <Button asChild variant="default" size="sm" className="w-full">
+          <Link to="/configuracoes/whatsapp">
+            <MessageSquare className="h-4 w-4 mr-1" />
+            Abrir Central
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
 }
 
-// Floating WhatsApp Button
+// Floating WhatsApp Button com envio via API
 export function WhatsAppFloatingButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -215,8 +286,9 @@ export function WhatsAppFloatingButton() {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [mensagem, setMensagem] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const { creditos, templatesProntos } = useComunicacao();
-  
+  const { creditos } = useComunicacao();
+  const { isConfigured } = useWhatsAppStatus();
+
   const [notificacoes] = useState<Notificacao[]>([
     {
       id: "1",
@@ -225,15 +297,6 @@ export function WhatsAppFloatingButton() {
       mensagem: "Cliente respondeu",
       cliente: "Maria Silva",
       data: new Date(),
-      lida: false,
-    },
-    {
-      id: "2",
-      tipo: "confirmacao",
-      titulo: "Confirmado",
-      mensagem: "Agendamento confirmado",
-      cliente: "João Santos",
-      data: new Date(Date.now() - 3600000),
       lida: false,
     },
   ]);
@@ -269,14 +332,27 @@ export function WhatsAppFloatingButton() {
       return;
     }
 
+    if (!isConfigured) {
+      toast.error("Configure a API do WhatsApp primeiro");
+      return;
+    }
+
     setEnviando(true);
     try {
-      // Simular envio (aqui você conectaria com a API do WhatsApp)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      toast.success(`Mensagem enviada para ${selectedCliente.nome}!`);
-      setMensagem("");
-      setSelectedCliente(null);
-      setSearchQuery("");
+      const result = await enviarMensagemWhatsApp(
+        selectedCliente.celular,
+        mensagem,
+        selectedCliente.nome
+      );
+
+      if (result.success) {
+        toast.success(`Mensagem enviada para ${selectedCliente.nome}!`);
+        setMensagem("");
+        setSelectedCliente(null);
+        setSearchQuery("");
+      } else {
+        toast.error(result.error || "Erro ao enviar mensagem");
+      }
     } catch (error) {
       toast.error("Erro ao enviar mensagem");
     } finally {
@@ -299,6 +375,7 @@ export function WhatsAppFloatingButton() {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-110 hover:shadow-xl active:scale-95"
+        title="Enviar WhatsApp"
       >
         <MessageSquare className="h-6 w-6" />
         {unreadCount > 0 && (
@@ -314,11 +391,36 @@ export function WhatsAppFloatingButton() {
           <DialogHeader className="p-4 pb-2 border-b">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
-              Envio Rápido de Mensagem
+              Enviar WhatsApp
+              {isConfigured ? (
+                <Badge variant="outline" className="ml-auto text-success border-success">
+                  <Wifi className="h-3 w-3 mr-1" />
+                  Conectado
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="ml-auto">
+                  <WifiOff className="h-3 w-3 mr-1" />
+                  Não configurado
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
 
           <div className="p-4 space-y-4">
+            {!isConfigured && (
+              <div className="rounded-lg bg-destructive/10 p-3 text-center">
+                <p className="text-sm text-destructive font-medium mb-2">
+                  API do WhatsApp não configurada
+                </p>
+                <Button asChild variant="destructive" size="sm">
+                  <Link to="/configuracoes/whatsapp" onClick={() => setIsOpen(false)}>
+                    <Settings className="h-4 w-4 mr-1" />
+                    Configurar Agora
+                  </Link>
+                </Button>
+              </div>
+            )}
+
             {/* Buscar Cliente */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Buscar Cliente</label>
@@ -329,6 +431,7 @@ export function WhatsAppFloatingButton() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
+                  disabled={!isConfigured}
                 />
               </div>
 
@@ -338,6 +441,7 @@ export function WhatsAppFloatingButton() {
                   <div className="p-2 space-y-1">
                     {loadingClientes ? (
                       <div className="text-center py-4 text-muted-foreground text-sm">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-1" />
                         Buscando...
                       </div>
                     ) : clientes.length > 0 ? (
@@ -349,9 +453,7 @@ export function WhatsAppFloatingButton() {
                             setSearchQuery("");
                           }}
                           className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors hover:bg-muted ${
-                            selectedCliente?.id === cliente.id
-                              ? "bg-primary/10"
-                              : ""
+                            selectedCliente?.id === cliente.id ? "bg-primary/10" : ""
                           }`}
                         >
                           <Avatar className="h-8 w-8">
@@ -361,12 +463,8 @@ export function WhatsAppFloatingButton() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {cliente.nome}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {cliente.celular}
-                            </p>
+                            <p className="text-sm font-medium truncate">{cliente.nome}</p>
+                            <p className="text-xs text-muted-foreground">{cliente.celular}</p>
                           </div>
                         </button>
                       ))
@@ -385,9 +483,7 @@ export function WhatsAppFloatingButton() {
               <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={selectedCliente.foto_url || undefined} />
-                  <AvatarFallback>
-                    {getInitials(selectedCliente.nome)}
-                  </AvatarFallback>
+                  <AvatarFallback>{getInitials(selectedCliente.nome)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <p className="font-medium">{selectedCliente.nome}</p>
@@ -396,11 +492,7 @@ export function WhatsAppFloatingButton() {
                     {selectedCliente.celular}
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedCliente(null)}
-                >
+                <Button variant="ghost" size="icon" onClick={() => setSelectedCliente(null)}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -409,35 +501,33 @@ export function WhatsAppFloatingButton() {
             {/* Campo de mensagem */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Mensagem</label>
-              <div className="relative">
-                <textarea
-                  placeholder="Digite sua mensagem..."
-                  value={mensagem}
-                  onChange={(e) => setMensagem(e.target.value)}
-                  className="w-full min-h-[100px] p-3 rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
+              <textarea
+                placeholder="Digite sua mensagem..."
+                value={mensagem}
+                onChange={(e) => setMensagem(e.target.value)}
+                className="w-full min-h-[100px] p-3 rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                disabled={!isConfigured}
+              />
               <p className="text-xs text-muted-foreground">
-                Use {"{nome}"} para personalizar. Créditos: {creditos?.saldo_creditos || 0}
+                Use {"{nome}"} para personalizar • Créditos: {creditos?.saldo_creditos || 0}
               </p>
             </div>
 
             {/* Botões */}
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setIsOpen(false)}
-              >
+              <Button variant="outline" className="flex-1" onClick={() => setIsOpen(false)}>
                 Cancelar
               </Button>
               <Button
                 className="flex-1"
                 onClick={handleEnviarMensagem}
-                disabled={!selectedCliente || !mensagem.trim() || enviando}
+                disabled={!selectedCliente || !mensagem.trim() || enviando || !isConfigured}
               >
                 {enviando ? (
-                  "Enviando..."
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Enviando...
+                  </>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-1" />
@@ -450,10 +540,7 @@ export function WhatsAppFloatingButton() {
             {/* Link para central */}
             <div className="text-center pt-2 border-t">
               <Button asChild variant="link" size="sm">
-                <Link
-                  to="/configuracoes/whatsapp"
-                  onClick={() => setIsOpen(false)}
-                >
+                <Link to="/configuracoes/whatsapp" onClick={() => setIsOpen(false)}>
                   Abrir Central Completa
                   <ArrowRight className="h-4 w-4 ml-1" />
                 </Link>
