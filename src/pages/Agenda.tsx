@@ -545,6 +545,8 @@ const Agenda = () => {
             <Plus className="h-4 w-4" />
             Agendar
           </Button>
+          {/* Botão Encaixe - Mobile (hidden in read-only) */}
+          {!isReadOnly && (
           <Button
             variant="secondary"
             size="sm"
@@ -560,6 +562,7 @@ const Agenda = () => {
             <Zap className="h-4 w-4" />
             Encaixe
           </Button>
+          )}
         </div>
         )}
         
@@ -681,7 +684,8 @@ const Agenda = () => {
             </div>
           </Card>
 
-          {/* Botão Encaixe - Abaixo da legenda (laranja) */}
+          {/* Botão Encaixe - Abaixo da legenda (laranja) - Hidden in read-only */}
+          {!isReadOnly && (
           <Button
             variant="secondary"
             size="lg"
@@ -697,6 +701,7 @@ const Agenda = () => {
             <Zap className="h-5 w-5" />
             Encaixe
           </Button>
+          )}
         </div>
 
         {/* Coluna Direita - Grid de Agendamentos (Desktop) */}
