@@ -58,6 +58,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/configuracoes/whatsapp',
     '/configuracoes/integracoes',
     '/configuracoes/notificacoes',
+    '/configuracoes/alertas',
     '/configuracoes/taxa-falta',
     '/configuracoes/caixa-pdv',
     '/configuracoes/metas',

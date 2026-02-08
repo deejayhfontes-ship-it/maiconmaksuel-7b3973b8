@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { Bell, Calendar, Package, Cake, Settings, Volume2, VolumeX, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bell, Calendar, Package, Cake, Settings, Volume2, VolumeX, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,9 +25,13 @@ interface Notification {
   description: string;
   time?: string;
   read: boolean;
+  entityId?: string;
+  entityType?: string;
+  celular?: string;
 }
 
 export function NotificationsDropdown() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -86,6 +91,9 @@ export function NotificationsDropdown() {
           description: `${ag.servicos?.nome || "Serviço"} às ${hora} com ${ag.profissionais?.nome || "Profissional"}`,
           time: hora,
           read: false,
+          entityId: ag.id,
+          entityType: "agendamento",
+          celular: ag.clientes?.celular
         });
       });
 
@@ -104,6 +112,8 @@ export function NotificationsDropdown() {
             title: "Estoque baixo",
             description: `${prod.nome}: ${prod.estoque_atual} unidades (mín: ${prod.estoque_minimo})`,
             read: false,
+            entityId: prod.id,
+            entityType: "produto"
           });
         }
       });
@@ -143,6 +153,8 @@ export function NotificationsDropdown() {
             title: "Aniversário",
             description: `${cliente.nome} - ${quando}`,
             read: false,
+            entityId: cliente.id,
+            entityType: "cliente"
           });
         }
       });
@@ -339,7 +351,7 @@ export function NotificationsDropdown() {
 
         {/* Footer */}
         {notifications.length > 0 && (
-          <div className="p-3 border-t text-center">
+          <div className="p-3 border-t flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
@@ -347,6 +359,18 @@ export function NotificationsDropdown() {
               onClick={() => setNotifications([])}
             >
               Limpar todas
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-primary gap-1"
+              onClick={() => {
+                setOpen(false);
+                navigate('/configuracoes/alertas');
+              }}
+            >
+              <ExternalLink className="h-3 w-3" />
+              Ver Centro de Alertas
             </Button>
           </div>
         )}

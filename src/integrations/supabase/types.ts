@@ -433,6 +433,9 @@ export type Database = {
       }
       clientes: {
         Row: {
+          allow_email_marketing: boolean | null
+          allow_notifications: boolean | null
+          allow_whatsapp_marketing: boolean | null
           ativo: boolean
           bairro: string | null
           celular: string
@@ -462,6 +465,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_email_marketing?: boolean | null
+          allow_notifications?: boolean | null
+          allow_whatsapp_marketing?: boolean | null
           ativo?: boolean
           bairro?: string | null
           celular: string
@@ -491,6 +497,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_email_marketing?: boolean | null
+          allow_notifications?: boolean | null
+          allow_whatsapp_marketing?: boolean | null
           ativo?: boolean
           bairro?: string | null
           celular?: string
@@ -3106,6 +3115,146 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications_actions_log: {
+        Row: {
+          action_type: string
+          alert_id: string | null
+          channel: string | null
+          created_at: string
+          id: string
+          payload: Json | null
+          result: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action_type: string
+          alert_id?: string | null
+          channel?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          result?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action_type?: string
+          alert_id?: string | null
+          channel?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          result?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actions_log_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "notifications_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications_alerts: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          description: string | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          priority: Database["public"]["Enums"]["alert_priority"]
+          resolved_at: string | null
+          resolved_by: string | null
+          silenced_until: string | null
+          status: Database["public"]["Enums"]["alert_status"]
+          title: string
+          type: Database["public"]["Enums"]["alert_type"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: Database["public"]["Enums"]["alert_priority"]
+          resolved_at?: string | null
+          resolved_by?: string | null
+          silenced_until?: string | null
+          status?: Database["public"]["Enums"]["alert_status"]
+          title: string
+          type: Database["public"]["Enums"]["alert_type"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: Database["public"]["Enums"]["alert_priority"]
+          resolved_at?: string | null
+          resolved_by?: string | null
+          silenced_until?: string | null
+          status?: Database["public"]["Enums"]["alert_status"]
+          title?: string
+          type?: Database["public"]["Enums"]["alert_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications_templates: {
+        Row: {
+          ativo: boolean | null
+          content: string
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          subject: string | null
+          type: Database["public"]["Enums"]["alert_type"]
+          updated_at: string
+          variables: string[] | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          content: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          subject?: string | null
+          type: Database["public"]["Enums"]["alert_type"]
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Update: {
+          ativo?: boolean | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          subject?: string | null
+          type?: Database["public"]["Enums"]["alert_type"]
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Relationships: []
+      }
       ocorrencias_funcionarios: {
         Row: {
           anexos_urls: Json | null
@@ -3875,6 +4024,15 @@ export type Database = {
       }
     }
     Enums: {
+      alert_priority: "baixa" | "media" | "alta"
+      alert_status: "novo" | "em_andamento" | "resolvido" | "silenciado"
+      alert_type:
+        | "aniversario"
+        | "agendamento"
+        | "estoque"
+        | "caixa"
+        | "financeiro"
+        | "sistema"
       nivel_acesso: "admin" | "gerente" | "operador"
       pin_role: "admin" | "notebook" | "kiosk"
       report_category:
@@ -4013,6 +4171,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      alert_priority: ["baixa", "media", "alta"],
+      alert_status: ["novo", "em_andamento", "resolvido", "silenciado"],
+      alert_type: [
+        "aniversario",
+        "agendamento",
+        "estoque",
+        "caixa",
+        "financeiro",
+        "sistema",
+      ],
       nivel_acesso: ["admin", "gerente", "operador"],
       pin_role: ["admin", "notebook", "kiosk"],
       report_category: [
