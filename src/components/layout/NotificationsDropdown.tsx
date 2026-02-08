@@ -180,6 +180,29 @@ export function NotificationsDropdown() {
     );
   };
 
+  const handleNotificationClick = (notif: Notification) => {
+    markAsRead(notif.id);
+    setOpen(false);
+    
+    // Navegar para a página apropriada baseado no tipo
+    switch (notif.type) {
+      case "aniversario":
+        // Navegar para o Centro de Alertas com filtro de aniversário
+        navigate('/configuracoes/alertas?tipo=aniversario');
+        break;
+      case "agendamento":
+        // Navegar para a agenda
+        navigate('/agenda');
+        break;
+      case "estoque":
+        // Navegar para produtos
+        navigate('/produtos');
+        break;
+      default:
+        navigate('/configuracoes/alertas');
+    }
+  };
+
   const dismissNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
@@ -308,10 +331,10 @@ export function NotificationsDropdown() {
                 <div
                   key={notif.id}
                   className={cn(
-                    "flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors cursor-pointer",
+                    "flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors cursor-pointer group",
                     !notif.read && "bg-primary/5"
                   )}
-                  onClick={() => markAsRead(notif.id)}
+                  onClick={() => handleNotificationClick(notif)}
                 >
                   <div className={cn("p-2 rounded-full flex-shrink-0", getIconBg(notif.type))}>
                     {getIcon(notif.type)}
