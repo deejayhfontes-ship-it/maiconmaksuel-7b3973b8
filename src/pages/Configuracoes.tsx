@@ -77,6 +77,8 @@ import KioskModeSettings from "@/components/configuracoes/kiosk/KioskModeSetting
 import DadosSalaoSettings from "@/components/configuracoes/geral/DadosSalaoSettings";
 import AparenciaSettings from "@/components/configuracoes/geral/AparenciaSettings";
 import NotificacoesSettings from "@/components/configuracoes/geral/NotificacoesSettings";
+// RH Settings
+import RHSettings from "@/components/configuracoes/RHSettings";
 
 type SubItem = {
   id: string;
@@ -110,6 +112,16 @@ const menuSections: MenuSection[] = [
     icon: Users,
     items: [
       { id: "controle-acesso", label: "Usuários e Acesso", icon: Shield },
+    ],
+  },
+  {
+    id: "rh",
+    title: "Recursos Humanos",
+    icon: Users,
+    items: [
+      { id: "config-rh", label: "Configurações RH", icon: Settings },
+      { id: "jornada-ponto", label: "Jornada e Ponto", icon: Clock },
+      { id: "comissoes-rh", label: "Regras de Comissão", icon: Percent },
     ],
   },
   {
@@ -422,6 +434,10 @@ export default function Configuracoes() {
         return <DispositivosSettings />;
       case "kiosk-config":
         return <KioskModeSettings />;
+      case "config-rh":
+      case "jornada-ponto":
+      case "comissoes-rh":
+        return <RHSettings />;
       default:
         return (
           <div className="flex items-center justify-center h-64">

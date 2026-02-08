@@ -12,19 +12,25 @@ import {
   Eye,
   Download,
   AlertTriangle,
-  UserCheck
+  UserCheck,
+  BarChart3,
+  Settings
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FuncionarioFormDialog } from '@/components/rh/FuncionarioFormDialog';
+import { ComissoesPanel } from '@/components/rh/ComissoesPanel';
+import { FolhaPontoPanel } from '@/components/rh/FolhaPontoPanel';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { usePinAuth } from '@/contexts/PinAuthContext';
 
 interface Funcionario {
   id: string;
@@ -83,6 +89,8 @@ interface Ferias {
 }
 
 const GestaoRH = () => {
+  const { session } = usePinAuth();
+  const [activeTab, setActiveTab] = useState('resumo');
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [pontosHoje, setPontosHoje] = useState<PontoRegistro[]>([]);
@@ -98,6 +106,10 @@ const GestaoRH = () => {
   const [pessoaSelecionada, setPessoaSelecionada] = useState<string>('');
   const [pontoAtual, setPontoAtual] = useState<PontoRegistro | null>(null);
   const [registrandoPonto, setRegistrandoPonto] = useState(false);
+  
+  // Check role access
+  const isAdmin = session?.role === 'admin';
+  const canEdit = isAdmin; // Only admin can edit
 
   useEffect(() => {
     fetchData();
@@ -344,7 +356,7 @@ const GestaoRH = () => {
   const proximoPonto = getProximoPonto();
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -352,16 +364,50 @@ const GestaoRH = () => {
             Gestão de RH
           </h1>
           <p className="text-muted-foreground mt-1">
-            Administração de funcionários e profissionais
+            Administração de funcionários, ponto e comissões
           </p>
         </div>
-        <Link to="/ponto">
-          <Button variant="outline" className="gap-2">
-            <Clock className="w-4 h-4" />
-            Abrir Ponto (Tela Cheia)
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/ponto">
+            <Button variant="outline" className="gap-2">
+              <Clock className="w-4 h-4" />
+              Ponto (Tela Cheia)
+            </Button>
+          </Link>
+          {isAdmin && (
+            <Link to="/configuracoes">
+              <Button variant="outline" className="gap-2">
+                <Settings className="w-4 h-4" />
+                Config. RH
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="w-full justify-start border-b pb-0 h-auto bg-transparent">
+          <TabsTrigger value="resumo" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            <Users className="w-4 h-4 mr-2" />
+            Resumo
+          </TabsTrigger>
+          <TabsTrigger value="ponto" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            <Clock className="w-4 h-4 mr-2" />
+            Ponto Hoje
+          </TabsTrigger>
+          <TabsTrigger value="comissoes" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            <DollarSign className="w-4 h-4 mr-2" />
+            Comissões
+          </TabsTrigger>
+          <TabsTrigger value="folha" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Folha de Ponto
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Tab: Resumo */}
+        <TabsContent value="resumo" className="space-y-6 mt-6">
 
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -769,6 +815,133 @@ const GestaoRH = () => {
           </Button>
         </CardContent>
       </Card>
+      </TabsContent>
+
+        {/* Tab: Ponto Hoje */}
+        <TabsContent value="ponto" className="mt-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Ponto do Dia
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                  </p>
+                </div>
+                <div className="text-4xl font-bold font-mono text-primary">
+                  {horaAtual.toTimeString().slice(0, 5)}
+                </div>
+              </div>
+
+              {/* Seletor e Botão de Ponto */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <select
+                  value={pessoaSelecionada}
+                  onChange={(e) => setPessoaSelecionada(e.target.value)}
+                  className="flex-1 h-12 px-4 border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                >
+                  <option value="">Selecione quem vai bater o ponto...</option>
+                  
+                  {funcionariosAtivos.length > 0 && (
+                    <optgroup label="👔 FUNCIONÁRIOS RH">
+                      {funcionariosAtivos.map(f => (
+                        <option key={`funcionario-${f.id}`} value={`funcionario-${f.id}`}>
+                          {f.nome} - {f.cargo || 'Funcionário'}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  
+                  {profissionaisAtivos.length > 0 && (
+                    <optgroup label="💇 PROFISSIONAIS">
+                      {profissionaisAtivos.map(p => (
+                        <option key={`profissional-${p.id}`} value={`profissional-${p.id}`}>
+                          {p.nome} - {p.especialidade || 'Profissional'}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+
+                <Button 
+                  onClick={baterPonto}
+                  disabled={!pessoaSelecionada || proximoPonto.tipo === 'completo' || registrandoPonto}
+                  className="h-12 px-6 gap-2 bg-primary hover:bg-primary/90"
+                >
+                  {registrandoPonto ? 'Registrando...' : proximoPonto.tipo === 'completo' ? '✅ Completo' : `🟢 Registrar ${proximoPonto.label}`}
+                </Button>
+              </div>
+
+              {/* Tabela de pontos */}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-center">Entrada</TableHead>
+                      <TableHead className="text-center">Almoço</TableHead>
+                      <TableHead className="text-center">Retorno</TableHead>
+                      <TableHead className="text-center">Saída</TableHead>
+                      <TableHead className="text-center">Horas</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pontosHoje.length > 0 ? (
+                      pontosHoje.map((ponto) => (
+                        <TableRow key={`ponto-${ponto.tipo_pessoa}-${ponto.pessoa_id}`}>
+                          <TableCell className="font-medium">{ponto.nome}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={ponto.tipo_pessoa === 'profissional' ? 'bg-primary/10 text-primary' : 'bg-accent text-accent-foreground'}>
+                              {ponto.tipo_pessoa === 'profissional' ? '💇 Profissional' : '👔 Funcionário'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">{formatTime(ponto.entrada_manha)}</TableCell>
+                          <TableCell className="text-center">{formatTime(ponto.saida_almoco)}</TableCell>
+                          <TableCell className="text-center">{formatTime(ponto.entrada_tarde)}</TableCell>
+                          <TableCell className="text-center">{formatTime(ponto.saida)}</TableCell>
+                          <TableCell className="text-center font-semibold text-primary">
+                            {ponto.horas_trabalhadas ? `${ponto.horas_trabalhadas}h` : '--'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {ponto.saida ? (
+                              <Badge className="bg-primary">✅ Completo</Badge>
+                            ) : ponto.entrada_manha ? (
+                              <Badge variant="secondary">🟡 Em andamento</Badge>
+                            ) : (
+                              <Badge variant="destructive">❌ Ausente</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          Nenhum ponto registrado hoje
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Comissões */}
+        <TabsContent value="comissoes" className="mt-6">
+          <ComissoesPanel />
+        </TabsContent>
+
+        {/* Tab: Folha de Ponto */}
+        <TabsContent value="folha" className="mt-6">
+          <FolhaPontoPanel />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog de Funcionário */}
       <FuncionarioFormDialog
