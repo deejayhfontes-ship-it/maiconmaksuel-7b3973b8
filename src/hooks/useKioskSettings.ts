@@ -75,11 +75,11 @@ export interface KioskSettings {
 const defaultKioskSettings: Omit<KioskSettings, 'id' | 'created_at' | 'updated_at'> = {
   rotas_habilitadas: {
     kiosk: true,
-    kiosk_caixa: true,
-    kiosk_comandas: true,
-    kiosk_agenda: true,
-    kiosk_ponto: true,
-    kiosk_espelho: true,
+    kiosk_caixa: false, // Disabled - no cash register in client kiosk
+    kiosk_comandas: false, // Disabled - no comandas management
+    kiosk_agenda: false, // Disabled - no agenda exposure
+    kiosk_ponto: true, // Enabled - employee time clock
+    kiosk_espelho: false, // Disabled - no cash mirror
   },
   ultimo_acesso_rotas: {},
   bloquear_arraste_janela: true,
@@ -89,42 +89,43 @@ const defaultKioskSettings: Omit<KioskSettings, 'id' | 'created_at' | 'updated_a
   ocultar_controles_janela: true,
   bloquear_atalhos_sistema: true,
   auto_relancar_se_fechado: true,
-  agenda_visivel: true,
+  agenda_visivel: false, // Disabled - client-facing only
   agenda_somente_leitura: true,
   agenda_profissionais_visiveis: [],
   agenda_intervalo_tempo: 'hoje',
-  agenda_mostrar_nomes_servicos: true,
-  agenda_modo_privacidade: false,
+  agenda_mostrar_nomes_servicos: false,
+  agenda_modo_privacidade: true, // Privacy mode enabled
   ponto_habilitado: true,
   ponto_metodo: 'lista_touch',
   ponto_mostrar_foto_nome: true,
   ponto_requer_confirmacao: true,
   ponto_prevenir_duplicados: true,
-  modulo_espelho_caixa: true,
-  modulo_comandas_abertas: true,
-  modulo_mini_agenda: true,
-  modulo_ponto: true,
-  modulo_tela_espera: true,
+  modulo_espelho_caixa: false, // Disabled - no cash mirror
+  modulo_comandas_abertas: false, // Disabled - no comandas
+  modulo_mini_agenda: false, // Disabled - no agenda
+  modulo_ponto: true, // Enabled
+  modulo_tela_espera: true, // Enabled - idle screen
   logo_url: null,
   logo_animacao: 'none',
   logo_animacao_velocidade: 1000,
   fundo_tipo: 'color',
-  fundo_valor: '#1a1a2e',
+  fundo_valor: '', // Empty = use theme background
   tipografia_grande: true,
-  tema_kiosk: 'dark',
+  tema_kiosk: 'light', // Changed default to light
   apenas_touch: true,
   desabilitar_teclado: true,
   alvos_touch_grandes: true,
 };
 
-// Kiosk route mapping
+// Kiosk route mapping - Minimal client-facing routes only
 export const KIOSK_ROUTES = {
-  kiosk: { path: '/kiosk', label: 'Home Kiosk' },
-  kiosk_caixa: { path: '/kiosk/caixa', label: 'Caixa' },
-  kiosk_comandas: { path: '/kiosk/caixa/comandas', label: 'Comandas' },
-  kiosk_agenda: { path: '/kiosk/agenda', label: 'Agenda' },
+  kiosk: { path: '/kiosk', label: 'Início' },
   kiosk_ponto: { path: '/kiosk/ponto', label: 'Ponto Eletrônico' },
-  kiosk_espelho: { path: '/kiosk/espelho-cliente', label: 'Espelho Cliente' },
+  // Legacy routes disabled for client-facing kiosk:
+  kiosk_caixa: { path: '/kiosk/caixa', label: 'Caixa', disabled: true },
+  kiosk_comandas: { path: '/kiosk/caixa/comandas', label: 'Comandas', disabled: true },
+  kiosk_agenda: { path: '/kiosk/agenda', label: 'Agenda', disabled: true },
+  kiosk_espelho: { path: '/kiosk/espelho-cliente', label: 'Espelho Cliente', disabled: true },
 } as const;
 
 export function useKioskSettings() {
