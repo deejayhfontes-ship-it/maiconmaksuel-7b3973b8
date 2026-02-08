@@ -11,19 +11,25 @@ import {
   Settings, 
   UserCog, 
   CheckCircle,
+  MessageCircle,
   LucideIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { usePinAuth } from '@/contexts/PinAuthContext';
 
 interface Atalho {
   Icon: LucideIcon;
   label: string;
   link: string;
   gradient: string;
+  hideForNotebook?: boolean; // Ocultar para notebook
+  notebookOnly?: boolean; // Mostrar apenas para notebook (WhatsApp no lugar de Caixa)
 }
 
 const AtalhosRapidos = () => {
   const navigate = useNavigate();
+  const { session } = usePinAuth();
+  const isNotebook = session?.role === 'notebook';
   
   const atalhos: Atalho[] = [
     { Icon: Calendar, label: 'Agenda', link: '/agenda', gradient: 'linear-gradient(135deg, #007AFF 0%, #5856D6 100%)' },
@@ -31,19 +37,35 @@ const AtalhosRapidos = () => {
     { Icon: Users, label: 'Clientes', link: '/clientes', gradient: 'linear-gradient(135deg, #34C759 0%, #30D158 100%)' },
     { Icon: UserCircle, label: 'Profissionais', link: '/profissionais', gradient: 'linear-gradient(135deg, #FF9500 0%, #FF6B00 100%)' },
     { Icon: Package, label: 'Produtos', link: '/produtos', gradient: 'linear-gradient(135deg, #30D158 0%, #00C853 100%)' },
-    { Icon: Wallet, label: 'Caixa', link: '/caixa', gradient: 'linear-gradient(135deg, #32ADE6 0%, #0A84FF 100%)' },
-    { Icon: Target, label: 'Metas', link: '/configuracoes/metas', gradient: 'linear-gradient(135deg, #FF3B30 0%, #FF453A 100%)' },
-    { Icon: BarChart3, label: 'Relatórios', link: '/relatorios', gradient: 'linear-gradient(135deg, #AF52DE 0%, #BF5AF2 100%)' },
-    { Icon: FileText, label: 'Notas Fiscais', link: '/notas-fiscais', gradient: 'linear-gradient(135deg, #FF2D55 0%, #FF375F 100%)' },
-    { Icon: Settings, label: 'Configurações', link: '/configuracoes', gradient: 'linear-gradient(135deg, #8E8E93 0%, #636366 100%)' },
-    { Icon: UserCog, label: 'Gestão RH', link: '/gestao-rh', gradient: 'linear-gradient(135deg, #FF9F0A 0%, #FF6F00 100%)' },
+    // Caixa - oculto para notebook
+    { Icon: Wallet, label: 'Caixa', link: '/caixa', gradient: 'linear-gradient(135deg, #32ADE6 0%, #0A84FF 100%)', hideForNotebook: true },
+    // WhatsApp - aparece no lugar de Caixa para notebook
+    { Icon: MessageCircle, label: 'WhatsApp', link: '/whatsapp', gradient: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)', notebookOnly: true },
+    { Icon: Target, label: 'Metas', link: '/configuracoes/metas', gradient: 'linear-gradient(135deg, #FF3B30 0%, #FF453A 100%)', hideForNotebook: true },
+    { Icon: BarChart3, label: 'Relatórios', link: '/relatorios', gradient: 'linear-gradient(135deg, #AF52DE 0%, #BF5AF2 100%)', hideForNotebook: true },
+    { Icon: FileText, label: 'Notas Fiscais', link: '/notas-fiscais', gradient: 'linear-gradient(135deg, #FF2D55 0%, #FF375F 100%)', hideForNotebook: true },
+    { Icon: Settings, label: 'Configurações', link: '/configuracoes', gradient: 'linear-gradient(135deg, #8E8E93 0%, #636366 100%)', hideForNotebook: true },
+    { Icon: UserCog, label: 'Gestão RH', link: '/gestao-rh', gradient: 'linear-gradient(135deg, #FF9F0A 0%, #FF6F00 100%)', hideForNotebook: true },
     { Icon: CheckCircle, label: 'Confirmações', link: '/confirmacoes-whatsapp', gradient: 'linear-gradient(135deg, #30D158 0%, #34C759 100%)' }
   ];
+
+  // Filtrar atalhos baseado no role
+  const atalhosFiltrados = atalhos.filter(atalho => {
+    if (isNotebook) {
+      // Para notebook: ocultar hideForNotebook, mostrar notebookOnly
+      if (atalho.hideForNotebook) return false;
+      return true;
+    } else {
+      // Para outros roles: ocultar notebookOnly
+      if (atalho.notebookOnly) return false;
+      return true;
+    }
+  });
   
   return (
     <div className="w-full my-10 px-4">
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-5 sm:gap-6 lg:gap-8 justify-items-center max-w-6xl mx-auto">
-        {atalhos.map((atalho) => {
+        {atalhosFiltrados.map((atalho) => {
           const { Icon } = atalho;
           
           return (

@@ -79,7 +79,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/kiosk/espelho-cliente',
   ],
   notebook: [
-    // Agenda + basic management (no financeiro, except vales)
+    // Agenda + basic management (NO caixa, NO vales, NO faturamento)
     '/dashboard',
     '/agenda',
     '/atendimentos',
@@ -88,13 +88,9 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/profissional', // Legacy: /profissional/:id
     '/servicos',
     '/produtos',
-    '/caixa',
-    '/caixa/pdv',
-    '/caixa/comandas',
-    '/caixa/extrato',
-    '/caixa/gaveta',
-    '/financeiro/vales',
-    '/vales',
+    // Caixa REMOVIDO para notebook
+    // Vales REMOVIDO para notebook
+    '/whatsapp', // WhatsApp module
     '/atendimento-whatsapp',
     '/confirmacoes-whatsapp',
     '/perfil',
