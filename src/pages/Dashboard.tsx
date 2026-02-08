@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { usePerformanceDebug, isDebugPerfActive } from "@/hooks/usePerformanceDebug";
 import {
   Table,
   TableBody,
@@ -79,12 +80,35 @@ const getGreeting = () => {
 };
 
 const Dashboard = () => {
+  // Performance tracking
+  const mountTimeRef = useRef(performance.now());
+  const dataReadyTimeRef = useRef<number | null>(null);
+  const debugActive = isDebugPerfActive();
+  
   // Optimized: Single parallel data load via React Query
   const { data: dashboardData, isLoading, refetch } = useDashboardData();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [motivationalMessage] = useState(() => 
     motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)]
   );
+  const [loadMetrics, setLoadMetrics] = useState<{ mountToReady: number } | null>(null);
+  
+  // Performance debug hook
+  const perfDebug = usePerformanceDebug(!isLoading && !!dashboardData);
+  
+  // Track when data becomes ready
+  useEffect(() => {
+    if (!isLoading && dashboardData && dataReadyTimeRef.current === null) {
+      dataReadyTimeRef.current = performance.now();
+      const mountToReady = dataReadyTimeRef.current - mountTimeRef.current;
+      setLoadMetrics({ mountToReady });
+      
+      if (debugActive) {
+        console.log("[Dashboard] ⚡ Mount → Data Ready:", mountToReady.toFixed(0), "ms");
+        console.log("[Dashboard] API Load Time:", dashboardData.loadTime?.toFixed(0), "ms");
+      }
+    }
+  }, [isLoading, dashboardData, debugActive]);
 
   // Update clock every second
   useEffect(() => {
@@ -402,9 +426,20 @@ const Dashboard = () => {
       </div>
 
       {/* Load Time Info (Debug) */}
-      {dashboardData?.loadTime && (
-        <div className="text-xs text-muted-foreground text-right">
-          Carregamento otimizado: {dashboardData.loadTime.toFixed(0)}ms
+      {(dashboardData?.loadTime || loadMetrics) && (
+        <div className="text-xs text-muted-foreground text-right space-x-3">
+          {loadMetrics && (
+            <span className={loadMetrics.mountToReady < 2500 ? "text-success" : "text-destructive"}>
+              Total: {loadMetrics.mountToReady.toFixed(0)}ms
+              {loadMetrics.mountToReady < 2500 ? " ✓" : " ✗"}
+            </span>
+          )}
+          {dashboardData?.loadTime && (
+            <span>API: {dashboardData.loadTime.toFixed(0)}ms</span>
+          )}
+          {debugActive && (
+            <Badge variant="outline" className="ml-2">DEBUG</Badge>
+          )}
         </div>
       )}
     </div>
