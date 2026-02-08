@@ -62,32 +62,49 @@ export function usePinosAcesso() {
     }
   }, []);
 
-  // Initialize default PINs if none exist
+  // Initialize default PINs if none exist (or ensure defaults exist)
   const initializeDefaultPins = useCallback(async () => {
     try {
       const { data: existing, error: checkError } = await supabase
         .from('pinos_acesso')
-        .select('id')
-        .limit(1);
+        .select('id, pin, role')
+        .limit(10);
 
       if (checkError) throw checkError;
 
-      // If no PINs exist, create defaults
-      if (!existing || existing.length === 0) {
-        const defaultPins: Array<{ pin: string; nome: string; role: 'admin' | 'notebook' | 'kiosk'; descricao: string; ativo: boolean }> = [
-          { pin: '0000', nome: 'Administrador', role: 'admin', descricao: 'Acesso total ao sistema', ativo: true },
-          { pin: '1234', nome: 'Notebook', role: 'notebook', descricao: 'Agenda e gestão básica', ativo: true },
-          { pin: '9999', nome: 'Kiosk', role: 'kiosk', descricao: 'Caixa, ponto e mini agenda', ativo: true },
-        ];
+      // Default PINs configuration
+      const defaultPins: Array<{ pin: string; nome: string; role: 'admin' | 'notebook' | 'kiosk'; descricao: string; ativo: boolean }> = [
+        { pin: '0000', nome: 'Administrador', role: 'admin', descricao: 'Acesso total ao sistema', ativo: true },
+        { pin: '1234', nome: 'Notebook', role: 'notebook', descricao: 'Agenda e gestão básica', ativo: true },
+        { pin: '9999', nome: 'Kiosk', role: 'kiosk', descricao: 'Caixa, ponto e mini agenda', ativo: true },
+      ];
 
+      // If no PINs exist, create all defaults
+      if (!existing || existing.length === 0) {
         const { error: insertError } = await supabase
           .from('pinos_acesso')
           .insert(defaultPins);
 
         if (insertError) throw insertError;
         
-        toast.success('PINs padrão criados com sucesso');
+        console.log('[PINs] Default PINs created: 0000 (admin), 1234 (notebook), 9999 (kiosk)');
         await fetchPinos();
+        return;
+      }
+
+      // Check if each default role has at least one PIN, if not create it
+      const existingRoles = new Set(existing.map(p => p.role));
+      const missingPins = defaultPins.filter(dp => !existingRoles.has(dp.role));
+
+      if (missingPins.length > 0) {
+        const { error: insertError } = await supabase
+          .from('pinos_acesso')
+          .insert(missingPins);
+
+        if (!insertError) {
+          console.log('[PINs] Created missing default PINs for roles:', missingPins.map(p => p.role).join(', '));
+          await fetchPinos();
+        }
       }
     } catch (error) {
       console.error('Error initializing default PINs:', error);

@@ -116,6 +116,7 @@ export default function ControleAcesso() {
     role: 'notebook',
     descricao: '',
   });
+  const [confirmPinField, setConfirmPinField] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Password change state
@@ -139,6 +140,7 @@ export default function ControleAcesso() {
 
   const resetForm = () => {
     setFormData({ pin: '', nome: '', role: 'notebook', descricao: '' });
+    setConfirmPinField('');
     setFormErrors({});
     setSelectedPino(null);
   };
@@ -156,6 +158,7 @@ export default function ControleAcesso() {
       role: pino.role,
       descricao: pino.descricao || '',
     });
+    setConfirmPinField(pino.pin); // Pre-fill confirm field for edits
     setFormErrors({});
     setIsDialogOpen(true);
   };
@@ -179,6 +182,15 @@ export default function ControleAcesso() {
       errors.pin = 'PIN deve ter 4 dígitos';
     } else if (!validatePin(formData.pin)) {
       errors.pin = 'PIN deve conter apenas números';
+    }
+    // Check if PINs match (confirmation)
+    if (formData.pin !== confirmPinField) {
+      errors.confirmPin = 'Os PINs não coincidem';
+    }
+    // Check for duplicate PIN (excluding current one if editing)
+    const existingPins = pinos.filter(p => selectedPino ? p.id !== selectedPino.id : true);
+    if (existingPins.some(p => p.pin === formData.pin)) {
+      errors.pin = 'Este PIN já está em uso por outro perfil';
     }
     if (!formData.nome.trim()) {
       errors.nome = 'Nome é obrigatório';
@@ -627,7 +639,7 @@ export default function ControleAcesso() {
                         <TableRow key={log.id}>
                           <TableCell>
                             {log.sucesso ? (
-                              <CheckCircle className="h-5 w-5 text-green-500" />
+                              <CheckCircle className="h-5 w-5 text-success" />
                             ) : (
                               <XCircle className="h-5 w-5 text-destructive" />
                             )}
@@ -678,6 +690,22 @@ export default function ControleAcesso() {
               {formErrors.pin && <p className="text-sm text-destructive">{formErrors.pin}</p>}
             </div>
             <div className="space-y-2">
+              <Label>Confirmar PIN</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="0000"
+                maxLength={4}
+                value={confirmPinField}
+                onChange={(e) => {
+                  setConfirmPinField(e.target.value.replace(/\D/g, '').slice(0, 4));
+                  setFormErrors(prev => ({ ...prev, confirmPin: '' }));
+                }}
+                className={formErrors.confirmPin ? 'border-destructive' : ''}
+              />
+              {formErrors.confirmPin && <p className="text-sm text-destructive">{formErrors.confirmPin}</p>}
+            </div>
+            <div className="space-y-2">
               <Label>Nome</Label>
               <Input
                 placeholder="Ex: Recepção, Gerente Maria"
@@ -716,6 +744,14 @@ export default function ControleAcesso() {
                 value={formData.descricao || ''}
                 onChange={(e) => handleInputChange('descricao', e.target.value)}
               />
+            </div>
+            
+            {/* Default PINs info */}
+            <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+              <p className="font-medium text-xs uppercase text-muted-foreground">PINs Padrão do Sistema</p>
+              <p className="text-muted-foreground">Admin: <code className="bg-muted px-1 rounded">0000</code></p>
+              <p className="text-muted-foreground">Notebook: <code className="bg-muted px-1 rounded">1234</code></p>
+              <p className="text-muted-foreground">Kiosk: <code className="bg-muted px-1 rounded">9999</code></p>
             </div>
           </div>
           <DialogFooter>
