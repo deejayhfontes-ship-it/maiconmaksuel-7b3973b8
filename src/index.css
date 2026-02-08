@@ -909,3 +909,146 @@
     background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
   }
 }
+
+/* ============================================
+   PRINT STYLES - PROFESSIONAL A4 LAYOUT
+   ============================================ */
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm;
+  }
+
+  /* Hide non-printable elements */
+  .no-print,
+  nav,
+  aside,
+  header:not(.print-header),
+  [data-sidebar],
+  .sidebar,
+  button:not(.print-keep),
+  .topbar,
+  [role="navigation"],
+  .scroll-area,
+  .popover,
+  .dialog,
+  .toast,
+  .dropdown-menu {
+    display: none !important;
+  }
+
+  /* Reset backgrounds and colors for clean print */
+  html, body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Main content takes full width */
+  main, .main-content, [role="main"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Cards styling for print */
+  .card, [data-card] {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    border: 1px solid #e5e5e5 !important;
+    box-shadow: none !important;
+    margin-bottom: 12pt !important;
+    background: white !important;
+  }
+
+  /* Tables */
+  table {
+    break-inside: auto !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+    font-size: 9pt !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  th, td {
+    border: 1px solid #d1d5db !important;
+    padding: 6pt 8pt !important;
+    text-align: left !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Typography */
+  h1 { font-size: 18pt !important; margin-bottom: 8pt !important; }
+  h2 { font-size: 14pt !important; margin-bottom: 6pt !important; }
+  h3 { font-size: 12pt !important; margin-bottom: 4pt !important; }
+  p { margin-bottom: 6pt !important; }
+
+  /* Section breaks */
+  .print-page-break {
+    page-break-before: always !important;
+  }
+
+  .print-section {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Charts - hide or show placeholder */
+  .recharts-wrapper,
+  .recharts-surface {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Print header */
+  .print-header {
+    display: block !important;
+    border-bottom: 2px solid #1f2937 !important;
+    padding-bottom: 12pt !important;
+    margin-bottom: 16pt !important;
+  }
+
+  /* Badge styling for print */
+  .badge, [data-badge] {
+    border: 1px solid currentColor !important;
+    background: transparent !important;
+  }
+
+  /* Links */
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  /* Force white backgrounds */
+  * {
+    background-attachment: initial !important;
+  }
+}
+
+/* Print-specific utility classes */
+.print-only {
+  display: none !important;
+}
+
+@media print {
+  .print-only {
+    display: block !important;
+  }
+}
