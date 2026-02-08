@@ -61,6 +61,7 @@ import KioskHome from "./pages/KioskHome";
 import KioskLayout from "./components/layout/KioskLayout";
 import AtendimentoWhatsApp from "./pages/AtendimentoWhatsApp";
 import WhatsAppModule from "./pages/WhatsAppModule";
+import CentroAlertas from "./pages/CentroAlertas";
 
 const queryClient = new QueryClient();
 
@@ -127,6 +128,7 @@ const App = () => (
                 <Route path="/atendimento-whatsapp" element={<AtendimentoWhatsApp />} />
                 <Route path="/gestao-rh" element={<GestaoRH />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
+                <Route path="/configuracoes/alertas" element={<CentroAlertas />} />
                 <Route path="/configuracoes/notificacoes" element={<ConfiguracoesNotificacoes />} />
                 <Route path="/configuracoes/integracoes" element={<ConfiguracoesIntegracoes />} />
                 <Route path="/configuracoes/caixa-pdv" element={<ConfiguracoesCaixaPDV />} />
