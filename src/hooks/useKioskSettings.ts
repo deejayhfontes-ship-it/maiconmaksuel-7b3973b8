@@ -1,5 +1,5 @@
 /**
- * Kiosk Settings Hook
+ * Kiosk Settings Hook - Complete Configuration Management
  * Manages local persistence and Supabase sync for kiosk-specific settings
  */
 
@@ -12,15 +12,18 @@ const LOCAL_KIOSK_KEY = 'mm-kiosk-settings';
 
 export interface KioskRoutesEnabled {
   kiosk: boolean;
-  kiosk_caixa: boolean;
-  kiosk_comandas: boolean;
-  kiosk_agenda: boolean;
   kiosk_ponto: boolean;
-  kiosk_espelho: boolean;
+  kiosk_agenda: boolean;
 }
 
 export interface KioskRouteAccess {
   [routeKey: string]: string; // ISO timestamp of last access
+}
+
+export interface IdleMessage {
+  id: string;
+  text: string;
+  enabled: boolean;
 }
 
 export interface KioskSettings {
@@ -36,7 +39,7 @@ export interface KioskSettings {
   ocultar_controles_janela: boolean;
   bloquear_atalhos_sistema: boolean;
   auto_relancar_se_fechado: boolean;
-  // Agenda kiosk settings
+  // Agenda kiosk settings (simplified)
   agenda_visivel: boolean;
   agenda_somente_leitura: boolean;
   agenda_profissionais_visiveis: string[];
@@ -50,36 +53,52 @@ export interface KioskSettings {
   ponto_requer_confirmacao: boolean;
   ponto_prevenir_duplicados: boolean;
   // Content modules
-  modulo_espelho_caixa: boolean;
-  modulo_comandas_abertas: boolean;
-  modulo_mini_agenda: boolean;
   modulo_ponto: boolean;
+  modulo_agenda: boolean;
+  modulo_fechamento_comanda: boolean;
   modulo_tela_espera: boolean;
+  modulo_relogio: boolean;
+  modulo_mensagens_idle: boolean;
   // Visual settings
   logo_url: string | null;
-  logo_animacao: 'none' | 'fade' | 'slide' | 'pulse' | 'loop';
+  logo_animacao: 'none' | 'fade' | 'pulse' | 'bounce' | 'rotate';
   logo_animacao_velocidade: number;
-  fundo_tipo: 'color' | 'gradient' | 'image' | 'video';
+  fundo_tipo: 'color' | 'gradient' | 'image';
   fundo_valor: string;
   tipografia_grande: boolean;
-  tema_kiosk: 'dark' | 'light';
+  tema_kiosk: 'dark' | 'light' | 'auto';
+  // Content customization
+  mensagens_idle: IdleMessage[];
+  mensagem_obrigado: string;
+  duracao_obrigado: number; // seconds
+  duracao_comanda: number; // seconds before auto-dismiss
   // Interaction rules
   apenas_touch: boolean;
   desabilitar_teclado: boolean;
   alvos_touch_grandes: boolean;
+  fonte_tamanho: 100 | 110 | 120;
+  modo_alto_contraste: boolean;
+  som_toque: boolean;
+  // Offline settings
+  offline_mensagem: string;
+  offline_cache_config: boolean;
   // Timestamps
   created_at: string;
   updated_at: string;
 }
 
+// Default idle messages
+const defaultIdleMessages: IdleMessage[] = [
+  { id: '1', text: 'Bem-vindo ao nosso salão!', enabled: true },
+  { id: '2', text: 'Toque para começar', enabled: true },
+  { id: '3', text: 'Oferecemos os melhores serviços', enabled: true },
+];
+
 const defaultKioskSettings: Omit<KioskSettings, 'id' | 'created_at' | 'updated_at'> = {
   rotas_habilitadas: {
     kiosk: true,
-    kiosk_caixa: false, // Disabled - no cash register in client kiosk
-    kiosk_comandas: false, // Disabled - no comandas management
-    kiosk_agenda: false, // Disabled - no agenda exposure
-    kiosk_ponto: true, // Enabled - employee time clock
-    kiosk_espelho: false, // Disabled - no cash mirror
+    kiosk_ponto: true,
+    kiosk_agenda: false, // Disabled by default
   },
   ultimo_acesso_rotas: {},
   bloquear_arraste_janela: true,
@@ -89,43 +108,49 @@ const defaultKioskSettings: Omit<KioskSettings, 'id' | 'created_at' | 'updated_a
   ocultar_controles_janela: true,
   bloquear_atalhos_sistema: true,
   auto_relancar_se_fechado: true,
-  agenda_visivel: false, // Disabled - client-facing only
+  agenda_visivel: false,
   agenda_somente_leitura: true,
   agenda_profissionais_visiveis: [],
   agenda_intervalo_tempo: 'hoje',
   agenda_mostrar_nomes_servicos: false,
-  agenda_modo_privacidade: true, // Privacy mode enabled
+  agenda_modo_privacidade: true,
   ponto_habilitado: true,
   ponto_metodo: 'lista_touch',
   ponto_mostrar_foto_nome: true,
   ponto_requer_confirmacao: true,
   ponto_prevenir_duplicados: true,
-  modulo_espelho_caixa: false, // Disabled - no cash mirror
-  modulo_comandas_abertas: false, // Disabled - no comandas
-  modulo_mini_agenda: false, // Disabled - no agenda
-  modulo_ponto: true, // Enabled
-  modulo_tela_espera: true, // Enabled - idle screen
+  modulo_ponto: true,
+  modulo_agenda: false,
+  modulo_fechamento_comanda: true,
+  modulo_tela_espera: true,
+  modulo_relogio: true,
+  modulo_mensagens_idle: true,
   logo_url: null,
   logo_animacao: 'none',
   logo_animacao_velocidade: 1000,
-  fundo_tipo: 'color',
-  fundo_valor: '', // Empty = use theme background
+  fundo_tipo: 'gradient',
+  fundo_valor: '',
   tipografia_grande: true,
-  tema_kiosk: 'light', // Changed default to light
+  tema_kiosk: 'light',
+  mensagens_idle: defaultIdleMessages,
+  mensagem_obrigado: 'Obrigado pela preferência! Volte sempre!',
+  duracao_obrigado: 6,
+  duracao_comanda: 10,
   apenas_touch: true,
   desabilitar_teclado: true,
   alvos_touch_grandes: true,
+  fonte_tamanho: 100,
+  modo_alto_contraste: false,
+  som_toque: false,
+  offline_mensagem: 'Estamos sem conexão no momento. Por favor, aguarde.',
+  offline_cache_config: true,
 };
 
 // Kiosk route mapping - Minimal client-facing routes only
 export const KIOSK_ROUTES = {
-  kiosk: { path: '/kiosk', label: 'Início' },
+  kiosk: { path: '/kiosk', label: 'Início (Espera)' },
   kiosk_ponto: { path: '/kiosk/ponto', label: 'Ponto Eletrônico' },
-  // Legacy routes disabled for client-facing kiosk:
-  kiosk_caixa: { path: '/kiosk/caixa', label: 'Caixa', disabled: true },
-  kiosk_comandas: { path: '/kiosk/caixa/comandas', label: 'Comandas', disabled: true },
-  kiosk_agenda: { path: '/kiosk/agenda', label: 'Agenda', disabled: true },
-  kiosk_espelho: { path: '/kiosk/espelho-cliente', label: 'Espelho Cliente', disabled: true },
+  kiosk_agenda: { path: '/kiosk/agenda', label: 'Agenda (Simplificada)' },
 } as const;
 
 export function useKioskSettings() {
@@ -134,7 +159,7 @@ export function useKioskSettings() {
   const [syncStatus, setSyncStatus] = useState<'synced' | 'pending' | 'error'>('synced');
   const [kioskUptime, setKioskUptime] = useState<number>(0);
   
-  // Debounce route access updates to batch multiple accesses into single PATCH
+  // Debounce route access updates
   const pendingRouteAccessRef = useRef<Set<keyof KioskRoutesEnabled>>(new Set());
   const routeAccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -178,6 +203,22 @@ export function useKioskSettings() {
     }
   }, []);
 
+  // Parse settings from DB format
+  const parseSettings = useCallback((data: Record<string, unknown>): KioskSettings => {
+    return {
+      ...defaultKioskSettings,
+      ...data,
+      id: data.id as string || '',
+      created_at: data.created_at as string || '',
+      updated_at: data.updated_at as string || '',
+      rotas_habilitadas: (data.rotas_habilitadas || defaultKioskSettings.rotas_habilitadas) as KioskRoutesEnabled,
+      ultimo_acesso_rotas: (data.ultimo_acesso_rotas || {}) as KioskRouteAccess,
+      mensagens_idle: Array.isArray(data.mensagens_idle) 
+        ? data.mensagens_idle as IdleMessage[]
+        : defaultKioskSettings.mensagens_idle,
+    } as KioskSettings;
+  }, []);
+
   // Fetch settings from Supabase
   const { data: settings, isLoading, error } = useQuery({
     queryKey: ['kiosk-settings'],
@@ -191,11 +232,7 @@ export function useKioskSettings() {
       if (error) throw error;
 
       if (data) {
-        const parsed = {
-          ...data,
-          rotas_habilitadas: (data.rotas_habilitadas || defaultKioskSettings.rotas_habilitadas) as unknown as KioskRoutesEnabled,
-          ultimo_acesso_rotas: (data.ultimo_acesso_rotas || {}) as unknown as KioskRouteAccess,
-        } as KioskSettings;
+        const parsed = parseSettings(data as Record<string, unknown>);
         saveLocalSettings(parsed);
         setSyncStatus('synced');
         return parsed;
@@ -232,13 +269,16 @@ export function useKioskSettings() {
       if (updates.ultimo_acesso_rotas) {
         dbUpdates.ultimo_acesso_rotas = updates.ultimo_acesso_rotas as unknown as Record<string, unknown>;
       }
+      if (updates.mensagens_idle) {
+        dbUpdates.mensagens_idle = updates.mensagens_idle as unknown as Record<string, unknown>[];
+      }
 
       const { data, error } = await supabase
         .from('configuracoes_kiosk')
         .update(dbUpdates)
         .eq('id', settings?.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         setSyncStatus('error');
@@ -246,7 +286,7 @@ export function useKioskSettings() {
       }
 
       setSyncStatus('synced');
-      return data;
+      return data ? parseSettings(data as Record<string, unknown>) : { ...settings, ...updates };
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['kiosk-settings'], data);
@@ -258,31 +298,26 @@ export function useKioskSettings() {
     },
   });
 
-  // Update route access timestamp - DEBOUNCED to batch multiple accesses
+  // Update route access timestamp - DEBOUNCED
   const updateRouteAccess = useCallback((routeKey: keyof KioskRoutesEnabled) => {
     if (!settings) return;
     
-    // Add to pending set
     pendingRouteAccessRef.current.add(routeKey);
     
-    // Clear existing timeout
     if (routeAccessTimeoutRef.current) {
       clearTimeout(routeAccessTimeoutRef.current);
     }
     
-    // Debounce for 2 seconds to batch multiple route accesses
     routeAccessTimeoutRef.current = setTimeout(() => {
       const routesToUpdate = Array.from(pendingRouteAccessRef.current);
       if (routesToUpdate.length === 0) return;
       
-      // Create timestamp object for all pending routes
       const now = new Date().toISOString();
       const newAccess = { ...settings.ultimo_acesso_rotas };
       routesToUpdate.forEach(key => {
         newAccess[key] = now;
       });
       
-      // Clear pending set and send batched update
       pendingRouteAccessRef.current.clear();
       routeAccessTimeoutRef.current = null;
       updateMutation.mutate({ ultimo_acesso_rotas: newAccess });
@@ -304,30 +339,42 @@ export function useKioskSettings() {
     return settings.rotas_habilitadas[routeKey] ?? true;
   }, [settings]);
 
-  // Reset layout
-  const resetLayout = useCallback(() => {
-    updateMutation.mutate({
-      modulo_espelho_caixa: true,
-      modulo_comandas_abertas: true,
-      modulo_mini_agenda: true,
-      modulo_ponto: true,
-      modulo_tela_espera: true,
-    });
-    toast.success('Layout do kiosk resetado');
-  }, [updateMutation]);
-
   // Reset visual settings - Modern premium defaults (light theme)
   const resetVisual = useCallback(() => {
     updateMutation.mutate({
       logo_url: null,
       logo_animacao: 'none',
       logo_animacao_velocidade: 1000,
-      fundo_tipo: 'color',
-      fundo_valor: '', // Empty = use default gradient
+      fundo_tipo: 'gradient',
+      fundo_valor: '',
       tipografia_grande: true,
-      tema_kiosk: 'light', // Default to light theme
+      tema_kiosk: 'light',
     });
     toast.success('Configurações visuais resetadas');
+  }, [updateMutation]);
+
+  // Reset content settings
+  const resetContent = useCallback(() => {
+    updateMutation.mutate({
+      mensagens_idle: defaultIdleMessages,
+      mensagem_obrigado: defaultKioskSettings.mensagem_obrigado,
+      duracao_obrigado: defaultKioskSettings.duracao_obrigado,
+      duracao_comanda: defaultKioskSettings.duracao_comanda,
+    });
+    toast.success('Conteúdo resetado');
+  }, [updateMutation]);
+
+  // Reset interaction settings
+  const resetInteraction = useCallback(() => {
+    updateMutation.mutate({
+      apenas_touch: true,
+      desabilitar_teclado: true,
+      alvos_touch_grandes: true,
+      fonte_tamanho: 100,
+      modo_alto_contraste: false,
+      som_toque: false,
+    });
+    toast.success('Interação resetada');
   }, [updateMutation]);
 
   // Clear local cache
@@ -376,13 +423,15 @@ export function useKioskSettings() {
     isSaving: updateMutation.isPending,
     updateRouteAccess,
     isRouteEnabled,
-    resetLayout,
     resetVisual,
+    resetContent,
+    resetInteraction,
     clearCache,
     forceResync,
     factoryReset,
     kioskUptime,
     formatUptime: () => formatUptime(kioskUptime),
     KIOSK_ROUTES,
+    defaultSettings: defaultKioskSettings,
   };
 }
