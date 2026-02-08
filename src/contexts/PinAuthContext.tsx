@@ -51,7 +51,15 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/relatorio-completo',
     '/fechamento-semanal',
     '/metas-salao',
+    // RH - Full access
     '/gestao-rh',
+    '/gestao-rh/funcionarios',
+    '/gestao-rh/ponto',
+    '/gestao-rh/folha',
+    '/gestao-rh/comissoes',
+    '/gestao-rh/ferias',
+    '/gestao-rh/relatorios',
+    '/gestao-rh/configuracoes',
     '/vales',
     '/configuracoes',
     '/configuracoes/fiscal',
@@ -62,6 +70,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/configuracoes/taxa-falta',
     '/configuracoes/caixa-pdv',
     '/configuracoes/metas',
+    '/configuracoes/rh',
     '/confirmacoes-whatsapp',
     '/atendimento-whatsapp',
     '/whatsapp',
@@ -79,7 +88,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/kiosk/espelho-cliente',
   ],
   notebook: [
-    // Agenda + basic management (NO caixa, NO vales, NO faturamento, NO whatsapp)
+    // Agenda + basic management (NO caixa, NO vales, NO faturamento, NO whatsapp, NO RH sensitive)
     '/dashboard',
     '/agenda',
     '/atendimentos',
@@ -89,6 +98,9 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/servicos',
     '/produtos',
     '/perfil',
+    // RH - View only (no config, no payroll processing)
+    '/gestao-rh',
+    '/gestao-rh/ponto',
   ],
   kiosk: [
     // Limited kiosk routes
