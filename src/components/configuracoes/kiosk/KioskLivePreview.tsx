@@ -42,12 +42,13 @@ const PREVIEW_DEVICES = [
   { id: 'mobile', name: 'Mobile', width: 375, height: 812, icon: Smartphone },
 ];
 
-// Kiosk module icons
+// Kiosk module icons - Only ponto is enabled in client-facing kiosk
 const MODULE_ICONS = {
-  kiosk_caixa: CreditCard,
-  kiosk_agenda: Calendar,
   kiosk_ponto: Clock,
-  kiosk_espelho: Monitor,
+  // Legacy modules disabled for client-facing kiosk:
+  // kiosk_caixa: CreditCard,
+  // kiosk_agenda: Calendar,
+  // kiosk_espelho: Monitor,
 };
 
 interface PreviewState {
@@ -77,12 +78,14 @@ export default function KioskLivePreview() {
   );
 
   // Available kiosk modules based on settings
+  // Available kiosk modules based on settings - Only ponto in client-facing kiosk
   const availableModules = useMemo(() => {
     return [
-      { key: 'kiosk_caixa', path: '/kiosk/caixa', label: 'Caixa', enabled: isRouteEnabled('kiosk_caixa') },
-      { key: 'kiosk_agenda', path: '/kiosk/agenda', label: 'Agenda', enabled: isRouteEnabled('kiosk_agenda') },
       { key: 'kiosk_ponto', path: '/kiosk/ponto', label: 'Ponto', enabled: isRouteEnabled('kiosk_ponto') },
-      { key: 'kiosk_espelho', path: '/kiosk/espelho-cliente', label: 'Espelho', enabled: isRouteEnabled('kiosk_espelho') },
+      // Legacy modules disabled for client-facing kiosk:
+      // { key: 'kiosk_caixa', path: '/kiosk/caixa', label: 'Caixa', enabled: isRouteEnabled('kiosk_caixa') },
+      // { key: 'kiosk_agenda', path: '/kiosk/agenda', label: 'Agenda', enabled: isRouteEnabled('kiosk_agenda') },
+      // { key: 'kiosk_espelho', path: '/kiosk/espelho-cliente', label: 'Espelho', enabled: isRouteEnabled('kiosk_espelho') },
     ].filter(m => m.enabled);
   }, [isRouteEnabled]);
 

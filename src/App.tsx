@@ -137,18 +137,15 @@ const App = () => (
                 <Route path="/relatorio-completo" element={<RelatorioCompleto />} />
               </Route>
               
-              {/* Kiosk routes - Protected by PIN authentication */}
+              {/* Kiosk routes - Minimal client-facing display */}
+              {/* Only: idle/comanda screen + ponto */}
               <Route element={
                 <ProtectedRoute>
                   <KioskLayout />
                 </ProtectedRoute>
               }>
                 <Route path="/kiosk" element={<KioskHome />} />
-                <Route path="/kiosk/caixa" element={<Caixa />} />
-                <Route path="/kiosk/caixa/comandas" element={<CaixaComandas />} />
-                <Route path="/kiosk/agenda" element={<Agenda />} />
                 <Route path="/kiosk/ponto" element={<PontoEletronico />} />
-                <Route path="/kiosk/espelho-cliente" element={<TabletCliente />} />
               </Route>
               
                 <Route path="*" element={<NotFound />} />

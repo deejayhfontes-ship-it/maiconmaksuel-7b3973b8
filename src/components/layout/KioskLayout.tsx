@@ -1,66 +1,37 @@
 /**
- * Kiosk Layout - A locked-down layout for kiosk mode
+ * Kiosk Layout - Minimal client-facing display
+ * 
+ * Removed all admin/cash features:
+ * - No navigation bar for cash/agenda
+ * - Only shows: home (idle/comanda), ponto
+ * - Clean, distraction-free interface
  */
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useKioskSettings, KIOSK_ROUTES, type KioskRoutesEnabled } from "@/hooks/useKioskSettings";
+import { useKioskSettings } from "@/hooks/useKioskSettings";
 import { useKioskFullscreen } from "@/hooks/useKioskFullscreen";
 import { usePinAuth } from "@/contexts/PinAuthContext";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { 
-  CreditCard, 
-  Calendar, 
-  Clock, 
-  Monitor,
   LogOut,
   Maximize2,
   Minimize2,
-  AlertCircle,
+  Home,
   X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KioskOfflineOverlay } from "@/components/kiosk/KioskOfflineOverlay";
 
-const kioskNavItems = [
-  { key: 'kiosk_caixa', path: '/kiosk/caixa', label: 'Caixa', icon: CreditCard },
-  { key: 'kiosk_agenda', path: '/kiosk/agenda', label: 'Agenda', icon: Calendar },
-  { key: 'kiosk_ponto', path: '/kiosk/ponto', label: 'Ponto', icon: Clock },
-  { key: 'kiosk_espelho', path: '/kiosk/espelho-cliente', label: 'Espelho', icon: Monitor },
-];
-
 export default function KioskLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = usePinAuth();
-  const { settings, isRouteEnabled, updateRouteAccess } = useKioskSettings();
+  const { settings } = useKioskSettings();
   const { isFullscreen, isSupported, isFailed, requestFullscreen, toggleFullscreen } = useKioskFullscreen();
-  const [showNav, setShowNav] = useState(true);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-
-  // Validate route access
-  useEffect(() => {
-    const currentPath = location.pathname;
-    
-    // Find which route key this path belongs to
-    const routeEntry = Object.entries(KIOSK_ROUTES).find(([_, route]) => 
-      currentPath === route.path || currentPath.startsWith(route.path + '/')
-    );
-
-    if (routeEntry) {
-      const [routeKey] = routeEntry;
-      
-      // Check if route is enabled
-      if (!isRouteEnabled(routeKey as keyof KioskRoutesEnabled)) {
-        // Redirect to main kiosk page
-        navigate('/kiosk', { replace: true });
-        return;
-      }
-
-      // Update access timestamp
-      updateRouteAccess(routeKey as keyof KioskRoutesEnabled);
-    }
-  }, [location.pathname, isRouteEnabled, navigate, updateRouteAccess]);
+  const [showControls, setShowControls] = useState(false);
+  const controlsTimeoutRef = useState<NodeJS.Timeout | null>(null);
 
   // Apply kiosk theme
   useEffect(() => {
@@ -72,10 +43,8 @@ export default function KioskLayout() {
   }, [settings.tema_kiosk]);
 
   // Handle fullscreen based on setting
-  // Browser security requires user gesture, so we show prompt instead of auto-requesting
   useEffect(() => {
     if (settings.forcar_fullscreen && isSupported && !isFullscreen && !isFailed) {
-      // Show prompt to user instead of forcing fullscreen
       setShowFullscreenPrompt(true);
     }
   }, [settings.forcar_fullscreen, isSupported, isFullscreen, isFailed]);
@@ -97,31 +66,48 @@ export default function KioskLayout() {
     navigate('/login');
   };
 
-  const availableNavItems = kioskNavItems.filter(item => 
-    isRouteEnabled(item.key as keyof KioskRoutesEnabled)
-  );
+  // Show controls briefly on touch/click, then hide
+  const handleShowControls = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef[0]) {
+      clearTimeout(controlsTimeoutRef[0]);
+    }
+    const timeout = setTimeout(() => {
+      setShowControls(false);
+    }, 5000);
+    controlsTimeoutRef[1](timeout);
+  };
+
+  const isHome = location.pathname === '/kiosk';
+
+  // Determine background style
+  const getBackgroundStyle = () => {
+    if (settings.fundo_tipo === 'color') {
+      return { backgroundColor: settings.fundo_valor };
+    }
+    if (settings.fundo_tipo === 'gradient') {
+      return { background: settings.fundo_valor };
+    }
+    if (settings.fundo_tipo === 'image') {
+      return {
+        backgroundImage: `url(${settings.fundo_valor})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      };
+    }
+    return {};
+  };
 
   return (
     <div 
       className={cn(
-        "min-h-screen flex flex-col",
-        settings.tipografia_grande && "text-lg",
-        settings.tema_kiosk === 'dark' ? 'bg-background' : 'bg-gray-50'
+        "min-h-screen flex flex-col bg-background",
+        settings.tipografia_grande && "text-lg"
       )}
-      style={{
-        background: settings.fundo_tipo === 'color' 
-          ? settings.fundo_valor 
-          : settings.fundo_tipo === 'gradient'
-          ? settings.fundo_valor
-          : undefined,
-        backgroundImage: settings.fundo_tipo === 'image' 
-          ? `url(${settings.fundo_valor})` 
-          : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      style={getBackgroundStyle()}
+      onClick={handleShowControls}
     >
-      {/* Fullscreen Status Prompt - shown when fullscreen is required but not yet activated */}
+      {/* Fullscreen Prompt Modal */}
       {showFullscreenPrompt && isSupported && !isFailed && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] pointer-events-auto">
           <div className="bg-background border border-primary rounded-lg p-6 max-w-sm mx-4 shadow-2xl">
@@ -154,108 +140,63 @@ export default function KioskLayout() {
         </div>
       )}
 
-      {/* Fullscreen Unavailable Warning - shown if fullscreen is required but not supported */}
-      {settings.forcar_fullscreen && !isSupported && (
-        <div className="fixed top-4 right-4 z-40 bg-amber-50 border border-amber-200 rounded-lg p-3 max-w-sm flex gap-3">
-          <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-amber-900">
-              Fullscreen não suportado neste navegador
-            </p>
-            <p className="text-xs text-amber-800 mt-1">
-              O kiosk funcionará normalmente, mas sem modo fullscreen.
-            </p>
-          </div>
+      {/* Minimal Controls - Only visible on touch/click */}
+      {showControls && (
+        <div 
+          className="fixed top-4 right-4 z-50 flex items-center gap-2 animate-fade-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Home Button - Only show if not on home */}
+          {!isHome && (
+            <Button
+              variant="ghost"
+              size={settings.alvos_touch_grandes ? "lg" : "default"}
+              onClick={() => navigate('/kiosk')}
+              className={cn(
+                "bg-background/80 backdrop-blur-sm shadow-lg",
+                settings.alvos_touch_grandes && "h-14 px-6"
+              )}
+            >
+              <Home className="h-5 w-5" />
+            </Button>
+          )}
+
+          {/* Fullscreen Toggle */}
+          {isSupported && (
+            <Button
+              variant="ghost"
+              size={settings.alvos_touch_grandes ? "lg" : "default"}
+              onClick={toggleFullscreen}
+              className={cn(
+                "bg-background/80 backdrop-blur-sm shadow-lg",
+                settings.alvos_touch_grandes && "h-14 px-6"
+              )}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-5 w-5" />
+              ) : (
+                <Maximize2 className="h-5 w-5" />
+              )}
+            </Button>
+          )}
+
+          {/* Logout */}
+          <Button
+            variant="ghost"
+            size={settings.alvos_touch_grandes ? "lg" : "default"}
+            onClick={handleLogout}
+            className={cn(
+              "bg-background/80 backdrop-blur-sm shadow-lg text-muted-foreground",
+              settings.alvos_touch_grandes && "h-14 px-6"
+            )}
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
         </div>
       )}
 
-      {/* Top navigation */}
-      {showNav && (
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-          <div className="flex items-center justify-between p-2">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              {settings.logo_url ? (
-                <img 
-                  src={settings.logo_url} 
-                  alt="Logo" 
-                  className={cn(
-                    "h-10 object-contain",
-                    settings.logo_animacao === 'pulse' && 'animate-pulse',
-                    settings.logo_animacao === 'fade' && 'animate-fade-in',
-                  )}
-                />
-              ) : (
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Monitor className="h-5 w-5 text-primary" />
-                </div>
-              )}
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex items-center gap-2">
-              {availableNavItems.map(({ key, path, label, icon: Icon }) => {
-                const isActive = location.pathname === path || 
-                  location.pathname.startsWith(path + '/');
-                
-                return (
-                  <Button
-                    key={key}
-                    variant={isActive ? "default" : "ghost"}
-                    size={settings.alvos_touch_grandes ? "lg" : "default"}
-                    onClick={() => navigate(path)}
-                    className={cn(
-                      "flex items-center gap-2",
-                      settings.alvos_touch_grandes && "h-14 px-6 text-lg"
-                    )}
-                  >
-                    <Icon className={cn(
-                      "h-5 w-5",
-                      settings.alvos_touch_grandes && "h-6 w-6"
-                    )} />
-                    <span className="hidden sm:inline">{label}</span>
-                  </Button>
-                );
-              })}
-
-              {/* Fullscreen Toggle - only show if fullscreen is available */}
-              {isSupported && (
-                <Button
-                  variant="ghost"
-                  size={settings.alvos_touch_grandes ? "lg" : "default"}
-                  onClick={toggleFullscreen}
-                  title={isFullscreen ? "Sair do fullscreen (ESC)" : "Ativar fullscreen"}
-                  className={cn(
-                    "text-muted-foreground hover:text-foreground",
-                    settings.alvos_touch_grandes && "h-14 px-6"
-                  )}
-                >
-                  {isFullscreen ? (
-                    <Minimize2 className="h-5 w-5" />
-                  ) : (
-                    <Maximize2 className="h-5 w-5" />
-                  )}
-                </Button>
-              )}
-
-              <Button
-                variant="ghost"
-                size={settings.alvos_touch_grandes ? "lg" : "default"}
-                onClick={handleLogout}
-                className={cn(
-                  "text-muted-foreground",
-                  settings.alvos_touch_grandes && "h-14 px-6"
-                )}
-              >
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </nav>
-          </div>
-        </header>
-      )}
-
-      {/* Main content */}
-      <main className="flex-1 p-4 pb-24">
+      {/* Main content - Full screen */}
+      <main className="flex-1">
         <Outlet />
       </main>
 
