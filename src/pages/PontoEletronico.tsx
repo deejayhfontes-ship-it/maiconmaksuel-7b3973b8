@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { usePinAuth } from '@/contexts/PinAuthContext';
 import { usePonto, Pessoa } from '@/hooks/usePonto';
 import { cn } from '@/lib/utils';
+import logoMaiconMaksuel from '@/assets/logo-maicon-maksuel.png';
 
 type Step = 'select-employee' | 'select-action' | 'confirm' | 'success';
 
@@ -169,8 +170,17 @@ const PontoEletronico = () => {
         </div>
       </div>
 
-      {/* Clock and Date */}
+      {/* Header with Logo */}
       <div className="text-center mb-8">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img 
+            src={logoMaiconMaksuel} 
+            alt="Maicon Maksuel"
+            className="h-20 w-auto object-contain"
+          />
+        </div>
+        
         <div className="flex items-center justify-center gap-3 mb-2">
           <Clock className="w-8 h-8 text-primary" />
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Ponto Eletrônico</h1>

@@ -21,12 +21,12 @@ import {
   Banknote,
   Receipt,
   Sparkles,
-  Heart,
-  AlertCircle
+  Heart
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import logoMaiconMaksuel from "@/assets/logo-maicon-maksuel.png";
 
 // Interface for comanda items
 interface ComandaItem {
@@ -159,15 +159,6 @@ export default function KioskHome() {
     }
   };
 
-  // Logo animation class based on settings
-  const getLogoAnimationClass = () => {
-    switch (settings.logo_animacao) {
-      case 'pulse': return 'animate-pulse';
-      case 'fade': return 'animate-fade-in';
-      default: return '';
-    }
-  };
-
   // THANK YOU STATE - Modern premium design
   if (kioskState === 'thankyou') {
     return (
@@ -186,23 +177,21 @@ export default function KioskHome() {
             "font-bold text-gray-900 mb-4 leading-tight",
             settings.tipografia_grande ? "text-5xl" : "text-4xl"
           )}>
-            Obrigado pela preferência!
+            Volte Sempre!
           </h1>
           <p className={cn(
             "text-gray-500 mb-10",
             settings.tipografia_grande ? "text-2xl" : "text-xl"
           )}>
-            Volte sempre ao {salonName}
+            Maicon Maksuel
           </p>
           
           {/* Logo */}
-          {logoUrl && (
-            <img 
-              src={logoUrl} 
-              alt={salonName}
-              className="h-16 w-auto mx-auto object-contain opacity-60"
-            />
-          )}
+          <img 
+            src={logoMaiconMaksuel} 
+            alt="Maicon Maksuel"
+            className="h-20 w-auto mx-auto object-contain opacity-80"
+          />
           
           {/* Hearts decoration */}
           <div className="mt-8 flex justify-center gap-3 opacity-40">
@@ -401,7 +390,7 @@ export default function KioskHome() {
     );
   }
 
-  // IDLE STATE - Modern premium design
+  // IDLE STATE - Modern premium design with animated logo
   return (
     <div className={cn(
       "min-h-screen flex flex-col items-center justify-center select-none overflow-hidden relative",
@@ -424,65 +413,42 @@ export default function KioskHome() {
 
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center px-8">
-        {/* Logo Section */}
-        <div className="mb-10">
-          {logoUrl ? (
-            <div className="relative">
-              {/* Glow effect behind logo */}
-              <div className="absolute inset-0 rounded-3xl bg-primary/10 blur-2xl scale-110" />
-              <img 
-                src={logoUrl} 
-                alt={salonName}
-                className={cn(
-                  "relative h-40 w-auto rounded-3xl shadow-2xl shadow-gray-300/50 object-contain bg-white/50 backdrop-blur-sm p-3",
-                  settings.tipografia_grande && "h-48",
-                  getLogoAnimationClass()
-                )}
+        {/* Logo Section with Animation */}
+        <div className="mb-12">
+          <div className="relative">
+            {/* Animated glow rings */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div 
+                className="absolute w-56 h-56 rounded-full border-2 border-primary/20"
+                style={{ animation: 'pulse-ring 3s ease-out infinite' }}
+              />
+              <div 
+                className="absolute w-48 h-48 rounded-full border-2 border-primary/30"
+                style={{ animation: 'pulse-ring 3s ease-out infinite', animationDelay: '1s' }}
+              />
+              <div 
+                className="absolute w-40 h-40 rounded-full border-2 border-primary/40"
+                style={{ animation: 'pulse-ring 3s ease-out infinite', animationDelay: '2s' }}
               />
             </div>
-          ) : (
-            <div className="flex flex-col items-center">
-              <div className={cn(
-                "rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shadow-2xl shadow-primary/20 mb-4",
-                settings.tipografia_grande ? "h-48 w-48" : "h-40 w-40"
-              )}>
-                <Sparkles className={cn(
-                  "text-primary",
-                  settings.tipografia_grande ? "h-24 w-24" : "h-20 w-20"
-                )} />
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 rounded-full border border-yellow-200">
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <span className="text-xs text-yellow-700">Logo do salão não configurada</span>
-              </div>
-            </div>
-          )}
+            
+            {/* Logo with breathing animation */}
+            <img 
+              src={logoMaiconMaksuel} 
+              alt="Maicon Maksuel"
+              className={cn(
+                "relative h-40 w-auto object-contain",
+                settings.tipografia_grande && "h-48"
+              )}
+              style={{ animation: 'logo-breathe 4s ease-in-out infinite' }}
+            />
+          </div>
         </div>
-
-        {/* Salon name */}
-        <h1 
-          className={cn(
-            "font-black text-gray-900 mb-2 text-center leading-tight",
-            settings.tipografia_grande ? "text-5xl" : "text-4xl"
-          )}
-        >
-          {salonName}
-        </h1>
-        {salonData?.nome_fantasia && salonData.nome_fantasia !== salonName && (
-          <p 
-            className={cn(
-              "text-gray-500 mb-8 text-center",
-              settings.tipografia_grande ? "text-xl" : "text-lg"
-            )}
-          >
-            {salonData.nome_fantasia}
-          </p>
-        )}
 
         {/* Clock */}
         <div 
           className={cn(
-            "font-black text-primary tabular-nums mb-16 tracking-tight",
+            "font-black text-primary tabular-nums mb-12 tracking-tight",
             settings.tipografia_grande ? "text-8xl" : "text-7xl"
           )}
           style={{ 
@@ -491,6 +457,14 @@ export default function KioskHome() {
         >
           {formatTime(currentTime)}
         </div>
+
+        {/* Tagline */}
+        <p className={cn(
+          "text-gray-400 mb-16 text-center",
+          settings.tipografia_grande ? "text-xl" : "text-lg"
+        )}>
+          Oferecemos os melhores serviços
+        </p>
 
         {/* Ponto Button */}
         {settings.ponto_habilitado && (
@@ -524,21 +498,11 @@ export default function KioskHome() {
                 Registrar Ponto
               </p>
               <p className="text-sm text-gray-500">
-                Entrada, saída e intervalos
+                {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </p>
             </div>
           </button>
         )}
-      </div>
-
-      {/* Footer with date */}
-      <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center">
-        <div className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-gray-100">
-          <Clock className="h-4 w-4 text-gray-400" />
-          <span className="text-sm text-gray-500">
-            {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-          </span>
-        </div>
       </div>
 
       {/* CSS Animations */}
@@ -560,6 +524,31 @@ export default function KioskHome() {
           to {
             opacity: 1;
             transform: translateY(0);
+          }
+        }
+        
+        @keyframes pulse-ring {
+          0% {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+          50% {
+            opacity: 0.5;
+          }
+          100% {
+            transform: scale(1.3);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes logo-breathe {
+          0%, 100% {
+            transform: scale(1);
+            filter: drop-shadow(0 4px 20px rgba(0,0,0,0.1));
+          }
+          50% {
+            transform: scale(1.05);
+            filter: drop-shadow(0 8px 30px rgba(0,0,0,0.15));
           }
         }
         
