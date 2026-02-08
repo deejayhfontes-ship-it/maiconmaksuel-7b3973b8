@@ -472,17 +472,17 @@ function KioskPreviewRenderer({
             <div className="absolute bottom-1/4 -right-10 w-32 h-32 bg-primary/3 rounded-full blur-3xl" />
           </div>
 
-          {/* Logo with animation rings */}
-          <div className="relative z-10 mb-6">
+          {/* Logo with animation rings - centered */}
+          <div className="relative z-10 mb-3">
             <div className="relative">
               {/* Animated glow rings */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div 
-                  className="absolute w-32 h-32 rounded-full border border-primary/20"
+                  className="absolute w-24 h-24 rounded-full border border-primary/20"
                   style={{ animation: 'pulse-ring-preview 3s ease-out infinite' }}
                 />
                 <div 
-                  className="absolute w-28 h-28 rounded-full border border-primary/30"
+                  className="absolute w-20 h-20 rounded-full border border-primary/30"
                   style={{ animation: 'pulse-ring-preview 3s ease-out infinite', animationDelay: '1s' }}
                 />
               </div>
@@ -491,29 +491,19 @@ function KioskPreviewRenderer({
               <img 
                 src={logoMaiconMaksuel} 
                 alt="Maicon Maksuel"
-                className="relative h-20 w-auto object-contain"
+                className="relative h-16 w-auto object-contain"
                 style={{ animation: 'logo-breathe-preview 4s ease-in-out infinite' }}
               />
             </div>
           </div>
 
-          {/* Clock */}
-          {settings.modulo_relogio && (
-            <div 
-              className="font-black text-primary mb-4"
-              style={{ fontSize: `${32 * fontScale}px` }}
-            >
-              {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          )}
-
-          {/* Tagline */}
-          <p 
-            className="text-center text-muted-foreground mb-8"
-            style={{ fontSize: `${12 * fontScale}px` }}
+          {/* Clock - smaller and below logo */}
+          <div 
+            className="font-extralight text-muted-foreground/60"
+            style={{ fontSize: `${14 * fontScale}px` }}
           >
-            Oferecemos os melhores serviços
-          </p>
+            {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </div>
 
           {/* Ponto Button - Minimal icon in corner */}
           {settings.modulo_ponto && (
