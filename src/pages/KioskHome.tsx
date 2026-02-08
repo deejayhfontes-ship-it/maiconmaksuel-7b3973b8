@@ -466,41 +466,23 @@ export default function KioskHome() {
           Oferecemos os melhores serviços
         </p>
 
-        {/* Ponto Button */}
+        {/* Ponto Button - Minimal icon in corner for employees */}
         {settings.ponto_habilitado && (
           <button
             onClick={() => navigate('/kiosk/ponto')}
             className={cn(
-              "group flex items-center gap-4 px-8 py-5 rounded-2xl",
-              "bg-white shadow-xl shadow-gray-200/50 border border-gray-100",
-              "transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1",
+              "fixed bottom-6 right-6 p-3 rounded-full",
+              "text-gray-300 hover:text-primary hover:bg-primary/5",
+              "transition-all duration-300",
               "active:scale-95 touch-manipulation",
-              settings.alvos_touch_grandes && "px-10 py-6"
+              settings.alvos_touch_grandes && "p-4"
             )}
+            title="Registrar Ponto"
           >
-            <div 
-              className={cn(
-                "rounded-xl bg-primary/10 flex items-center justify-center",
-                "transition-all duration-300 group-hover:bg-primary group-hover:scale-110",
-                settings.alvos_touch_grandes ? "w-16 h-16" : "w-14 h-14"
-              )}
-            >
-              <Fingerprint className={cn(
-                "text-primary transition-colors group-hover:text-white",
-                settings.alvos_touch_grandes ? "h-8 w-8" : "h-7 w-7"
-              )} />
-            </div>
-            <div className="text-left">
-              <p className={cn(
-                "font-bold text-gray-900",
-                settings.tipografia_grande ? "text-xl" : "text-lg"
-              )}>
-                Registrar Ponto
-              </p>
-              <p className="text-sm text-gray-500">
-                {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-              </p>
-            </div>
+            <Fingerprint className={cn(
+              "transition-colors",
+              settings.alvos_touch_grandes ? "h-6 w-6" : "h-5 w-5"
+            )} />
           </button>
         )}
       </div>
