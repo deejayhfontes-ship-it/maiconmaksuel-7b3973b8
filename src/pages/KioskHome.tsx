@@ -21,7 +21,10 @@ import {
   Banknote,
   Receipt,
   Sparkles,
-  Heart
+  Heart,
+  Minus,
+  Square,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -159,10 +162,27 @@ export default function KioskHome() {
     }
   };
 
+  // Window controls component - minimalist style
+  const WindowControls = () => (
+    <div className="fixed top-4 right-4 z-50 flex items-center gap-1 opacity-30 hover:opacity-60 transition-opacity">
+      <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
+        <Minus className="h-3 w-3 text-gray-600" />
+      </button>
+      <button className="p-1.5 hover:bg-gray-200 rounded transition-colors">
+        <Square className="h-3 w-3 text-gray-600" />
+      </button>
+      <button className="p-1.5 hover:bg-red-100 rounded transition-colors group">
+        <X className="h-3 w-3 text-gray-600 group-hover:text-red-500" />
+      </button>
+    </div>
+  );
+
   // THANK YOU STATE - Modern premium design
   if (kioskState === 'thankyou') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-primary/5 to-white p-8">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-primary/5 to-white p-8 relative">
+        <WindowControls />
+        
         <div className="text-center animate-fade-in max-w-lg">
           {/* Success Icon with animation */}
           <div className="relative mb-10">
@@ -174,23 +194,23 @@ export default function KioskHome() {
           
           {/* Thank you message */}
           <h1 className={cn(
-            "font-bold text-gray-900 mb-4 leading-tight",
-            settings.tipografia_grande ? "text-5xl" : "text-4xl"
+            "font-bold text-gray-900 mb-6 leading-tight",
+            settings.tipografia_grande ? "text-4xl" : "text-3xl"
           )}>
-            Volte Sempre!
+            Obrigado pela preferência!
           </h1>
           <p className={cn(
             "text-gray-500 mb-10",
             settings.tipografia_grande ? "text-2xl" : "text-xl"
           )}>
-            Maicon Maksuel
+            Volte Sempre!
           </p>
           
           {/* Logo */}
           <img 
             src={logoMaiconMaksuel} 
             alt="Maicon Maksuel"
-            className="h-20 w-auto mx-auto object-contain opacity-80"
+            className="h-16 w-auto mx-auto object-contain opacity-70"
           />
           
           {/* Hearts decoration */}
@@ -210,7 +230,9 @@ export default function KioskHome() {
     const PaymentIcon = paymentInfo?.icon;
 
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-gray-50 p-6 select-none">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-gray-50 p-6 select-none relative">
+        <WindowControls />
+        
         {/* Header with logo and time */}
         <header className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
           <div className="flex items-center gap-4">
@@ -396,6 +418,8 @@ export default function KioskHome() {
       "min-h-screen flex flex-col items-center justify-center select-none overflow-hidden relative",
       "bg-gradient-to-br from-white via-gray-50 to-white"
     )}>
+      <WindowControls />
+      
       {/* Subtle animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div 
