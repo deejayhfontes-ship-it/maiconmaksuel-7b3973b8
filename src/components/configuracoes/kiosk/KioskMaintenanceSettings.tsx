@@ -35,12 +35,16 @@ import { toast } from "sonner";
 
 export default function KioskMaintenanceSettings() {
   const { 
-    resetLayout, 
     resetVisual, 
+    resetContent,
+    resetInteraction,
     clearCache, 
     forceResync, 
     factoryReset,
-    isSaving 
+    isSaving,
+    isOnline,
+    syncStatus,
+    formatUptime,
   } = useKioskSettings();
   const { session } = usePinAuth();
   const [confirmPin, setConfirmPin] = useState('');
@@ -79,19 +83,27 @@ export default function KioskMaintenanceSettings() {
 
   const maintenanceActions = [
     {
-      id: 'reset-layout',
-      label: 'Resetar Layout',
-      description: 'Restaura configurações de módulos visíveis',
-      icon: Layout,
-      action: resetLayout,
-      destructive: false,
-    },
-    {
       id: 'reset-visual',
       label: 'Resetar Visual',
       description: 'Restaura tema, logo e cores para o padrão',
       icon: Palette,
       action: resetVisual,
+      destructive: false,
+    },
+    {
+      id: 'reset-content',
+      label: 'Resetar Conteúdo',
+      description: 'Restaura mensagens e textos para o padrão',
+      icon: Layout,
+      action: resetContent,
+      destructive: false,
+    },
+    {
+      id: 'reset-interaction',
+      label: 'Resetar Interação',
+      description: 'Restaura configurações de toque e acessibilidade',
+      icon: Layout,
+      action: resetInteraction,
       destructive: false,
     },
     {
