@@ -316,16 +316,16 @@ export function useKioskSettings() {
     toast.success('Layout do kiosk resetado');
   }, [updateMutation]);
 
-  // Reset visual settings
+  // Reset visual settings - Modern premium defaults (light theme)
   const resetVisual = useCallback(() => {
     updateMutation.mutate({
       logo_url: null,
       logo_animacao: 'none',
       logo_animacao_velocidade: 1000,
       fundo_tipo: 'color',
-      fundo_valor: '#1a1a2e',
+      fundo_valor: '', // Empty = use default gradient
       tipografia_grande: true,
-      tema_kiosk: 'dark',
+      tema_kiosk: 'light', // Default to light theme
     });
     toast.success('Configurações visuais resetadas');
   }, [updateMutation]);

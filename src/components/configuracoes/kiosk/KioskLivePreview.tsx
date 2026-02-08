@@ -1,16 +1,16 @@
 /**
- * Kiosk Live Preview Component
- * Provides a real-time, sandboxed preview of the kiosk interface
+ * Kiosk Live Preview Component - Modern Premium Design
+ * Real-time sandboxed preview of the kiosk interface
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Separator } from "@/components/ui/separator";
-import { useKioskSettings, KIOSK_ROUTES, type KioskRoutesEnabled } from "@/hooks/useKioskSettings";
+import { useKioskSettings } from "@/hooks/useKioskSettings";
+import { useSalonSettings } from "@/contexts/SalonSettingsContext";
 import { cn } from "@/lib/utils";
 import { 
   Eye, 
@@ -22,16 +22,20 @@ import {
   Smartphone,
   Monitor,
   Tablet,
-  RotateCcw,
   ZoomIn,
   ZoomOut,
-  ChevronRight,
-  CreditCard,
-  Calendar,
-  Clock,
   Play,
-  Square
+  Square,
+  Fingerprint,
+  Clock,
+  Check,
+  Receipt,
+  Heart,
+  Sparkles,
+  AlertCircle
 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // Device presets
 const PREVIEW_DEVICES = [
@@ -42,18 +46,12 @@ const PREVIEW_DEVICES = [
   { id: 'mobile', name: 'Mobile', width: 375, height: 812, icon: Smartphone },
 ];
 
-// Kiosk module icons - Only ponto is enabled in client-facing kiosk
-const MODULE_ICONS = {
-  kiosk_ponto: Clock,
-  // Legacy modules disabled for client-facing kiosk:
-  // kiosk_caixa: CreditCard,
-  // kiosk_agenda: Calendar,
-  // kiosk_espelho: Monitor,
-};
+// Preview states
+type PreviewKioskState = 'idle' | 'ponto' | 'comanda' | 'thankyou';
 
 interface PreviewState {
   isRunning: boolean;
-  currentRoute: string;
+  kioskState: PreviewKioskState;
   isOffline: boolean;
   isFullscreenSim: boolean;
   deviceId: string;
@@ -61,15 +59,16 @@ interface PreviewState {
 }
 
 export default function KioskLivePreview() {
-  const { settings, isRouteEnabled } = useKioskSettings();
+  const { settings } = useKioskSettings();
+  const { salonData } = useSalonSettings();
   
   const [previewState, setPreviewState] = useState<PreviewState>({
     isRunning: false,
-    currentRoute: '/kiosk',
+    kioskState: 'idle',
     isOffline: false,
     isFullscreenSim: false,
     deviceId: 'tablet-landscape',
-    scale: 0.45,
+    scale: 0.5,
   });
 
   const currentDevice = useMemo(() => 
@@ -77,57 +76,43 @@ export default function KioskLivePreview() {
     [previewState.deviceId]
   );
 
-  // Available kiosk modules based on settings
-  // Available kiosk modules based on settings - Only ponto in client-facing kiosk
-  const availableModules = useMemo(() => {
-    return [
-      { key: 'kiosk_ponto', path: '/kiosk/ponto', label: 'Ponto', enabled: isRouteEnabled('kiosk_ponto') },
-      // Legacy modules disabled for client-facing kiosk:
-      // { key: 'kiosk_caixa', path: '/kiosk/caixa', label: 'Caixa', enabled: isRouteEnabled('kiosk_caixa') },
-      // { key: 'kiosk_agenda', path: '/kiosk/agenda', label: 'Agenda', enabled: isRouteEnabled('kiosk_agenda') },
-      // { key: 'kiosk_espelho', path: '/kiosk/espelho-cliente', label: 'Espelho', enabled: isRouteEnabled('kiosk_espelho') },
-    ].filter(m => m.enabled);
-  }, [isRouteEnabled]);
+  // Logo URL - prioritize kiosk settings, fallback to salon
+  const logoUrl = settings.logo_url || salonData?.logo_url;
+  const salonName = salonData?.nome_salao || "Salão de Beleza";
 
-  // Start/Stop preview
+  // State handlers
   const togglePreview = useCallback(() => {
     setPreviewState(prev => ({
       ...prev,
       isRunning: !prev.isRunning,
-      currentRoute: '/kiosk',
+      kioskState: 'idle',
     }));
   }, []);
 
-  // Restart preview
+  const setKioskState = useCallback((state: PreviewKioskState) => {
+    setPreviewState(prev => ({ ...prev, kioskState: state }));
+  }, []);
+
   const restartPreview = useCallback(() => {
     setPreviewState(prev => ({
       ...prev,
-      currentRoute: '/kiosk',
+      kioskState: 'idle',
       isOffline: false,
     }));
   }, []);
 
-  // Navigate within preview
-  const navigatePreview = useCallback((route: string) => {
-    setPreviewState(prev => ({ ...prev, currentRoute: route }));
-  }, []);
-
-  // Toggle offline simulation
   const toggleOffline = useCallback(() => {
     setPreviewState(prev => ({ ...prev, isOffline: !prev.isOffline }));
   }, []);
 
-  // Toggle fullscreen simulation
   const toggleFullscreenSim = useCallback(() => {
     setPreviewState(prev => ({ ...prev, isFullscreenSim: !prev.isFullscreenSim }));
   }, []);
 
-  // Change device
   const changeDevice = useCallback((deviceId: string) => {
     setPreviewState(prev => ({ ...prev, deviceId }));
   }, []);
 
-  // Change scale
   const changeScale = useCallback((value: number[]) => {
     setPreviewState(prev => ({ ...prev, scale: value[0] }));
   }, []);
@@ -139,6 +124,13 @@ export default function KioskLivePreview() {
     return { width, height };
   }, [currentDevice, previewState.scale]);
 
+  const stateButtons: { state: PreviewKioskState; label: string; color: string }[] = [
+    { state: 'idle', label: 'Espera', color: 'bg-blue-500' },
+    { state: 'ponto', label: 'Ponto', color: 'bg-orange-500' },
+    { state: 'comanda', label: 'Comanda', color: 'bg-green-500' },
+    { state: 'thankyou', label: 'Obrigado', color: 'bg-pink-500' },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Header Card */}
@@ -148,7 +140,7 @@ export default function KioskLivePreview() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Eye className="h-5 w-5" />
-                Live Preview
+                Kiosk Live Preview
               </CardTitle>
               <CardDescription>
                 Visualize o kiosk em tempo real com as configurações atuais
@@ -228,6 +220,25 @@ export default function KioskLivePreview() {
               </div>
             </div>
 
+            {/* State Switcher */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Estado</label>
+              <div className="flex flex-wrap gap-1">
+                {stateButtons.map(({ state, label, color }) => (
+                  <Button
+                    key={state}
+                    variant={previewState.kioskState === state ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setKioskState(state)}
+                    disabled={!previewState.isRunning}
+                    className="text-xs px-2"
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             {/* Simulation Toggles */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Simulação</label>
@@ -242,21 +253,6 @@ export default function KioskLivePreview() {
                   {previewState.isOffline ? 'Offline' : 'Online'}
                 </Button>
                 <Button
-                  variant={previewState.isFullscreenSim ? "default" : "outline"}
-                  size="sm"
-                  onClick={toggleFullscreenSim}
-                  className="gap-1"
-                >
-                  {previewState.isFullscreenSim ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ações</label>
-              <div className="flex items-center gap-2">
-                <Button
                   variant="outline"
                   size="sm"
                   onClick={restartPreview}
@@ -264,17 +260,6 @@ export default function KioskLivePreview() {
                   className="gap-1"
                 >
                   <RefreshCw className="h-4 w-4" />
-                  Reiniciar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigatePreview('/kiosk')}
-                  disabled={!previewState.isRunning}
-                  className="gap-1"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Home
                 </Button>
               </div>
             </div>
@@ -299,6 +284,9 @@ export default function KioskLivePreview() {
                 <Badge variant="secondary">
                   {currentDevice.name} ({currentDevice.width}x{currentDevice.height})
                 </Badge>
+                <Badge variant="secondary">
+                  Estado: {stateButtons.find(s => s.state === previewState.kioskState)?.label}
+                </Badge>
                 {previewState.isOffline && (
                   <Badge variant="destructive" className="gap-1">
                     <WifiOff className="h-3 w-3" />
@@ -306,15 +294,19 @@ export default function KioskLivePreview() {
                   </Badge>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground">
-                Rota: {previewState.currentRoute}
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleFullscreenSim}
+              >
+                {previewState.isFullscreenSim ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
             </div>
 
             {/* Preview Container */}
-            <div className="flex justify-center overflow-auto py-4 bg-muted/30 rounded-lg">
+            <div className="flex justify-center overflow-auto py-4 bg-gray-100 rounded-lg">
               <div
-                className="relative bg-background rounded-lg shadow-2xl overflow-hidden border-4 border-foreground/10"
+                className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-gray-200"
                 style={{
                   width: previewDimensions.width,
                   height: previewDimensions.height,
@@ -324,11 +316,12 @@ export default function KioskLivePreview() {
                 {/* Preview Content - Sandbox Render */}
                 <KioskPreviewRenderer
                   settings={settings}
-                  currentRoute={previewState.currentRoute}
+                  kioskState={previewState.kioskState}
                   isOffline={previewState.isOffline}
-                  availableModules={availableModules}
-                  onNavigate={navigatePreview}
+                  logoUrl={logoUrl}
+                  salonName={salonName}
                   scale={previewState.scale}
+                  onNavigate={setKioskState}
                 />
               </div>
             </div>
@@ -345,7 +338,7 @@ export default function KioskLivePreview() {
               <p className="font-medium text-foreground mb-1">Sobre o Live Preview</p>
               <ul className="space-y-1">
                 <li>• O preview reflete as configurações atuais em tempo real</li>
-                <li>• Alterações nas abas anteriores são refletidas automaticamente</li>
+                <li>• Use os botões de estado para simular diferentes telas</li>
                 <li>• Nenhuma ação dentro do preview afeta dados reais do sistema</li>
                 <li>• O modo offline simula o comportamento sem conexão</li>
               </ul>
@@ -358,382 +351,301 @@ export default function KioskLivePreview() {
 }
 
 /**
- * Kiosk Preview Renderer
- * Renders the kiosk UI in a sandboxed manner
+ * Kiosk Preview Renderer - Modern Premium Design
  */
 interface KioskPreviewRendererProps {
   settings: ReturnType<typeof useKioskSettings>['settings'];
-  currentRoute: string;
+  kioskState: PreviewKioskState;
   isOffline: boolean;
-  availableModules: { key: string; path: string; label: string; enabled: boolean }[];
-  onNavigate: (route: string) => void;
+  logoUrl: string | null | undefined;
+  salonName: string;
   scale: number;
+  onNavigate: (state: PreviewKioskState) => void;
 }
 
 function KioskPreviewRenderer({ 
   settings, 
-  currentRoute, 
+  kioskState, 
   isOffline,
-  availableModules,
-  onNavigate,
+  logoUrl,
+  salonName,
   scale,
+  onNavigate,
 }: KioskPreviewRendererProps) {
-  const isHome = currentRoute === '/kiosk';
-  const activeModule = availableModules.find(m => currentRoute.startsWith(m.path));
-  
-  // Determine font scale
   const fontScale = settings.tipografia_grande ? 1.15 : 1;
   const touchScale = settings.alvos_touch_grandes ? 1.25 : 1;
+  const currentTime = new Date();
+
+  // Background style
+  const getBackgroundStyle = (): React.CSSProperties => {
+    if (settings.fundo_tipo === 'color' && settings.fundo_valor) {
+      return { backgroundColor: settings.fundo_valor };
+    }
+    if (settings.fundo_tipo === 'gradient' && settings.fundo_valor) {
+      return { background: settings.fundo_valor };
+    }
+    if (settings.fundo_tipo === 'image' && settings.fundo_valor) {
+      return {
+        backgroundImage: `url(${settings.fundo_valor})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      };
+    }
+    return {};
+  };
+
+  const hasCustomBg = settings.fundo_valor && settings.fundo_tipo !== 'color';
 
   return (
     <div
       className={cn(
-        "h-full flex flex-col",
-        settings.tema_kiosk === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'
+        "h-full flex flex-col relative",
+        settings.tema_kiosk === 'dark' 
+          ? 'bg-gray-900 text-white' 
+          : !hasCustomBg && 'bg-gradient-to-br from-white via-gray-50 to-white text-gray-900'
       )}
       style={{
-        background: settings.fundo_tipo === 'color' 
-          ? settings.fundo_valor 
-          : settings.fundo_tipo === 'gradient'
-          ? settings.fundo_valor
-          : undefined,
-        backgroundImage: settings.fundo_tipo === 'image' 
-          ? `url(${settings.fundo_valor})` 
-          : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        ...getBackgroundStyle(),
         fontSize: `${12 * fontScale}px`,
       }}
     >
       {/* Offline Overlay */}
       {isOffline && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-6 text-center max-w-xs">
-            <WifiOff className="h-12 w-12 mx-auto mb-4 text-destructive" />
-            <p className="font-semibold mb-2">Sem Conexão</p>
-            <p className="text-sm text-muted-foreground">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 text-center max-w-xs shadow-2xl">
+            <WifiOff className="h-12 w-12 mx-auto mb-4 text-red-500" />
+            <p className="font-bold text-gray-900 mb-2">Sem Conexão</p>
+            <p className="text-sm text-gray-500">
               Modo offline simulado
             </p>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <header 
-        className={cn(
-          "flex items-center justify-between p-2 border-b",
-          settings.tema_kiosk === 'dark' ? 'bg-gray-800/90 border-gray-700' : 'bg-white/90 border-gray-200'
-        )}
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          {settings.logo_url ? (
-            <img 
-              src={settings.logo_url} 
-              alt="Logo" 
-              className={cn(
-                "object-contain",
-                settings.logo_animacao === 'pulse' && 'animate-pulse'
-              )}
-              style={{ height: 28 * scale * 2 }}
-            />
-          ) : (
-            <div 
-              className="rounded-lg bg-primary/20 flex items-center justify-center"
-              style={{ width: 28 * scale * 2, height: 28 * scale * 2 }}
-            >
-              <Monitor className="text-primary" style={{ width: 14 * scale * 2, height: 14 * scale * 2 }} />
-            </div>
-          )}
-        </div>
-
-        {/* Nav Items */}
-        <nav className="flex items-center gap-1">
-          {availableModules.map(({ key, path, label }) => {
-            const isActive = currentRoute.startsWith(path);
-            const Icon = MODULE_ICONS[key as keyof typeof MODULE_ICONS] || Monitor;
-            
-            return (
-              <button
-                key={key}
-                onClick={() => onNavigate(path)}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded transition-colors",
-                  isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : settings.tema_kiosk === 'dark'
-                    ? 'text-gray-300 hover:bg-gray-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                )}
-                style={{
-                  padding: `${4 * touchScale}px ${8 * touchScale}px`,
-                  fontSize: `${10 * fontScale}px`,
-                }}
-              >
-                <Icon style={{ width: 12 * touchScale, height: 12 * touchScale }} />
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-4 overflow-auto">
-        {isHome ? (
-          <KioskHomePreview 
-            settings={settings}
-            modules={availableModules}
-            onNavigate={onNavigate}
-            touchScale={touchScale}
-            fontScale={fontScale}
-          />
-        ) : (
-          <KioskModulePreview
-            module={activeModule}
-            settings={settings}
-            onBack={() => onNavigate('/kiosk')}
-            touchScale={touchScale}
-            fontScale={fontScale}
-          />
-        )}
-      </main>
-    </div>
-  );
-}
-
-/**
- * Home screen preview
- */
-interface KioskHomePreviewProps {
-  settings: ReturnType<typeof useKioskSettings>['settings'];
-  modules: { key: string; path: string; label: string }[];
-  onNavigate: (route: string) => void;
-  touchScale: number;
-  fontScale: number;
-}
-
-function KioskHomePreview({ settings, modules, onNavigate, touchScale, fontScale }: KioskHomePreviewProps) {
-  const moduleColors: Record<string, string> = {
-    kiosk_caixa: 'bg-green-500/10 text-green-500 border-green-500/20',
-    kiosk_agenda: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-    kiosk_ponto: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
-    kiosk_espelho: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center text-center w-full max-w-lg">
-      {/* Logo */}
-      <div className="mb-6">
-        {settings.logo_url ? (
-          <img 
-            src={settings.logo_url} 
-            alt="Logo" 
-            className={cn(
-              "object-contain mx-auto",
-              settings.logo_animacao === 'pulse' && 'animate-pulse'
-            )}
-            style={{ height: 60 }}
-          />
-        ) : (
-          <div 
-            className="rounded-2xl bg-primary/10 flex items-center justify-center mx-auto"
-            style={{ width: 60, height: 60 }}
-          >
-            <Monitor className="text-primary" style={{ width: 30, height: 30 }} />
+      {/* IDLE STATE */}
+      {kioskState === 'idle' && (
+        <div className="h-full flex flex-col items-center justify-center p-6">
+          {/* Background elements */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-50">
+            <div className="absolute top-1/4 -left-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl" />
+            <div className="absolute bottom-1/4 -right-10 w-32 h-32 bg-primary/3 rounded-full blur-3xl" />
           </div>
-        )}
-      </div>
 
-      {/* Module Grid */}
-      <div className={cn(
-        "grid gap-3 w-full",
-        modules.length <= 2 ? 'grid-cols-2' : 'grid-cols-2'
-      )}>
-        {modules.map(({ key, path, label }) => {
-          const Icon = MODULE_ICONS[key as keyof typeof MODULE_ICONS] || Monitor;
-          const colorClass = moduleColors[key] || 'bg-primary/10 text-primary border-primary/20';
-          
-          return (
-            <button
-              key={key}
-              onClick={() => onNavigate(path)}
-              className={cn(
-                "flex flex-col items-center justify-center p-4 rounded-xl border transition-all hover:scale-105",
-                colorClass,
-                settings.tema_kiosk === 'dark' ? 'bg-opacity-20' : 'bg-opacity-10'
-              )}
-              style={{
-                padding: `${16 * touchScale}px`,
-              }}
-            >
-              <Icon style={{ width: 24 * touchScale, height: 24 * touchScale }} className="mb-2" />
-              <span 
-                className="font-medium"
-                style={{ fontSize: `${12 * fontScale}px` }}
-              >
-                {label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Hint */}
-      <p 
-        className={cn(
-          "mt-6 flex items-center gap-1",
-          settings.tema_kiosk === 'dark' ? 'text-gray-400' : 'text-gray-500'
-        )}
-        style={{ fontSize: `${10 * fontScale}px` }}
-      >
-        Toque em um módulo para começar
-        <ChevronRight style={{ width: 12, height: 12 }} className="animate-pulse" />
-      </p>
-    </div>
-  );
-}
-
-/**
- * Module screen preview
- */
-interface KioskModulePreviewProps {
-  module?: { key: string; path: string; label: string };
-  settings: ReturnType<typeof useKioskSettings>['settings'];
-  onBack: () => void;
-  touchScale: number;
-  fontScale: number;
-}
-
-function KioskModulePreview({ module, settings, onBack, touchScale, fontScale }: KioskModulePreviewProps) {
-  if (!module) {
-    return (
-      <div className="text-center">
-        <p className="text-muted-foreground">Módulo não encontrado</p>
-        <Button variant="outline" size="sm" onClick={onBack} className="mt-4">
-          Voltar
-        </Button>
-      </div>
-    );
-  }
-
-  const Icon = MODULE_ICONS[module.key as keyof typeof MODULE_ICONS] || Monitor;
-
-  // Module-specific placeholder content
-  const renderModuleContent = () => {
-    switch (module.key) {
-      case 'kiosk_caixa':
-        return (
-          <div className="space-y-3 w-full max-w-xs">
-            <div className={cn(
-              "p-3 rounded-lg border",
-              settings.tema_kiosk === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-            )}>
-              <p className="text-xs text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold">R$ 0,00</p>
-            </div>
-            <div className={cn(
-              "p-3 rounded-lg border text-center",
-              settings.tema_kiosk === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-            )}>
-              <p className="text-sm text-muted-foreground">Nenhum item adicionado</p>
-            </div>
-          </div>
-        );
-      case 'kiosk_agenda':
-        return (
-          <div className="space-y-2 w-full max-w-xs">
-            {[1, 2, 3].map(i => (
-              <div 
-                key={i}
+          {/* Logo */}
+          <div className="relative z-10 mb-6">
+            {logoUrl ? (
+              <img 
+                src={logoUrl} 
+                alt={salonName}
                 className={cn(
-                  "p-2 rounded-lg border",
-                  settings.tema_kiosk === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  "h-20 w-auto rounded-2xl shadow-lg object-contain",
+                  settings.logo_animacao === 'pulse' && 'animate-pulse'
                 )}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/20" />
-                  <div className="flex-1">
-                    <div className="h-2 bg-muted rounded w-3/4" />
-                    <div className="h-2 bg-muted rounded w-1/2 mt-1" />
-                  </div>
+              />
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center shadow-lg mb-2">
+                  <Sparkles className="h-10 w-10 text-primary" />
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 rounded text-[8px] text-yellow-700">
+                  <AlertCircle className="h-2 w-2" />
+                  Logo não configurado
                 </div>
               </div>
-            ))}
+            )}
           </div>
-        );
-      case 'kiosk_ponto':
-        return (
-          <div className="text-center space-y-4 w-full max-w-xs">
-            <div className="grid grid-cols-2 gap-2">
-              {['entrada', 'saída', 'almoço', 'retorno'].map(tipo => (
+
+          {/* Salon Name */}
+          <h1 
+            className="font-black text-center mb-2"
+            style={{ fontSize: `${18 * fontScale}px` }}
+          >
+            {salonName}
+          </h1>
+
+          {/* Clock */}
+          <div 
+            className="font-black text-primary mb-8"
+            style={{ fontSize: `${32 * fontScale}px` }}
+          >
+            {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+
+          {/* Ponto Button */}
+          {settings.ponto_habilitado && (
+            <button
+              onClick={() => onNavigate('ponto')}
+              className={cn(
+                "flex items-center gap-3 px-6 py-4 rounded-xl",
+                settings.tema_kiosk === 'dark'
+                  ? "bg-white/10 hover:bg-white/20"
+                  : "bg-white shadow-lg hover:shadow-xl border border-gray-100"
+              )}
+              style={{ padding: `${16 * touchScale}px ${24 * touchScale}px` }}
+            >
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Fingerprint className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-semibold" style={{ fontSize: `${12 * fontScale}px` }}>
+                Registrar Ponto
+              </span>
+            </button>
+          )}
+
+          {/* Date footer */}
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+            <div 
+              className={cn(
+                "flex items-center gap-1 px-3 py-1 rounded-full text-[10px]",
+                settings.tema_kiosk === 'dark' ? "bg-white/10 text-white/60" : "bg-white/80 text-gray-500"
+              )}
+            >
+              <Clock className="h-2.5 w-2.5" />
+              {format(currentTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PONTO STATE */}
+      {kioskState === 'ponto' && (
+        <div className="h-full flex flex-col p-6">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            {logoUrl && (
+              <img src={logoUrl} alt="" className="h-8 w-auto rounded-lg object-contain" />
+            )}
+            <div>
+              <h2 className="font-bold" style={{ fontSize: `${14 * fontScale}px` }}>
+                Ponto Eletrônico
+              </h2>
+              <p className="text-[10px] opacity-60">{salonName}</p>
+            </div>
+          </div>
+
+          {/* Ponto Grid */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+              {['Entrada', 'Saída', 'Almoço', 'Retorno'].map((tipo) => (
                 <button
                   key={tipo}
                   className={cn(
-                    "p-3 rounded-lg border font-medium capitalize",
-                    settings.tema_kiosk === 'dark' 
-                      ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' 
-                      : 'bg-white border-gray-200 hover:bg-gray-50'
+                    "p-4 rounded-xl font-semibold transition-all",
+                    settings.tema_kiosk === 'dark'
+                      ? "bg-white/10 hover:bg-white/20"
+                      : "bg-white shadow-md hover:shadow-lg border border-gray-100"
                   )}
-                  style={{ fontSize: `${11 * fontScale}px` }}
+                  style={{ fontSize: `${11 * fontScale}px`, padding: `${16 * touchScale}px` }}
                 >
                   {tipo}
                 </button>
               ))}
             </div>
           </div>
-        );
-      case 'kiosk_espelho':
-        return (
-          <div className="text-center space-y-4 w-full max-w-xs">
-            <div className={cn(
-              "p-6 rounded-lg border",
-              settings.tema_kiosk === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-            )}>
-              <Monitor className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Espelho do Cliente</p>
+
+          {/* Back */}
+          <button
+            onClick={() => onNavigate('idle')}
+            className={cn(
+              "mx-auto px-4 py-2 rounded-lg text-sm opacity-60 hover:opacity-100",
+              settings.tema_kiosk === 'dark' ? "text-white" : "text-gray-500"
+            )}
+          >
+            ← Voltar
+          </button>
+        </div>
+      )}
+
+      {/* COMANDA STATE */}
+      {kioskState === 'comanda' && (
+        <div className="h-full flex flex-col p-4 bg-gradient-to-br from-gray-50 via-white to-gray-50">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              {logoUrl && (
+                <img src={logoUrl} alt="" className="h-6 w-auto rounded-lg object-contain" />
+              )}
+              <span className="font-bold text-gray-900" style={{ fontSize: `${11 * fontScale}px` }}>
+                {salonName}
+              </span>
+            </div>
+            <span className="text-primary font-bold" style={{ fontSize: `${14 * fontScale}px` }}>
+              {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+
+          {/* Card */}
+          <div className="flex-1 bg-white rounded-2xl shadow-lg border border-gray-100 p-4 overflow-hidden flex flex-col">
+            <div className="flex items-center gap-2 mb-4">
+              <Receipt className="h-4 w-4 text-primary" />
+              <h3 className="font-bold text-gray-900" style={{ fontSize: `${12 * fontScale}px` }}>
+                Resumo do Atendimento
+              </h3>
+            </div>
+
+            {/* Sample items */}
+            <div className="flex-1 space-y-2">
+              {['Corte Feminino', 'Escova', 'Hidratação'].map((item, i) => (
+                <div key={i} className="flex justify-between p-2 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700" style={{ fontSize: `${10 * fontScale}px` }}>{item}</span>
+                  <span className="font-medium text-gray-900" style={{ fontSize: `${10 * fontScale}px` }}>
+                    R$ {(30 + i * 20).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Total */}
+            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+              <span className="font-bold text-gray-900" style={{ fontSize: `${12 * fontScale}px` }}>TOTAL</span>
+              <span className="font-black text-primary" style={{ fontSize: `${20 * fontScale}px` }}>R$ 110,00</span>
             </div>
           </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center w-full h-full">
-      {/* Module Header */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
         </div>
-        <h2 
-          className="font-semibold"
-          style={{ fontSize: `${14 * fontScale}px` }}
-        >
-          {module.label}
-        </h2>
-      </div>
+      )}
 
-      {/* Module Content */}
-      {renderModuleContent()}
+      {/* THANK YOU STATE */}
+      {kioskState === 'thankyou' && (
+        <div className="h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-white via-green-50/30 to-white">
+          {/* Success Icon */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 w-20 h-20 rounded-full bg-green-200 animate-ping opacity-20" />
+            <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-xl">
+              <Check className="h-10 w-10 text-white" strokeWidth={3} />
+            </div>
+          </div>
 
-      {/* Back Button */}
-      <button
-        onClick={onBack}
-        className={cn(
-          "mt-6 px-4 py-2 rounded-lg text-sm transition-colors",
-          settings.tema_kiosk === 'dark' 
-            ? 'bg-gray-800 hover:bg-gray-700 text-gray-300' 
-            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-        )}
-        style={{ 
-          padding: `${8 * touchScale}px ${16 * touchScale}px`,
-          fontSize: `${10 * fontScale}px`
-        }}
-      >
-        ← Voltar ao Menu
-      </button>
+          {/* Message */}
+          <h1 
+            className="font-bold text-gray-900 text-center mb-2"
+            style={{ fontSize: `${18 * fontScale}px` }}
+          >
+            Obrigado pela preferência!
+          </h1>
+          <p 
+            className="text-gray-500 text-center mb-6"
+            style={{ fontSize: `${12 * fontScale}px` }}
+          >
+            Volte sempre ao {salonName}
+          </p>
+
+          {/* Logo */}
+          {logoUrl && (
+            <img 
+              src={logoUrl} 
+              alt={salonName}
+              className="h-10 w-auto object-contain opacity-40"
+            />
+          )}
+
+          {/* Hearts */}
+          <div className="mt-6 flex gap-2 opacity-30">
+            <Heart className="h-4 w-4 text-pink-400 animate-pulse" fill="currentColor" />
+            <Heart className="h-4 w-4 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '200ms' }} />
+            <Heart className="h-4 w-4 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '400ms' }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
