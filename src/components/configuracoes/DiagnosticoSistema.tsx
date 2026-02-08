@@ -22,6 +22,7 @@ import {
   Activity
 } from "lucide-react";
 import NetworkDebugPanel from "./NetworkDebugPanel";
+import { PerformanceDebugPanel } from "./PerformanceDebugPanel";
 
 type LogEntry = {
   time: string;
@@ -189,8 +190,12 @@ export default function DiagnosticoSistema() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="network" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="performance" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="performance" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Performance
+          </TabsTrigger>
           <TabsTrigger value="network" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Network Debug
@@ -200,6 +205,10 @@ export default function DiagnosticoSistema() {
             Banco de Dados
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="performance" className="mt-6">
+          <PerformanceDebugPanel />
+        </TabsContent>
 
         <TabsContent value="network" className="mt-6">
           <NetworkDebugPanel />
