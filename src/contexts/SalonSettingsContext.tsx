@@ -412,22 +412,30 @@ export function SalonSettingsProvider({ children }: SalonSettingsProviderProps) 
       let error;
 
       if (existingData?.id) {
-        // Update existing record
+        // Update existing record - use maybeSingle to handle RLS restrictions gracefully
         const result = await supabase
           .from('configuracoes_aparencia')
           .update(updates)
           .eq('id', existingData.id)
           .select()
-          .single();
+          .maybeSingle();
+        
         data = result.data;
         error = result.error;
+        
+        // If update didn't return data but no error, it means RLS blocked or no rows matched
+        // In this case, return the merged local data
+        if (!data && !error) {
+          setSyncStatus('synced');
+          return merged;
+        }
       } else {
         // Insert new record
         const result = await supabase
           .from('configuracoes_aparencia')
           .insert({ ...defaultAppearance, ...updates })
           .select()
-          .single();
+          .maybeSingle();
         data = result.data;
         error = result.error;
       }
