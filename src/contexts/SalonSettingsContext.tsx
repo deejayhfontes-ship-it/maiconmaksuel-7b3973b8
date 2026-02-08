@@ -401,12 +401,36 @@ export function SalonSettingsProvider({ children }: SalonSettingsProviderProps) 
         return merged;
       }
 
-      const { data, error } = await supabase
+      // First try to get existing record
+      const { data: existingData } = await supabase
         .from('configuracoes_aparencia')
-        .update(updates)
-        .eq('id', appearance?.id)
-        .select()
-        .single();
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+
+      let data;
+      let error;
+
+      if (existingData?.id) {
+        // Update existing record
+        const result = await supabase
+          .from('configuracoes_aparencia')
+          .update(updates)
+          .eq('id', existingData.id)
+          .select()
+          .single();
+        data = result.data;
+        error = result.error;
+      } else {
+        // Insert new record
+        const result = await supabase
+          .from('configuracoes_aparencia')
+          .insert({ ...defaultAppearance, ...updates })
+          .select()
+          .single();
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         setSyncStatus('error');
@@ -414,6 +438,7 @@ export function SalonSettingsProvider({ children }: SalonSettingsProviderProps) 
       }
 
       setSyncStatus('synced');
+      setLocal(LOCAL_KEYS.APPEARANCE, data);
       return data;
     },
     onSuccess: (data) => {
