@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import logoMaiconMaksuel from "@/assets/logo-maicon-maksuel.png";
 
 // Device presets
 const PREVIEW_DEVICES = [
@@ -462,37 +463,30 @@ function KioskPreviewRenderer({
             <div className="absolute bottom-1/4 -right-10 w-32 h-32 bg-primary/3 rounded-full blur-3xl" />
           </div>
 
-          {/* Logo */}
+          {/* Logo with animation rings */}
           <div className="relative z-10 mb-6">
-            {logoUrl ? (
-              <img 
-                src={logoUrl} 
-                alt={salonName}
-                className={cn(
-                  "h-20 w-auto rounded-2xl shadow-lg object-contain",
-                  getLogoAnimationClass()
-                )}
-              />
-            ) : (
-              <div className="flex flex-col items-center">
-                <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center shadow-lg mb-2">
-                  <Sparkles className="h-10 w-10 text-primary" />
-                </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-yellow-100 rounded text-[8px] text-yellow-700">
-                  <AlertCircle className="h-2 w-2" />
-                  Logo não configurado
-                </div>
+            <div className="relative">
+              {/* Animated glow rings */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div 
+                  className="absolute w-32 h-32 rounded-full border border-primary/20"
+                  style={{ animation: 'pulse-ring-preview 3s ease-out infinite' }}
+                />
+                <div 
+                  className="absolute w-28 h-28 rounded-full border border-primary/30"
+                  style={{ animation: 'pulse-ring-preview 3s ease-out infinite', animationDelay: '1s' }}
+                />
               </div>
-            )}
+              
+              {/* Logo with breathing animation */}
+              <img 
+                src={logoMaiconMaksuel} 
+                alt="Maicon Maksuel"
+                className="relative h-20 w-auto object-contain"
+                style={{ animation: 'logo-breathe-preview 4s ease-in-out infinite' }}
+              />
+            </div>
           </div>
-
-          {/* Salon Name */}
-          <h1 
-            className="font-black text-center mb-2"
-            style={{ fontSize: `${18 * fontScale}px` }}
-          >
-            {salonName}
-          </h1>
 
           {/* Clock */}
           {settings.modulo_relogio && (
@@ -504,15 +498,13 @@ function KioskPreviewRenderer({
             </div>
           )}
 
-          {/* Rotating Messages */}
-          {settings.modulo_mensagens_idle && enabledMessages.length > 0 && (
-            <p 
-              className="text-center text-muted-foreground mb-8 transition-opacity duration-500"
-              style={{ fontSize: `${12 * fontScale}px` }}
-            >
-              {enabledMessages[activeMessageIndex]?.text}
-            </p>
-          )}
+          {/* Tagline */}
+          <p 
+            className="text-center text-muted-foreground mb-8"
+            style={{ fontSize: `${12 * fontScale}px` }}
+          >
+            Oferecemos os melhores serviços
+          </p>
 
           {/* Ponto Button */}
           {settings.modulo_ponto && (
@@ -529,21 +521,31 @@ function KioskPreviewRenderer({
               <div className="p-2 rounded-lg bg-primary/10">
                 <Fingerprint className="h-5 w-5 text-primary" />
               </div>
-              <span className="font-semibold" style={{ fontSize: `${12 * fontScale}px` }}>
-                Registrar Ponto
-              </span>
+              <div className="text-left">
+                <span className="font-semibold block" style={{ fontSize: `${12 * fontScale}px` }}>
+                  Registrar Ponto
+                </span>
+                <span className="text-muted-foreground" style={{ fontSize: `${9 * fontScale}px` }}>
+                  {format(currentTime, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                </span>
+              </div>
             </button>
           )}
-
-          {/* Date footer */}
-          <div 
-            className="absolute bottom-6 text-muted-foreground"
-            style={{ fontSize: `${10 * fontScale}px` }}
-          >
-            {format(currentTime, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-          </div>
         </div>
       )}
+
+      {/* CSS for animations */}
+      <style>{`
+        @keyframes pulse-ring-preview {
+          0% { transform: scale(0.8); opacity: 0; }
+          50% { opacity: 0.5; }
+          100% { transform: scale(1.3); opacity: 0; }
+        }
+        @keyframes logo-breathe-preview {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+      `}</style>
 
       {/* PONTO STATE */}
       {kioskState === 'ponto' && (
@@ -642,21 +644,19 @@ function KioskPreviewRenderer({
             className="font-bold text-center mb-4"
             style={{ fontSize: `${20 * fontScale}px` }}
           >
-            {settings.mensagem_obrigado || 'Obrigado pela preferência!'}
+            Volte Sempre!
           </h1>
           
           <p className="text-muted-foreground text-center mb-8">
-            Volte sempre ao {salonName}
+            Maicon Maksuel
           </p>
           
           {/* Logo */}
-          {logoUrl && (
-            <img 
-              src={logoUrl} 
-              alt={salonName}
-              className="h-12 w-auto object-contain opacity-50"
-            />
-          )}
+          <img 
+            src={logoMaiconMaksuel} 
+            alt="Maicon Maksuel"
+            className="h-12 w-auto object-contain opacity-70"
+          />
           
           {/* Hearts decoration */}
           <div className="mt-6 flex justify-center gap-2 opacity-40">
