@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useComunicacao } from "@/hooks/useComunicacao";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface Cliente {
   id: string;
@@ -308,11 +309,14 @@ export function WhatsAppFloatingButton() {
 
   const unreadCount = notificacoes.filter((n) => !n.lida).length;
 
+  // Debounce search query - prevents multiple queries while typing
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   useEffect(() => {
-    if (isOpen && searchQuery.length >= 2) {
+    if (isOpen && debouncedSearchQuery.length >= 2) {
       searchClientes();
     }
-  }, [searchQuery, isOpen]);
+  }, [debouncedSearchQuery, isOpen]);
 
   const searchClientes = async () => {
     setLoadingClientes(true);

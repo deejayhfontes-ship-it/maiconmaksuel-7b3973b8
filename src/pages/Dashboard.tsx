@@ -27,9 +27,9 @@ import {
   Bar,
   Cell,
 } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
-import { format, isToday, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 interface Agendamento {
   id: string;
@@ -79,20 +79,12 @@ const getGreeting = () => {
 };
 
 const Dashboard = () => {
-  const [agendamentosHoje, setAgendamentosHoje] = useState<Agendamento[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Optimized: Single parallel data load via React Query
+  const { data: dashboardData, isLoading, refetch } = useDashboardData();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [motivationalMessage] = useState(() => 
     motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)]
   );
-  const [stats, setStats] = useState({
-    faturamentoHoje: 0,
-    atendimentosHoje: 0,
-    agendamentosHoje: 0,
-    novosClientes: 0,
-  });
-  const [revenueData, setRevenueData] = useState<{ day: string; value: number }[]>([]);
-  const [topServicesData, setTopServicesData] = useState<{ name: string; value: number }[]>([]);
 
   // Update clock every second
   useEffect(() => {
@@ -100,130 +92,38 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    
-    // Buscar agendamentos de hoje
-    const hoje = new Date();
-    const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0).toISOString();
-    const fimHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999).toISOString();
-
-    const { data: agendamentos } = await supabase
-      .from("agendamentos")
-      .select(`
-        id,
-        data_hora,
-        status,
-        cliente:clientes(nome),
-        profissional:profissionais(nome, cor_agenda),
-        servico:servicos(nome)
-      `)
-      .gte("data_hora", inicioHoje)
-      .lte("data_hora", fimHoje)
-      .neq("status", "cancelado")
-      .order("data_hora", { ascending: true });
-
-    if (agendamentos) {
-      setAgendamentosHoje(agendamentos as unknown as Agendamento[]);
-    }
-
-    // Buscar atendimentos fechados hoje
-    const { data: atendimentos } = await supabase
-      .from("atendimentos")
-      .select("valor_final")
-      .eq("status", "fechado")
-      .gte("data_hora", inicioHoje)
-      .lte("data_hora", fimHoje);
-
-    // Novos clientes este mês
-    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-    const { count: clientesCount } = await supabase
-      .from("clientes")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", inicioMes);
-
-    // Atualizar stats de uma vez
-    setStats({
-      faturamentoHoje: atendimentos?.reduce((acc, at) => acc + Number(at.valor_final), 0) || 0,
-      atendimentosHoje: atendimentos?.length || 0,
-      agendamentosHoje: agendamentos?.length || 0,
-      novosClientes: clientesCount || 0,
-    });
-
-    // Buscar faturamento dos últimos 30 dias para o gráfico
-    const data30DiasAtras = new Date();
-    data30DiasAtras.setDate(data30DiasAtras.getDate() - 30);
-    
-    const { data: atendimentos30Dias } = await supabase
-      .from("atendimentos")
-      .select("valor_final, data_hora")
-      .eq("status", "fechado")
-      .gte("data_hora", data30DiasAtras.toISOString())
-      .order("data_hora", { ascending: true });
-
-    if (atendimentos30Dias && atendimentos30Dias.length > 0) {
-      // Agrupar por dia
-      const faturamentoPorDia: Record<string, number> = {};
-      atendimentos30Dias.forEach(at => {
-        const dia = format(parseISO(at.data_hora), "dd");
-        faturamentoPorDia[dia] = (faturamentoPorDia[dia] || 0) + Number(at.valor_final);
-      });
-      
-      const dadosGrafico = Object.entries(faturamentoPorDia).map(([day, value]) => ({ day, value }));
-      setRevenueData(dadosGrafico);
-    } else {
-      setRevenueData([]);
-    }
-
-    // Buscar top serviços do mês
-    const { data: servicosMes } = await supabase
-      .from("atendimento_servicos")
-      .select(`
-        quantidade,
-        servico:servicos(nome)
-      `)
-      .gte("created_at", inicioMes);
-
-    if (servicosMes && servicosMes.length > 0) {
-      // Agrupar por serviço
-      const contagemServicos: Record<string, number> = {};
-      servicosMes.forEach(item => {
-        const nomeServico = (item.servico as any)?.nome || "Serviço";
-        contagemServicos[nomeServico] = (contagemServicos[nomeServico] || 0) + (item.quantidade || 1);
-      });
-      
-      const topServicos = Object.entries(contagemServicos)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 5);
-      
-      setTopServicesData(topServicos);
-    } else {
-      setTopServicesData([]);
-    }
-
-    setLoading(false);
-  };
-
+  // Listen for data updates (imports/resets)
   useEffect(() => {
-    fetchDashboardData();
-    
-    // Escutar evento de dados atualizados (após reset/importação)
     const handleDataUpdate = () => {
       console.log("Dashboard: Evento data-updated recebido, recarregando dados...");
-      fetchDashboardData();
+      refetch();
     };
     
     window.addEventListener('data-updated', handleDataUpdate);
     return () => window.removeEventListener('data-updated', handleDataUpdate);
-  }, []);
+  }, [refetch]);
 
-  const statCards = [
+  // Safe defaults
+  const data = dashboardData || {
+    agendamentosHoje: [],
+    atendimentosHoje: [],
+    novosClientesMes: 0,
+    faturamentoMensal: [],
+    servicosMes: [],
+    lembretes: [],
+  };
+
+  const faturamentoHoje = data.atendimentosHoje.reduce(
+    (acc, at) => acc + Number(at.valor_final || 0),
+    0
+  );
+
+  const stats = [
     {
       title: "Faturamento Hoje",
-      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(stats.faturamentoHoje),
+      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(faturamentoHoje),
       change: "+12%",
-      changeType: "positive",
+      changeType: "positive" as const,
       subtitle: "vs ontem",
       icon: DollarSign,
       iconColor: "#34C759",
@@ -231,9 +131,9 @@ const Dashboard = () => {
     },
     {
       title: "Atendimentos Hoje",
-      value: stats.atendimentosHoje.toString(),
+      value: data.atendimentosHoje.length.toString(),
       change: "+8%",
-      changeType: "positive",
+      changeType: "positive" as const,
       subtitle: "vs ontem",
       icon: Users,
       iconColor: "#007AFF",
@@ -241,9 +141,9 @@ const Dashboard = () => {
     },
     {
       title: "Agendamentos Hoje",
-      value: stats.agendamentosHoje.toString(),
+      value: data.agendamentosHoje.length.toString(),
       change: "",
-      changeType: "neutral",
+      changeType: "neutral" as const,
       subtitle: "confirmados",
       icon: Calendar,
       iconColor: "#FF9500",
@@ -251,9 +151,9 @@ const Dashboard = () => {
     },
     {
       title: "Novos Clientes",
-      value: stats.novosClientes.toString(),
+      value: data.novosClientesMes.toString(),
       change: "",
-      changeType: "neutral",
+      changeType: "neutral" as const,
       subtitle: "este mês",
       icon: UserPlus,
       iconColor: "#FF2D55",
@@ -315,7 +215,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Agenda de Hoje - PRIMEIRO ITEM */}
+      {/* Agenda de Hoje */}
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4">
           <div>
@@ -334,11 +234,11 @@ const Dashboard = () => {
           </Button>
         </CardHeader>
         <CardContent className="p-0 md:p-6 md:pt-0">
-          {loading ? (
+          {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               Carregando...
             </div>
-          ) : agendamentosHoje.length > 0 ? (
+          ) : data.agendamentosHoje.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -351,7 +251,7 @@ const Dashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {agendamentosHoje.map((apt) => (
+                  {(data.agendamentosHoje as Agendamento[]).map((apt) => (
                     <TableRow key={apt.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-1 md:gap-2">
@@ -394,17 +294,17 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Atalhos Rápidos - Estilo iPhone */}
+      {/* Atalhos Rápidos */}
       <AtalhosRapidos />
 
       {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6">
-        {statCards.map((card) => (
+        {stats.map((card) => (
           <div
             key={card.title}
             className="relative bg-card rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow min-h-[130px]"
           >
-            {/* Ícone - Posição absoluta no canto superior direito */}
+            {/* Ícone */}
             <div
               className="absolute top-5 right-5 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: card.iconBg }}
@@ -412,19 +312,14 @@ const Dashboard = () => {
               <card.icon size={22} color={card.iconColor} />
             </div>
 
-            {/* Conteúdo com flex column e space-between */}
+            {/* Conteúdo */}
             <div className="flex flex-col justify-between h-full pr-14 md:pr-16 min-h-[90px]">
-              {/* Título - Sempre no topo */}
               <p className="text-xs md:text-[13px] font-medium text-muted-foreground truncate">
                 {card.title}
               </p>
-
-              {/* Valor Principal - Centro */}
               <p className="text-2xl md:text-[28px] lg:text-[32px] font-bold text-foreground leading-none truncate">
                 {card.value}
               </p>
-
-              {/* Comparação - Sempre na base */}
               <div className="flex items-center gap-1 text-xs md:text-[13px] font-medium">
                 {card.changeType === "positive" && card.change ? (
                   <>
@@ -456,34 +351,21 @@ const Dashboard = () => {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis
-                    dataKey="day"
-                    className="text-xs"
-                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                <LineChart data={data.faturamentoMensal || []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground)/0.2)" />
+                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip 
+                    formatter={(value: any) => 
+                      new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
+                    }
                   />
-                  <YAxis
-                    className="text-xs"
-                    tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    tickFormatter={(value) => `R$${value}`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                    formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Faturamento"]}
-                    labelFormatter={(label) => `Dia ${label}`}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="hsl(var(--primary))"
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="hsl(var(--primary))" 
                     strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 6, fill: "hsl(var(--primary))" }}
+                    dot={{ fill: "hsl(var(--primary))", r: 4 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -492,38 +374,23 @@ const Dashboard = () => {
         </Card>
 
         {/* Top Serviços */}
-        <Card>
+        <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Top Serviços</CardTitle>
-            <p className="text-sm text-muted-foreground">Mais realizados este mês</p>
+            <CardTitle className="text-lg font-semibold">
+              Top Serviços
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Este mês</p>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topServicesData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    className="text-xs"
-                    tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    className="text-xs"
-                    tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    width={100}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                    formatter={(value: number) => [`${value} atendimentos`, ""]}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    {topServicesData.map((_, index) => (
+                <BarChart data={data.servicosMes || []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground)/0.2)" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                    {(data.servicosMes || []).map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
                     ))}
                   </Bar>
@@ -534,7 +401,12 @@ const Dashboard = () => {
         </Card>
       </div>
 
-
+      {/* Load Time Info (Debug) */}
+      {dashboardData?.loadTime && (
+        <div className="text-xs text-muted-foreground text-right">
+          Carregamento otimizado: {dashboardData.loadTime.toFixed(0)}ms
+        </div>
+      )}
     </div>
   );
 };
