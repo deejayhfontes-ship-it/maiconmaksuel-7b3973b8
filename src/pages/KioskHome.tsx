@@ -435,10 +435,10 @@ export default function KioskHome() {
         />
       </div>
 
-      {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center px-8">
+      {/* Main content - Centered logo with clock below */}
+      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-8">
         {/* Logo Section with Animation */}
-        <div className="mb-12">
+        <div className="mb-6">
           <div className="relative">
             {/* Animated glow rings */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -456,39 +456,25 @@ export default function KioskHome() {
               />
             </div>
             
-            {/* Logo with breathing animation */}
+            {/* Logo with breathing animation - centered */}
             <img 
               src={logoMaiconMaksuel} 
               alt="Maicon Maksuel"
               className={cn(
-                "relative h-40 w-auto object-contain",
-                settings.tipografia_grande && "h-48"
+                "relative h-40 w-auto md:h-48 object-contain drop-shadow-2xl z-10",
               )}
               style={{ animation: 'logo-breathe 4s ease-in-out infinite' }}
             />
           </div>
         </div>
 
-        {/* Clock */}
-        <div 
-          className={cn(
-            "font-black text-primary tabular-nums mb-12 tracking-tight",
-            settings.tipografia_grande ? "text-8xl" : "text-7xl"
-          )}
-          style={{ 
-            textShadow: '0 4px 30px rgba(var(--primary), 0.15)'
-          }}
-        >
+        {/* Clock - smaller and below logo */}
+        <div className={cn(
+          "font-extralight tracking-tight text-muted-foreground/60",
+          settings.tipografia_grande ? "text-4xl md:text-5xl" : "text-3xl md:text-4xl"
+        )}>
           {formatTime(currentTime)}
         </div>
-
-        {/* Tagline */}
-        <p className={cn(
-          "text-gray-400 mb-16 text-center",
-          settings.tipografia_grande ? "text-xl" : "text-lg"
-        )}>
-          Oferecemos os melhores serviços
-        </p>
 
         {/* Ponto Button - Minimal icon in corner for employees */}
         {settings.ponto_habilitado && (
