@@ -21,7 +21,10 @@ import {
   Save,
   RefreshCw,
   Volume2,
-  VolumeX
+  VolumeX,
+  History,
+  CheckCircle2,
+  XCircle as XCircle2
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,11 +108,12 @@ export default function NotificacoesSettings() {
         </h2>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="sistema">Sistema</TabsTrigger>
             <TabsTrigger value="agendamentos">Agendamentos</TabsTrigger>
             <TabsTrigger value="alertas">Alertas</TabsTrigger>
             <TabsTrigger value="canais">Canais</TabsTrigger>
+            <TabsTrigger value="logs">Logs</TabsTrigger>
           </TabsList>
 
           {/* Sistema Tab */}
@@ -452,6 +456,74 @@ export default function NotificacoesSettings() {
                 checked={notifications.canal_sms}
                 onCheckedChange={(v) => handleToggle('canal_sms', v)}
               />
+            </div>
+          </TabsContent>
+
+          {/* Logs Tab */}
+          <TabsContent value="logs" className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Histórico de Envios
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Acompanhe o status das notificações enviadas recentemente.
+              </p>
+
+              {/* Placeholder for notification logs - would need a new table */}
+              <div className="border rounded-lg divide-y">
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Lembrete de agendamento</p>
+                      <p className="text-sm text-muted-foreground">Maria Silva - WhatsApp</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-success">Entregue</p>
+                    <p className="text-xs text-muted-foreground">Hoje, 14:30</p>
+                  </div>
+                </div>
+
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Confirmação de agendamento</p>
+                      <p className="text-sm text-muted-foreground">João Santos - WhatsApp</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-success">Confirmado</p>
+                    <p className="text-xs text-muted-foreground">Hoje, 10:15</p>
+                  </div>
+                </div>
+
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                      <XCircle2 className="h-4 w-4 text-destructive" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Aniversário</p>
+                      <p className="text-sm text-muted-foreground">Carlos Oliveira - WhatsApp</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-destructive">Falha</p>
+                    <p className="text-xs text-muted-foreground">Ontem, 09:00</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-center text-muted-foreground mt-4">
+                Os logs são mantidos por 30 dias
+              </p>
             </div>
           </TabsContent>
         </Tabs>

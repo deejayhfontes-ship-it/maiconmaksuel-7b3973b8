@@ -3,8 +3,8 @@
  * Manages salon identity, contact info, and logo with global propagation
  */
 
-import { useState, useRef } from "react";
-import { Building, Upload, Image, Phone, Mail, Globe, MapPin, Save, RefreshCw } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Building, Upload, Image, Phone, Mail, Globe, MapPin, Save, RefreshCw, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export default function DadosSalaoSettings() {
   });
 
   // Update form when data loads
-  useState(() => {
+  useEffect(() => {
     if (salonData) {
       setFormData({
         nome_salao: salonData.nome_salao || '',
@@ -65,7 +65,7 @@ export default function DadosSalaoSettings() {
         endereco_estado: salonData.endereco_estado || '',
       });
     }
-  });
+  }, [salonData]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
