@@ -26,7 +26,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, X, Loader2, DollarSign, Target, Scissors, ShoppingCart } from "lucide-react";
+import { Upload, X, Loader2, DollarSign, Target, Scissors, ShoppingCart, Camera } from "lucide-react";
+import { WebcamCapture } from "@/components/clientes/WebcamCapture";
 
 // iOS Official Colors for Agenda
 const coresAgenda = [
@@ -110,6 +111,7 @@ export default function ProfissionalFormDialog({
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [activeTab, setActiveTab] = useState("dados");
+  const [webcamOpen, setWebcamOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfissionalFormData>({
@@ -207,6 +209,18 @@ export default function ProfissionalFormDialog({
     setFotoFile(null);
     setFotoPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleWebcamCapture = (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Arquivo muito grande", description: "A imagem deve ter no máximo 5MB.", variant: "destructive" });
+      return;
+    }
+    setFotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setFotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+    setWebcamOpen(false);
   };
 
   const uploadFoto = async (profissionalId: string): Promise<string | null> => {
@@ -337,13 +351,25 @@ export default function ProfissionalFormDialog({
                   </div>
                   <div className="space-y-2">
                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
-                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                      <Upload className="h-4 w-4 mr-2" />
-                      {fotoPreview ? "Alterar foto" : "Adicionar foto"}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {fotoPreview ? "Alterar" : "Adicionar"}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setWebcamOpen(true)}>
+                        <Camera className="h-4 w-4 mr-2" />
+                        Tirar Foto
+                      </Button>
+                    </div>
                     <p className="text-xs text-muted-foreground">JPG, PNG até 5MB</p>
                   </div>
                 </div>
+
+                <WebcamCapture
+                  open={webcamOpen}
+                  onClose={() => setWebcamOpen(false)}
+                  onCapture={handleWebcamCapture}
+                />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
