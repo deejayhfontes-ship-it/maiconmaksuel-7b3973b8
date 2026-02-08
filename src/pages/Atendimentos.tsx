@@ -293,12 +293,13 @@ const Atendimentos = () => {
       toast({ title: "Erro ao adicionar serviço", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Serviço adicionado!" });
-      fetchItems(selectedAtendimento.id);
+      // Trigger recalcula automaticamente no banco - apenas refetch
+      await fetchItems(selectedAtendimento.id);
+      await refetchAtendimentoTotals();
       setServicoId("");
       setProfissionalId("");
       setServicoQtd(1);
       setServicoPreco(0);
-      updateAtendimentoTotals();
     }
   };
 
@@ -322,11 +323,12 @@ const Atendimentos = () => {
       toast({ title: "Erro ao adicionar produto", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Produto adicionado!" });
-      fetchItems(selectedAtendimento.id);
+      // Trigger recalcula automaticamente no banco - apenas refetch
+      await fetchItems(selectedAtendimento.id);
+      await refetchAtendimentoTotals();
       setProdutoId("");
       setProdutoQtd(1);
       setProdutoPreco(0);
-      updateAtendimentoTotals();
     }
   };
 
@@ -335,8 +337,9 @@ const Atendimentos = () => {
     if (error) {
       toast({ title: "Erro ao remover", description: error.message, variant: "destructive" });
     } else {
-      fetchItems(selectedAtendimento!.id);
-      updateAtendimentoTotals();
+      // Trigger recalcula automaticamente no banco - apenas refetch
+      await fetchItems(selectedAtendimento!.id);
+      await refetchAtendimentoTotals();
     }
   };
 
@@ -345,19 +348,28 @@ const Atendimentos = () => {
     if (error) {
       toast({ title: "Erro ao remover", description: error.message, variant: "destructive" });
     } else {
-      fetchItems(selectedAtendimento!.id);
-      updateAtendimentoTotals();
+      // Trigger recalcula automaticamente no banco - apenas refetch
+      await fetchItems(selectedAtendimento!.id);
+      await refetchAtendimentoTotals();
     }
   };
 
-  const updateAtendimentoTotals = async () => {
+  // Refetch atendimento totals from database (trigger already updated them)
+  const refetchAtendimentoTotals = async () => {
     if (!selectedAtendimento) return;
     
-    // Use the hook's recalculate method - it updates local and syncs
-    setTimeout(async () => {
-      await fetchItems(selectedAtendimento.id);
+    // Fetch updated atendimento from database
+    const { data: updatedAtendimento } = await supabase
+      .from("atendimentos")
+      .select("*, cliente:clientes(nome)")
+      .eq("id", selectedAtendimento.id)
+      .single();
+    
+    if (updatedAtendimento) {
+      setSelectedAtendimento(updatedAtendimento as Atendimento);
+      // Also update the list
       refetch();
-    }, 100);
+    }
   };
 
   const handleDescontoChange = async (value: number) => {
