@@ -13,7 +13,8 @@ import {
   Palette, 
   Hand, 
   Wrench, 
-  Activity 
+  Activity,
+  Eye
 } from "lucide-react";
 
 import KioskRoutesSettings from "./KioskRoutesSettings";
@@ -24,6 +25,7 @@ import KioskVisualSettings from "./KioskVisualSettings";
 import KioskInteractionSettings from "./KioskInteractionSettings";
 import KioskMaintenanceSettings from "./KioskMaintenanceSettings";
 import KioskDiagnostics from "./KioskDiagnostics";
+import KioskLivePreview from "./KioskLivePreview";
 
 const tabs = [
   { id: 'routes', label: 'Rotas', icon: Route },
@@ -34,6 +36,7 @@ const tabs = [
   { id: 'interaction', label: 'Interação', icon: Hand },
   { id: 'maintenance', label: 'Manutenção', icon: Wrench },
   { id: 'diagnostics', label: 'Diagnóstico', icon: Activity },
+  { id: 'preview', label: 'Preview', icon: Eye },
 ];
 
 export default function KioskModeSettings() {
@@ -52,7 +55,7 @@ export default function KioskModeSettings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-4 lg:grid-cols-8 h-auto gap-1 p-1">
+        <TabsList className="grid grid-cols-5 lg:grid-cols-9 h-auto gap-1 p-1">
           {tabs.map(({ id, label, icon: Icon }) => (
             <TabsTrigger
               key={id}
@@ -95,6 +98,10 @@ export default function KioskModeSettings() {
 
         <TabsContent value="diagnostics" className="space-y-4">
           <KioskDiagnostics />
+        </TabsContent>
+
+        <TabsContent value="preview" className="space-y-4">
+          <KioskLivePreview />
         </TabsContent>
       </Tabs>
     </div>
