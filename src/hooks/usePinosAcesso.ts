@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type PinRole = 'admin' | 'notebook' | 'kiosk';
+export type PinRole = 'admin' | 'notebook' | 'kiosk' | 'colaborador_agenda';
 
 export interface PinoAcesso {
   id: string;
@@ -73,10 +73,11 @@ export function usePinosAcesso() {
       if (checkError) throw checkError;
 
       // Default PINs configuration
-      const defaultPins: Array<{ pin: string; nome: string; role: 'admin' | 'notebook' | 'kiosk'; descricao: string; ativo: boolean }> = [
+      const defaultPins: Array<{ pin: string; nome: string; role: PinRole; descricao: string; ativo: boolean }> = [
         { pin: '0000', nome: 'Administrador', role: 'admin', descricao: 'Acesso total ao sistema', ativo: true },
         { pin: '1234', nome: 'Notebook', role: 'notebook', descricao: 'Agenda e gestão básica', ativo: true },
         { pin: '9999', nome: 'Kiosk', role: 'kiosk', descricao: 'Caixa, ponto e mini agenda', ativo: true },
+        { pin: '1010', nome: 'Agenda Colaboradores', role: 'colaborador_agenda', descricao: 'Agenda somente leitura', ativo: true },
       ];
 
       // If no PINs exist, create all defaults
