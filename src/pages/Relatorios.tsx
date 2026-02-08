@@ -669,24 +669,95 @@ const Relatorios = () => {
     toast({ title: "Exportado para Excel!" });
   };
 
-  // Exportar para PDF
+  // Exportar para PDF - Layout Profissional A4
   const exportToPDF = (title: string, headers: string[], data: any[][], filename: string) => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(title, 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Período: ${format(dateRange.from, "dd/MM/yyyy")} a ${format(dateRange.to, "dd/MM/yyyy")}`, 14, 28);
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
     
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 18;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // ========== HEADER PROFISSIONAL ==========
+    // Linha decorativa superior
+    doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(1);
+    doc.line(margin, 12, pageWidth - margin, 12);
+    
+    // Nome do sistema/empresa (se disponível via contexto)
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Sistema de Gestão", margin, 20);
+    
+    // Título do relatório
+    doc.setFontSize(18);
+    doc.setTextColor(31, 41, 55);
+    doc.setFont("helvetica", "bold");
+    doc.text(title, margin, 30);
+    
+    // Período e data de geração
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    const periodoText = `Período: ${format(dateRange.from, "dd/MM/yyyy")} a ${format(dateRange.to, "dd/MM/yyyy")}`;
+    const geradoText = `Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`;
+    doc.text(periodoText, margin, 38);
+    doc.text(geradoText, pageWidth - margin - doc.getTextWidth(geradoText), 38);
+    
+    // Linha separadora
+    doc.setDrawColor(229, 231, 235);
+    doc.setLineWidth(0.3);
+    doc.line(margin, 42, pageWidth - margin, 42);
+    
+    // ========== TABELA DE DADOS ==========
     autoTable(doc, {
       head: [headers],
       body: data,
-      startY: 35,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [59, 130, 246] },
+      startY: 48,
+      margin: { left: margin, right: margin },
+      styles: { 
+        fontSize: 9,
+        cellPadding: 4,
+        lineColor: [229, 231, 235],
+        lineWidth: 0.1,
+        textColor: [55, 65, 81]
+      },
+      headStyles: { 
+        fillColor: [59, 130, 246],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'left'
+      },
+      alternateRowStyles: {
+        fillColor: [249, 250, 251]
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold' }
+      },
+      didDrawPage: (data) => {
+        // Footer em todas as páginas
+        const pageNumber = doc.internal.pages.length - 1;
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Página ${data.pageNumber}`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: 'center' }
+        );
+      }
     });
     
+    // ========== SALVAR ==========
     doc.save(`${filename}.pdf`);
-    toast({ title: "Exportado para PDF!" });
+    toast({ 
+      title: "PDF exportado com sucesso!",
+      description: `Arquivo: ${filename}.pdf`
+    });
   };
 
   const formatCurrency = (value: number) => {
