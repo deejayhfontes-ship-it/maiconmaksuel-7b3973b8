@@ -22,7 +22,8 @@ import {
   Calendar,
   Receipt,
   Shield,
-  Power
+  Power,
+  Activity
 } from "lucide-react";
 
 import KioskVisualSettings from "./KioskVisualSettings";
@@ -31,6 +32,7 @@ import KioskInteractionSettings from "./KioskInteractionSettings";
 import KioskMaintenanceSettings from "./KioskMaintenanceSettings";
 import KioskLivePreview from "./KioskLivePreview";
 import KioskSecurityInfo from "./KioskSecurityInfo";
+import KioskDiagnostico from "./KioskDiagnostico";
 
 const tabs = [
   { id: 'overview', label: 'Visão Geral', icon: Tablet },
@@ -39,6 +41,7 @@ const tabs = [
   { id: 'interaction', label: 'Interação', icon: Hand },
   { id: 'maintenance', label: 'Manutenção', icon: Wrench },
   { id: 'security', label: 'Segurança', icon: Shield },
+  { id: 'diagnostico', label: 'Diagnóstico', icon: Activity },
   { id: 'preview', label: 'Preview', icon: Eye },
 ];
 
@@ -59,7 +62,7 @@ export default function KioskModeSettings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-4 lg:grid-cols-7 h-auto gap-1 p-1">
+        <TabsList className="grid grid-cols-4 lg:grid-cols-8 h-auto gap-1 p-1">
           {tabs.map(({ id, label, icon: Icon }) => (
             <TabsTrigger
               key={id}
@@ -99,6 +102,10 @@ export default function KioskModeSettings() {
 
         <TabsContent value="security" className="space-y-4">
           <KioskSecurityInfo />
+        </TabsContent>
+
+        <TabsContent value="diagnostico" className="space-y-4">
+          <KioskDiagnostico />
         </TabsContent>
 
         <TabsContent value="preview" className="space-y-4">

@@ -78,17 +78,20 @@ export default function KioskHome() {
     return () => clearInterval(interval);
   }, []);
 
-  // Listen for comanda closure events via broadcast
+  // Listen for comanda closure events via broadcast (multiple channels for compatibility)
   useEffect(() => {
-    const channel = supabase
+    // Channel for kiosk-specific events
+    const kioskChannel = supabase
       .channel('kiosk-comanda')
       .on('broadcast', { event: 'comanda-fechada' }, ({ payload }) => {
+        console.log('[Kiosk] Received comanda-fechada:', payload);
         if (payload) {
           setComanda(payload as ComandaData);
           setKioskState('comanda');
         }
       })
       .on('broadcast', { event: 'pagamento-confirmado' }, () => {
+        console.log('[Kiosk] Received pagamento-confirmado');
         setKioskState('thankyou');
         if (autoReturnTimeoutRef.current) {
           clearTimeout(autoReturnTimeoutRef.current);
@@ -100,8 +103,44 @@ export default function KioskHome() {
       })
       .subscribe();
 
+    // Channel for tablet-comanda events (from PagamentoModal/FecharComandaModal)
+    const tabletChannel = supabase
+      .channel('tablet-comanda')
+      .on('broadcast', { event: 'comanda-update' }, ({ payload }) => {
+        console.log('[Kiosk] Received comanda-update:', payload);
+        if (payload) {
+          const data = payload as any;
+          // Map from tablet format to our format
+          const comandaData: ComandaData = {
+            numero: data.numero,
+            cliente: data.cliente || 'Cliente',
+            itens: data.itens || [],
+            subtotal: data.subtotal || 0,
+            desconto: data.desconto || 0,
+            total: data.total || 0,
+            formaPagamento: data.formaPagamento,
+          };
+          
+          if (data.status === 'fechando') {
+            setComanda(comandaData);
+            setKioskState('comanda');
+          } else if (data.status === 'finalizado') {
+            setKioskState('thankyou');
+            if (autoReturnTimeoutRef.current) {
+              clearTimeout(autoReturnTimeoutRef.current);
+            }
+            autoReturnTimeoutRef.current = setTimeout(() => {
+              setKioskState('idle');
+              setComanda(null);
+            }, thankYouDuration);
+          }
+        }
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(kioskChannel);
+      supabase.removeChannel(tabletChannel);
       if (autoReturnTimeoutRef.current) {
         clearTimeout(autoReturnTimeoutRef.current);
       }
