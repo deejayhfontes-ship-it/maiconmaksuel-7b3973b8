@@ -506,29 +506,14 @@ function KioskPreviewRenderer({
             Oferecemos os melhores serviços
           </p>
 
-          {/* Ponto Button */}
+          {/* Ponto Button - Minimal icon in corner */}
           {settings.modulo_ponto && (
             <button
               onClick={() => onNavigate('ponto')}
-              className={cn(
-                "flex items-center gap-3 px-6 py-4 rounded-xl transition-all",
-                isDarkTheme
-                  ? "bg-white/10 hover:bg-white/20"
-                  : "bg-white shadow-lg hover:shadow-xl border border-gray-100"
-              )}
-              style={{ padding: `${16 * touchScale}px ${24 * touchScale}px` }}
+              className="absolute bottom-4 right-4 p-2 rounded-full text-gray-300 hover:text-primary hover:bg-primary/5 transition-all"
+              title="Registrar Ponto"
             >
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Fingerprint className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-left">
-                <span className="font-semibold block" style={{ fontSize: `${12 * fontScale}px` }}>
-                  Registrar Ponto
-                </span>
-                <span className="text-muted-foreground" style={{ fontSize: `${9 * fontScale}px` }}>
-                  {format(currentTime, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                </span>
-              </div>
+              <Fingerprint className="h-4 w-4" />
             </button>
           )}
         </div>
