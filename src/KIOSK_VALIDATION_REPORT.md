@@ -1,14 +1,14 @@
 # KIOSK VALIDATION REPORT
 
 **Data da Auditoria:** 2026-02-08  
-**Versão:** 1.0.0  
+**Versão:** 2.0.0  
 **Status Final:** ✅ APROVADO PARA USO EM PRODUÇÃO
 
 ---
 
 ## 📋 RESUMO EXECUTIVO
 
-Auditoria completa do Modo Kiosk realizada com sucesso. Todas as funcionalidades críticas foram verificadas e corrigidas conforme necessário.
+Validação final do Modo Kiosk realizada com sucesso. Fluxo de broadcast (comanda → kiosk) verificado no código. UI modernizada com layout premium light.
 
 ### Resultados Gerais
 | Categoria | Status | Detalhes |
