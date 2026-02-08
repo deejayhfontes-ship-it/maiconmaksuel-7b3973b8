@@ -1,7 +1,7 @@
 /**
  * Alert Card Component with action buttons
  */
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import {
   Cake,
   Calendar,
@@ -73,8 +73,10 @@ const statusBadges: Record<AlertStatus, { label: string; className: string }> = 
   silenciado: { label: "Silenciado", className: "bg-gray-500 text-white" }
 };
 
-export function AlertCard({ alert, onAction, onStatusChange, onSilence, onDelete }: AlertCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+// Use forwardRef to properly handle refs from parent components
+export const AlertCard = forwardRef<HTMLDivElement, AlertCardProps>(
+  function AlertCard({ alert, onAction, onStatusChange, onSilence, onDelete }, ref) {
+    const [isExpanded, setIsExpanded] = useState(false);
 
   const renderActions = () => {
     switch (alert.type) {
@@ -239,6 +241,7 @@ export function AlertCard({ alert, onAction, onStatusChange, onSilence, onDelete
 
   return (
     <Card 
+      ref={ref}
       className={cn(
         "p-4 transition-all hover:shadow-md",
         alert.status === 'novo' && "border-l-4 border-l-primary",
@@ -321,4 +324,4 @@ export function AlertCard({ alert, onAction, onStatusChange, onSilence, onDelete
       </div>
     </Card>
   );
-}
+});

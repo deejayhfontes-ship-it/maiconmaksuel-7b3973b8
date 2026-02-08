@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { localPut, localGetAll, localDelete, addToSyncQueue, EntityStore } from '@/lib/offlineDb';
+import { localPut, localGetAll, localDelete, localClear, addToSyncQueue, EntityStore } from '@/lib/offlineDb';
 
 export interface Profissional {
   id: string;
@@ -47,12 +47,30 @@ export interface ComissaoDetalhada {
   cliente_nome: string | null;
 }
 
+// Debug info interface
+export interface DebugInfo {
+  remoteCount: number;
+  localCount: number;
+  lastQuery: string;
+  httpStatus: number | null;
+  error: string | null;
+  timestamp: string;
+}
+
 const STORE_NAME: EntityStore = 'profissionais';
 
 export function useProfissionais() {
   const [profissionais, setProfissionais] = useState<ProfissionalComMetas[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({
+    remoteCount: 0,
+    localCount: 0,
+    lastQuery: '',
+    httpStatus: null,
+    error: null,
+    timestamp: ''
+  });
 
   // Get current month date range
   const getMonthRange = useCallback(() => {
@@ -170,28 +188,66 @@ export function useProfissionais() {
   }, [getMonthRange]);
 
   // Fetch all profissionais with metrics
-  const fetchProfissionais = useCallback(async () => {
+  const fetchProfissionais = useCallback(async (forceRemote: boolean = false) => {
     setLoading(true);
+    const queryStr = "SELECT * FROM profissionais ORDER BY nome ASC";
     
     try {
+      // Get local count first
+      const localData = await localGetAll<Profissional>(STORE_NAME);
+      const localCount = localData.length;
+      
       // Try to fetch from Supabase first
-      const { data: remoteData, error } = await supabase
+      const { data: remoteData, error, status } = await supabase
         .from('profissionais')
         .select('*')
         .order('nome', { ascending: true });
 
-      if (error) throw error;
+      // Update debug info
+      setDebugInfo({
+        remoteCount: remoteData?.length || 0,
+        localCount,
+        lastQuery: queryStr,
+        httpStatus: status,
+        error: error?.message || null,
+        timestamp: new Date().toISOString()
+      });
 
-      // Store locally for offline use
-      for (const prof of remoteData || []) {
-        await localPut(STORE_NAME, prof);
+      if (error) {
+        console.error('[Profissionais] Erro HTTP:', status, error.message);
+        throw error;
       }
 
-      // Calculate metrics
-      const profissionaisComMetas = await calculateMetrics(remoteData || []);
-      setProfissionais(profissionaisComMetas);
-    } catch (error) {
-      console.log('Fetching from local storage...');
+      console.log(`[Profissionais] Remoto: ${remoteData?.length || 0}, Local: ${localCount}`);
+
+      // CRITICAL: Only update local if we got data (prevent empty overwrite)
+      if (remoteData && remoteData.length > 0) {
+        // Store locally for offline use
+        for (const prof of remoteData) {
+          await localPut(STORE_NAME, prof);
+        }
+        // Calculate metrics
+        const profissionaisComMetas = await calculateMetrics(remoteData);
+        setProfissionais(profissionaisComMetas);
+      } else if (remoteData && remoteData.length === 0 && localCount > 0 && !forceRemote) {
+        // Remote returned empty but we have local data - use local as fallback
+        console.warn('[Profissionais] Remoto vazio mas local tem dados - usando local');
+        const profissionaisComMetas = await calculateMetrics(localData);
+        setProfissionais(profissionaisComMetas);
+      } else {
+        // Remote is truly empty
+        setProfissionais([]);
+      }
+    } catch (error: any) {
+      console.error('[Profissionais] Erro ao buscar, usando cache local:', error);
+      
+      // Update debug info with error
+      setDebugInfo(prev => ({
+        ...prev,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }));
+      
       // Fallback to local data
       const localData = await localGetAll<Profissional>(STORE_NAME);
       const profissionaisComMetas = await calculateMetrics(localData);
@@ -200,6 +256,22 @@ export function useProfissionais() {
       setLoading(false);
     }
   }, [calculateMetrics]);
+
+  // Force reload ignoring cache
+  const forceReload = useCallback(async () => {
+    await localClear(STORE_NAME);
+    await fetchProfissionais(true);
+  }, [fetchProfissionais]);
+
+  // Clear local cache only
+  const clearLocalCache = useCallback(async () => {
+    await localClear(STORE_NAME);
+    setDebugInfo(prev => ({
+      ...prev,
+      localCount: 0,
+      timestamp: new Date().toISOString()
+    }));
+  }, []);
 
   // Get detailed commissions for a professional
   const getComissoesDetalhadas = useCallback(async (
@@ -374,7 +446,10 @@ export function useProfissionais() {
     profissionaisVendedores,
     loading,
     syncing,
+    debugInfo,
     fetchProfissionais,
+    forceReload,
+    clearLocalCache,
     saveProfissional,
     deleteProfissional,
     searchProfissionais,
