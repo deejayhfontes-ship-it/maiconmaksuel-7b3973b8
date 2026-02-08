@@ -20,6 +20,7 @@ import {
   X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { KioskOfflineOverlay } from "@/components/kiosk/KioskOfflineOverlay";
 
 const kioskNavItems = [
   { key: 'kiosk_caixa', path: '/kiosk/caixa', label: 'Caixa', icon: CreditCard },
@@ -254,9 +255,12 @@ export default function KioskLayout() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-4 pb-24">
         <Outlet />
       </main>
+
+      {/* Offline Overlay */}
+      <KioskOfflineOverlay largeTouch={settings.alvos_touch_grandes} />
     </div>
   );
 }
