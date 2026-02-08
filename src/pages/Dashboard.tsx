@@ -32,6 +32,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { usePinAuth } from "@/contexts/PinAuthContext";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 interface Agendamento {
   id: string;
@@ -83,7 +84,9 @@ const getGreeting = () => {
 const Dashboard = () => {
   // Auth context - check if notebook role
   const { session } = usePinAuth();
+  const { can } = useUserPermissions();
   const isNotebook = session?.role === 'notebook';
+  const showFaturamento = can('dashboard.faturamento_mensal');
   
   // Performance tracking
   const mountTimeRef = useRef(performance.now());
@@ -191,10 +194,10 @@ const Dashboard = () => {
     },
   ];
 
-  // Filtrar stats baseado no role (notebook não vê faturamento)
-  const stats = isNotebook 
-    ? allStats.filter(s => !s.hideForNotebook) 
-    : allStats;
+  // Filtrar stats baseado em permissão (notebook não vê faturamento)
+  const stats = showFaturamento 
+    ? allStats 
+    : allStats.filter(s => !s.hideForNotebook);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -375,8 +378,8 @@ const Dashboard = () => {
         {/* WhatsApp Card */}
         <WhatsAppDashboardCard />
         
-        {/* Gráfico de Faturamento - OCULTO para notebook */}
-        {!isNotebook && (
+        {/* Gráfico de Faturamento - OCULTO se não tiver permissão */}
+        {showFaturamento && (
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">

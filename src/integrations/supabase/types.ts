@@ -244,6 +244,48 @@ export type Database = {
           },
         ]
       }
+      audit_usuarios: {
+        Row: {
+          action: string
+          actor_pino_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          target_pino_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_pino_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_pino_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_pino_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_pino_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_usuarios_actor_pino_id_fkey"
+            columns: ["actor_pino_id"]
+            isOneToOne: false
+            referencedRelation: "pinos_acesso"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_usuarios_target_pino_id_fkey"
+            columns: ["target_pino_id"]
+            isOneToOne: false
+            referencedRelation: "pinos_acesso"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caixa: {
         Row: {
           created_at: string
@@ -3376,6 +3418,7 @@ export type Database = {
           nome: string
           pin: string
           role: Database["public"]["Enums"]["pin_role"]
+          telefone: string | null
           ultimo_acesso: string | null
           updated_at: string
         }
@@ -3387,6 +3430,7 @@ export type Database = {
           nome: string
           pin: string
           role?: Database["public"]["Enums"]["pin_role"]
+          telefone?: string | null
           ultimo_acesso?: string | null
           updated_at?: string
         }
@@ -3398,6 +3442,7 @@ export type Database = {
           nome?: string
           pin?: string
           role?: Database["public"]["Enums"]["pin_role"]
+          telefone?: string | null
           ultimo_acesso?: string | null
           updated_at?: string
         }
@@ -3916,6 +3961,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      user_permissions: {
+        Row: {
+          allowed: boolean
+          created_at: string
+          id: string
+          permission_key: string
+          pino_id: string
+          updated_at: string
+        }
+        Insert: {
+          allowed?: boolean
+          created_at?: string
+          id?: string
+          permission_key: string
+          pino_id: string
+          updated_at?: string
+        }
+        Update: {
+          allowed?: boolean
+          created_at?: string
+          id?: string
+          permission_key?: string
+          pino_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permissions_pino_id_fkey"
+            columns: ["pino_id"]
+            isOneToOne: false
+            referencedRelation: "pinos_acesso"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
