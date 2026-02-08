@@ -58,6 +58,7 @@ import { useToast } from "@/hooks/use-toast";
 import AgendamentoFormDialog from "@/components/agenda/AgendamentoFormDialog";
 import { useAgendamentos, AgendamentoCompleto } from "@/hooks/useAgendamentos";
 import { usePinAuth } from "@/contexts/PinAuthContext";
+import { useUserPermissions } from "@/hooks/useUserPermissions";
 
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
@@ -80,7 +81,9 @@ const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 const Agenda = () => {
   const { session } = usePinAuth();
-  const isReadOnly = session?.role === 'colaborador_agenda';
+  const { can } = useUserPermissions();
+  const isReadOnly = session?.role === 'colaborador_agenda' || !can('agenda.view');
+  const canEncaixe = can('agenda.encaixe');
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
@@ -545,12 +548,12 @@ const Agenda = () => {
             <Plus className="h-4 w-4" />
             Agendar
           </Button>
-          {/* Botão Encaixe - Mobile (hidden in read-only) */}
-          {!isReadOnly && (
+          {/* Botão Encaixe - Mobile (hidden in read-only or no permission) */}
+          {canEncaixe && (
           <Button
             variant="secondary"
             size="sm"
-            className="flex-1 gap-1.5 h-10 !bg-[#FF9500] hover:!bg-[#E68600] !text-white"
+            className="flex-1 gap-1.5 h-10 bg-accent hover:bg-accent/80 text-accent-foreground"
             onClick={() => {
               setFormInitialDate(selectedDate);
               setFormInitialTime(undefined);
@@ -684,12 +687,12 @@ const Agenda = () => {
             </div>
           </Card>
 
-          {/* Botão Encaixe - Abaixo da legenda (laranja) - Hidden in read-only */}
-          {!isReadOnly && (
+          {/* Botão Encaixe - Abaixo da legenda - Hidden if no permission */}
+          {canEncaixe && (
           <Button
             variant="secondary"
             size="lg"
-            className="w-full gap-2 h-14 text-lg !bg-[#FF9500] hover:!bg-[#E68600] !text-white shadow-[0_4px_14px_rgba(255,149,0,0.35)]"
+            className="w-full gap-2 h-14 text-lg bg-accent hover:bg-accent/80 text-accent-foreground shadow-md"
             onClick={() => {
               setFormInitialDate(selectedDate);
               setFormInitialTime(undefined);
