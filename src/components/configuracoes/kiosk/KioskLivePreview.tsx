@@ -35,7 +35,9 @@ import {
   AlertCircle,
   QrCode,
   CreditCard,
-  Banknote
+  Banknote,
+  Minus,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -456,7 +458,14 @@ function KioskPreviewRenderer({
 
       {/* IDLE STATE */}
       {kioskState === 'idle' && (
-        <div className="h-full flex flex-col items-center justify-center p-6">
+        <div className="h-full flex flex-col items-center justify-center p-6 relative">
+          {/* Window Controls */}
+          <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-30">
+            <div className="p-1 hover:bg-gray-200 rounded"><Minus className="h-2 w-2 text-gray-500" /></div>
+            <div className="p-1 hover:bg-gray-200 rounded"><Square className="h-2 w-2 text-gray-500" /></div>
+            <div className="p-1 hover:bg-red-100 rounded"><X className="h-2 w-2 text-gray-500" /></div>
+          </div>
+          
           {/* Background elements */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-50">
             <div className="absolute top-1/4 -left-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl" />
@@ -534,7 +543,14 @@ function KioskPreviewRenderer({
 
       {/* PONTO STATE */}
       {kioskState === 'ponto' && (
-        <div className="h-full flex flex-col p-6">
+        <div className="h-full flex flex-col p-6 relative">
+          {/* Window Controls */}
+          <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-30">
+            <div className="p-1 hover:bg-gray-200 rounded"><Minus className="h-2 w-2 text-gray-500" /></div>
+            <div className="p-1 hover:bg-gray-200 rounded"><Square className="h-2 w-2 text-gray-500" /></div>
+            <div className="p-1 hover:bg-red-100 rounded"><X className="h-2 w-2 text-gray-500" /></div>
+          </div>
+          
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold" style={{ fontSize: `${16 * fontScale}px` }}>
               Ponto Eletrônico
@@ -615,39 +631,46 @@ function KioskPreviewRenderer({
 
       {/* THANK YOU STATE */}
       {kioskState === 'thankyou' && (
-        <div className="h-full flex flex-col items-center justify-center p-6">
+        <div className="h-full flex flex-col items-center justify-center p-6 relative">
+          {/* Window Controls */}
+          <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-30">
+            <div className="p-1 hover:bg-gray-200 rounded"><Minus className="h-2 w-2 text-gray-500" /></div>
+            <div className="p-1 hover:bg-gray-200 rounded"><Square className="h-2 w-2 text-gray-500" /></div>
+            <div className="p-1 hover:bg-red-100 rounded"><X className="h-2 w-2 text-gray-500" /></div>
+          </div>
+          
           {/* Success Icon */}
-          <div className="relative mb-8">
-            <div className="absolute inset-0 w-24 h-24 mx-auto rounded-full bg-green-100 animate-ping opacity-20" />
-            <div className="relative w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-xl">
-              <Check className="h-12 w-12 text-white" strokeWidth={3} />
+          <div className="relative mb-6">
+            <div className="absolute inset-0 w-20 h-20 mx-auto rounded-full bg-green-100 animate-ping opacity-20" />
+            <div className="relative w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-xl">
+              <Check className="h-10 w-10 text-white" strokeWidth={3} />
             </div>
           </div>
           
           {/* Thank you message */}
           <h1 
-            className="font-bold text-center mb-4"
-            style={{ fontSize: `${20 * fontScale}px` }}
+            className="font-bold text-center mb-2"
+            style={{ fontSize: `${16 * fontScale}px` }}
           >
-            Volte Sempre!
+            Obrigado pela preferência!
           </h1>
           
-          <p className="text-muted-foreground text-center mb-8">
-            Maicon Maksuel
+          <p className="text-muted-foreground text-center mb-6" style={{ fontSize: `${12 * fontScale}px` }}>
+            Volte Sempre!
           </p>
           
           {/* Logo */}
           <img 
             src={logoMaiconMaksuel} 
             alt="Maicon Maksuel"
-            className="h-12 w-auto object-contain opacity-70"
+            className="h-10 w-auto object-contain opacity-60"
           />
           
           {/* Hearts decoration */}
-          <div className="mt-6 flex justify-center gap-2 opacity-40">
-            <Heart className="h-4 w-4 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '0ms' }} />
-            <Heart className="h-4 w-4 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '200ms' }} />
-            <Heart className="h-4 w-4 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '400ms' }} />
+          <div className="mt-4 flex justify-center gap-2 opacity-40">
+            <Heart className="h-3 w-3 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '0ms' }} />
+            <Heart className="h-3 w-3 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '200ms' }} />
+            <Heart className="h-3 w-3 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '400ms' }} />
           </div>
         </div>
       )}
