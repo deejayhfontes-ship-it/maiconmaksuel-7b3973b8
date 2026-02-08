@@ -59,7 +59,8 @@ import {
   FileDown,
   History,
 } from "lucide-react";
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO, isWithinInterval } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO, isWithinInterval, differenceInDays } from "date-fns";
+import { useClienteStats, VALID_CLOSED_STATUSES } from "@/hooks/useClienteStats";
 import { RelatoriosHistorico } from "@/components/relatorios/RelatoriosHistorico";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -418,44 +419,42 @@ const Relatorios = () => {
     return Object.values(agrupado).sort((a, b) => b.valor - a.valor);
   }, [pagamentos]);
 
-  const clientesNovos = useMemo(() => {
-    return clientes.filter((c) => {
-      const createdAt = new Date(c.created_at);
-      return isWithinInterval(createdAt, { start: dateRange.from, end: dateRange.to });
-    });
-  }, [clientes, dateRange]);
+  // USAR HOOK ROBUSTO PARA CÁLCULOS DE CLIENTES
+  // Este hook calcula última visita e total de visitas a partir de atendimentos fechados
+  const clienteStats = useClienteStats({
+    clientes,
+    atendimentos,
+    dateRange,
+    diasAusencia,
+    diasAtividade: 30,
+  });
 
-  const clientesAtivos = useMemo(() => {
-    const trintaDiasAtras = subDays(new Date(), 30);
-    return clientes.filter((c) => {
-      if (!c.ultima_visita) return false;
-      const ultimaVisita = new Date(c.ultima_visita);
-      return ultimaVisita >= trintaDiasAtras;
-    });
-  }, [clientes]);
+  // Extrair dados calculados do hook
+  const clientesNovos = clienteStats.clientesNovos;
+  const clientesAtivos = clienteStats.clientesAtivos;
+  const clientesInativos = clienteStats.clientesInativos;
+  const clientesAusentes = clienteStats.clientesAusentes;
+  const aniversariantes = clienteStats.aniversariantes;
+  const clientesMaisLucro = clienteStats.clientesMaisLucrativos;
+  
+  // Log de diagnóstico para desenvolvimento
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' || true) {
+      console.log('[Relatórios Clientes] Diagnóstico:', {
+        totalClientes: clienteStats.diagnostico.totalClientes,
+        clientesComVisita: clienteStats.diagnostico.clientesComVisita,
+        clientesSemVisita: clienteStats.diagnostico.clientesSemVisita,
+        atendimentosFechados: clienteStats.diagnostico.atendimentosFechados,
+        clientesAusentes: clientesAusentes.length,
+        clientesAtivos: clientesAtivos.length,
+        clientesInativos: clientesInativos.length,
+        aniversariantes: aniversariantes.length,
+        diasAusencia,
+      });
+    }
+   }, [clienteStats.diagnostico, clientesAusentes.length, clientesAtivos.length, clientesInativos.length, aniversariantes.length, diasAusencia]);
 
-  const clientesInativos = useMemo(() => {
-    const sessentaDiasAtras = subDays(new Date(), 60);
-    return clientes.filter((c) => {
-      if (!c.ultima_visita) return true;
-      const ultimaVisita = new Date(c.ultima_visita);
-      return ultimaVisita < sessentaDiasAtras;
-    });
-  }, [clientes]);
-
-  const aniversariantes = useMemo(() => {
-    const mesAtual = new Date().getMonth();
-    return clientes.filter((c) => {
-      if (!c.data_nascimento) return false;
-      const nascimento = parseISO(c.data_nascimento);
-      return nascimento.getMonth() === mesAtual;
-    }).sort((a, b) => {
-      const diaA = parseISO(a.data_nascimento).getDate();
-      const diaB = parseISO(b.data_nascimento).getDate();
-      return diaA - diaB;
-    });
-  }, [clientes]);
-
+  // Comissões por profissional
   const comissoesPorProfissional = useMemo(() => {
     const agrupado: Record<string, { id: string; nome: string; totalServicos: number; totalComissao: number; atendimentos: number }> = {};
     
@@ -473,6 +472,7 @@ const Relatorios = () => {
     return Object.values(agrupado).sort((a, b) => b.totalComissao - a.totalComissao);
   }, [atendimentoServicos]);
 
+  // Produtos mais vendidos
   const produtosMaisVendidos = useMemo(() => {
     const agrupado: Record<string, { nome: string; quantidade: number; valor: number }> = {};
     
@@ -488,6 +488,7 @@ const Relatorios = () => {
     return Object.values(agrupado).sort((a, b) => b.quantidade - a.quantidade);
   }, [atendimentoProdutos]);
 
+  // Estoque info
   const estoqueInfo = useMemo(() => {
     return produtos.map((p) => ({
       id: p.id,
@@ -498,6 +499,7 @@ const Relatorios = () => {
     })).sort((a, b) => a.estoque_atual - b.estoque_atual);
   }, [produtos]);
 
+  // Margem de produtos
   const margemProdutos = useMemo(() => {
     return produtos.filter(p => p.preco_custo && p.preco_custo > 0).map((p) => {
       const margem = ((p.preco_venda - p.preco_custo) / p.preco_venda) * 100;
@@ -548,43 +550,6 @@ const Relatorios = () => {
       porDia: Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data)),
     };
   }, [atendimentos, atendimentoServicos, atendimentoProdutos]);
-
-  // Clientes ausentes há X dias
-  const clientesAusentes = useMemo(() => {
-    const dataLimite = subDays(new Date(), diasAusencia);
-    return clientes.filter((c) => {
-      if (!c.ultima_visita) return c.total_visitas > 0;
-      const ultimaVisita = new Date(c.ultima_visita);
-      return ultimaVisita < dataLimite && c.total_visitas > 0;
-    }).sort((a, b) => {
-      const dataA = a.ultima_visita ? new Date(a.ultima_visita).getTime() : 0;
-      const dataB = b.ultima_visita ? new Date(b.ultima_visita).getTime() : 0;
-      return dataA - dataB;
-    });
-  }, [clientes, diasAusencia]);
-
-  // Clientes que dão mais lucro
-  const clientesMaisLucro = useMemo(() => {
-    const agrupado: Record<string, { id: string; nome: string; celular: string; totalGasto: number; visitas: number }> = {};
-    
-    atendimentos.filter(a => a.status === "fechado" && a.cliente_id).forEach((a) => {
-      const clienteId = a.cliente_id;
-      const cliente = clientes.find(c => c.id === clienteId);
-      if (!agrupado[clienteId]) {
-        agrupado[clienteId] = { 
-          id: clienteId, 
-          nome: cliente?.nome || a.cliente?.nome || "Desconhecido",
-          celular: cliente?.celular || a.cliente?.celular || "",
-          totalGasto: 0, 
-          visitas: 0 
-        };
-      }
-      agrupado[clienteId].totalGasto += a.valor_final || 0;
-      agrupado[clienteId].visitas += 1;
-    });
-
-    return Object.values(agrupado).sort((a, b) => b.totalGasto - a.totalGasto).slice(0, 50);
-  }, [atendimentos, clientes]);
 
   // Serviços mais lucrativos
   const servicosMaisLucrativos = useMemo(() => {
