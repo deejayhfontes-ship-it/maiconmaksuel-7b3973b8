@@ -49,6 +49,7 @@ import {
   WifiOff,
   CloudOff,
   UserX,
+  Eye,
 } from "lucide-react";
 import { format, addDays, subDays, isSameDay, parseISO, addMonths, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -56,6 +57,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import AgendamentoFormDialog from "@/components/agenda/AgendamentoFormDialog";
 import { useAgendamentos, AgendamentoCompleto } from "@/hooks/useAgendamentos";
+import { usePinAuth } from "@/contexts/PinAuthContext";
 
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
@@ -77,6 +79,9 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
 const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 const Agenda = () => {
+  const { session } = usePinAuth();
+  const isReadOnly = session?.role === 'colaborador_agenda';
+  
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [profissionalFilter, setProfissionalFilter] = useState<string>("todos");
@@ -279,11 +284,11 @@ const Agenda = () => {
                   key={prof.id}
                   className={cn(
                     "flex-1 border-r relative",
-                    !isOccupied && ags.length === 0 && "hover:bg-muted/50 cursor-pointer transition-colors"
+                    !isReadOnly && !isOccupied && ags.length === 0 && "hover:bg-muted/50 cursor-pointer transition-colors"
                   )}
                   style={{ minWidth, height: slotHeight }}
                   onClick={() => {
-                    if (!isOccupied && ags.length === 0) {
+                    if (!isReadOnly && !isOccupied && ags.length === 0) {
                       handleSlotClick(time, prof.id);
                     }
                   }}
@@ -359,7 +364,8 @@ const Agenda = () => {
                               <span className="ml-1">{statusConfig[ag.status].label}</span>
                             </Badge>
                             
-                            {/* Status Actions */}
+                            {/* Status Actions - Hidden in read-only mode */}
+                            {!isReadOnly && (
                             <div className="flex flex-wrap gap-1 pt-2 border-t">
                               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleAgendamentoClick(ag)}>
                                 <Edit className="h-3 w-3 mr-1" />
@@ -432,6 +438,17 @@ const Agenda = () => {
                                 </Button>
                               )}
                             </div>
+                            )}
+                            
+                            {/* Read-only indicator */}
+                            {isReadOnly && (
+                              <div className="pt-2 border-t text-center">
+                                <span className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                                  <Eye className="h-3 w-3" />
+                                  Somente visualização
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </PopoverContent>
                       </Popover>
@@ -511,7 +528,8 @@ const Agenda = () => {
           ))}
         </div>
 
-        {/* Botões Agendar e Encaixe - Mobile */}
+        {/* Botões Agendar e Encaixe - Mobile (hidden in read-only) */}
+        {!isReadOnly && (
         <div className="flex gap-2 mb-3">
           <Button
             size="sm"
@@ -543,6 +561,17 @@ const Agenda = () => {
             Encaixe
           </Button>
         </div>
+        )}
+        
+        {/* Read-only indicator for mobile */}
+        {isReadOnly && (
+          <div className="mb-3 p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
+            <p className="text-xs text-center text-purple-700 dark:text-purple-300 flex items-center justify-center gap-1">
+              <Eye className="h-3.5 w-3.5" />
+              Modo somente leitura
+            </p>
+          </div>
+        )}
 
         {/* Filtro e Stats - Mobile */}
         <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
@@ -575,7 +604,8 @@ const Agenda = () => {
       <div className="hidden lg:flex lg:flex-row flex-1 gap-4 min-h-0">
         {/* Coluna Esquerda - Mini Calendário */}
         <div className="w-72 flex-shrink-0 flex flex-col gap-4 overflow-auto">
-          {/* Botão Agendar - Em cima do calendário */}
+          {/* Botão Agendar - Em cima do calendário (hidden in read-only) */}
+          {!isReadOnly ? (
           <Button
             size="lg"
             className="w-full gap-2 h-14 text-lg"
@@ -590,6 +620,14 @@ const Agenda = () => {
             <Plus className="h-5 w-5" />
             Agendar
           </Button>
+          ) : (
+            <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+              <p className="text-sm text-center text-purple-700 dark:text-purple-300 flex items-center justify-center gap-1.5">
+                <Eye className="h-4 w-4" />
+                Modo somente leitura
+              </p>
+            </div>
+          )}
 
           {/* Mini calendário */}
           <Card className="p-2">
