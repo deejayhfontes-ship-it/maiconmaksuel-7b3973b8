@@ -103,19 +103,13 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/gestao-rh/ponto',
   ],
   kiosk: [
-    // Limited kiosk routes
+    // Kiosk routes - LIMITED to client-facing display + ponto only
+    // NO full caixa access - kiosk is visualization only
     '/kiosk',
-    '/kiosk/caixa',
-    '/kiosk/caixa/comandas',
-    '/kiosk/agenda',
     '/kiosk/ponto',
-    '/kiosk/espelho-cliente',
-    '/caixa',
-    '/caixa/pdv',
-    '/caixa/comandas',
     '/ponto',
+    // Agenda is read-only in kiosk context (handled by component)
     '/agenda',
-    '/tablet/cliente',
   ],
   colaborador_agenda: [
     // Ultra-restricted: ONLY agenda read-only

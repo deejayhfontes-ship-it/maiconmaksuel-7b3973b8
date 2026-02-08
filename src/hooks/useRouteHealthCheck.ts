@@ -86,7 +86,7 @@ const APP_ROUTES = {
   kiosk: [
     '/kiosk',
     '/kiosk/ponto',
-  ],
+  ] as const,
 };
 
 /**
