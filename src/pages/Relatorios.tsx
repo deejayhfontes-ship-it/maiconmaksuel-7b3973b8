@@ -3881,23 +3881,23 @@ const Relatorios = () => {
       {/* Sidebar de categorias - Mobile: horizontal scroll, Desktop: sidebar */}
       <div className="lg:w-64 lg:flex-shrink-0">
         <Card className="lg:h-full">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Relatórios
-              </CardTitle>
-              <Button
-                variant={showHistory ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowHistory(!showHistory)}
-                className="gap-2"
-              >
-                <History className="h-4 w-4" />
-                <span className="hidden sm:inline">Histórico</span>
-              </Button>
-            </div>
-          </CardHeader>
+           <CardHeader className="pb-2">
+             <div className="flex items-center justify-between gap-3 flex-wrap">
+               <CardTitle className="text-lg flex items-center gap-2 min-w-0 truncate">
+                 <BarChart3 className="h-5 w-5 flex-shrink-0" />
+                 <span className="truncate">Relatórios</span>
+               </CardTitle>
+               <Button
+                 variant={showHistory ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => setShowHistory(!showHistory)}
+                 className="gap-2 flex-shrink-0 whitespace-nowrap"
+               >
+                 <History className="h-4 w-4" />
+                 <span className="hidden sm:inline">Histórico</span>
+               </Button>
+             </div>
+           </CardHeader>
           <CardContent className="p-2">
             {/* Mobile: horizontal scroll */}
             <div className="lg:hidden">
