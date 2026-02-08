@@ -572,6 +572,92 @@ export type Database = {
         }
         Relationships: []
       }
+      comissoes: {
+        Row: {
+          atendimento_id: string | null
+          atendimento_produto_id: string | null
+          atendimento_servico_id: string | null
+          created_at: string
+          data_pagamento: string | null
+          data_referencia: string
+          descricao: string | null
+          id: string
+          observacoes: string | null
+          percentual_comissao: number
+          profissional_id: string
+          status: string
+          tipo: string
+          updated_at: string
+          valor_base: number
+          valor_comissao: number
+        }
+        Insert: {
+          atendimento_id?: string | null
+          atendimento_produto_id?: string | null
+          atendimento_servico_id?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          data_referencia?: string
+          descricao?: string | null
+          id?: string
+          observacoes?: string | null
+          percentual_comissao?: number
+          profissional_id: string
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor_base?: number
+          valor_comissao?: number
+        }
+        Update: {
+          atendimento_id?: string | null
+          atendimento_produto_id?: string | null
+          atendimento_servico_id?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          data_referencia?: string
+          descricao?: string | null
+          id?: string
+          observacoes?: string | null
+          percentual_comissao?: number
+          profissional_id?: string
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor_base?: number
+          valor_comissao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissoes_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_atendimento_produto_id_fkey"
+            columns: ["atendimento_produto_id"]
+            isOneToOne: false
+            referencedRelation: "atendimento_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_atendimento_servico_id_fkey"
+            columns: ["atendimento_servico_id"]
+            isOneToOne: false
+            referencedRelation: "atendimento_servicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comunicacao_avaliacoes: {
         Row: {
           atendimento_id: string | null
@@ -1312,6 +1398,60 @@ export type Database = {
           lembrete_template?: string | null
           sistema_ativo?: boolean | null
           sistema_sons?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      configuracoes_rh: {
+        Row: {
+          arredondamento_comissao: string
+          created_at: string
+          dia_fechamento: number
+          fechamento_automatico: boolean
+          habilitar_banco_horas: boolean
+          habilitar_horas_extras: boolean
+          id: string
+          intervalo_minimo_minutos: number
+          jornada_padrao_horas: number
+          modo_kiosk_apenas_batida: boolean
+          percentual_hora_extra: number
+          regra_comissao_base: string
+          tolerancia_atraso_minutos: number
+          tolerancia_saida_minutos: number
+          updated_at: string
+        }
+        Insert: {
+          arredondamento_comissao?: string
+          created_at?: string
+          dia_fechamento?: number
+          fechamento_automatico?: boolean
+          habilitar_banco_horas?: boolean
+          habilitar_horas_extras?: boolean
+          id?: string
+          intervalo_minimo_minutos?: number
+          jornada_padrao_horas?: number
+          modo_kiosk_apenas_batida?: boolean
+          percentual_hora_extra?: number
+          regra_comissao_base?: string
+          tolerancia_atraso_minutos?: number
+          tolerancia_saida_minutos?: number
+          updated_at?: string
+        }
+        Update: {
+          arredondamento_comissao?: string
+          created_at?: string
+          dia_fechamento?: number
+          fechamento_automatico?: boolean
+          habilitar_banco_horas?: boolean
+          habilitar_horas_extras?: boolean
+          id?: string
+          intervalo_minimo_minutos?: number
+          jornada_padrao_horas?: number
+          modo_kiosk_apenas_batida?: boolean
+          percentual_hora_extra?: number
+          regra_comissao_base?: string
+          tolerancia_atraso_minutos?: number
+          tolerancia_saida_minutos?: number
           updated_at?: string
         }
         Relationships: []
@@ -2224,6 +2364,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      folha_ponto_mensal: {
+        Row: {
+          banco_horas_saldo: number
+          created_at: string
+          dias_trabalhados: number
+          fechada_em: string | null
+          fechada_por: string | null
+          id: string
+          mes_referencia: string
+          motivo_reabertura: string | null
+          observacoes: string | null
+          pessoa_id: string
+          reaberta_em: string | null
+          reaberta_por: string | null
+          status: string
+          tipo_pessoa: string
+          total_atrasos_minutos: number
+          total_faltas: number
+          total_horas_extras: number
+          total_horas_trabalhadas: number
+          updated_at: string
+        }
+        Insert: {
+          banco_horas_saldo?: number
+          created_at?: string
+          dias_trabalhados?: number
+          fechada_em?: string | null
+          fechada_por?: string | null
+          id?: string
+          mes_referencia: string
+          motivo_reabertura?: string | null
+          observacoes?: string | null
+          pessoa_id: string
+          reaberta_em?: string | null
+          reaberta_por?: string | null
+          status?: string
+          tipo_pessoa: string
+          total_atrasos_minutos?: number
+          total_faltas?: number
+          total_horas_extras?: number
+          total_horas_trabalhadas?: number
+          updated_at?: string
+        }
+        Update: {
+          banco_horas_saldo?: number
+          created_at?: string
+          dias_trabalhados?: number
+          fechada_em?: string | null
+          fechada_por?: string | null
+          id?: string
+          mes_referencia?: string
+          motivo_reabertura?: string | null
+          observacoes?: string | null
+          pessoa_id?: string
+          reaberta_em?: string | null
+          reaberta_por?: string | null
+          status?: string
+          tipo_pessoa?: string
+          total_atrasos_minutos?: number
+          total_faltas?: number
+          total_horas_extras?: number
+          total_horas_trabalhadas?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       folhas_pagamento: {
         Row: {
@@ -3376,6 +3582,60 @@ export type Database = {
           },
         ]
       }
+      pagamentos_rh: {
+        Row: {
+          comprovante_url: string | null
+          created_at: string
+          data_pagamento: string | null
+          descricao: string | null
+          id: string
+          mes_referencia: string | null
+          observacoes: string | null
+          pessoa_id: string
+          status: string
+          tipo_pagamento: string
+          tipo_pessoa: string
+          updated_at: string
+          valor_bruto: number
+          valor_descontos: number
+          valor_liquido: number
+        }
+        Insert: {
+          comprovante_url?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          descricao?: string | null
+          id?: string
+          mes_referencia?: string | null
+          observacoes?: string | null
+          pessoa_id: string
+          status?: string
+          tipo_pagamento: string
+          tipo_pessoa: string
+          updated_at?: string
+          valor_bruto?: number
+          valor_descontos?: number
+          valor_liquido?: number
+        }
+        Update: {
+          comprovante_url?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          descricao?: string | null
+          id?: string
+          mes_referencia?: string | null
+          observacoes?: string | null
+          pessoa_id?: string
+          status?: string
+          tipo_pagamento?: string
+          tipo_pessoa?: string
+          updated_at?: string
+          valor_bruto?: number
+          valor_descontos?: number
+          valor_liquido?: number
+        }
+        Relationships: []
+      }
       permissoes_modulos: {
         Row: {
           created_at: string
@@ -3907,6 +4167,66 @@ export type Database = {
           titulo?: string
         }
         Relationships: []
+      }
+      rh_relatorios: {
+        Row: {
+          created_at: string
+          criado_por: string | null
+          filtros: Json | null
+          funcionario_id: string | null
+          id: string
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          profissional_id: string | null
+          subtipo: string | null
+          tipo: string
+          totais: Json | null
+          url_pdf: string | null
+        }
+        Insert: {
+          created_at?: string
+          criado_por?: string | null
+          filtros?: Json | null
+          funcionario_id?: string | null
+          id?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          profissional_id?: string | null
+          subtipo?: string | null
+          tipo: string
+          totais?: Json | null
+          url_pdf?: string | null
+        }
+        Update: {
+          created_at?: string
+          criado_por?: string | null
+          filtros?: Json | null
+          funcionario_id?: string | null
+          id?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          profissional_id?: string | null
+          subtipo?: string | null
+          tipo?: string
+          totais?: Json | null
+          url_pdf?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_relatorios_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rh_relatorios_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "profissionais"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       servicos: {
         Row: {
