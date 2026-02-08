@@ -39,8 +39,6 @@ const AtalhosRapidos = () => {
     { Icon: Package, label: 'Produtos', link: '/produtos', gradient: 'linear-gradient(135deg, #30D158 0%, #00C853 100%)' },
     // Caixa - oculto para notebook
     { Icon: Wallet, label: 'Caixa', link: '/caixa', gradient: 'linear-gradient(135deg, #32ADE6 0%, #0A84FF 100%)', hideForNotebook: true },
-    // WhatsApp - aparece no lugar de Caixa para notebook
-    { Icon: MessageCircle, label: 'WhatsApp', link: '/whatsapp', gradient: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)', notebookOnly: true },
     { Icon: Target, label: 'Metas', link: '/configuracoes/metas', gradient: 'linear-gradient(135deg, #FF3B30 0%, #FF453A 100%)', hideForNotebook: true },
     { Icon: BarChart3, label: 'Relatórios', link: '/relatorios', gradient: 'linear-gradient(135deg, #AF52DE 0%, #BF5AF2 100%)', hideForNotebook: true },
     { Icon: FileText, label: 'Notas Fiscais', link: '/notas-fiscais', gradient: 'linear-gradient(135deg, #FF2D55 0%, #FF375F 100%)', hideForNotebook: true },
