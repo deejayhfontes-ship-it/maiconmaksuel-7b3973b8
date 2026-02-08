@@ -188,17 +188,25 @@ export function useClienteStats({
   }, [clientesComStats, diasAtividade]);
   
   // Clientes Inativos: última visita fora de N dias OU nunca visitou mas está cadastrado há mais de N dias
+  // CORRIGIDO: Usar mesma lógica de diasAusencia para consistência com "Clientes Ausentes"
   const clientesInativos = useMemo(() => {
     return clientesComStats.filter(c => {
-      // Se nunca visitou
-      if (!c.ultima_visita_calculada) {
-        // Considerar inativo se cadastrado há mais de N dias
+      // Se nunca visitou (sem histórico de atendimentos)
+      if (!c.ultima_visita_calculada && c.total_visitas_calculado === 0) {
+        // Considerar inativo se cadastrado há mais de diasAtividade dias
         const diasCadastro = differenceInDays(new Date(), new Date(c.created_at));
         return diasCadastro > diasAtividade;
       }
-      // Se visitou, verificar se está inativo
-      return c.dias_ausente > diasAtividade * 2; // 60 dias por padrão
-    }).sort((a, b) => b.dias_ausente - a.dias_ausente);
+      // Se já visitou alguma vez, verificar se está inativo (última visita > diasAtividade dias)
+      // Usar diasAtividade diretamente para consistência (não multiplicar por 2)
+      return c.dias_ausente > diasAtividade;
+    }).sort((a, b) => {
+      // Ordenar: primeiro os que nunca visitaram, depois por dias ausente
+      const aHasVisit = a.ultima_visita_calculada ? 1 : 0;
+      const bHasVisit = b.ultima_visita_calculada ? 1 : 0;
+      if (aHasVisit !== bHasVisit) return aHasVisit - bHasVisit; // sem visita primeiro
+      return b.dias_ausente - a.dias_ausente;
+    });
   }, [clientesComStats, diasAtividade]);
   
   // Clientes Ausentes: TEM histórico de visitas MAS última visita foi há X dias
