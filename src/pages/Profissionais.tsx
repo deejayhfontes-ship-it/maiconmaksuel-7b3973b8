@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { UserCheck, Plus, Search, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { UserCheck, Plus, Search, LayoutGrid, Table as TableIcon, Bug, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -20,6 +20,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -32,7 +38,15 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 
 const Profissionais = () => {
-  const { profissionais, loading, deleteProfissional, fetchProfissionais } = useProfissionais();
+  const { 
+    profissionais, 
+    loading, 
+    deleteProfissional, 
+    fetchProfissionais,
+    forceReload,
+    clearLocalCache,
+    debugInfo 
+  } = useProfissionais();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [perfServicosFilter, setPerfServicosFilter] = useState("todos");
@@ -42,6 +56,7 @@ const Profissionais = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedProfissional, setSelectedProfissional] = useState<ProfissionalComMetas | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -162,6 +177,93 @@ const Profissionais = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Debug Panel (Dev Only) */}
+      <Collapsible open={showDebug} onOpenChange={setShowDebug}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Bug className="h-4 w-4" />
+            {showDebug ? "Ocultar Debug" : "Mostrar Debug"}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <Card className="mt-2 border-yellow-500/50 bg-yellow-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Bug className="h-4 w-4" />
+                Diagnóstico - Profissionais
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <span className="text-muted-foreground">Remoto (Supabase):</span>
+                  <Badge variant={debugInfo.remoteCount > 0 ? "default" : "destructive"} className="ml-2">
+                    {debugInfo.remoteCount}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Local (IndexedDB):</span>
+                  <Badge variant="outline" className="ml-2">
+                    {debugInfo.localCount}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">HTTP Status:</span>
+                  <Badge 
+                    variant={debugInfo.httpStatus === 200 ? "default" : "destructive"} 
+                    className="ml-2"
+                  >
+                    {debugInfo.httpStatus || "N/A"}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Exibindo:</span>
+                  <Badge variant="secondary" className="ml-2">
+                    {profissionais.length}
+                  </Badge>
+                </div>
+              </div>
+              
+              {debugInfo.error && (
+                <div className="p-2 bg-destructive/10 rounded text-destructive text-xs">
+                  <strong>Erro:</strong> {debugInfo.error}
+                </div>
+              )}
+              
+              <div className="text-xs text-muted-foreground font-mono bg-muted p-2 rounded">
+                <strong>Query:</strong> {debugInfo.lastQuery || "N/A"}
+                <br />
+                <strong>Última atualização:</strong> {debugInfo.timestamp ? new Date(debugInfo.timestamp).toLocaleString('pt-BR') : "N/A"}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => forceReload()}
+                  className="gap-1"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Forçar Recarregar (ignorar cache)
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => {
+                    clearLocalCache();
+                    toast({ title: "Cache local limpo", description: "O cache de profissionais foi removido." });
+                  }}
+                  className="gap-1"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Limpar Cache Local
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
