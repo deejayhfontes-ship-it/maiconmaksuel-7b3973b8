@@ -4034,7 +4034,7 @@ export type Database = {
         | "financeiro"
         | "sistema"
       nivel_acesso: "admin" | "gerente" | "operador"
-      pin_role: "admin" | "notebook" | "kiosk"
+      pin_role: "admin" | "notebook" | "kiosk" | "colaborador_agenda"
       report_category:
         | "vendas"
         | "clientes"
@@ -4182,7 +4182,7 @@ export const Constants = {
         "sistema",
       ],
       nivel_acesso: ["admin", "gerente", "operador"],
-      pin_role: ["admin", "notebook", "kiosk"],
+      pin_role: ["admin", "notebook", "kiosk", "colaborador_agenda"],
       report_category: [
         "vendas",
         "clientes",

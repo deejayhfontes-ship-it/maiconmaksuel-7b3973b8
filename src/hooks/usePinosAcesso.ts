@@ -82,9 +82,9 @@ export function usePinosAcesso() {
 
       // If no PINs exist, create all defaults
       if (!existing || existing.length === 0) {
-        const { error: insertError } = await supabase
-          .from('pinos_acesso')
-          .insert(defaultPins);
+      const { error: insertError } = await supabase
+        .from('pinos_acesso')
+        .insert(defaultPins as any);
 
         if (insertError) throw insertError;
         
@@ -100,7 +100,7 @@ export function usePinosAcesso() {
       if (missingPins.length > 0) {
         const { error: insertError } = await supabase
           .from('pinos_acesso')
-          .insert(missingPins);
+          .insert(missingPins as any);
 
         if (!insertError) {
           console.log('[PINs] Created missing default PINs for roles:', missingPins.map(p => p.role).join(', '));
@@ -155,7 +155,7 @@ export function usePinosAcesso() {
 
       const { error } = await supabase
         .from('pinos_acesso')
-        .insert([{ ...data, ativo: true }]);
+        .insert([{ ...data, ativo: true }] as any);
 
       if (error) throw error;
 
@@ -190,7 +190,7 @@ export function usePinosAcesso() {
 
       const { error } = await supabase
         .from('pinos_acesso')
-        .update({ ...data, updated_at: new Date().toISOString() })
+        .update({ ...data, updated_at: new Date().toISOString() } as any)
         .eq('id', id);
 
       if (error) throw error;

@@ -94,6 +94,12 @@ const roleConfig: Record<PinRole, { label: string; icon: React.ReactNode; color:
     color: 'bg-orange-500 text-white',
     description: 'Caixa, ponto eletrônico e mini agenda',
   },
+  colaborador_agenda: {
+    label: 'Agenda Colaboradores',
+    icon: <Eye className="h-4 w-4" />,
+    color: 'bg-purple-500 text-white',
+    description: 'Agenda somente leitura (celular)',
+  },
 };
 
 export default function ControleAcesso() {
