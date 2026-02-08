@@ -1,10 +1,10 @@
 /**
- * Kiosk Home Page - Client-Facing Display
+ * Kiosk Home Page - Modern Premium Client-Facing Display
  * 
  * Three states:
- * 1. IDLE: Logo + branding + clock + ponto button
- * 2. COMANDA CONFIRMATION: Read-only summary after comanda closure
- * 3. THANK YOU: Brief message after payment
+ * 1. IDLE: Elegant branding with logo, clock, and ponto button
+ * 2. COMANDA CONFIRMATION: Modern card-based summary after closure
+ * 3. THANK YOU: Premium gratitude message with salon branding
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -16,11 +16,13 @@ import {
   Check, 
   Fingerprint, 
   Clock,
-  Monitor,
   QrCode,
   CreditCard,
   Banknote,
-  Receipt
+  Receipt,
+  Sparkles,
+  Heart,
+  AlertCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -57,8 +59,13 @@ export default function KioskHome() {
   const [comanda, setComanda] = useState<ComandaData | null>(null);
   const autoReturnTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-dismiss configuration (configurable in settings)
-  const autoDismissSeconds = 8;
+  // Get configurable timeouts from settings with defaults
+  const autoDismissSeconds = 10;
+  const thankYouDuration = 6000;
+
+  // Get logo URL - prioritize kiosk settings, fallback to salon
+  const logoUrl = settings.logo_url || salonData?.logo_url;
+  const salonName = salonData?.nome_salao || "Salão de Beleza";
 
   // Update time every second
   useEffect(() => {
@@ -80,14 +87,13 @@ export default function KioskHome() {
       })
       .on('broadcast', { event: 'pagamento-confirmado' }, () => {
         setKioskState('thankyou');
-        // Auto-return to idle after delay
         if (autoReturnTimeoutRef.current) {
           clearTimeout(autoReturnTimeoutRef.current);
         }
         autoReturnTimeoutRef.current = setTimeout(() => {
           setKioskState('idle');
           setComanda(null);
-        }, 5000);
+        }, thankYouDuration);
       })
       .subscribe();
 
@@ -97,7 +103,7 @@ export default function KioskHome() {
         clearTimeout(autoReturnTimeoutRef.current);
       }
     };
-  }, []);
+  }, [thankYouDuration]);
 
   // Auto-dismiss comanda screen after configurable time
   useEffect(() => {
@@ -110,7 +116,7 @@ export default function KioskHome() {
         setTimeout(() => {
           setKioskState('idle');
           setComanda(null);
-        }, 5000);
+        }, thankYouDuration);
       }, autoDismissSeconds * 1000);
     }
 
@@ -119,7 +125,7 @@ export default function KioskHome() {
         clearTimeout(autoReturnTimeoutRef.current);
       }
     };
-  }, [kioskState]);
+  }, [kioskState, thankYouDuration]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -139,114 +145,105 @@ export default function KioskHome() {
   const getPaymentInfo = (forma: string) => {
     switch (forma?.toLowerCase()) {
       case 'pix':
-        return { icon: QrCode, label: 'PIX', bgClass: 'bg-teal-500/10', textClass: 'text-teal-500' };
+        return { icon: QrCode, label: 'PIX', color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200' };
       case 'dinheiro':
-        return { icon: Banknote, label: 'Dinheiro', bgClass: 'bg-green-500/10', textClass: 'text-green-500' };
+        return { icon: Banknote, label: 'Dinheiro', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
       case 'credito':
       case 'crédito':
-        return { icon: CreditCard, label: 'Cartão de Crédito', bgClass: 'bg-blue-500/10', textClass: 'text-blue-500' };
+        return { icon: CreditCard, label: 'Cartão de Crédito', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
       case 'debito':
       case 'débito':
-        return { icon: CreditCard, label: 'Cartão de Débito', bgClass: 'bg-purple-500/10', textClass: 'text-purple-500' };
+        return { icon: CreditCard, label: 'Cartão de Débito', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' };
       default:
-        return { icon: Receipt, label: forma || 'Pagamento', bgClass: 'bg-muted', textClass: 'text-muted-foreground' };
+        return { icon: Receipt, label: forma || 'Pagamento', color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
     }
   };
 
-  // Logo component with animation
-  const LogoDisplay = () => {
-    const logoUrl = settings.logo_url || salonData?.logo_url;
-    
-    return (
-      <div className="relative">
-        {/* Glow effect */}
-        <div 
-          className="absolute inset-0 rounded-3xl bg-primary/20 blur-2xl animate-pulse"
-          style={{ animationDuration: '3s' }}
-        />
-        
-        <div 
-          className="relative"
-          style={{
-            animation: settings.logo_animacao === 'pulse' 
-              ? 'pulse 2s ease-in-out infinite' 
-              : settings.logo_animacao === 'fade' 
-              ? 'fadeInUp 1s ease-out forwards'
-              : 'floating 6s ease-in-out infinite'
-          }}
-        >
-          {logoUrl ? (
-            <img 
-              src={logoUrl} 
-              alt={salonData?.nome_salao || "Salão"}
-              className={cn(
-                "h-48 w-auto rounded-3xl shadow-2xl border-4 border-white/20 object-contain",
-                settings.tipografia_grande && "h-56"
-              )}
-            />
-          ) : (
-            <div className={cn(
-              "h-48 w-48 rounded-3xl bg-primary/10 flex items-center justify-center shadow-2xl border-4 border-white/20",
-              settings.tipografia_grande && "h-56 w-56"
-            )}>
-              <Monitor className="h-24 w-24 text-primary" />
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  // Logo animation class based on settings
+  const getLogoAnimationClass = () => {
+    switch (settings.logo_animacao) {
+      case 'pulse': return 'animate-pulse';
+      case 'fade': return 'animate-fade-in';
+      default: return '';
+    }
   };
 
-  // THANK YOU STATE
+  // THANK YOU STATE - Modern premium design
   if (kioskState === 'thankyou') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <div className="text-center animate-fade-in">
-          <div className="w-32 h-32 mx-auto mb-8 bg-green-500/10 rounded-full flex items-center justify-center animate-scale-in">
-            <Check className="h-16 w-16 text-green-500" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-primary/5 to-white p-8">
+        <div className="text-center animate-fade-in max-w-lg">
+          {/* Success Icon with animation */}
+          <div className="relative mb-10">
+            <div className="absolute inset-0 w-36 h-36 mx-auto rounded-full bg-green-100 animate-ping opacity-20" />
+            <div className="relative w-36 h-36 mx-auto rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-2xl shadow-green-200">
+              <Check className="h-20 w-20 text-white" strokeWidth={2.5} />
+            </div>
           </div>
+          
+          {/* Thank you message */}
           <h1 className={cn(
-            "font-bold text-foreground mb-4",
-            settings.tipografia_grande ? "text-6xl" : "text-5xl"
+            "font-bold text-gray-900 mb-4 leading-tight",
+            settings.tipografia_grande ? "text-5xl" : "text-4xl"
           )}>
             Obrigado pela preferência!
           </h1>
           <p className={cn(
-            "text-muted-foreground",
-            settings.tipografia_grande ? "text-3xl" : "text-2xl"
+            "text-gray-500 mb-10",
+            settings.tipografia_grande ? "text-2xl" : "text-xl"
           )}>
-            Volte sempre!
+            Volte sempre ao {salonName}
           </p>
+          
+          {/* Logo */}
+          {logoUrl && (
+            <img 
+              src={logoUrl} 
+              alt={salonName}
+              className="h-16 w-auto mx-auto object-contain opacity-60"
+            />
+          )}
+          
+          {/* Hearts decoration */}
+          <div className="mt-8 flex justify-center gap-3 opacity-40">
+            <Heart className="h-5 w-5 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '0ms' }} />
+            <Heart className="h-5 w-5 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '200ms' }} />
+            <Heart className="h-5 w-5 text-pink-400 animate-pulse" fill="currentColor" style={{ animationDelay: '400ms' }} />
+          </div>
         </div>
       </div>
     );
   }
 
-  // COMANDA CONFIRMATION STATE
+  // COMANDA CONFIRMATION STATE - Modern card layout
   if (kioskState === 'comanda' && comanda) {
     const paymentInfo = comanda.formaPagamento ? getPaymentInfo(comanda.formaPagamento) : null;
     const PaymentIcon = paymentInfo?.icon;
 
     return (
-      <div className="min-h-screen flex flex-col p-6 select-none">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-gray-50 p-6 select-none">
         {/* Header with logo and time */}
-        <header className="flex items-center justify-between mb-8">
+        <header className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
           <div className="flex items-center gap-4">
-            {(settings.logo_url || salonData?.logo_url) && (
+            {logoUrl ? (
               <img 
-                src={settings.logo_url || salonData?.logo_url!} 
-                alt="Logo" 
-                className="h-14 w-auto rounded-lg shadow-md object-contain"
+                src={logoUrl} 
+                alt={salonName}
+                className="h-12 w-auto rounded-xl shadow-sm object-contain"
               />
+            ) : (
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-6 w-6 text-primary" />
+              </div>
             )}
             <div>
               <h1 className={cn(
-                "font-semibold text-foreground",
+                "font-bold text-gray-900",
                 settings.tipografia_grande ? "text-xl" : "text-lg"
               )}>
-                {salonData?.nome_salao || "Salão de Beleza"}
+                {salonName}
               </h1>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-gray-400">
                 {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </p>
             </div>
@@ -261,50 +258,60 @@ export default function KioskHome() {
 
         {/* Main Content */}
         <main className="flex-1 flex gap-6 animate-fade-in">
-          {/* Left - Services Summary */}
-          <div className="flex-1 bg-card rounded-2xl shadow-lg border overflow-hidden flex flex-col">
-            <div className="p-6 bg-primary/5 border-b">
-              <h2 className={cn(
-                "font-bold text-foreground",
-                settings.tipografia_grande ? "text-2xl" : "text-xl"
-              )}>
-                Resumo do Atendimento
-              </h2>
-              <p className="text-muted-foreground mt-1">
-                Comanda #{comanda.numero} • {comanda.cliente}
-              </p>
+          {/* Left - Services Summary Card */}
+          <div className="flex-1 bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden flex flex-col">
+            {/* Card Header */}
+            <div className="p-6 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <Receipt className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className={cn(
+                    "font-bold text-gray-900",
+                    settings.tipografia_grande ? "text-2xl" : "text-xl"
+                  )}>
+                    Resumo do Atendimento
+                  </h2>
+                  <p className="text-gray-500 text-sm">
+                    Comanda #{comanda.numero} • {comanda.cliente}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Items List */}
             <div className="flex-1 p-6 overflow-auto">
               <div className="space-y-3">
-                {comanda.itens.map((item) => (
+                {comanda.itens.map((item, index) => (
                   <div 
                     key={item.id}
-                    className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl"
+                    className="flex items-center justify-between p-4 bg-gray-50/80 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-colors"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="flex-1">
                       <p className={cn(
-                        "font-medium text-foreground",
+                        "font-semibold text-gray-900",
                         settings.tipografia_grande ? "text-xl" : "text-lg"
                       )}>
                         {item.nome}
                       </p>
                       {item.profissional && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                           com {item.profissional}
                         </p>
                       )}
                     </div>
                     <div className="text-right">
                       <p className={cn(
-                        "font-semibold text-foreground",
+                        "font-bold text-gray-900",
                         settings.tipografia_grande ? "text-xl" : "text-lg"
                       )}>
                         {formatCurrency(item.valorUnitario * item.quantidade)}
                       </p>
                       {item.quantidade > 1 && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-gray-400">
                           {item.quantidade}x {formatCurrency(item.valorUnitario)}
                         </p>
                       )}
@@ -315,28 +322,31 @@ export default function KioskHome() {
             </div>
 
             {/* Total Section */}
-            <div className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 border-t">
+            <div className="p-6 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-t border-gray-100">
               {comanda.desconto > 0 && (
                 <>
-                  <div className="flex justify-between mb-2 text-muted-foreground">
+                  <div className="flex justify-between mb-2 text-gray-500">
                     <span>Subtotal</span>
                     <span>{formatCurrency(comanda.subtotal)}</span>
                   </div>
-                  <div className="flex justify-between mb-3 text-green-600">
-                    <span>Desconto</span>
+                  <div className="flex justify-between mb-4 text-green-600">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="h-4 w-4" />
+                      Desconto
+                    </span>
                     <span>-{formatCurrency(comanda.desconto)}</span>
                   </div>
                 </>
               )}
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pt-3 border-t border-primary/10">
                 <span className={cn(
-                  "font-bold text-foreground",
-                  settings.tipografia_grande ? "text-3xl" : "text-2xl"
+                  "font-bold text-gray-900",
+                  settings.tipografia_grande ? "text-2xl" : "text-xl"
                 )}>
                   TOTAL
                 </span>
                 <span className={cn(
-                  "font-bold text-primary",
+                  "font-black text-primary",
                   settings.tipografia_grande ? "text-5xl" : "text-4xl"
                 )}>
                   {formatCurrency(comanda.total)}
@@ -345,23 +355,24 @@ export default function KioskHome() {
             </div>
           </div>
 
-          {/* Right - Payment Info */}
+          {/* Right - Payment Info & Branding */}
           <div className="w-80 flex flex-col gap-6">
-            {/* Payment Method */}
+            {/* Payment Method Card */}
             {paymentInfo && PaymentIcon && (
-              <div className="bg-card rounded-2xl shadow-lg border p-6">
-                <h3 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
+              <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 p-6">
+                <h3 className="text-xs font-semibold text-gray-400 mb-4 uppercase tracking-wider">
                   Forma de Pagamento
                 </h3>
                 <div className={cn(
-                  "p-6 rounded-xl flex flex-col items-center",
-                  paymentInfo.bgClass
+                  "p-6 rounded-2xl flex flex-col items-center border",
+                  paymentInfo.bg,
+                  paymentInfo.border
                 )}>
-                  <PaymentIcon className={cn("h-12 w-12 mb-3", paymentInfo.textClass)} />
+                  <PaymentIcon className={cn("h-14 w-14 mb-3", paymentInfo.color)} />
                   <p className={cn(
                     "font-bold text-center",
-                    paymentInfo.textClass,
-                    settings.tipografia_grande ? "text-2xl" : "text-xl"
+                    paymentInfo.color,
+                    settings.tipografia_grande ? "text-xl" : "text-lg"
                   )}>
                     {paymentInfo.label}
                   </p>
@@ -369,14 +380,19 @@ export default function KioskHome() {
               </div>
             )}
 
-            {/* Logo */}
-            <div className="flex-1 flex items-center justify-center">
-              {(settings.logo_url || salonData?.logo_url) && (
+            {/* Salon Branding */}
+            <div className="flex-1 bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 p-6 flex flex-col items-center justify-center">
+              {logoUrl ? (
                 <img 
-                  src={settings.logo_url || salonData?.logo_url!} 
-                  alt="Logo" 
-                  className="max-h-32 w-auto opacity-50 grayscale"
+                  src={logoUrl} 
+                  alt={salonName}
+                  className="max-h-24 w-auto opacity-30 grayscale"
                 />
+              ) : (
+                <div className="text-center opacity-30">
+                  <Sparkles className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">{salonName}</p>
+                </div>
               )}
             </div>
           </div>
@@ -385,45 +401,79 @@ export default function KioskHome() {
     );
   }
 
-  // IDLE STATE - Default view with logo, clock, and ponto button
+  // IDLE STATE - Modern premium design
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center select-none overflow-hidden relative">
-      {/* Animated background elements */}
+    <div className={cn(
+      "min-h-screen flex flex-col items-center justify-center select-none overflow-hidden relative",
+      "bg-gradient-to-br from-white via-gray-50 to-white"
+    )}>
+      {/* Subtle animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div 
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse" 
-          style={{ animationDuration: '4s' }} 
+          className="absolute top-1/4 -left-20 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl"
+          style={{ animation: 'float 20s ease-in-out infinite' }}
         />
         <div 
-          className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl animate-pulse" 
-          style={{ animationDuration: '6s', animationDelay: '2s' }} 
+          className="absolute bottom-1/4 -right-20 w-[400px] h-[400px] bg-primary/3 rounded-full blur-3xl"
+          style={{ animation: 'float 25s ease-in-out infinite', animationDelay: '-10s' }}
+        />
+        <div 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gray-100/50 rounded-full blur-3xl"
         />
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center">
-        {/* Logo */}
-        <div className="mb-8">
-          <LogoDisplay />
+      <div className="relative z-10 flex flex-col items-center px-8">
+        {/* Logo Section */}
+        <div className="mb-10">
+          {logoUrl ? (
+            <div className="relative">
+              {/* Glow effect behind logo */}
+              <div className="absolute inset-0 rounded-3xl bg-primary/10 blur-2xl scale-110" />
+              <img 
+                src={logoUrl} 
+                alt={salonName}
+                className={cn(
+                  "relative h-40 w-auto rounded-3xl shadow-2xl shadow-gray-300/50 object-contain bg-white/50 backdrop-blur-sm p-3",
+                  settings.tipografia_grande && "h-48",
+                  getLogoAnimationClass()
+                )}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <div className={cn(
+                "rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shadow-2xl shadow-primary/20 mb-4",
+                settings.tipografia_grande ? "h-48 w-48" : "h-40 w-40"
+              )}>
+                <Sparkles className={cn(
+                  "text-primary",
+                  settings.tipografia_grande ? "h-24 w-24" : "h-20 w-20"
+                )} />
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 rounded-full border border-yellow-200">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <span className="text-xs text-yellow-700">Logo do salão não configurada</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Salon name */}
         <h1 
           className={cn(
-            "font-bold text-foreground mb-2 opacity-0",
+            "font-black text-gray-900 mb-2 text-center leading-tight",
             settings.tipografia_grande ? "text-5xl" : "text-4xl"
           )}
-          style={{ animation: 'fadeInUp 1s ease-out 0.5s forwards' }}
         >
-          {salonData?.nome_salao || "Salão de Beleza"}
+          {salonName}
         </h1>
-        {salonData?.nome_fantasia && (
+        {salonData?.nome_fantasia && salonData.nome_fantasia !== salonName && (
           <p 
             className={cn(
-              "text-muted-foreground mb-12 opacity-0",
-              settings.tipografia_grande ? "text-2xl" : "text-xl"
+              "text-gray-500 mb-8 text-center",
+              settings.tipografia_grande ? "text-xl" : "text-lg"
             )}
-            style={{ animation: 'fadeInUp 1s ease-out 0.7s forwards' }}
           >
             {salonData.nome_fantasia}
           </p>
@@ -432,12 +482,11 @@ export default function KioskHome() {
         {/* Clock */}
         <div 
           className={cn(
-            "font-bold text-primary tabular-nums mb-16 opacity-0",
-            settings.tipografia_grande ? "text-7xl" : "text-6xl"
+            "font-black text-primary tabular-nums mb-16 tracking-tight",
+            settings.tipografia_grande ? "text-8xl" : "text-7xl"
           )}
           style={{ 
-            animation: 'fadeInUp 1s ease-out 0.9s forwards',
-            textShadow: '0 4px 20px rgba(var(--primary), 0.3)'
+            textShadow: '0 4px 30px rgba(var(--primary), 0.15)'
           }}
         >
           {formatTime(currentTime)}
@@ -448,40 +497,45 @@ export default function KioskHome() {
           <button
             onClick={() => navigate('/kiosk/ponto')}
             className={cn(
-              "group flex flex-col items-center gap-3 p-6 rounded-2xl",
-              "transition-all duration-500 hover:bg-card/50 hover:shadow-xl",
-              "opacity-0 touch-manipulation active:scale-95",
-              settings.alvos_touch_grandes && "p-8"
+              "group flex items-center gap-4 px-8 py-5 rounded-2xl",
+              "bg-white shadow-xl shadow-gray-200/50 border border-gray-100",
+              "transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1",
+              "active:scale-95 touch-manipulation",
+              settings.alvos_touch_grandes && "px-10 py-6"
             )}
-            style={{ animation: 'fadeInUp 1s ease-out 1.1s forwards' }}
           >
             <div 
               className={cn(
-                "rounded-full bg-primary/10 flex items-center justify-center",
+                "rounded-xl bg-primary/10 flex items-center justify-center",
                 "transition-all duration-300 group-hover:bg-primary group-hover:scale-110",
-                settings.alvos_touch_grandes ? "w-20 h-20" : "w-16 h-16"
+                settings.alvos_touch_grandes ? "w-16 h-16" : "w-14 h-14"
               )}
             >
               <Fingerprint className={cn(
-                "text-primary transition-colors group-hover:text-primary-foreground",
-                settings.alvos_touch_grandes ? "h-10 w-10" : "h-8 w-8"
+                "text-primary transition-colors group-hover:text-white",
+                settings.alvos_touch_grandes ? "h-8 w-8" : "h-7 w-7"
               )} />
             </div>
-            <span className={cn(
-              "text-muted-foreground font-medium transition-colors group-hover:text-foreground",
-              settings.tipografia_grande ? "text-lg" : "text-sm"
-            )}>
-              Registrar Ponto
-            </span>
+            <div className="text-left">
+              <p className={cn(
+                "font-bold text-gray-900",
+                settings.tipografia_grande ? "text-xl" : "text-lg"
+              )}>
+                Registrar Ponto
+              </p>
+              <p className="text-sm text-gray-500">
+                Entrada, saída e intervalos
+              </p>
+            </div>
           </button>
         )}
       </div>
 
-      {/* Subtle footer */}
-      <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
-          <Clock className="h-3 w-3" />
-          <span>
+      {/* Footer with date */}
+      <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center">
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm border border-gray-100">
+          <Clock className="h-4 w-4 text-gray-400" />
+          <span className="text-sm text-gray-500">
             {format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </span>
         </div>
@@ -489,19 +543,19 @@ export default function KioskHome() {
 
       {/* CSS Animations */}
       <style>{`
-        @keyframes floating {
+        @keyframes float {
           0%, 100% {
-            transform: translateY(0px);
+            transform: translateY(0) scale(1);
           }
           50% {
-            transform: translateY(-10px);
+            transform: translateY(-20px) scale(1.05);
           }
         }
         
-        @keyframes fadeInUp {
+        @keyframes fade-in {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(10px);
           }
           to {
             opacity: 1;
@@ -509,19 +563,8 @@ export default function KioskHome() {
           }
         }
         
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.8);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        
-        .animate-scale-in {
-          animation: scale-in 0.5s ease-out forwards;
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out forwards;
         }
       `}</style>
     </div>
