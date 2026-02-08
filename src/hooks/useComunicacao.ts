@@ -126,11 +126,26 @@ export function useComunicacao() {
   };
 
   const fetchCreditos = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("comunicacao_creditos")
       .select("*")
-      .single();
-    if (data) setCreditos(data);
+      .maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error("Erro ao buscar créditos:", error);
+    }
+    
+    if (data) {
+      setCreditos(data);
+    } else {
+      // Fallback para valores padrão
+      setCreditos({
+        id: '',
+        saldo_creditos: 0,
+        alerta_creditos_minimo: 100,
+        custo_por_mensagem: 0.15,
+      });
+    }
   };
 
   const fetchLembretes = async () => {
@@ -159,12 +174,32 @@ export function useComunicacao() {
 
   const fetchEstatisticasHoje = async () => {
     const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("comunicacao_estatisticas")
       .select("*")
       .eq("data", today)
-      .single();
-    if (data) setEstatisticasHoje(data);
+      .maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error("Erro ao buscar estatísticas:", error);
+    }
+    
+    // Fallback para valores padrão se não existir registro para hoje
+    if (data) {
+      setEstatisticasHoje(data);
+    } else {
+      setEstatisticasHoje({
+        id: '',
+        data: today,
+        mensagens_enviadas: 0,
+        mensagens_entregues: 0,
+        mensagens_lidas: 0,
+        mensagens_respondidas: 0,
+        agendamentos_confirmados: 0,
+        agendamentos_cancelados: 0,
+        falhas_envio: 0,
+      });
+    }
   };
 
   const fetchTemplatesProntos = async () => {
@@ -176,11 +211,31 @@ export function useComunicacao() {
   };
 
   const fetchConfigAvancadas = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("comunicacao_config_avancadas")
       .select("*")
-      .single();
-    if (data) setConfigAvancadas(data);
+      .maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error("Erro ao buscar config avançadas:", error);
+    }
+    
+    if (data) {
+      setConfigAvancadas(data);
+    } else {
+      // Fallback para valores padrão
+      setConfigAvancadas({
+        id: '',
+        horario_silencio_inicio: '20:00:00',
+        horario_silencio_fim: '08:00:00',
+        limite_diario_mensagens: 500,
+        nome_remetente: null,
+        foto_perfil_url: null,
+        opt_out_keyword: 'SAIR',
+        fallback_sms: false,
+        sms_api_key: null,
+      });
+    }
   };
 
   const fetchAvaliacoes = async () => {

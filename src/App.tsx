@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { PinAuthProvider } from "@/contexts/PinAuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { SalonSettingsProvider } from "@/contexts/SalonSettingsContext";
+import { NetworkDebugProvider } from "@/contexts/NetworkDebugContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { UpdateNotification } from "@/components/UpdateNotification";
@@ -67,9 +68,10 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="beautypro-theme">
       <OfflineProvider>
-        <PinAuthProvider>
-          <SalonSettingsProvider>
-            <TooltipProvider>
+        <NetworkDebugProvider>
+          <PinAuthProvider>
+            <SalonSettingsProvider>
+              <TooltipProvider>
             <UpdateNotification />
             <Toaster />
             <Sonner position="top-right" expand closeButton richColors />
@@ -154,9 +156,10 @@ const App = () => (
             </TooltipProvider>
           </SalonSettingsProvider>
         </PinAuthProvider>
-      </OfflineProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+      </NetworkDebugProvider>
+    </OfflineProvider>
+  </ThemeProvider>
+</QueryClientProvider>
 );
 
 export default App;
