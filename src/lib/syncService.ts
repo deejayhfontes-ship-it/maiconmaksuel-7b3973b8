@@ -147,7 +147,15 @@ export async function syncPendingOperations(): Promise<void> {
   syncInProgress = true;
   
   try {
-    const queue = await getSyncQueue();
+    let queue: SyncOperation[];
+    try {
+      queue = await getSyncQueue();
+    } catch (dbError) {
+      // Handle IndexedDB connection closed error gracefully
+      console.warn('[Sync] IndexedDB não disponível, pulando sincronização:', dbError);
+      syncInProgress = false;
+      return;
+    }
     
     if (queue.length === 0) {
       syncInProgress = false;
@@ -163,7 +171,11 @@ export async function syncPendingOperations(): Promise<void> {
       const success = await syncOperation(operation);
       
       if (success) {
-        await removeSyncOperation(operation.id);
+        try {
+          await removeSyncOperation(operation.id);
+        } catch {
+          // Ignore remove errors
+        }
         successCount++;
       } else {
         // Increment retry count
@@ -172,10 +184,18 @@ export async function syncPendingOperations(): Promise<void> {
         if (operation.retries >= 5) {
           // Max retries reached, remove from queue and log error
           console.error(`[Sync] Operação falhou após 5 tentativas:`, operation);
-          await removeSyncOperation(operation.id);
+          try {
+            await removeSyncOperation(operation.id);
+          } catch {
+            // Ignore remove errors
+          }
           failCount++;
         } else {
-          await updateSyncOperation(operation);
+          try {
+            await updateSyncOperation(operation);
+          } catch {
+            // Ignore update errors
+          }
         }
       }
     }

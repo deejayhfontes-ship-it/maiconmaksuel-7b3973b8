@@ -66,11 +66,16 @@ function useWhatsAppStatus() {
   }, []);
 
   const fetchConfig = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("configuracoes_whatsapp")
       .select("api_url, api_token, sessao_ativa")
-      .single();
-    setConfig(data);
+      .maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error("Erro ao buscar config WhatsApp:", error);
+    }
+    
+    setConfig(data || { api_url: null, api_token: null, sessao_ativa: false });
     setLoading(false);
   };
 
