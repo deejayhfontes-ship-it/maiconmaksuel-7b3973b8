@@ -59,6 +59,7 @@ import CaixaPDV from "./pages/CaixaPDV";
 import MapaSistema from "./pages/MapaSistema";
 import KioskHome from "./pages/KioskHome";
 import KioskLayout from "./components/layout/KioskLayout";
+import ColaboradorLayout from "./components/layout/ColaboradorLayout";
 import AtendimentoWhatsApp from "./pages/AtendimentoWhatsApp";
 import WhatsAppModule from "./pages/WhatsAppModule";
 import CentroAlertas from "./pages/CentroAlertas";
@@ -150,6 +151,15 @@ const App = () => (
               }>
                 <Route path="/kiosk" element={<KioskHome />} />
                 <Route path="/kiosk/ponto" element={<PontoEletronico />} />
+              </Route>
+
+              {/* Colaborador Agenda routes - Ultra-restricted read-only */}
+              <Route element={
+                <ProtectedRoute>
+                  <ColaboradorLayout />
+                </ProtectedRoute>
+              }>
+                <Route path="/colaborador/agenda" element={<Agenda />} />
               </Route>
               
                 <Route path="*" element={<NotFound />} />
