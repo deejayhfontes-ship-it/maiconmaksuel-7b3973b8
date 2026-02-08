@@ -7,7 +7,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { supabase } from '@/integrations/supabase/client';
 import { setDeviceMode, getDeviceModeSetting } from '@/lib/deviceType';
 
-export type PinRole = 'admin' | 'notebook' | 'kiosk';
+export type PinRole = 'admin' | 'notebook' | 'kiosk' | 'colaborador_agenda';
 
 export interface PinSession {
   id: string;
@@ -114,6 +114,10 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/agenda',
     '/tablet/cliente',
   ],
+  colaborador_agenda: [
+    // Ultra-restricted: ONLY agenda read-only
+    '/agenda',
+  ],
 };
 
 // Default landing page by role
@@ -121,6 +125,7 @@ export const DEFAULT_ROUTES: Record<PinRole, string> = {
   admin: '/dashboard',
   notebook: '/agenda',
   kiosk: '/caixa',
+  colaborador_agenda: '/agenda',
 };
 
 interface PinAuthContextType {
