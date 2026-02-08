@@ -31,6 +31,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { usePinAuth } from "@/contexts/PinAuthContext";
 
 interface Agendamento {
   id: string;
@@ -80,6 +81,10 @@ const getGreeting = () => {
 };
 
 const Dashboard = () => {
+  // Auth context - check if notebook role
+  const { session } = usePinAuth();
+  const isNotebook = session?.role === 'notebook';
+  
   // Performance tracking
   const mountTimeRef = useRef(performance.now());
   const dataReadyTimeRef = useRef<number | null>(null);
@@ -142,7 +147,7 @@ const Dashboard = () => {
     0
   );
 
-  const stats = [
+  const allStats = [
     {
       title: "Faturamento Hoje",
       value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(faturamentoHoje),
@@ -152,6 +157,7 @@ const Dashboard = () => {
       icon: DollarSign,
       iconColor: "#34C759",
       iconBg: "rgba(52, 199, 89, 0.12)",
+      hideForNotebook: true, // Ocultar faturamento para notebook
     },
     {
       title: "Atendimentos Hoje",
@@ -184,6 +190,11 @@ const Dashboard = () => {
       iconBg: "rgba(255, 45, 85, 0.12)",
     },
   ];
+
+  // Filtrar stats baseado no role (notebook não vê faturamento)
+  const stats = isNotebook 
+    ? allStats.filter(s => !s.hideForNotebook) 
+    : allStats;
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -360,11 +371,12 @@ const Dashboard = () => {
       </div>
 
       {/* WhatsApp Widget + Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${isNotebook ? 'lg:grid-cols-2' : 'lg:grid-cols-4'}`}>
         {/* WhatsApp Card */}
         <WhatsAppDashboardCard />
         
-        {/* Gráfico de Faturamento */}
+        {/* Gráfico de Faturamento - OCULTO para notebook */}
+        {!isNotebook && (
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">
@@ -396,6 +408,7 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Top Serviços */}
         <Card className="lg:col-span-1">
