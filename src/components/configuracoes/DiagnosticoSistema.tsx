@@ -19,10 +19,12 @@ import {
   Clock,
   RefreshCw,
   AlertCircle,
-  Activity
+  Activity,
+  Route
 } from "lucide-react";
 import NetworkDebugPanel from "./NetworkDebugPanel";
 import { PerformanceDebugPanel } from "./PerformanceDebugPanel";
+import RouteHealthCheck from "./RouteHealthCheck";
 
 type LogEntry = {
   time: string;
@@ -176,13 +178,13 @@ export default function DiagnosticoSistema() {
   const getLogIcon = (type: LogEntry["type"]) => {
     switch (type) {
       case "success":
-        return <CheckCircle className="h-3 w-3 text-green-500" />;
+        return <CheckCircle className="h-3 w-3 text-success" />;
       case "error":
-        return <XCircle className="h-3 w-3 text-red-500" />;
+        return <XCircle className="h-3 w-3 text-destructive" />;
       case "warning":
-        return <AlertCircle className="h-3 w-3 text-yellow-500" />;
+        return <AlertCircle className="h-3 w-3 text-warning" />;
       default:
-        return <Clock className="h-3 w-3 text-blue-500" />;
+        return <Clock className="h-3 w-3 text-primary" />;
     }
   };
 
@@ -191,18 +193,22 @@ export default function DiagnosticoSistema() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="performance" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="performance" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            Performance
+            <span className="hidden sm:inline">Performance</span>
           </TabsTrigger>
           <TabsTrigger value="network" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            Network Debug
+            <span className="hidden sm:inline">Network</span>
+          </TabsTrigger>
+          <TabsTrigger value="routes" className="flex items-center gap-2">
+            <Route className="h-4 w-4" />
+            <span className="hidden sm:inline">Rotas</span>
           </TabsTrigger>
           <TabsTrigger value="database" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
-            Banco de Dados
+            <span className="hidden sm:inline">Banco</span>
           </TabsTrigger>
         </TabsList>
 
@@ -212,6 +218,10 @@ export default function DiagnosticoSistema() {
 
         <TabsContent value="network" className="mt-6">
           <NetworkDebugPanel />
+        </TabsContent>
+
+        <TabsContent value="routes" className="mt-6">
+          <RouteHealthCheck />
         </TabsContent>
 
         <TabsContent value="database" className="mt-6">
