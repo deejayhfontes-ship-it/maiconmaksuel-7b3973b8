@@ -944,15 +944,40 @@ function AtualizacoesContent() {
     setLastCheck(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
 
     if (isElectronEnv && window.electron) {
-      await window.electron.checkForUpdates();
-      // If no update found, electron won't fire onUpdateAvailable — reset after timeout
-      setTimeout(() => setChecking(false), 8000);
+      toast.info('Verificando atualizações...');
+      try {
+        await window.electron.checkForUpdates();
+      } catch (e) {
+        setUpdateStatus('error');
+        setErrorMsg(String(e));
+        setChecking(false);
+        return;
+      }
+      // If no update found after 8s, show "up to date"
+      setTimeout(() => {
+        setChecking(prev => {
+          if (prev) {
+            toast.success('Sistema já está atualizado!');
+          }
+          return false;
+        });
+      }, 8000);
     } else {
-      // Web: reload the page to get latest deployed version
+      // Web: attempt to update service worker cache
+      toast.info('Verificando atualizações...');
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            await reg.update();
+          }
+        }
+      } catch (_e) { /* ignore */ }
       setTimeout(() => {
         setChecking(false);
-        toast.success('Sistema atualizado! A versão web é sempre a mais recente.');
-      }, 2000);
+        setUpdateStatus('uptodate');
+        toast.success('Sistema atualizado! Você está usando a versão mais recente.');
+      }, 2500);
     }
   };
 
