@@ -45,6 +45,11 @@ import { LocalErrorBoundary } from "@/components/common/LocalErrorBoundary";
 import { safeStr } from "@/utils/safe";
 
 const ITEMS_PER_PAGE = 10;
+const DEBUG_CLIENTES = import.meta.env.VITE_DEBUG_CLIENTES === 'true';
+
+const debugLog = (...args: any[]) => {
+  if (DEBUG_CLIENTES) console.log('[Clientes][DEBUG]', ...args);
+};
 
 const getInitials = (name: string | null | undefined) => {
   const safe = safeStr(name);
@@ -210,7 +215,7 @@ const Clientes = () => {
       console.error("[Clientes] Edit: cliente sem ID", cliente);
       return;
     }
-    console.log("[Clientes] Action", { action: 'edit', cliente });
+    debugLog("Action", { action: 'edit', cliente: normalizeCliente(cliente) });
     setSelectedCliente(normalizeCliente(cliente));
     setIsFormOpen(true);
   };
@@ -221,7 +226,7 @@ const Clientes = () => {
       console.error("[Clientes] View: cliente sem ID", cliente);
       return;
     }
-    console.log("[Clientes] Action", { action: 'view', cliente });
+    debugLog("Action", { action: 'view', cliente: normalizeCliente(cliente) });
     setSelectedCliente(normalizeCliente(cliente));
     setIsViewOpen(true);
   };
@@ -232,7 +237,7 @@ const Clientes = () => {
       console.error("[Clientes] Delete: cliente sem ID", cliente);
       return;
     }
-    console.log("[Clientes] Action", { action: 'delete', cliente });
+    debugLog("Action", { action: 'delete', cliente: normalizeCliente(cliente) });
     setSelectedCliente(normalizeCliente(cliente));
     setIsDeleteOpen(true);
   };
