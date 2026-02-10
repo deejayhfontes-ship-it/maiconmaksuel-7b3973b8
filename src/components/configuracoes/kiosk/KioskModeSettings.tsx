@@ -33,9 +33,11 @@ import KioskMaintenanceSettings from "./KioskMaintenanceSettings";
 import KioskLivePreview from "./KioskLivePreview";
 import KioskSecurityInfo from "./KioskSecurityInfo";
 import KioskDiagnostico from "./KioskDiagnostico";
+import KioskLauncher from "./KioskLauncher";
 
 const tabs = [
   { id: 'overview', label: 'Visão Geral', icon: Tablet },
+  { id: 'launcher', label: 'Abrir Kiosk', icon: Power },
   { id: 'visual', label: 'Visual', icon: Palette },
   { id: 'content', label: 'Conteúdo', icon: FileText },
   { id: 'interaction', label: 'Interação', icon: Hand },
@@ -82,6 +84,10 @@ export default function KioskModeSettings() {
             updateSettings={updateSettings} 
             isSaving={isSaving}
           />
+        </TabsContent>
+
+        <TabsContent value="launcher" className="space-y-4">
+          <KioskLauncher />
         </TabsContent>
 
         <TabsContent value="visual" className="space-y-4">

@@ -365,7 +365,7 @@ export default function Configuracoes() {
       case "controle-acesso":
         return <ControleAcesso />;
       case "preferencias":
-        return <DadosSalaoSettings />;
+        return <PreferenciasContent />;
       case "aparencia":
         return <AparenciaSettings />;
       case "notificacoes":
@@ -573,112 +573,36 @@ export default function Configuracoes() {
 
 // Componente de Preferências
 function PreferenciasContent() {
+  const [rememberRoute, setRememberRoute] = useState(() => {
+    return localStorage.getItem("rememberLastRoute") === "true";
+  });
+
+  const handleToggleRemember = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setRememberRoute(checked);
+    localStorage.setItem("rememberLastRoute", checked ? "true" : "false");
+  };
+
   return (
-    <Card className="p-6">
-      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-        <Settings className="h-5 w-5" />
-        Preferências Gerais
-      </h2>
-      
-      <div className="space-y-6">
-        {/* Idioma e Região */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Idioma e Região</h3>
-          <div className="grid gap-4">
-            <div>
-              <label className="text-sm font-medium">Idioma do Sistema</label>
-              <select className="w-full mt-1 p-2 border rounded-lg">
-                <option>Português (BR)</option>
-                <option>English (US)</option>
-                <option>Español</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Formato de Data</label>
-              <div className="flex gap-4 mt-2">
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="dateFormat" defaultChecked /> DD/MM/YYYY
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="dateFormat" /> MM/DD/YYYY
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="dateFormat" /> YYYY-MM-DD
-                </label>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Formato de Hora</label>
-              <div className="flex gap-4 mt-2">
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="timeFormat" defaultChecked /> 24 horas (14:30)
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="radio" name="timeFormat" /> 12 horas (2:30 PM)
-                </label>
-              </div>
-            </div>
-          </div>
+    <div className="space-y-6">
+      <DadosSalaoSettings />
+      <Card className="p-6">
+        <h3 className="text-lg font-medium mb-4">Inicialização</h3>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={rememberRoute}
+              onChange={handleToggleRemember}
+            />
+            Lembrar última tela ao reiniciar
+          </label>
+          <p className="text-xs text-muted-foreground ml-6">
+            Ao reabrir o app, volta para a tela onde você parou (funciona no Kiosk e no Admin)
+          </p>
         </div>
-
-        {/* Inicialização */}
-        <div className="space-y-4 border-t pt-6">
-          <h3 className="text-lg font-medium">Inicialização</h3>
-          <div className="grid gap-4">
-            <div>
-              <label className="text-sm font-medium">Página Inicial ao Abrir</label>
-              <select className="w-full mt-1 p-2 border rounded-lg">
-                <option>Dashboard</option>
-                <option>Agenda</option>
-                <option>Caixa</option>
-                <option>Clientes</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" /> Abrir em tela cheia
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" defaultChecked /> Lembrar última página aberta
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" /> Mostrar tutorial para novos usuários
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Comportamento */}
-        <div className="space-y-4 border-t pt-6">
-          <h3 className="text-lg font-medium">Comportamento</h3>
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" defaultChecked /> Confirmar antes de excluir
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" defaultChecked /> Confirmar antes de cancelar agendamento
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" defaultChecked /> Confirmar antes de fechar caixa
-              </label>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Timeout de Sessão</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input type="number" defaultValue="30" className="w-20 p-2 border rounded-lg" />
-                <span className="text-sm text-muted-foreground">minutos de inatividade</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Preferências</Button>
-          <Button variant="outline">Restaurar Padrão</Button>
-        </div>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
@@ -1456,6 +1380,7 @@ function LogoSistemaContent() {
     </Card>
   );
 }
+
 
 // Componente Horários de Funcionamento
 function HorariosFuncionamentoContent() {

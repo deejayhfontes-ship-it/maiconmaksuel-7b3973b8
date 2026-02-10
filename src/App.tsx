@@ -8,6 +8,7 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router
 import { isDesktopWrapper } from "@/lib/desktopDetection";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { getStartRoute } from "@/lib/startMode";
 import { PinAuthProvider } from "@/contexts/PinAuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { SalonSettingsProvider } from "@/contexts/SalonSettingsContext";
@@ -91,7 +92,7 @@ const App = () => (
               <Route path="/ponto" element={<PontoEletronico />} />
               <Route path="/tablet/cliente" element={<TabletCliente />} />
               {/* Protected routes */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<Navigate to={getStartRoute()} replace />} />
               <Route element={
                 <ProtectedRoute>
                   <MainLayout />
