@@ -79,6 +79,35 @@ export default function KioskHome() {
     return () => clearInterval(interval);
   }, []);
 
+  // Helper: clear any pending timeout safely
+  const clearPendingTimeout = () => {
+    if (autoReturnTimeoutRef.current) {
+      clearTimeout(autoReturnTimeoutRef.current);
+      autoReturnTimeoutRef.current = null;
+    }
+  };
+
+  // Helper: transition to 'comanda' state (from any state)
+  const transitionToComanda = (data: ComandaData) => {
+    clearPendingTimeout();
+    if (import.meta.env.DEV) console.log('KIOSK_STATE_TRANSITION', { from: kioskState, to: 'comanda', data });
+    setComanda(data);
+    setKioskState('comanda');
+  };
+
+  // Helper: transition to 'thankyou' state with single auto-return timeout
+  const transitionToThankYou = () => {
+    clearPendingTimeout();
+    if (import.meta.env.DEV) console.log('KIOSK_STATE_TRANSITION', { from: kioskState, to: 'thankyou' });
+    setKioskState('thankyou');
+    autoReturnTimeoutRef.current = setTimeout(() => {
+      if (import.meta.env.DEV) console.log('KIOSK_STATE_TRANSITION', { from: 'thankyou', to: 'idle', reason: 'timeout' });
+      setKioskState('idle');
+      setComanda(null);
+      autoReturnTimeoutRef.current = null;
+    }, thankYouDuration);
+  };
+
   // Listen for comanda closure events via broadcast (multiple channels for compatibility)
   useEffect(() => {
     // Channel for kiosk-specific events
@@ -87,23 +116,12 @@ export default function KioskHome() {
       .on('broadcast', { event: 'comanda-fechada' }, ({ payload }) => {
         if (import.meta.env.DEV) console.log('KIOSK_EVT_RECEIVED', { channel: 'kiosk-comanda', event: 'comanda-fechada', payload });
         if (payload) {
-          const data = payload as ComandaData;
-          if (import.meta.env.DEV) console.log('KIOSK_SHOW_RESUMO', { itens: data.itens, total: data.total, cliente: data.cliente });
-          if (import.meta.env.DEV) console.log('KIOSK_SHOW_PAGAMENTOS', { formaPagamento: data.formaPagamento });
-          setComanda(data);
-          setKioskState('comanda');
+          transitionToComanda(payload as ComandaData);
         }
       })
       .on('broadcast', { event: 'pagamento-confirmado' }, () => {
         if (import.meta.env.DEV) console.log('KIOSK_EVT_RECEIVED', { channel: 'kiosk-comanda', event: 'pagamento-confirmado' });
-        setKioskState('thankyou');
-        if (autoReturnTimeoutRef.current) {
-          clearTimeout(autoReturnTimeoutRef.current);
-        }
-        autoReturnTimeoutRef.current = setTimeout(() => {
-          setKioskState('idle');
-          setComanda(null);
-        }, thankYouDuration);
+        transitionToThankYou();
       })
       .subscribe();
 
@@ -114,7 +132,6 @@ export default function KioskHome() {
         if (import.meta.env.DEV) console.log('KIOSK_EVT_RECEIVED', { channel: 'tablet-comanda', event: 'comanda-update', payload });
         if (payload) {
           const data = payload as any;
-          // Map from tablet format to our format
           const comandaData: ComandaData = {
             numero: data.numero,
             cliente: data.cliente || 'Cliente',
@@ -126,19 +143,9 @@ export default function KioskHome() {
           };
           
           if (data.status === 'fechando') {
-            if (import.meta.env.DEV) console.log('KIOSK_SHOW_RESUMO', { itens: comandaData.itens, total: comandaData.total, cliente: comandaData.cliente });
-            if (import.meta.env.DEV) console.log('KIOSK_SHOW_PAGAMENTOS', { formaPagamento: comandaData.formaPagamento });
-            setComanda(comandaData);
-            setKioskState('comanda');
+            transitionToComanda(comandaData);
           } else if (data.status === 'finalizado') {
-            setKioskState('thankyou');
-            if (autoReturnTimeoutRef.current) {
-              clearTimeout(autoReturnTimeoutRef.current);
-            }
-            autoReturnTimeoutRef.current = setTimeout(() => {
-              setKioskState('idle');
-              setComanda(null);
-            }, thankYouDuration);
+            transitionToThankYou();
           }
         }
       })
@@ -147,33 +154,23 @@ export default function KioskHome() {
     return () => {
       supabase.removeChannel(kioskChannel);
       supabase.removeChannel(tabletChannel);
-      if (autoReturnTimeoutRef.current) {
-        clearTimeout(autoReturnTimeoutRef.current);
-      }
+      clearPendingTimeout();
     };
-  }, [thankYouDuration]);
+  }, []); // stable — helpers use refs, no deps needed
 
   // Auto-dismiss comanda screen after configurable time
   useEffect(() => {
     if (kioskState === 'comanda') {
-      if (autoReturnTimeoutRef.current) {
-        clearTimeout(autoReturnTimeoutRef.current);
-      }
+      clearPendingTimeout();
       autoReturnTimeoutRef.current = setTimeout(() => {
-        setKioskState('thankyou');
-        setTimeout(() => {
-          setKioskState('idle');
-          setComanda(null);
-        }, thankYouDuration);
+        transitionToThankYou();
       }, autoDismissSeconds * 1000);
     }
 
     return () => {
-      if (autoReturnTimeoutRef.current) {
-        clearTimeout(autoReturnTimeoutRef.current);
-      }
+      clearPendingTimeout();
     };
-  }, [kioskState, thankYouDuration]);
+  }, [kioskState]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
