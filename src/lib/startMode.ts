@@ -76,12 +76,14 @@ export function getStartRoute(defaultRoute: string = "/login"): string {
   if (mode === "kiosk") return "/kiosk";
   if (mode === "admin") return "/dashboard";
 
-  // On desktop, check if kiosk is enabled on this device
-  if (isDesktopWrapper() && isKioskDeviceEnabled()) return "/kiosk";
+  // On desktop, do NOT auto-redirect to kiosk based on localStorage flag alone.
+  // Kiosk route is controlled by Electron's startMode config + hash at boot.
+  // This prevents the app from "trapping" in kiosk after a restart.
 
   if (isRememberRouteEnabled()) {
     const lastAdmin = getLastRoute("admin");
-    if (lastAdmin) return lastAdmin;
+    // Never restore a kiosk route as "last admin route"
+    if (lastAdmin && !lastAdmin.startsWith("/kiosk")) return lastAdmin;
   }
 
   return defaultRoute;

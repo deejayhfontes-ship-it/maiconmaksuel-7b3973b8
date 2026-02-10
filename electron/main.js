@@ -7,6 +7,7 @@ const Store = require('electron-store')
 const store = new Store({
   defaults: {
     kioskEnabled: false,
+    startMode: 'admin', // 'admin' | 'kiosk' — default boot route
   }
 })
 
@@ -39,13 +40,17 @@ function createWindow() {
     titleBarStyle: 'default'
   })
 
-  // Carregar aplicação — rota baseada na flag kioskEnabled
+  // Carregar aplicação — rota baseada na config startMode (padrão: admin → /login)
+  const startMode = store.get('startMode', 'admin')
   const kioskEnabled = store.get('kioskEnabled', false)
+  // Kiosk só inicia automaticamente se AMBOS startMode=kiosk E kioskEnabled=true
+  const useKioskRoute = startMode === 'kiosk' && kioskEnabled
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
+    const devHash = useKioskRoute ? '/#/kiosk' : ''
+    mainWindow.loadURL(`http://localhost:5173${devHash}`)
   } else {
-    const hash = kioskEnabled ? '/kiosk' : '/login'
+    const hash = useKioskRoute ? '/kiosk' : '/login'
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash })
   }
 
@@ -174,11 +179,26 @@ ipcMain.handle('is-dev', () => {
 // Kiosk mode persistence
 ipcMain.handle('set-kiosk-enabled', (_event, enabled) => {
   store.set('kioskEnabled', !!enabled)
+  // When disabling kiosk, also reset startMode to admin
+  if (!enabled) store.set('startMode', 'admin')
   return true
 })
 
 ipcMain.handle('get-kiosk-enabled', () => {
   return store.get('kioskEnabled', false)
+})
+
+// Start mode persistence
+ipcMain.handle('set-start-mode', (_event, mode) => {
+  if (mode === 'kiosk' || mode === 'admin') {
+    store.set('startMode', mode)
+    return true
+  }
+  return false
+})
+
+ipcMain.handle('get-start-mode', () => {
+  return store.get('startMode', 'admin')
 })
 
 // Kiosk 2nd window
