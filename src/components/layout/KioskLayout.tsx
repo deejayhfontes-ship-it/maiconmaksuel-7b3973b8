@@ -13,7 +13,7 @@ import { useKioskSettings } from "@/hooks/useKioskSettings";
 import { useKioskFullscreen } from "@/hooks/useKioskFullscreen";
 import { usePinAuth } from "@/contexts/PinAuthContext";
 import { useSalonSettings } from "@/contexts/SalonSettingsContext";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { 
   LogOut,
@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KioskOfflineOverlay } from "@/components/kiosk/KioskOfflineOverlay";
-
+import KioskAdminEscapeKeyboard from "@/components/kiosk/KioskAdminEscapeKeyboard";
 export default function KioskLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,8 +43,11 @@ export default function KioskLayout() {
   }, [session, navigate]);
 
   // Guard: prevent navigation outside /kiosk in kiosk window
+  // BUT allow navigation to /dashboard or /login (admin escape)
   useEffect(() => {
-    if (!location.pathname.startsWith('/kiosk')) {
+    const allowed = ['/kiosk', '/dashboard', '/login', '/'];
+    const isAllowed = allowed.some(p => location.pathname.startsWith(p));
+    if (!location.pathname.startsWith('/kiosk') && !allowed.includes(location.pathname)) {
       navigate('/kiosk', { replace: true });
     }
   }, [location.pathname, navigate]);
@@ -244,6 +247,9 @@ export default function KioskLayout() {
 
       {/* Offline Overlay */}
       <KioskOfflineOverlay largeTouch={settings.alvos_touch_grandes} />
+
+      {/* Keyboard escape hatch: Ctrl+Shift+K */}
+      <KioskAdminEscapeKeyboard />
 
       {/* Fade in animation */}
       <style>{`
