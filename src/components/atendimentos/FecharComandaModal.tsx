@@ -294,6 +294,7 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
   const fecharComandaMutation = useMutation({
     mutationFn: async (emitirNota: boolean) => {
       if (!atendimento) throw new Error("Atendimento não encontrado");
+      console.log('[FecharComanda] finalize_start', { id: atendimento.id, emitirNota });
 
       let notaFiscalId: string | null = null;
 
@@ -378,7 +379,7 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
           .eq("id", configFiscal.id);
       }
 
-      // Fechar atendimento (sempre executa) - status deve ser 'fechado' (não 'finalizado')
+      // Fechar atendimento (transação principal — só aqui a comanda fecha)
       const { error } = await supabase
         .from("atendimentos")
         .update({
@@ -390,6 +391,25 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
 
       if (error) throw error;
 
+      // Atualizar última visita do cliente
+      if (atendimento.cliente_id) {
+        try {
+          const { data: clienteData } = await supabase
+            .from("clientes")
+            .select("total_visitas")
+            .eq("id", atendimento.cliente_id)
+            .single();
+          
+          await supabase.from("clientes").update({
+            ultima_visita: new Date().toISOString(),
+            total_visitas: (clienteData?.total_visitas || 0) + 1,
+          }).eq("id", atendimento.cliente_id);
+        } catch (e) {
+          console.warn('[FecharComanda] Erro ao atualizar visita do cliente:', e);
+        }
+      }
+
+      console.log('[FecharComanda] finalize_success', { id: atendimento.id });
       return { notaFiscalId, emitirNota };
     },
     onSuccess: async ({ emitirNota }) => {
@@ -419,12 +439,18 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
       }, emitirNota ? 1500 : 500);
     },
     onError: (error) => {
+      console.error('[FecharComanda] finalize_fail', error);
       setEmissaoStatus("error");
       setErroEmissao(error.message);
     },
   });
 
   const handleFechar = async () => {
+    if (fecharComandaMutation.isPending) {
+      console.log('[FecharComanda] blocked: already submitting');
+      return;
+    }
+    console.log('[FecharComanda] confirmed — initiating finalize');
     // Enviar para tablet que está fechando
     await enviarParaTablet("fechando");
     fecharComandaMutation.mutate(opcaoNota === "nfce");
@@ -517,8 +543,16 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(v) => {
+      // Block closing via ESC or outside click while submitting
+      if (fecharComandaMutation.isPending) return;
+      onOpenChange(v);
+    }}>
+      <DialogContent className="sm:max-w-lg" onEscapeKeyDown={(e) => {
+        if (fecharComandaMutation.isPending) e.preventDefault();
+      }} onPointerDownOutside={(e) => {
+        if (fecharComandaMutation.isPending) e.preventDefault();
+      }}>
         <DialogHeader>
           <DialogTitle>Fechar Comanda #{String(atendimento.numero_comanda).padStart(3, "0")}</DialogTitle>
           <DialogDescription>
