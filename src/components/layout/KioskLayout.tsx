@@ -28,9 +28,19 @@ import { KioskOfflineOverlay } from "@/components/kiosk/KioskOfflineOverlay";
 export default function KioskLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = usePinAuth();
+  const { logout, session } = usePinAuth();
   const { settings } = useKioskSettings();
   const { appearance } = useSalonSettings();
+
+  // Guard: only kiosk role can access kiosk routes
+  useEffect(() => {
+    if (session && session.role !== 'kiosk') {
+      navigate('/dashboard', { replace: true });
+      import('sonner').then(({ toast }) => {
+        toast.info('Área do Kiosk. Acesse via Modo Kiosk (PIN do Kiosk).');
+      });
+    }
+  }, [session, navigate]);
   const { isFullscreen, isSupported, isFailed, requestFullscreen, toggleFullscreen } = useKioskFullscreen();
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [showControls, setShowControls] = useState(false);

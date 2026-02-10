@@ -49,7 +49,6 @@ const allMenuItems: MenuItem[] = [
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
   { title: "WhatsApp", icon: MessageSquare, path: "/whatsapp" },
   { title: "Gestão RH", icon: Briefcase, path: "/gestao-rh" },
-  { title: "Ponto", icon: Clock, path: "/ponto" },
   { title: "Vales", icon: DollarSign, path: "/vales" },
   { title: "Metas", icon: Target, path: "/metas-salao" },
   { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
