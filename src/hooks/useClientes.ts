@@ -66,9 +66,12 @@ interface UseClientesReturn {
   getRecentClientes: (limit?: number) => Promise<Cliente[]>;
 }
 
+// Helper seguro para strings - previne crash em campos null/undefined
+const safeStr = (v: any): string => (v ?? '').toString();
+
 // Função para remover acentos
 const removeAccents = (str: string): string => {
-  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return safeStr(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
 export function useClientes(options: UseClientesOptions = {}): UseClientesReturn {
@@ -106,15 +109,20 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
         const termNumbers = searchTerm.replace(/\D/g, "");
         
         localData = localData.filter(c => {
-          const nomeMatch = removeAccents(c.nome.toLowerCase()).includes(term);
-          const emailMatch = c.email?.toLowerCase().includes(term);
-          const celularClean = c.celular.replace(/\D/g, "");
-          const telefoneClean = c.telefone?.replace(/\D/g, "") || "";
-          const telefoneMatch = termNumbers && (celularClean.includes(termNumbers) || telefoneClean.includes(termNumbers));
-          const cpfClean = c.cpf?.replace(/\D/g, "") || "";
-          const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
-          
-          return nomeMatch || emailMatch || telefoneMatch || cpfMatch;
+          try {
+            const nomeMatch = removeAccents(safeStr(c.nome).toLowerCase()).includes(term);
+            const emailMatch = safeStr(c.email).toLowerCase().includes(term);
+            const celularClean = safeStr(c.celular).replace(/\D/g, "");
+            const telefoneClean = safeStr(c.telefone).replace(/\D/g, "");
+            const telefoneMatch = termNumbers && (celularClean.includes(termNumbers) || telefoneClean.includes(termNumbers));
+            const cpfClean = safeStr(c.cpf).replace(/\D/g, "");
+            const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
+            
+            return nomeMatch || emailMatch || telefoneMatch || cpfMatch;
+          } catch (err) {
+            console.error('[useClientes] Erro ao filtrar cliente:', { id: c?.id, nome: c?.nome, celular: c?.celular, err });
+            return false;
+          }
         });
       }
       
@@ -124,7 +132,7 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
         
         switch (orderBy) {
           case 'nome':
-            comparison = a.nome.localeCompare(b.nome);
+            comparison = safeStr(a.nome).localeCompare(safeStr(b.nome));
             break;
           case 'created_at':
             comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -159,15 +167,20 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
           const termNumbers = searchTerm.replace(/\D/g, "");
           
           updatedData = updatedData.filter(c => {
-            const nomeMatch = removeAccents(c.nome.toLowerCase()).includes(term);
-            const emailMatch = c.email?.toLowerCase().includes(term);
-            const celularClean = c.celular.replace(/\D/g, "");
-            const telefoneClean = c.telefone?.replace(/\D/g, "") || "";
-            const telefoneMatch = termNumbers && (celularClean.includes(termNumbers) || telefoneClean.includes(termNumbers));
-            const cpfClean = c.cpf?.replace(/\D/g, "") || "";
-            const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
-            
-            return nomeMatch || emailMatch || telefoneMatch || cpfMatch;
+            try {
+              const nomeMatch = removeAccents(safeStr(c.nome).toLowerCase()).includes(term);
+              const emailMatch = safeStr(c.email).toLowerCase().includes(term);
+              const celularClean = safeStr(c.celular).replace(/\D/g, "");
+              const telefoneClean = safeStr(c.telefone).replace(/\D/g, "");
+              const telefoneMatch = termNumbers && (celularClean.includes(termNumbers) || telefoneClean.includes(termNumbers));
+              const cpfClean = safeStr(c.cpf).replace(/\D/g, "");
+              const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
+              
+              return nomeMatch || emailMatch || telefoneMatch || cpfMatch;
+            } catch (err) {
+              console.error('[useClientes] Erro ao filtrar cliente (sync):', { id: c?.id, nome: c?.nome, err });
+              return false;
+            }
           });
         }
         
@@ -175,7 +188,7 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
           let comparison = 0;
           switch (orderBy) {
             case 'nome':
-              comparison = a.nome.localeCompare(b.nome);
+              comparison = safeStr(a.nome).localeCompare(safeStr(b.nome));
               break;
             case 'created_at':
               comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -382,10 +395,15 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
       return allClientes
         .filter(c => c.ativo)
         .filter(c => {
-          const nomeMatch = removeAccents(c.nome.toLowerCase()).includes(normalizedTerm);
-          const celularMatch = termNumbers && c.celular.replace(/\D/g, "").includes(termNumbers);
-          const cpfMatch = termNumbers && c.cpf?.replace(/\D/g, "").includes(termNumbers);
-          return nomeMatch || celularMatch || cpfMatch;
+          try {
+            const nomeMatch = removeAccents(safeStr(c.nome).toLowerCase()).includes(normalizedTerm);
+            const celularMatch = termNumbers && safeStr(c.celular).replace(/\D/g, "").includes(termNumbers);
+            const cpfMatch = termNumbers && safeStr(c.cpf).replace(/\D/g, "").includes(termNumbers);
+            return nomeMatch || celularMatch || cpfMatch;
+          } catch (err) {
+            console.error('[useClientes] Erro ao buscar cliente:', { id: c?.id, err });
+            return false;
+          }
         })
         .slice(0, 10);
     } catch {
