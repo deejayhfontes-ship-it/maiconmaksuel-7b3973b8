@@ -4,7 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { isDesktopWrapper } from "@/lib/desktopDetection";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PinAuthProvider } from "@/contexts/PinAuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
@@ -65,6 +66,7 @@ import WhatsAppModule from "./pages/WhatsAppModule";
 import CentroAlertas from "./pages/CentroAlertas";
 
 const queryClient = new QueryClient();
+const RouterComponent = isDesktopWrapper() ? HashRouter : BrowserRouter;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -77,7 +79,7 @@ const App = () => (
             <UpdateNotification />
             <Toaster />
             <Sonner position="top-right" expand closeButton richColors />
-            <BrowserRouter>
+            <RouterComponent>
               <Routes>
               {/* Public routes */}
               <Route path="/login" element={<Login />} />
@@ -164,7 +166,7 @@ const App = () => (
               
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
+            </RouterComponent>
             </TooltipProvider>
           </SalonSettingsProvider>
         </PinAuthProvider>
