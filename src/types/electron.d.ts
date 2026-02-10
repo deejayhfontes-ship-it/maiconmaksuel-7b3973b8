@@ -26,9 +26,12 @@ interface ElectronAPI {
   getKioskEnabled: () => Promise<boolean>
   setStartMode: (mode: 'admin' | 'kiosk') => Promise<boolean>
   getStartMode: () => Promise<string>
+  exitKioskMode: () => Promise<void>
   openKioskWindow: () => Promise<void>
   closeKioskWindow: () => Promise<void>
   toggleKioskFullscreen: () => Promise<void>
+  onTriggerKioskEscape: (callback: () => void) => void
+  removeTriggerKioskEscapeListener: () => void
   onUpdateAvailable: (callback: (info: UpdateInfo) => void) => void
   onUpdateProgress: (callback: (progress: ProgressInfo) => void) => void
   onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => void
