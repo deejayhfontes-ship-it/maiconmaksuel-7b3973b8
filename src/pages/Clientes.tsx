@@ -67,11 +67,13 @@ const getAvatarColor = (name: string) => {
   return colors[index];
 };
 
-const formatPhone = (phone: string) => {
+const formatPhone = (phone: string | null | undefined) => {
+  if (!phone) return "-";
   return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
 };
 
-const cleanPhoneForWhatsApp = (phone: string) => {
+const cleanPhoneForWhatsApp = (phone: string | null | undefined) => {
+  if (!phone) return "55";
   const cleaned = phone.replace(/\D/g, "");
   return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
 };
