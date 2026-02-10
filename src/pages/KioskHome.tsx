@@ -85,14 +85,17 @@ export default function KioskHome() {
     const kioskChannel = supabase
       .channel('kiosk-comanda')
       .on('broadcast', { event: 'comanda-fechada' }, ({ payload }) => {
-        console.log('[Kiosk] Received comanda-fechada:', payload);
+        if (import.meta.env.DEV) console.log('KIOSK_EVT_RECEIVED', { channel: 'kiosk-comanda', event: 'comanda-fechada', payload });
         if (payload) {
-          setComanda(payload as ComandaData);
+          const data = payload as ComandaData;
+          if (import.meta.env.DEV) console.log('KIOSK_SHOW_RESUMO', { itens: data.itens, total: data.total, cliente: data.cliente });
+          if (import.meta.env.DEV) console.log('KIOSK_SHOW_PAGAMENTOS', { formaPagamento: data.formaPagamento });
+          setComanda(data);
           setKioskState('comanda');
         }
       })
       .on('broadcast', { event: 'pagamento-confirmado' }, () => {
-        console.log('[Kiosk] Received pagamento-confirmado');
+        if (import.meta.env.DEV) console.log('KIOSK_EVT_RECEIVED', { channel: 'kiosk-comanda', event: 'pagamento-confirmado' });
         setKioskState('thankyou');
         if (autoReturnTimeoutRef.current) {
           clearTimeout(autoReturnTimeoutRef.current);
@@ -108,7 +111,7 @@ export default function KioskHome() {
     const tabletChannel = supabase
       .channel('tablet-comanda')
       .on('broadcast', { event: 'comanda-update' }, ({ payload }) => {
-        console.log('[Kiosk] Received comanda-update:', payload);
+        if (import.meta.env.DEV) console.log('KIOSK_EVT_RECEIVED', { channel: 'tablet-comanda', event: 'comanda-update', payload });
         if (payload) {
           const data = payload as any;
           // Map from tablet format to our format
@@ -123,6 +126,8 @@ export default function KioskHome() {
           };
           
           if (data.status === 'fechando') {
+            if (import.meta.env.DEV) console.log('KIOSK_SHOW_RESUMO', { itens: comandaData.itens, total: comandaData.total, cliente: comandaData.cliente });
+            if (import.meta.env.DEV) console.log('KIOSK_SHOW_PAGAMENTOS', { formaPagamento: comandaData.formaPagamento });
             setComanda(comandaData);
             setKioskState('comanda');
           } else if (data.status === 'finalizado') {

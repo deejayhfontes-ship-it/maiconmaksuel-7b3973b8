@@ -222,16 +222,33 @@ export function PagamentoModal({
         formaPagamento
       };
 
-      console.log("Enviando para tablet:", comandaData);
+      if (import.meta.env.DEV) console.log("ADMIN_BROADCAST_SENDING", { status, formaPagamento, comandaData });
 
+      // Enviar via broadcast para o tablet (canal tablet-comanda)
       const channel = supabase.channel('tablet-comanda');
       await channel.send({
         type: 'broadcast',
         event: 'comanda-update',
         payload: comandaData
       });
-      
       supabase.removeChannel(channel);
+
+      // Enviar via broadcast para o kiosk (canal kiosk-comanda) - redundância
+      const kioskChannel = supabase.channel('kiosk-comanda');
+      if (status === 'fechando') {
+        await kioskChannel.send({
+          type: 'broadcast',
+          event: 'comanda-fechada',
+          payload: comandaData
+        });
+      } else {
+        await kioskChannel.send({
+          type: 'broadcast',
+          event: 'pagamento-confirmado',
+          payload: {}
+        });
+      }
+      supabase.removeChannel(kioskChannel);
     } catch (error) {
       console.error("Erro ao enviar dados para tablet:", error);
     }

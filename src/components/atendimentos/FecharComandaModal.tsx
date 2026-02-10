@@ -258,16 +258,33 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
         formaPagamento
       };
 
-      // Enviar via broadcast para o tablet
+      // Enviar via broadcast para o tablet (canal tablet-comanda)
       const channel = supabase.channel('tablet-comanda');
       await channel.send({
         type: 'broadcast',
         event: 'comanda-update',
         payload: comandaData
       });
-      
-      // Limpar canal
       supabase.removeChannel(channel);
+
+      // Enviar via broadcast para o kiosk (canal kiosk-comanda) - redundância
+      const kioskChannel = supabase.channel('kiosk-comanda');
+      if (status === 'fechando') {
+        await kioskChannel.send({
+          type: 'broadcast',
+          event: 'comanda-fechada',
+          payload: comandaData
+        });
+      } else {
+        await kioskChannel.send({
+          type: 'broadcast',
+          event: 'pagamento-confirmado',
+          payload: {}
+        });
+      }
+      supabase.removeChannel(kioskChannel);
+      
+      if (import.meta.env.DEV) console.log('ADMIN_BROADCAST_SENT', { status, channels: ['tablet-comanda', 'kiosk-comanda'] });
     } catch (error) {
       console.error("Erro ao enviar dados para tablet:", error);
     }
