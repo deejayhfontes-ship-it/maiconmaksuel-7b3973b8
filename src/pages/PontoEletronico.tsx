@@ -97,7 +97,7 @@ const PontoEletronico = () => {
           <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground mb-2">Acesso Restrito</h1>
           <p className="text-muted-foreground mb-6">O Ponto Eletrônico está disponível apenas para perfil Kiosk.</p>
-          <Button onClick={() => navigate('/login')} className="w-full">
+          <Button onClick={() => navigate('/kiosk', { replace: true })} className="w-full">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar ao Login
           </Button>

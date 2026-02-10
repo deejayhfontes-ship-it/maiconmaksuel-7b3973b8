@@ -41,6 +41,13 @@ export default function KioskLayout() {
       });
     }
   }, [session, navigate]);
+
+  // Guard: prevent navigation outside /kiosk in kiosk window
+  useEffect(() => {
+    if (!location.pathname.startsWith('/kiosk')) {
+      navigate('/kiosk', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   const { isFullscreen, isSupported, isFailed, requestFullscreen, toggleFullscreen } = useKioskFullscreen();
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [showControls, setShowControls] = useState(false);
