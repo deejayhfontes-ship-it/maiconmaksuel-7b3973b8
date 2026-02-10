@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld('electron', {
   setKioskEnabled: (enabled) => ipcRenderer.invoke('set-kiosk-enabled', enabled),
   getKioskEnabled: () => ipcRenderer.invoke('get-kiosk-enabled'),
   
+  // Kiosk 2nd window
+  openKioskWindow: () => ipcRenderer.invoke('open-kiosk-window'),
+  closeKioskWindow: () => ipcRenderer.invoke('close-kiosk-window'),
+  toggleKioskFullscreen: () => ipcRenderer.invoke('toggle-kiosk-fullscreen'),
+  
   // Atualização automática
   checkForUpdates: () => ipcRenderer.invoke('check-updates'),
   downloadUpdate: () => ipcRenderer.invoke('download-update'),

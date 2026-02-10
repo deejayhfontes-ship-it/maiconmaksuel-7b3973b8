@@ -180,3 +180,60 @@ ipcMain.handle('set-kiosk-enabled', (_event, enabled) => {
 ipcMain.handle('get-kiosk-enabled', () => {
   return store.get('kioskEnabled', false)
 })
+
+// Kiosk 2nd window
+let kioskWindow = null
+
+ipcMain.handle('open-kiosk-window', () => {
+  if (kioskWindow && !kioskWindow.isDestroyed()) {
+    kioskWindow.focus()
+    return
+  }
+
+  kioskWindow = new BrowserWindow({
+    width: 1024,
+    height: 768,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: true
+    },
+    title: 'Kiosk - MAICON MAKSUEL',
+    icon: path.join(__dirname, '../build/icon.png'),
+    backgroundColor: '#ffffff',
+    show: false,
+    frame: true,
+  })
+
+  if (isDev) {
+    kioskWindow.loadURL('http://localhost:5173/#/kiosk')
+  } else {
+    kioskWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: '/kiosk' })
+  }
+
+  kioskWindow.once('ready-to-show', () => {
+    kioskWindow.show()
+  })
+
+  kioskWindow.on('closed', () => {
+    kioskWindow = null
+  })
+
+  if (!isDev) {
+    kioskWindow.setMenu(null)
+  }
+})
+
+ipcMain.handle('close-kiosk-window', () => {
+  if (kioskWindow && !kioskWindow.isDestroyed()) {
+    kioskWindow.close()
+    kioskWindow = null
+  }
+})
+
+ipcMain.handle('toggle-kiosk-fullscreen', () => {
+  if (kioskWindow && !kioskWindow.isDestroyed()) {
+    kioskWindow.setFullScreen(!kioskWindow.isFullScreen())
+  }
+})

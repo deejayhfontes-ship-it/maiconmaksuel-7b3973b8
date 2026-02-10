@@ -113,6 +113,19 @@ export default function Login() {
 
     if (result.success) {
       toast.success('Acesso autorizado!');
+      
+      // Admin login on Electron: auto-open kiosk in 2nd window if enabled
+      if (pin.join('') === '0000' || code === '0000') {
+        try {
+          const kioskBoot = await window.electron?.getKioskEnabled();
+          if (kioskBoot && window.electron?.openKioskWindow) {
+            await window.electron.openKioskWindow();
+          }
+        } catch {
+          // not Electron or not enabled — ignore
+        }
+      }
+      
       navigate(getDefaultRoute() || '/dashboard', { replace: true });
     } else {
       setError(result.error || 'PIN inválido');

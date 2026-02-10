@@ -24,6 +24,9 @@ interface ElectronAPI {
   installUpdate: () => Promise<void>
   setKioskEnabled: (enabled: boolean) => Promise<boolean>
   getKioskEnabled: () => Promise<boolean>
+  openKioskWindow: () => Promise<void>
+  closeKioskWindow: () => Promise<void>
+  toggleKioskFullscreen: () => Promise<void>
   onUpdateAvailable: (callback: (info: UpdateInfo) => void) => void
   onUpdateProgress: (callback: (progress: ProgressInfo) => void) => void
   onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => void
