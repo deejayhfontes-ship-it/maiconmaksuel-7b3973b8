@@ -283,7 +283,7 @@ export function PinAuthProvider({ children }: { children: ReactNode }) {
 
   const getDefaultRoute = useCallback((): string => {
     if (!session) return '/login';
-    return DEFAULT_ROUTES[session.role];
+    return DEFAULT_ROUTES[session.role] || '/login';
   }, [session]);
 
   return (

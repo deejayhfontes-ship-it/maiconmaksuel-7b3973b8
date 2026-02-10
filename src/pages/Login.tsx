@@ -20,7 +20,8 @@ export default function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate(getDefaultRoute(), { replace: true });
+      const route = getDefaultRoute() || '/dashboard';
+      navigate(route, { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate, getDefaultRoute]);
 
@@ -112,7 +113,7 @@ export default function Login() {
 
     if (result.success) {
       toast.success('Acesso autorizado!');
-      navigate(getDefaultRoute(), { replace: true });
+      navigate(getDefaultRoute() || '/dashboard', { replace: true });
     } else {
       setError(result.error || 'PIN inválido');
       setPin(['', '', '', '']);

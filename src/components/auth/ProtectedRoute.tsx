@@ -54,7 +54,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
             Seu perfil <span className="font-semibold text-foreground">({roleLabel})</span> não tem 
             permissão para acessar esta página.
           </p>
-          <Button onClick={() => window.location.href = getDefaultRoute()}>
+          <Button onClick={() => window.location.href = getDefaultRoute() || '/login'}>
             Voltar para {session?.role === 'admin' ? 'Dashboard' : session?.role === 'notebook' ? 'Agenda' : session?.role === 'kiosk' ? 'Kiosk' : session?.role === 'colaborador_agenda' ? 'Agenda' : 'Início'}
           </Button>
         </div>
