@@ -60,16 +60,20 @@ interface ClienteViewDialogProps {
   cliente: Cliente | null;
 }
 
-const getInitials = (name: string) => {
-  return name
+const getInitials = (name: string | null | undefined) => {
+  const safe = (name ?? '').toString();
+  if (!safe) return "?";
+  return safe
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .slice(0, 2)
     .join("")
     .toUpperCase();
 };
 
-const getAvatarColor = (name: string) => {
+const getAvatarColor = (name: string | null | undefined) => {
+  const safe = (name ?? '').toString();
   const colors = [
     "bg-primary",
     "bg-success",
@@ -79,7 +83,7 @@ const getAvatarColor = (name: string) => {
     "bg-cyan-500",
     "bg-orange-500",
   ];
-  const index = name.charCodeAt(0) % colors.length;
+  const index = safe.length > 0 ? safe.charCodeAt(0) % colors.length : 0;
   return colors[index];
 };
 
