@@ -55,7 +55,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
             permissão para acessar esta página.
           </p>
           <Button onClick={() => window.location.href = getDefaultRoute()}>
-            Voltar para {session?.role === 'admin' ? 'Dashboard' : session?.role === 'notebook' ? 'Agenda' : session?.role === 'colaborador_agenda' ? 'Agenda' : 'Caixa'}
+            Voltar para {session?.role === 'admin' ? 'Dashboard' : session?.role === 'notebook' ? 'Agenda' : session?.role === 'kiosk' ? 'Kiosk' : session?.role === 'colaborador_agenda' ? 'Agenda' : 'Início'}
           </Button>
         </div>
       </div>

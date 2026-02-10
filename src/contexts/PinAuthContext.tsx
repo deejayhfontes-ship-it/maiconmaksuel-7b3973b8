@@ -82,10 +82,6 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     // Kiosk routes (admin can access for testing)
     '/kiosk',
     '/kiosk/ponto',
-    '/kiosk/caixa',
-    '/kiosk/caixa/comandas',
-    '/kiosk/agenda',
-    '/kiosk/espelho-cliente',
   ],
   notebook: [
     // Agenda + basic management (NO caixa, NO vales, NO faturamento, NO whatsapp, NO RH sensitive)
@@ -121,7 +117,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
 export const DEFAULT_ROUTES: Record<PinRole, string> = {
   admin: '/dashboard',
   notebook: '/agenda',
-  kiosk: '/caixa',
+  kiosk: '/kiosk',
   colaborador_agenda: '/agenda',
 };
 
