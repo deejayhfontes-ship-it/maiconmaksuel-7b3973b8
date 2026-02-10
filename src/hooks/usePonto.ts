@@ -1,6 +1,7 @@
 /**
  * Offline-first hook for employee time clock (Ponto Eletrônico)
- * Kiosk-only module for recording entrada/saída timestamps
+ * Writes to `ponto_registros` table (the one FolhaPontoPanel reads)
+ * Supports 4 event types: entrada, inicio_almoco, volta_almoco, saida
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -11,26 +12,40 @@ import {
   localGetAll,
   localPut,
   addToSyncQueue,
-  localBulkPut,
   getSyncQueue,
   removeSyncOperation,
   setMetadata,
   getMetadata,
 } from '@/lib/offlineDb';
 
-export interface PontoRegistro {
+export type TipoEvento = 'entrada' | 'inicio_almoco' | 'volta_almoco' | 'saida';
+
+export const TIPO_EVENTO_LABELS: Record<TipoEvento, string> = {
+  entrada: 'Entrada',
+  inicio_almoco: 'Início Almoço',
+  volta_almoco: 'Volta Almoço',
+  saida: 'Saída',
+};
+
+// Maps tipo_evento to the column in ponto_registros
+const TIPO_TO_COLUMN: Record<TipoEvento, string> = {
+  entrada: 'entrada_manha',
+  inicio_almoco: 'saida_almoco',
+  volta_almoco: 'entrada_tarde',
+  saida: 'saida',
+};
+
+export interface PontoRegistroLocal {
   id: string;
-  profissional_id?: string;
-  funcionario_id?: string;
   tipo_pessoa: 'profissional' | 'funcionario';
   pessoa_id: string;
-  tipo: 'entrada' | 'saida';
-  timestamp: string;
+  tipo_evento: TipoEvento;
+  hora: string; // HH:mm:ss
+  data: string; // yyyy-MM-dd
   device_id: string;
   observacao?: string;
-  foto_comprovante?: string;
   created_at: string;
-  _synced?: boolean;
+  _synced: boolean;
 }
 
 export interface Pessoa {
@@ -42,7 +57,6 @@ export interface Pessoa {
   ativo: boolean;
 }
 
-// Generate or retrieve device ID
 function getDeviceId(): string {
   let deviceId = localStorage.getItem('mm-device-id');
   if (!deviceId) {
@@ -53,37 +67,30 @@ function getDeviceId(): string {
 }
 
 export function usePonto() {
-  const [registros, setRegistros] = useState<PontoRegistro[]>([]);
+  const [registrosHoje, setRegistrosHoje] = useState<PontoRegistroLocal[]>([]);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const deviceId = getDeviceId();
   const hoje = format(new Date(), 'yyyy-MM-dd');
 
-  // Monitor online status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  // Load pessoas (funcionários + profissionais)
   const loadPessoas = useCallback(async () => {
     try {
-      // Try local first
-      const localFunc = await localGetAll<Pessoa & { tipo: 'funcionario' }>('profissionais');
-      const localProf = await localGetAll<Pessoa & { tipo: 'profissional' }>('profissionais');
-      
       if (isOnline) {
         const [funcRes, profRes] = await Promise.all([
           supabase.from('funcionarios').select('id, nome, cargo, foto_url, ativo').eq('ativo', true),
@@ -91,103 +98,101 @@ export function usePonto() {
         ]);
 
         const funcionarios: Pessoa[] = (funcRes.data || []).map((f) => ({
-          id: f.id,
-          nome: f.nome,
-          cargo_especialidade: f.cargo || 'Funcionário',
-          tipo: 'funcionario' as const,
-          foto_url: f.foto_url,
-          ativo: f.ativo ?? true,
+          id: f.id, nome: f.nome, cargo_especialidade: f.cargo || 'Funcionário',
+          tipo: 'funcionario' as const, foto_url: f.foto_url, ativo: f.ativo ?? true,
         }));
 
         const profissionais: Pessoa[] = (profRes.data || []).map((p) => ({
-          id: p.id,
-          nome: p.nome,
-          cargo_especialidade: p.especialidade || 'Profissional',
-          tipo: 'profissional' as const,
-          foto_url: p.foto_url,
-          ativo: p.ativo ?? true,
+          id: p.id, nome: p.nome, cargo_especialidade: p.especialidade || 'Profissional',
+          tipo: 'profissional' as const, foto_url: p.foto_url, ativo: p.ativo ?? true,
         }));
 
-        const allPessoas = [...funcionarios, ...profissionais].sort((a, b) => 
-          a.nome.localeCompare(b.nome)
-        );
-        setPessoas(allPessoas);
+        setPessoas([...funcionarios, ...profissionais].sort((a, b) => a.nome.localeCompare(b.nome)));
       } else {
-        // Use cached data
-        const cachedPessoas = [...localFunc, ...localProf].filter(p => p.ativo);
-        setPessoas(cachedPessoas);
+        const cached = await localGetAll<Pessoa>('profissionais');
+        setPessoas(cached.filter(p => p.ativo));
       }
     } catch (error) {
-      console.error('Erro ao carregar pessoas:', error);
+      console.error('[Ponto] Erro ao carregar pessoas:', error);
     }
   }, [isOnline]);
 
-  // Load today's registros
   const loadRegistrosHoje = useCallback(async () => {
     try {
-      // Local first
-      const localRegistros = await localGetAll<PontoRegistro>('registro_ponto');
-      const hojeRegistros = localRegistros.filter((r) =>
-        r.timestamp.startsWith(hoje)
-      );
-      setRegistros(hojeRegistros);
+      // Local cache
+      const localRegs = await localGetAll<PontoRegistroLocal>('registro_ponto');
+      const hojeLocal = localRegs.filter((r) => r.data === hoje);
+      setRegistrosHoje(hojeLocal);
 
       if (isOnline) {
         const { data, error } = await supabase
-          .from('registro_ponto')
+          .from('ponto_registros')
           .select('*')
-          .gte('timestamp', `${hoje}T00:00:00`)
-          .lte('timestamp', `${hoje}T23:59:59`);
+          .eq('data', hoje);
 
         if (!error && data) {
-          const mapped: PontoRegistro[] = data.map((r) => ({
-            id: r.id,
-            profissional_id: r.profissional_id,
-            tipo_pessoa: r.profissional_id ? 'profissional' : 'funcionario',
-            pessoa_id: r.profissional_id || '',
-            tipo: r.tipo as 'entrada' | 'saida',
-            timestamp: r.timestamp,
-            device_id: '',
-            observacao: r.observacao || undefined,
-            foto_comprovante: r.foto_comprovante || undefined,
-            created_at: r.created_at,
-          }));
+          const dbRegistros: PontoRegistroLocal[] = [];
+          for (const row of data) {
+            const tipos: { col: string; evento: TipoEvento }[] = [
+              { col: 'entrada_manha', evento: 'entrada' },
+              { col: 'saida_almoco', evento: 'inicio_almoco' },
+              { col: 'entrada_tarde', evento: 'volta_almoco' },
+              { col: 'saida', evento: 'saida' },
+            ];
+            for (const t of tipos) {
+              const val = (row as any)[t.col];
+              if (val) {
+                dbRegistros.push({
+                  id: `${row.id}-${t.evento}`,
+                  tipo_pessoa: row.tipo_pessoa as 'profissional' | 'funcionario',
+                  pessoa_id: row.pessoa_id,
+                  tipo_evento: t.evento,
+                  hora: val,
+                  data: row.data,
+                  device_id: '',
+                  created_at: row.created_at || new Date().toISOString(),
+                  _synced: true,
+                });
+              }
+            }
+          }
 
-          // Merge with local unsynced
-          const unsynced = hojeRegistros.filter((r) => !r._synced);
-          const serverIds = new Set(mapped.map((r) => r.id));
-          const merged = [...mapped, ...unsynced.filter((r) => !serverIds.has(r.id))];
-
-          await localBulkPut('registro_ponto', merged);
-          setRegistros(merged);
+          const unsyncedLocal = hojeLocal.filter(r => !r._synced);
+          const dbKeys = new Set(dbRegistros.map(r => `${r.pessoa_id}-${r.tipo_evento}`));
+          const merged = [
+            ...dbRegistros,
+            ...unsyncedLocal.filter(r => !dbKeys.has(`${r.pessoa_id}-${r.tipo_evento}`)),
+          ];
+          setRegistrosHoje(merged);
           setLastSync(new Date());
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar registros:', error);
+      console.error('[Ponto] Erro ao carregar registros:', error);
     }
   }, [hoje, isOnline]);
 
-  // Initial load
+  const checkPending = useCallback(async () => {
+    try {
+      const queue = await getSyncQueue();
+      const pontoOps = queue.filter((op) => op.entity === 'registro_ponto');
+      setPendingCount(pontoOps.length);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([loadPessoas(), loadRegistrosHoje()]);
-      
+      await Promise.all([loadPessoas(), loadRegistrosHoje(), checkPending()]);
       const lastSyncTime = await getMetadata('ponto_last_sync');
-      if (lastSyncTime) {
-        setLastSync(new Date(lastSyncTime as string));
-      }
-      
+      if (lastSyncTime) setLastSync(new Date(lastSyncTime as string));
       setLoading(false);
     };
     init();
-  }, [loadPessoas, loadRegistrosHoje]);
+  }, [loadPessoas, loadRegistrosHoje, checkPending]);
 
-  // Sync queue processing
   const processQueue = useCallback(async () => {
     if (!isOnline || syncing) return;
-
     setSyncing(true);
     try {
       const queue = await getSyncQueue();
@@ -195,35 +200,41 @@ export function usePonto() {
 
       for (const op of pontoOps) {
         try {
-          if (op.operation === 'create') {
-            const data = op.data as unknown as PontoRegistro;
-            const { error } = await supabase.from('registro_ponto').insert({
-              id: data.id,
-              profissional_id: data.tipo_pessoa === 'profissional' ? data.pessoa_id : null,
-              tipo: data.tipo,
-              timestamp: data.timestamp,
-              observacao: data.observacao || null,
-              foto_comprovante: data.foto_comprovante || null,
-            });
+          const d = op.data as unknown as PontoRegistroLocal;
+          const column = TIPO_TO_COLUMN[d.tipo_evento];
 
-            if (!error) {
-              await removeSyncOperation(op.id);
-              await localPut('registro_ponto', { ...data, _synced: true }, true);
-            }
+          const { error } = await supabase
+            .from('ponto_registros')
+            .upsert(
+              {
+                tipo_pessoa: d.tipo_pessoa,
+                pessoa_id: d.pessoa_id,
+                data: d.data,
+                [column]: d.hora,
+              } as any,
+              { onConflict: 'tipo_pessoa,pessoa_id,data' }
+            );
+
+          if (!error) {
+            await removeSyncOperation(op.id);
+            await localPut('registro_ponto', { ...d, _synced: true }, true);
+          } else {
+            console.error('[Ponto] Sync error:', error);
           }
         } catch (err) {
-          console.error('Erro ao sincronizar operação:', err);
+          console.error('[Ponto] Sync op error:', err);
         }
       }
 
       await setMetadata('ponto_last_sync', new Date().toISOString());
       setLastSync(new Date());
+      await checkPending();
+      await loadRegistrosHoje();
     } finally {
       setSyncing(false);
     }
-  }, [isOnline, syncing]);
+  }, [isOnline, syncing, checkPending, loadRegistrosHoje]);
 
-  // Auto-sync when online
   useEffect(() => {
     if (isOnline) {
       processQueue();
@@ -232,43 +243,74 @@ export function usePonto() {
     }
   }, [isOnline, processQueue]);
 
-  // Get last registro for a pessoa today
-  const getUltimoRegistro = useCallback(
-    (pessoaId: string, tipoPessoa: 'profissional' | 'funcionario'): PontoRegistro | null => {
-      const pessoaRegistros = registros
-        .filter((r) => r.pessoa_id === pessoaId && r.tipo_pessoa === tipoPessoa)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-      return pessoaRegistros[0] || null;
+  const getRegistrosPessoa = useCallback(
+    (pessoaId: string): PontoRegistroLocal[] => {
+      return registrosHoje
+        .filter((r) => r.pessoa_id === pessoaId)
+        .sort((a, b) => {
+          const order: TipoEvento[] = ['entrada', 'inicio_almoco', 'volta_almoco', 'saida'];
+          return order.indexOf(a.tipo_evento) - order.indexOf(b.tipo_evento);
+        });
     },
-    [registros]
+    [registrosHoje]
   );
 
-  // Get expected next action for a pessoa
   const getProximaAcao = useCallback(
-    (pessoaId: string, tipoPessoa: 'profissional' | 'funcionario'): 'entrada' | 'saida' => {
-      const ultimo = getUltimoRegistro(pessoaId, tipoPessoa);
-      if (!ultimo) return 'entrada';
-      return ultimo.tipo === 'entrada' ? 'saida' : 'entrada';
+    (pessoaId: string): TipoEvento => {
+      const regs = getRegistrosPessoa(pessoaId);
+      const done = new Set(regs.map(r => r.tipo_evento));
+      if (!done.has('entrada')) return 'entrada';
+      if (!done.has('inicio_almoco')) return 'inicio_almoco';
+      if (!done.has('volta_almoco')) return 'volta_almoco';
+      return 'saida';
     },
-    [getUltimoRegistro]
+    [getRegistrosPessoa]
   );
 
-  // Register ponto
+  const isAcaoValida = useCallback(
+    (pessoaId: string, tipo: TipoEvento): { valid: boolean; reason?: string } => {
+      const regs = getRegistrosPessoa(pessoaId);
+      const done = new Set(regs.map(r => r.tipo_evento));
+
+      if (done.has(tipo)) return { valid: false, reason: `${TIPO_EVENTO_LABELS[tipo]} já registrada hoje` };
+
+      switch (tipo) {
+        case 'entrada': return { valid: true };
+        case 'inicio_almoco':
+          return done.has('entrada') ? { valid: true } : { valid: false, reason: 'Registre a Entrada primeiro' };
+        case 'volta_almoco':
+          return done.has('inicio_almoco') ? { valid: true } : { valid: false, reason: 'Registre o Início do Almoço primeiro' };
+        case 'saida':
+          return done.has('entrada') ? { valid: true } : { valid: false, reason: 'Registre a Entrada primeiro' };
+        default: return { valid: false, reason: 'Ação desconhecida' };
+      }
+    },
+    [getRegistrosPessoa]
+  );
+
   const registrarPonto = useCallback(
     async (
       pessoaId: string,
       tipoPessoa: 'profissional' | 'funcionario',
-      tipo: 'entrada' | 'saida',
+      tipoEvento: TipoEvento,
       observacao?: string
-    ): Promise<boolean> => {
+    ): Promise<{ success: boolean; offline: boolean; error?: string }> => {
+      const validation = isAcaoValida(pessoaId, tipoEvento);
+      if (!validation.valid) {
+        toast.error(validation.reason || 'Ação inválida');
+        return { success: false, offline: false, error: validation.reason };
+      }
+
       const now = new Date();
-      const registro: PontoRegistro = {
+      const hora = format(now, 'HH:mm:ss');
+      const data = format(now, 'yyyy-MM-dd');
+
+      const registro: PontoRegistroLocal = {
         id: crypto.randomUUID(),
         tipo_pessoa: tipoPessoa,
         pessoa_id: pessoaId,
-        tipo,
-        timestamp: now.toISOString(),
+        tipo_evento: tipoEvento,
+        hora, data,
         device_id: deviceId,
         observacao,
         created_at: now.toISOString(),
@@ -276,11 +318,9 @@ export function usePonto() {
       };
 
       try {
-        // Save locally first
         await localPut('registro_ponto', registro, false);
-        setRegistros((prev) => [...prev, registro]);
+        setRegistrosHoje((prev) => [...prev, registro]);
 
-        // Add to sync queue
         await addToSyncQueue({
           entity: 'registro_ponto',
           operation: 'create',
@@ -288,58 +328,67 @@ export function usePonto() {
           timestamp: now.toISOString(),
         });
 
-        // Try immediate sync if online
         if (isOnline) {
-          const { error } = await supabase.from('registro_ponto').insert({
-            id: registro.id,
-            profissional_id: tipoPessoa === 'profissional' ? pessoaId : null,
-            tipo: registro.tipo,
-            timestamp: registro.timestamp,
-            observacao: registro.observacao || null,
-          });
+          const column = TIPO_TO_COLUMN[tipoEvento];
+          const upsertData: Record<string, unknown> = {
+            tipo_pessoa: tipoPessoa,
+            pessoa_id: pessoaId,
+            data,
+            [column]: hora,
+          };
+          if (observacao) upsertData.observacoes = observacao;
 
-          if (!error) {
-            await localPut('registro_ponto', { ...registro, _synced: true }, true);
-            setRegistros((prev) =>
-              prev.map((r) => (r.id === registro.id ? { ...r, _synced: true } : r))
-            );
+          const { error } = await supabase
+            .from('ponto_registros')
+            .upsert(upsertData as any, { onConflict: 'tipo_pessoa,pessoa_id,data' });
+
+          if (error) {
+            console.error('[Ponto] DB error:', error);
+            toast.warning(`${TIPO_EVENTO_LABELS[tipoEvento]} salva offline — sincronizará ao reconectar`);
+            await checkPending();
+            return { success: true, offline: true };
           }
-        }
 
-        const hora = format(now, 'HH:mm');
-        toast.success(`✅ ${tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada às ${hora}`);
-        return true;
-      } catch (error) {
-        console.error('Erro ao registrar ponto:', error);
-        toast.error('Erro ao registrar ponto. Tente novamente.');
-        return false;
+          await localPut('registro_ponto', { ...registro, _synced: true }, true);
+          setRegistrosHoje((prev) =>
+            prev.map((r) => (r.id === registro.id ? { ...r, _synced: true } : r))
+          );
+
+          const queue = await getSyncQueue();
+          const match = queue.find(q => (q.data as any)?.id === registro.id);
+          if (match) await removeSyncOperation(match.id);
+
+          toast.success(`✅ ${TIPO_EVENTO_LABELS[tipoEvento]} registrada às ${format(now, 'HH:mm')}`);
+          await checkPending();
+          return { success: true, offline: false };
+        } else {
+          toast.info(`${TIPO_EVENTO_LABELS[tipoEvento]} salva offline — sincronizará ao reconectar`);
+          await checkPending();
+          return { success: true, offline: true };
+        }
+      } catch (error: any) {
+        console.error('[Ponto] Erro:', error);
+        toast.error(`Erro ao registrar ponto: ${error.message || 'Tente novamente'}`);
+        return { success: false, offline: false, error: error.message };
       }
     },
-    [deviceId, isOnline]
-  );
-
-  // Get all registros for a pessoa today
-  const getRegistrosPessoa = useCallback(
-    (pessoaId: string, tipoPessoa: 'profissional' | 'funcionario'): PontoRegistro[] => {
-      return registros
-        .filter((r) => r.pessoa_id === pessoaId && r.tipo_pessoa === tipoPessoa)
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    },
-    [registros]
+    [deviceId, isOnline, isAcaoValida, checkPending]
   );
 
   return {
-    registros,
+    registrosHoje,
     pessoas,
     loading,
     isOnline,
     lastSync,
     syncing,
+    pendingCount,
     deviceId,
     registrarPonto,
-    getUltimoRegistro,
     getProximaAcao,
     getRegistrosPessoa,
-    refresh: () => Promise.all([loadPessoas(), loadRegistrosHoje()]),
+    isAcaoValida,
+    processQueue,
+    refresh: () => Promise.all([loadPessoas(), loadRegistrosHoje(), checkPending()]),
   };
 }
