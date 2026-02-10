@@ -8,6 +8,7 @@
  */
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useLastRoute } from "@/hooks/useLastRoute";
 import { useKioskSettings } from "@/hooks/useKioskSettings";
 import { useKioskFullscreen } from "@/hooks/useKioskFullscreen";
 import { usePinAuth } from "@/contexts/PinAuthContext";
@@ -34,6 +35,7 @@ export default function KioskLayout() {
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useLastRoute();
 
   // Apply kiosk theme - respects kiosk-specific setting OR inherits from system
   useEffect(() => {

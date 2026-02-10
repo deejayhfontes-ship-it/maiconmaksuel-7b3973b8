@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { Outlet } from "react-router-dom";
+import { useLastRoute } from "@/hooks/useLastRoute";
 import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
 import { NotificationPermissionBanner } from "./NotificationPermissionBanner";
@@ -64,6 +65,7 @@ export function MainLayout() {
 
   // Inicializar hook de notificações do navegador
   useBrowserNotifications();
+  useLastRoute();
 
   return (
     <SidebarContext.Provider value={{ collapsed, setCollapsed, mobileOpen, setMobileOpen, isSearchOpen, setIsSearchOpen }}>
