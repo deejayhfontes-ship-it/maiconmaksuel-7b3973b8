@@ -1,5 +1,6 @@
 // Offline-first hook for atendimentos (comandas) with Caixa integration
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   localGet,
@@ -132,6 +133,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
   const [isOnline, setIsOnline] = useState(getOnlineStatus());
   const [pendingSync, setPendingSync] = useState(0);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Listen for online status changes
   useEffect(() => {
@@ -850,6 +852,13 @@ export function useAtendimentos(): UseAtendimentosReturn {
         title: `Comanda #${current.numero_comanda.toString().padStart(3, '0')} fechada!`,
         description: `Total: R$ ${current.valor_final.toFixed(2)}`,
       });
+
+      // Invalidate all relevant React Query caches
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+      queryClient.invalidateQueries({ queryKey: ['caixa'] });
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['atendimentos'] });
+      queryClient.invalidateQueries({ queryKey: ['clientes'] });
     } catch (err) {
       console.error('[useAtendimentos] Fechar comanda error:', err);
       throw err;

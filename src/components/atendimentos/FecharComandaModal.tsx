@@ -377,8 +377,13 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
     },
     onSuccess: async ({ emitirNota }) => {
       setEmissaoStatus("success");
+      // Invalidate ALL relevant caches so the entire system updates
       queryClient.invalidateQueries({ queryKey: ["atendimentos"] });
       queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
+      queryClient.invalidateQueries({ queryKey: ["caixa"] });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
       
       // Enviar para tablet que finalizou
       await enviarParaTablet("finalizado");

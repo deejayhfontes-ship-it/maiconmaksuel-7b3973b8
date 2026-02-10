@@ -10,10 +10,10 @@ export function useDashboardData() {
   return useQuery({
     queryKey: ["dashboard-data"],
     queryFn: loadDashboardData,
-    staleTime: 1000 * 60 * 5, // 5 min - dados considerados frescos
-    gcTime: 1000 * 60 * 10, // 10 min - manter em cache
-    refetchOnWindowFocus: false, // Não refetch ao focar na janela
-    refetchOnMount: false, // Não refetch ao montar se houver cache
+    staleTime: 1000 * 30, // 30s - dados considerados frescos
+    gcTime: 1000 * 60 * 5, // 5 min - manter em cache
+    refetchOnWindowFocus: true, // Refetch ao focar na janela
+    refetchOnMount: true, // Refetch ao montar (navegação)
     refetchInterval: false, // Sem polling automático
     retry: 2,
   });
