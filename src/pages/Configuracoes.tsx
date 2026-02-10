@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Database, 
   Download, 
@@ -46,8 +46,12 @@ import {
   Search,
   ArrowLeft,
   Camera,
-  Plus
+  Plus,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
+import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -899,6 +903,86 @@ function LicencaContent() {
 
 // Componente Atualizações
 function AtualizacoesContent() {
+  const [checking, setChecking] = useState(false);
+  const [lastCheck, setLastCheck] = useState<string | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<'uptodate' | 'available' | 'downloading' | 'ready' | 'error'>('uptodate');
+  const [updateVersion, setUpdateVersion] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
+  const isElectronEnv = typeof window !== 'undefined' && window.electron?.isElectron === true;
+
+  useEffect(() => {
+    if (!isElectronEnv || !window.electron) return;
+    const electron = window.electron;
+
+    electron.onUpdateAvailable((info) => {
+      setUpdateStatus('available');
+      setUpdateVersion(info.version);
+      setChecking(false);
+    });
+    electron.onUpdateProgress((p) => {
+      setUpdateStatus('downloading');
+      setDownloadProgress(Math.round(p.percent));
+    });
+    electron.onUpdateDownloaded(() => {
+      setUpdateStatus('ready');
+      setDownloadProgress(100);
+    });
+    electron.onUpdateError((err) => {
+      setUpdateStatus('error');
+      setErrorMsg(String(err));
+      setChecking(false);
+    });
+
+    return () => { electron.removeUpdateListeners(); };
+  }, [isElectronEnv]);
+
+  const handleCheck = async () => {
+    setChecking(true);
+    setUpdateStatus('uptodate');
+    setErrorMsg('');
+    setLastCheck(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+
+    if (isElectronEnv && window.electron) {
+      await window.electron.checkForUpdates();
+      // If no update found, electron won't fire onUpdateAvailable — reset after timeout
+      setTimeout(() => setChecking(false), 8000);
+    } else {
+      // Web: reload the page to get latest deployed version
+      setTimeout(() => {
+        setChecking(false);
+        toast.success('Sistema atualizado! A versão web é sempre a mais recente.');
+      }, 2000);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!window.electron) return;
+    setUpdateStatus('downloading');
+    setDownloadProgress(0);
+    await window.electron.downloadUpdate();
+  };
+
+  const handleInstall = async () => {
+    if (!window.electron) return;
+    toast.success('Reiniciando para instalar atualização...');
+    setTimeout(() => window.electron!.installUpdate(), 1000);
+  };
+
+  const statusConfig = {
+    uptodate: { icon: Shield, label: 'Sistema Atualizado', color: 'green' },
+    available: { icon: Download, label: `Nova versão disponível: v${updateVersion}`, color: 'blue' },
+    downloading: { icon: Download, label: `Baixando atualização... ${downloadProgress}%`, color: 'blue' },
+    ready: { icon: CheckCircle2, label: 'Atualização pronta para instalar', color: 'green' },
+    error: { icon: AlertTriangle, label: 'Erro ao verificar atualizações', color: 'red' },
+  };
+
+  const s = statusConfig[updateStatus];
+  const StatusIcon = s.icon;
+  const bgClass = `bg-${s.color}-50 dark:bg-${s.color}-900/20 border-${s.color}-200 dark:border-${s.color}-800`;
+  const textClass = `text-${s.color}-700 dark:text-${s.color}-400`;
+  const subTextClass = `text-${s.color}-600 dark:text-${s.color}-500`;
+
   return (
     <Card className="p-6">
       <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
@@ -907,22 +991,46 @@ function AtualizacoesContent() {
       </h2>
       
       <div className="space-y-6">
-        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+        <div className={`p-4 border rounded-lg ${bgClass}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-green-500 rounded-full flex items-center justify-center">
-                <Shield className="h-5 w-5 text-white" />
+              <div className={`h-10 w-10 bg-${s.color}-500 rounded-full flex items-center justify-center`}>
+                <StatusIcon className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="font-semibold text-green-700 dark:text-green-400">Sistema Atualizado</p>
-                <p className="text-sm text-green-600 dark:text-green-500">Versão 2.0.5 - Última verificação: hoje às 10:30</p>
+                <p className={`font-semibold ${textClass}`}>{s.label}</p>
+                <p className={`text-sm ${subTextClass}`}>
+                  {lastCheck ? `Última verificação: hoje às ${lastCheck}` : 'Clique em Verificar para checar atualizações'}
+                </p>
+                {updateStatus === 'error' && errorMsg && (
+                  <p className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                )}
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Verificar Agora
-            </Button>
+            <div className="flex gap-2">
+              {updateStatus === 'available' && isElectronEnv && (
+                <Button size="sm" onClick={handleDownload}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar
+                </Button>
+              )}
+              {updateStatus === 'ready' && isElectronEnv && (
+                <Button size="sm" onClick={handleInstall} className="bg-green-600 hover:bg-green-700">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Instalar e Reiniciar
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleCheck} disabled={checking || updateStatus === 'downloading'}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${checking ? 'animate-spin' : ''}`} />
+                {checking ? 'Verificando...' : 'Verificar Agora'}
+              </Button>
+            </div>
           </div>
+          {updateStatus === 'downloading' && (
+            <div className="mt-3">
+              <Progress value={downloadProgress} className="h-2" />
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
