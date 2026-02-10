@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import {
   EntityStore,
-  ENTITY_STORES,
+  SYNCABLE_ENTITY_STORES,
   getSyncQueue,
   removeSyncOperation,
   updateSyncOperation,
@@ -263,7 +263,7 @@ export async function initialSync(): Promise<void> {
   console.log('[Sync] Iniciando sincronização inicial...');
   
   try {
-    for (const entity of ENTITY_STORES) {
+    for (const entity of SYNCABLE_ENTITY_STORES) {
       await syncEntityFromServer(entity);
     }
     
