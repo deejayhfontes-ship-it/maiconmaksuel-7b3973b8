@@ -31,12 +31,12 @@ function createWindow() {
     titleBarStyle: 'default'
   })
 
-  // Carregar aplicação
-  const startURL = isDev
-    ? 'http://localhost:5173'
-    : `file://${path.join(__dirname, '../dist/index.html')}`
-
-  mainWindow.loadURL(startURL)
+  // Carregar aplicação — no EXE abre direto no Kiosk via hash
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:5173')
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: '/kiosk' })
+  }
 
   // Mostrar quando pronto
   mainWindow.once('ready-to-show', () => {

@@ -31,18 +31,18 @@ export default function KioskLauncher() {
   };
 
   const handleOpenNewWindow = () => {
-    const kioskPath = isDesktop ? "#/kiosk" : "/kiosk";
-    // Try desktop API first
-    if ((window as any).desktop?.openWindow) {
-      (window as any).desktop.openWindow(kioskPath);
+    if (isDesktop) {
+      // No desktop, navegar internamente — nunca abrir navegador externo
+      navigate("/kiosk");
+      toast.success("Kiosk aberto");
     } else {
       window.open(
-        window.location.origin + (isDesktop ? "/#/kiosk" : "/kiosk"),
+        window.location.origin + "/kiosk",
         "kiosk",
         "width=1024,height=768,noopener,noreferrer"
       );
+      toast.success("Kiosk aberto em nova janela");
     }
-    toast.success("Kiosk aberto em nova janela");
   };
 
   const handleCopy = (text: string, label: string) => {

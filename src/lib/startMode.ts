@@ -3,6 +3,7 @@
  * Handles deep linking (?mode=kiosk), last route persistence,
  * and start route resolution for both web and desktop.
  */
+import { isDesktopWrapper } from "@/lib/desktopDetection";
 
 const LAST_ROUTE_ADMIN_KEY = "lastRouteAdmin";
 const LAST_ROUTE_KIOSK_KEY = "lastRouteKiosk";
@@ -61,8 +62,10 @@ export function getStartRoute(defaultRoute: string = "/login"): string {
   if (mode === "kiosk") return "/kiosk";
   if (mode === "admin") return "/dashboard";
 
+  // No desktop wrapper, iniciar direto no Kiosk
+  if (isDesktopWrapper()) return "/kiosk";
+
   if (isRememberRouteEnabled()) {
-    // Try to restore last route based on context
     const lastAdmin = getLastRoute("admin");
     if (lastAdmin) return lastAdmin;
   }
