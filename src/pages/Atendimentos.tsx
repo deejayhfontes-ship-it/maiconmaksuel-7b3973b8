@@ -482,41 +482,18 @@ const Atendimentos = () => {
       }
     }
 
-    // Atualizar o atendimento para fechado
-    await supabase.from("atendimentos").update({
-      status: "fechado",
-      subtotal,
-      desconto,
-      valor_final: valorFinal,
-    }).eq("id", selectedAtendimento.id);
-
-    // Atualizar última visita do cliente
-    if (selectedAtendimento.cliente_id) {
-      const { data: clienteData } = await supabase
-        .from("clientes")
-        .select("total_visitas")
-        .eq("id", selectedAtendimento.cliente_id)
-        .single();
-      
-      await supabase.from("clientes").update({
-        ultima_visita: new Date().toISOString(),
-        total_visitas: (clienteData?.total_visitas || 0) + 1,
-      }).eq("id", selectedAtendimento.cliente_id);
-    }
+    // NÃO fechar o atendimento aqui — isso será feito no FecharComandaModal
+    // para garantir que a comanda só feche após confirmação do usuário.
+    console.log('[Atendimentos] Pagamento registrado, abrindo modal de NF...');
 
     // Abrir modal de NF após pagamento
     setIsPaymentOpen(false);
     setAtendimentoParaNf({
       ...selectedAtendimento,
       valor_final: valorFinal,
-      status: "fechado",
+      status: selectedAtendimento.status, // manter status atual (aberto)
     });
     setIsNfModalOpen(true);
-    
-    toast({ 
-      title: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} fechada!`, 
-      description: `Total: ${formatPrice(valorFinal)}` 
-    });
     
     refetch(); // Refresh using the hook
   };
