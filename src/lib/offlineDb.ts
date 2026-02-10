@@ -23,6 +23,20 @@ export const ENTITY_STORES = [
   'registro_ponto',
 ] as const;
 
+// Entities that have an updated_at column and can be synced via syncEntityFromServer
+export const SYNCABLE_ENTITY_STORES: EntityStore[] = [
+  'clientes',
+  'profissionais',
+  'servicos',
+  'produtos',
+  'agendamentos',
+  'atendimentos',
+  'caixa',
+  'vales',
+  'dividas',
+  'cheques',
+];
+
 export type EntityStore = typeof ENTITY_STORES[number];
 
 // Sync queue for pending operations
