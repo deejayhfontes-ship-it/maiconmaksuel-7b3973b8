@@ -35,7 +35,8 @@ interface Cliente {
   updated_at: string;
 }
 
-const cleanPhoneForWhatsApp = (phone: string) => {
+const cleanPhoneForWhatsApp = (phone: string | null | undefined) => {
+  if (!phone) return "55";
   const cleaned = phone.replace(/\D/g, "");
   return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
 };

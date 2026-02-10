@@ -44,8 +44,12 @@ import ClienteViewDialog from "@/components/clientes/ClienteViewDialog";
 
 const ITEMS_PER_PAGE = 10;
 
-const getInitials = (name: string) => {
-  return name
+const safeStr = (v: any): string => (v ?? '').toString();
+
+const getInitials = (name: string | null | undefined) => {
+  const safe = safeStr(name);
+  if (!safe) return "?";
+  return safe
     .split(" ")
     .map((n) => n[0])
     .slice(0, 2)
@@ -53,7 +57,8 @@ const getInitials = (name: string) => {
     .toUpperCase();
 };
 
-const getAvatarColor = (name: string) => {
+const getAvatarColor = (name: string | null | undefined) => {
+  const safe = safeStr(name);
   const colors = [
     "bg-primary",
     "bg-success",
@@ -63,7 +68,7 @@ const getAvatarColor = (name: string) => {
     "bg-cyan-500",
     "bg-orange-500",
   ];
-  const index = name.charCodeAt(0) % colors.length;
+  const index = safe.length > 0 ? safe.charCodeAt(0) % colors.length : 0;
   return colors[index];
 };
 
@@ -91,24 +96,25 @@ const getFrequencyBadge = (totalVisitas: number) => {
   return { label: "Prospect", color: "bg-muted text-muted-foreground" };
 };
 
-const removeAccents = (str: string): string => {
-  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const removeAccents = (str: string | null | undefined): string => {
+  return safeStr(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
-const highlightMatch = (text: string, query: string): React.ReactNode => {
-  if (!query || query.length < 1) return text;
-  const normalizedText = removeAccents(text.toLowerCase());
+const highlightMatch = (text: string | null | undefined, query: string): React.ReactNode => {
+  const safe = safeStr(text);
+  if (!query || query.length < 1 || !safe) return safe || "-";
+  const normalizedText = removeAccents(safe.toLowerCase());
   const normalizedQuery = removeAccents(query.toLowerCase());
   const index = normalizedText.indexOf(normalizedQuery);
-  if (index === -1) return text;
+  if (index === -1) return safe;
   
   return (
     <>
-      {text.slice(0, index)}
+      {safe.slice(0, index)}
       <span className="bg-warning/30 text-foreground font-semibold rounded px-0.5">
-        {text.slice(index, index + query.length)}
+        {safe.slice(index, index + query.length)}
       </span>
-      {text.slice(index + query.length)}
+      {safe.slice(index + query.length)}
     </>
   );
 };
