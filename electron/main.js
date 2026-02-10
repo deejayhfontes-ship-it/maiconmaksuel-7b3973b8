@@ -1,6 +1,14 @@
 const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron')
 const path = require('path')
 const { autoUpdater } = require('electron-updater')
+const Store = require('electron-store')
+
+// Persistent settings store
+const store = new Store({
+  defaults: {
+    kioskEnabled: false,
+  }
+})
 
 // Detectar se está em desenvolvimento
 const isDev = !app.isPackaged
@@ -31,11 +39,14 @@ function createWindow() {
     titleBarStyle: 'default'
   })
 
-  // Carregar aplicação — no EXE abre direto no Kiosk via hash
+  // Carregar aplicação — rota baseada na flag kioskEnabled
+  const kioskEnabled = store.get('kioskEnabled', false)
+
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: '/kiosk' })
+    const hash = kioskEnabled ? '/kiosk' : '/login'
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash })
   }
 
   // Mostrar quando pronto
@@ -158,4 +169,14 @@ ipcMain.handle('get-platform', () => {
 
 ipcMain.handle('is-dev', () => {
   return isDev
+})
+
+// Kiosk mode persistence
+ipcMain.handle('set-kiosk-enabled', (_event, enabled) => {
+  store.set('kioskEnabled', !!enabled)
+  return true
+})
+
+ipcMain.handle('get-kiosk-enabled', () => {
+  return store.get('kioskEnabled', false)
 })

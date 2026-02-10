@@ -22,6 +22,8 @@ interface ElectronAPI {
   checkForUpdates: () => Promise<any>
   downloadUpdate: () => Promise<void>
   installUpdate: () => Promise<void>
+  setKioskEnabled: (enabled: boolean) => Promise<boolean>
+  getKioskEnabled: () => Promise<boolean>
   onUpdateAvailable: (callback: (info: UpdateInfo) => void) => void
   onUpdateProgress: (callback: (progress: ProgressInfo) => void) => void
   onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => void
