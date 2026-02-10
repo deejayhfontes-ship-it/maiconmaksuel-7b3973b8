@@ -37,13 +37,14 @@ export function useProdutos() {
   const loadProdutos = useCallback(async () => {
     setLoading(true);
     try {
-      // Load from IndexedDB first
+      // Load from IndexedDB first for instant UI
       const localData = await localGetAll<Produto>('produtos');
       if (localData.length > 0) {
         setProdutos(localData.sort((a, b) => a.nome.localeCompare(b.nome)));
+        console.log(`[Produtos] Carregados ${localData.length} do cache local`);
       }
 
-      // Then sync with Supabase
+      // Then sync with Supabase (source of truth)
       setSyncing(true);
       const { data: remoteData, error } = await supabase
         .from('produtos')
@@ -51,7 +52,7 @@ export function useProdutos() {
         .order('nome', { ascending: true });
 
       if (error) {
-        console.error('Error fetching from Supabase:', error);
+        console.error('[Produtos] Erro ao buscar do Supabase:', error);
         if (localData.length === 0) {
           toast({
             title: 'Modo offline',
@@ -59,54 +60,33 @@ export function useProdutos() {
           });
         }
       } else if (remoteData) {
-        const mergedData = await mergeWithLocal(remoteData, localData);
-        setProdutos(mergedData.sort((a, b) => a.nome.localeCompare(b.nome)));
-        
-        for (const produto of mergedData) {
-          await localPut('produtos', produto);
+        console.log(`[Produtos] Recebidos ${remoteData.length} do Supabase`);
+        // Supabase is the source of truth: use remote data directly
+        // and sync IndexedDB to match
+        setProdutos(remoteData.sort((a, b) => a.nome.localeCompare(b.nome)));
+
+        // Clear local store and replace with remote data to prevent
+        // deleted items from reappearing
+        try {
+          const { localClear } = await import('@/lib/offlineDb');
+          await localClear('produtos');
+          for (const produto of remoteData) {
+            await localPut('produtos', produto, true);
+          }
+          console.log(`[Produtos] Cache local sincronizado: ${remoteData.length} itens`);
+        } catch (cacheErr) {
+          console.warn('[Produtos] Falha ao atualizar cache local:', cacheErr);
         }
       }
     } catch (error) {
-      console.error('Error loading produtos:', error);
+      console.error('[Produtos] Erro ao carregar:', error);
     } finally {
       setLoading(false);
       setSyncing(false);
     }
   }, [toast]);
 
-  const mergeWithLocal = async (
-    remote: Produto[],
-    local: Produto[]
-  ): Promise<Produto[]> => {
-    const remoteMap = new Map(remote.map((p) => [p.id, p]));
-    const localMap = new Map(local.map((p) => [p.id, p]));
-    const merged: Produto[] = [];
-
-    for (const [id, remoteItem] of remoteMap) {
-      const localItem = localMap.get(id);
-      if (localItem) {
-        const remoteTime = new Date(remoteItem.updated_at).getTime();
-        const localTime = new Date(localItem.updated_at).getTime();
-        merged.push(remoteTime >= localTime ? remoteItem : localItem);
-      } else {
-        merged.push(remoteItem);
-      }
-    }
-
-    for (const [id, localItem] of localMap) {
-      if (!remoteMap.has(id)) {
-        merged.push(localItem);
-        await addToSyncQueue({
-          entity: 'produtos',
-          operation: 'create',
-          data: localItem as unknown as Record<string, unknown>,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-
-    return merged;
-  };
+  // mergeWithLocal removed — Supabase is source of truth when online
 
   // Create new product
   const createProduto = useCallback(async (data: ProdutoInput): Promise<Produto | null> => {
@@ -243,14 +223,28 @@ export function useProdutos() {
 
   // Delete product
   const deleteProduto = useCallback(async (id: string): Promise<boolean> => {
+    console.log(`[Produtos] Excluindo produto id=${id}`);
     try {
-      await localDelete('produtos', id);
+      // 1. Remove from UI immediately (optimistic)
       setProdutos((prev) => prev.filter((p) => p.id !== id));
 
-      const { error } = await supabase.from('produtos').delete().eq('id', id);
+      // 2. Remove from IndexedDB
+      try {
+        await localDelete('produtos', id);
+        console.log(`[Produtos] Removido do IndexedDB: ${id}`);
+      } catch (localErr) {
+        console.warn('[Produtos] Falha ao remover do IndexedDB:', localErr);
+      }
+
+      // 3. Delete from Supabase
+      const { error, count } = await supabase
+        .from('produtos')
+        .delete()
+        .eq('id', id)
+        .select('id');
 
       if (error) {
-        console.error('Error syncing delete to Supabase:', error);
+        console.error('[Produtos] Erro ao excluir do Supabase:', error);
         await addToSyncQueue({
           entity: 'produtos',
           operation: 'delete',
@@ -261,11 +255,13 @@ export function useProdutos() {
           title: 'Excluído localmente',
           description: 'Será sincronizado quando houver conexão.',
         });
+      } else {
+        console.log(`[Produtos] Excluído do Supabase com sucesso: ${id}`);
       }
 
       return true;
     } catch (error) {
-      console.error('Error deleting produto:', error);
+      console.error('[Produtos] Erro ao excluir produto:', error);
       toast({
         title: 'Erro ao excluir produto',
         description: 'Tente novamente.',
