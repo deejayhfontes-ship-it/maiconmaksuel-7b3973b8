@@ -33,6 +33,8 @@ import {
   Receipt,
   Heart,
   Loader2,
+  HardDrive,
+  Download,
 } from "lucide-react";
 
 type LogEntry = {
@@ -57,6 +59,14 @@ type KioskStats = {
   avgResponseTime: number;
 };
 
+type SwStatus = {
+  registered: boolean;
+  version: string | null;
+  cacheNames: string[];
+  cachedUrls: number;
+  lastCheck: string | null;
+};
+
 export default function KioskDiagnostico() {
   const { settings } = useKioskSettings();
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -72,6 +82,13 @@ export default function KioskDiagnostico() {
   });
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationState, setSimulationState] = useState<"idle" | "comanda" | "thankyou">("idle");
+  const [swStatus, setSwStatus] = useState<SwStatus>({
+    registered: false,
+    version: null,
+    cacheNames: [],
+    cachedUrls: 0,
+    lastCheck: null,
+  });
   const logsEndRef = useRef<HTMLDivElement>(null);
   const requestTimesRef = useRef<number[]>([]);
 
@@ -91,6 +108,7 @@ export default function KioskDiagnostico() {
     addLog("Diagnóstico do Kiosk iniciado", "info");
     checkConnection();
     checkRoutes();
+    checkServiceWorker();
   }, []);
 
   // Check connection
@@ -118,12 +136,50 @@ export default function KioskDiagnostico() {
         avgResponseTime: Math.round(avgTime),
         requestCount: prev.requestCount + 1,
       }));
-      addLog(`Conexão OK (${responseTime}ms)`, "success");
+    addLog(`Conexão OK (${responseTime}ms)`, "success");
     } catch (error: any) {
       setStats(prev => ({ ...prev, connectionStatus: "offline" }));
       addLog(`Erro de conexão: ${error.message}`, "error");
     }
   };
+
+  // Check Service Worker status
+  const checkServiceWorker = async () => {
+    if (!('serviceWorker' in navigator)) {
+      setSwStatus(prev => ({ ...prev, registered: false, lastCheck: new Date().toISOString() }));
+      addLog("Service Worker não suportado neste navegador", "warning");
+      return;
+    }
+
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const cacheNames = await caches.keys();
+      let totalUrls = 0;
+      for (const name of cacheNames) {
+        const cache = await caches.open(name);
+        const keys = await cache.keys();
+        totalUrls += keys.length;
+      }
+
+      const isRegistered = !!reg?.active;
+      setSwStatus({
+        registered: isRegistered,
+        version: isRegistered ? 'mm-gestao-v2' : null,
+        cacheNames,
+        cachedUrls: totalUrls,
+        lastCheck: new Date().toISOString(),
+      });
+
+      if (isRegistered) {
+        addLog(`Service Worker ativo — ${totalUrls} URLs em cache (${cacheNames.length} caches)`, "success");
+      } else {
+        addLog("Service Worker não está ativo — offline não funcionará", "error");
+      }
+    } catch (err: any) {
+      addLog(`Erro ao verificar SW: ${err.message}`, "error");
+    }
+  };
+
 
   // Check routes
   const checkRoutes = () => {
@@ -470,7 +526,64 @@ export default function KioskDiagnostico() {
         </Card>
       </div>
 
-      {/* Console Logs */}
+      {/* Service Worker / Offline Status */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <HardDrive className="h-4 w-4" />
+            Offline & Service Worker
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Service Worker</span>
+            <Badge variant={swStatus.registered ? "default" : "destructive"} className={swStatus.registered ? "bg-green-500" : ""}>
+              {swStatus.registered ? "Ativo" : "Inativo"}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Versão Cache</span>
+            <span className="text-sm font-mono">{swStatus.version || "-"}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">URLs em Cache</span>
+            <span className="text-sm font-mono">{swStatus.cachedUrls}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Caches Ativos</span>
+            <span className="text-sm font-mono">{swStatus.cacheNames.length > 0 ? swStatus.cacheNames.join(', ') : '-'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Última Verificação</span>
+            <span className="text-sm font-mono">
+              {swStatus.lastCheck ? new Date(swStatus.lastCheck).toLocaleTimeString("pt-BR") : "-"}
+            </span>
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Navegador Online</span>
+            <Badge variant={navigator.onLine ? "default" : "destructive"} className={navigator.onLine ? "bg-green-500" : ""}>
+              {navigator.onLine ? "Sim" : "Não"}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={checkServiceWorker} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Verificar SW
+            </Button>
+            <Button onClick={() => window.open("/kiosk", "_blank")} variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-1" />
+              Testar /kiosk
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Com SW ativo, /kiosk abrirá offline servindo index.html do cache.
+            Assets JS/CSS são cacheados em runtime na primeira visita.
+          </p>
+        </CardContent>
+      </Card>
+
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
