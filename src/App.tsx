@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { isDesktopWrapper } from "@/lib/desktopDetection";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PinAuthProvider } from "@/contexts/PinAuthContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
@@ -69,6 +70,7 @@ const queryClient = new QueryClient();
 const RouterComponent = isDesktopWrapper() ? HashRouter : BrowserRouter;
 
 const App = () => (
+  <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="beautypro-theme">
       <OfflineProvider>
@@ -172,8 +174,9 @@ const App = () => (
         </PinAuthProvider>
       </NetworkDebugProvider>
     </OfflineProvider>
-  </ThemeProvider>
+   </ThemeProvider>
 </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

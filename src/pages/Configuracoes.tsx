@@ -79,7 +79,7 @@ import AparenciaSettings from "@/components/configuracoes/geral/AparenciaSetting
 import NotificacoesSettings from "@/components/configuracoes/geral/NotificacoesSettings";
 // RH Settings
 import RHSettings from "@/components/configuracoes/RHSettings";
-
+import AppErrorsDiagnostic from "@/components/configuracoes/AppErrorsDiagnostic";
 type SubItem = {
   id: string;
   label: string;
@@ -266,7 +266,7 @@ const menuSections: MenuSection[] = [
       { id: "atualizacoes", label: "Atualizações", icon: RefreshCw },
       { id: "logs-sistema", label: "Logs do Sistema", icon: History },
       { id: "diagnostico", label: "Diagnóstico", icon: Database },
-      { id: "modo-dev", label: "Modo Desenvolvedor", icon: Settings },
+      { id: "erros-app", label: "Erros do App", icon: HelpCircle },
       { id: "mapa-sistema", label: "Mapa do Sistema", icon: Globe, route: "/mapa-sistema" },
     ],
   },
@@ -388,6 +388,8 @@ export default function Configuracoes() {
         return <ModoDevContent />;
       case "diagnostico":
         return <DiagnosticoSistema />;
+      case "erros-app":
+        return <AppErrorsDiagnostic />;
       case "versao":
         return <SistemaInfo />;
       case "webcam":
