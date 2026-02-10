@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('electron', {
   getPlatform: () => ipcRenderer.invoke('get-platform'),
   isDev: () => ipcRenderer.invoke('is-dev'),
   
+  // Kiosk mode persistence
+  setKioskEnabled: (enabled) => ipcRenderer.invoke('set-kiosk-enabled', enabled),
+  getKioskEnabled: () => ipcRenderer.invoke('get-kiosk-enabled'),
+  
   // Atualização automática
   checkForUpdates: () => ipcRenderer.invoke('check-updates'),
   downloadUpdate: () => ipcRenderer.invoke('download-update'),

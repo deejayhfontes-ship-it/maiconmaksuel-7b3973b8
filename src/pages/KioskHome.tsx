@@ -27,6 +27,7 @@ import {
   X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import KioskAdminEscape from "@/components/kiosk/KioskAdminEscape";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import logoMaiconMaksuel from "@/assets/logo-maicon-maksuel.png";
@@ -495,15 +496,17 @@ export default function KioskHome() {
               />
             </div>
             
-            {/* Logo with breathing animation - centered */}
-            <img 
-              src={logoMaiconMaksuel} 
-              alt="Maicon Maksuel"
-              className={cn(
-                "relative h-40 w-auto md:h-48 object-contain drop-shadow-2xl z-10",
-              )}
-              style={{ animation: 'logo-breathe 4s ease-in-out infinite' }}
-            />
+            {/* Logo with breathing animation - wrapped in admin escape */}
+            <KioskAdminEscape>
+              <img 
+                src={logoMaiconMaksuel} 
+                alt="Maicon Maksuel"
+                className={cn(
+                  "relative h-40 w-auto md:h-48 object-contain drop-shadow-2xl z-10",
+                )}
+                style={{ animation: 'logo-breathe 4s ease-in-out infinite' }}
+              />
+            </KioskAdminEscape>
           </div>
         </div>
 

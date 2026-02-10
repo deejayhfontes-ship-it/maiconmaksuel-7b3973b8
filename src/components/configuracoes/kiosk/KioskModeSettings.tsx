@@ -3,7 +3,8 @@
  * Comprehensive configuration for kiosk mode operation
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -11,6 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useKioskSettings } from "@/hooks/useKioskSettings";
+import { isDesktopWrapper } from "@/lib/desktopDetection";
+import { setKioskDeviceEnabled, isKioskDeviceEnabled } from "@/lib/startMode";
+import { toast } from "sonner";
 import { 
   Tablet, 
   Palette, 
@@ -23,7 +27,8 @@ import {
   Receipt,
   Shield,
   Power,
-  Activity
+  Activity,
+  Monitor
 } from "lucide-react";
 
 import KioskVisualSettings from "./KioskVisualSettings";
@@ -132,8 +137,72 @@ interface KioskOverviewProps {
 }
 
 function KioskOverview({ settings, updateSettings, isSaving }: KioskOverviewProps) {
+  const navigate = useNavigate();
+  const isDesktop = isDesktopWrapper();
+  const [deviceKioskEnabled, setDeviceKioskEnabled] = useState(isKioskDeviceEnabled());
+
+  const handleToggleDeviceKiosk = async (enabled: boolean) => {
+    // Persist via Electron IPC
+    try {
+      await window.electron?.setKioskEnabled(enabled);
+    } catch {
+      // ignore
+    }
+    // Also persist in localStorage for React-side
+    setKioskDeviceEnabled(enabled);
+    setDeviceKioskEnabled(enabled);
+
+    if (enabled) {
+      toast.success("Kiosk ativado neste dispositivo. No próximo boot, abrirá no Kiosk.");
+    } else {
+      toast.success("Kiosk desativado neste dispositivo. No próximo boot, abrirá no admin.");
+      navigate("/dashboard");
+    }
+  };
+
+  const handleOpenKiosk = () => {
+    if (isDesktop) {
+      navigate("/kiosk");
+    } else {
+      window.open("/kiosk", "_blank");
+    }
+  };
+
+  const handleOpenPonto = () => {
+    if (isDesktop) {
+      navigate("/kiosk/ponto");
+    } else {
+      window.open("/kiosk/ponto", "_blank");
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Device Kiosk Toggle - Desktop only */}
+      {isDesktop && (
+        <Card className="border-orange-200 bg-orange-50/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-orange-100">
+                  <Monitor className="h-6 w-6 text-orange-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Kiosk neste dispositivo</CardTitle>
+                  <CardDescription>
+                    Quando ativado, o app iniciará no modo Kiosk ao abrir
+                  </CardDescription>
+                </div>
+              </div>
+              <Switch
+                checked={deviceKioskEnabled}
+                onCheckedChange={handleToggleDeviceKiosk}
+              />
+            </div>
+          </CardHeader>
+        </Card>
+      )}
+
       {/* Status Card */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
@@ -292,14 +361,14 @@ function KioskOverview({ settings, updateSettings, isSaving }: KioskOverviewProp
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              onClick={() => window.open('/kiosk', '_blank')}
+              onClick={handleOpenKiosk}
             >
               <Tablet className="h-4 w-4 mr-2" />
               Abrir Kiosk
             </Button>
             <Button
               variant="outline"
-              onClick={() => window.open('/kiosk/ponto', '_blank')}
+              onClick={handleOpenPonto}
               disabled={!settings.modulo_ponto}
             >
               <Fingerprint className="h-4 w-4 mr-2" />

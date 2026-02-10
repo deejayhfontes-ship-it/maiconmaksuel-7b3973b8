@@ -33,6 +33,7 @@ import { ptBR } from "date-fns/locale";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { usePinAuth } from "@/contexts/PinAuthContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import KioskActivationModal from "@/components/kiosk/KioskActivationModal";
 
 interface Agendamento {
   id: string;
@@ -201,6 +202,8 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Kiosk activation prompt for desktop */}
+      <KioskActivationModal />
       {/* Header com Logo, Relógio e Mensagem Motivacional */}
       <div className="flex flex-col gap-4 lg:gap-6">
         {/* Logo e título */}
