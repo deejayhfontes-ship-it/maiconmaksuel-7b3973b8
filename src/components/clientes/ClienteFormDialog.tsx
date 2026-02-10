@@ -128,10 +128,13 @@ interface ClienteFormDialogProps {
   cliente: Cliente | null;
 }
 
-const getInitials = (name: string) => {
-  return name
+const getInitials = (name: string | null | undefined) => {
+  const safe = (name ?? '').toString();
+  if (!safe) return "?";
+  return safe
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .slice(0, 2)
     .join("")
     .toUpperCase();

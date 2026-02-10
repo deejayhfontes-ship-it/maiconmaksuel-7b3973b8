@@ -41,10 +41,10 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import ClienteViewDialog from "@/components/clientes/ClienteViewDialog";
+import { LocalErrorBoundary } from "@/components/common/LocalErrorBoundary";
+import { safeStr } from "@/utils/safe";
 
 const ITEMS_PER_PAGE = 10;
-
-const safeStr = (v: any): string => (v ?? '').toString();
 
 const getInitials = (name: string | null | undefined) => {
   const safe = safeStr(name);
@@ -52,6 +52,7 @@ const getInitials = (name: string | null | undefined) => {
   return safe
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .slice(0, 2)
     .join("")
     .toUpperCase();
@@ -74,23 +75,26 @@ const getAvatarColor = (name: string | null | undefined) => {
 
 const formatPhone = (phone: string | null | undefined) => {
   if (!phone) return "-";
-  return phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  const digits = safeStr(phone).replace(/\D/g, "");
+  if (digits.length < 10) return safeStr(phone);
+  return digits.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
 };
 
 const cleanPhoneForWhatsApp = (phone: string | null | undefined) => {
   if (!phone) return "55";
-  const cleaned = phone.replace(/\D/g, "");
+  const cleaned = safeStr(phone).replace(/\D/g, "");
   return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
 };
 
-const getFrequencyBadge = (totalVisitas: number) => {
-  if (totalVisitas >= 20) {
+const getFrequencyBadge = (totalVisitas: number | null | undefined) => {
+  const visitas = totalVisitas ?? 0;
+  if (visitas >= 20) {
     return { label: "VIP", color: "bg-purple-500/10 text-purple-500" };
-  } else if (totalVisitas >= 10) {
+  } else if (visitas >= 10) {
     return { label: "Frequente", color: "bg-success/10 text-success" };
-  } else if (totalVisitas >= 5) {
+  } else if (visitas >= 5) {
     return { label: "Regular", color: "bg-primary/10 text-primary" };
-  } else if (totalVisitas >= 1) {
+  } else if (visitas >= 1) {
     return { label: "Novo", color: "bg-warning/10 text-warning" };
   }
   return { label: "Prospect", color: "bg-muted text-muted-foreground" };
@@ -119,6 +123,32 @@ const highlightMatch = (text: string | null | undefined, query: string): React.R
   );
 };
 
+// Normaliza um cliente para garantir que nenhum campo undefined cause crash
+const normalizeCliente = (c: any): Cliente => ({
+  ...c,
+  id: c?.id ?? '',
+  nome: safeStr(c?.nome),
+  celular: safeStr(c?.celular),
+  telefone: c?.telefone ?? null,
+  email: c?.email ?? null,
+  cpf: c?.cpf ?? null,
+  cep: c?.cep ?? null,
+  endereco: c?.endereco ?? null,
+  numero: c?.numero ?? null,
+  complemento: c?.complemento ?? null,
+  bairro: c?.bairro ?? null,
+  cidade: c?.cidade ?? null,
+  estado: c?.estado ?? null,
+  observacoes: c?.observacoes ?? null,
+  data_nascimento: c?.data_nascimento ?? null,
+  foto_url: c?.foto_url ?? null,
+  ativo: c?.ativo ?? true,
+  total_visitas: c?.total_visitas ?? 0,
+  ultima_visita: c?.ultima_visita ?? null,
+  created_at: c?.created_at ?? new Date().toISOString(),
+  updated_at: c?.updated_at ?? new Date().toISOString(),
+});
+
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<'todos' | 'ativos' | 'inativos'>("todos");
@@ -145,19 +175,22 @@ const Clientes = () => {
   });
 
   const filteredClientes = useMemo(() => {
-    let result = [...clientes];
+    let result = clientes.map(normalizeCliente);
 
-    // Additional client-side sorting for compatibility
     result.sort((a, b) => {
-      switch (sortOrder) {
-        case "nome-asc":
-          return a.nome.localeCompare(b.nome);
-        case "nome-desc":
-          return b.nome.localeCompare(a.nome);
-        case "recentes":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        default:
-          return 0;
+      try {
+        switch (sortOrder) {
+          case "nome-asc":
+            return safeStr(a.nome).localeCompare(safeStr(b.nome));
+          case "nome-desc":
+            return safeStr(b.nome).localeCompare(safeStr(a.nome));
+          case "recentes":
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          default:
+            return 0;
+        }
+      } catch {
+        return 0;
       }
     });
 
@@ -172,22 +205,40 @@ const Clientes = () => {
   const totalPages = Math.ceil(filteredClientes.length / ITEMS_PER_PAGE);
 
   const handleEdit = (cliente: Cliente) => {
-    setSelectedCliente(cliente);
+    if (!cliente?.id) {
+      toast({ title: "Cliente inválido", description: "Faltando ID. Verifique o cadastro.", variant: "destructive" });
+      console.error("[Clientes] Edit: cliente sem ID", cliente);
+      return;
+    }
+    console.log("[Clientes] Action", { action: 'edit', cliente });
+    setSelectedCliente(normalizeCliente(cliente));
     setIsFormOpen(true);
   };
 
   const handleView = (cliente: Cliente) => {
-    setSelectedCliente(cliente);
+    if (!cliente?.id) {
+      toast({ title: "Cliente inválido", description: "Faltando ID. Verifique o cadastro.", variant: "destructive" });
+      console.error("[Clientes] View: cliente sem ID", cliente);
+      return;
+    }
+    console.log("[Clientes] Action", { action: 'view', cliente });
+    setSelectedCliente(normalizeCliente(cliente));
     setIsViewOpen(true);
   };
 
   const handleDeleteClick = (cliente: Cliente) => {
-    setSelectedCliente(cliente);
+    if (!cliente?.id) {
+      toast({ title: "Cliente inválido", description: "Faltando ID. Verifique o cadastro.", variant: "destructive" });
+      console.error("[Clientes] Delete: cliente sem ID", cliente);
+      return;
+    }
+    console.log("[Clientes] Action", { action: 'delete', cliente });
+    setSelectedCliente(normalizeCliente(cliente));
     setIsDeleteOpen(true);
   };
 
   const handleDelete = async () => {
-    if (!selectedCliente) return;
+    if (!selectedCliente?.id) return;
 
     try {
       await remove(selectedCliente.id);
@@ -198,7 +249,7 @@ const Clientes = () => {
     } catch (error: any) {
       toast({
         title: "Erro ao excluir cliente",
-        description: error.message,
+        description: safeStr(error?.message) || "Erro desconhecido",
         variant: "destructive",
       });
     }
@@ -300,6 +351,7 @@ const Clientes = () => {
       {/* Tabela */}
       <Card>
         <CardContent className="p-0">
+          <LocalErrorBoundary context="ClientesTable" fallbackMessage="Ocorreu um erro ao exibir a lista de clientes">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">
               Carregando clientes...
@@ -346,6 +398,10 @@ const Clientes = () => {
               </TableHeader>
               <TableBody>
                 {paginatedClientes.map((cliente) => {
+                  if (!cliente?.id) {
+                    console.warn("[Clientes] Cliente sem ID encontrado, pulando:", cliente);
+                    return null;
+                  }
                   const frequency = getFrequencyBadge(cliente.total_visitas);
                   return (
                     <TableRow key={cliente.id} className="hover:bg-muted/50">
@@ -373,7 +429,7 @@ const Clientes = () => {
                         {highlightMatch(formatPhone(cliente.celular), searchTerm)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <span className="font-semibold">{cliente.total_visitas}</span>
+                        <span className="font-semibold">{cliente.total_visitas ?? 0}</span>
                         <span className="text-muted-foreground text-sm"> visitas</span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
@@ -397,9 +453,14 @@ const Clientes = () => {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => {
-                                  const phone = cleanPhoneForWhatsApp(cliente.celular);
-                                  const mensagem = encodeURIComponent(`Olá ${cliente.nome.split(" ")[0]}, tudo bem? Aqui é do Maicon Maksuel!`);
-                                  window.open(`https://wa.me/${phone}?text=${mensagem}`, "_blank");
+                                  try {
+                                    const phone = cleanPhoneForWhatsApp(cliente.celular);
+                                    const firstName = safeStr(cliente.nome).split(" ")[0] || "Cliente";
+                                    const mensagem = encodeURIComponent(`Olá ${firstName}, tudo bem? Aqui é do Maicon Maksuel!`);
+                                    window.open(`https://wa.me/${phone}?text=${mensagem}`, "_blank");
+                                  } catch (err) {
+                                    console.error("[Clientes] Erro ao abrir WhatsApp:", err, cliente);
+                                  }
                                 }}
                                 className="bg-[#25D366] hover:bg-[#128C7E] text-white"
                               >
@@ -453,6 +514,7 @@ const Clientes = () => {
             </Table>
             </div>
           )}
+          </LocalErrorBoundary>
 
           {/* Paginação */}
           {totalPages > 1 && (
@@ -484,27 +546,31 @@ const Clientes = () => {
       </Card>
 
       {/* Dialogs */}
-      <ClienteFormDialog
-        open={isFormOpen}
-        onClose={handleFormClose}
-        cliente={selectedCliente}
-      />
+      <LocalErrorBoundary context="ClienteFormDialog" fallbackMessage="Ocorreu um erro ao abrir o formulário do cliente">
+        <ClienteFormDialog
+          open={isFormOpen}
+          onClose={handleFormClose}
+          cliente={selectedCliente}
+        />
+      </LocalErrorBoundary>
 
-      <ClienteViewDialog
-        open={isViewOpen}
-        onClose={() => {
-          setIsViewOpen(false);
-          setSelectedCliente(null);
-        }}
-        cliente={selectedCliente}
-      />
+      <LocalErrorBoundary context="ClienteViewDialog" fallbackMessage="Ocorreu um erro ao abrir os detalhes do cliente">
+        <ClienteViewDialog
+          open={isViewOpen}
+          onClose={() => {
+            setIsViewOpen(false);
+            setSelectedCliente(null);
+          }}
+          cliente={selectedCliente}
+        />
+      </LocalErrorBoundary>
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{selectedCliente?.nome}</strong>?
+              Tem certeza que deseja excluir <strong>{safeStr(selectedCliente?.nome) || "este cliente"}</strong>?
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
