@@ -28,7 +28,9 @@ import {
   Shield,
   Power,
   Activity,
-  Monitor
+  Monitor,
+  Maximize2,
+  XCircle,
 } from "lucide-react";
 
 import KioskVisualSettings from "./KioskVisualSettings";
@@ -366,6 +368,56 @@ function KioskOverview({ settings, updateSettings, isSaving }: KioskOverviewProp
               <Tablet className="h-4 w-4 mr-2" />
               Abrir Kiosk
             </Button>
+
+            {/* 2ª Janela Kiosk */}
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (window.electron?.openKioskWindow) {
+                  await window.electron.openKioskWindow();
+                  toast.success("Kiosk aberto em 2ª janela");
+                } else {
+                  window.open("/kiosk", "_blank");
+                  toast.success("Kiosk aberto em nova aba");
+                }
+              }}
+            >
+              <Monitor className="h-4 w-4 mr-2" />
+              Abrir Kiosk (2ª janela)
+            </Button>
+
+            {/* Fullscreen Kiosk - Electron only */}
+            {isDesktop && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (window.electron?.toggleKioskFullscreen) {
+                    await window.electron.toggleKioskFullscreen();
+                    toast.success("Fullscreen alternado");
+                  }
+                }}
+              >
+                <Maximize2 className="h-4 w-4 mr-2" />
+                Fullscreen Kiosk
+              </Button>
+            )}
+
+            {/* Fechar Kiosk - Electron only */}
+            {isDesktop && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (window.electron?.closeKioskWindow) {
+                    await window.electron.closeKioskWindow();
+                    toast.success("Janela Kiosk fechada");
+                  }
+                }}
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Fechar Kiosk
+              </Button>
+            )}
+
             <Button
               variant="outline"
               onClick={handleOpenPonto}
