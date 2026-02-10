@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, shell, globalShortcut } = require('electron')
 const path = require('path')
 const { autoUpdater } = require('electron-updater')
 const Store = require('electron-store')
@@ -89,11 +89,44 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow()
 
+  // Register global shortcut for kiosk escape (works even when renderer is blocked)
+  try {
+    const registered = globalShortcut.register('CommandOrControl+Shift+K', () => {
+      console.log('[KioskEscape] escape_hotkey_pressed (globalShortcut)')
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('trigger-kiosk-escape')
+      }
+      // Also try kiosk window
+      if (kioskWindow && !kioskWindow.isDestroyed()) {
+        kioskWindow.webContents.send('trigger-kiosk-escape')
+      }
+    })
+    if (!registered) {
+      console.warn('[KioskEscape] Failed to register CommandOrControl+Shift+K, trying fallback...')
+      globalShortcut.register('CommandOrControl+Alt+K', () => {
+        console.log('[KioskEscape] escape_hotkey_pressed (fallback globalShortcut)')
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('trigger-kiosk-escape')
+        }
+        if (kioskWindow && !kioskWindow.isDestroyed()) {
+          kioskWindow.webContents.send('trigger-kiosk-escape')
+        }
+      })
+    }
+  } catch (err) {
+    console.error('[KioskEscape] Failed to register globalShortcut:', err)
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
     }
   })
+})
+
+// Unregister shortcuts and quit
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })
 
 // Fechar app quando todas janelas forem fechadas
@@ -199,6 +232,19 @@ ipcMain.handle('set-start-mode', (_event, mode) => {
 
 ipcMain.handle('get-start-mode', () => {
   return store.get('startMode', 'admin')
+})
+
+// Exit kiosk/fullscreen on current BrowserWindow
+ipcMain.handle('exit-kiosk-mode', () => {
+  console.log('[KioskEscape] exit_kiosk_done — restoring normal window')
+  const win = mainWindow || BrowserWindow.getFocusedWindow()
+  if (win && !win.isDestroyed()) {
+    if (win.isKiosk()) win.setKiosk(false)
+    if (win.isFullScreen()) win.setFullScreen(false)
+    win.setMenuBarVisibility(true)
+  }
+  store.set('kioskEnabled', false)
+  store.set('startMode', 'admin')
 })
 
 // Kiosk 2nd window

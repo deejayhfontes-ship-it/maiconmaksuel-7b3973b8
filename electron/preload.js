@@ -18,11 +18,22 @@ contextBridge.exposeInMainWorld('electron', {
   // Start mode config
   setStartMode: (mode) => ipcRenderer.invoke('set-start-mode', mode),
   getStartMode: () => ipcRenderer.invoke('get-start-mode'),
-  
+
+  // Exit kiosk/fullscreen on BrowserWindow
+  exitKioskMode: () => ipcRenderer.invoke('exit-kiosk-mode'),
+
   // Kiosk 2nd window
   openKioskWindow: () => ipcRenderer.invoke('open-kiosk-window'),
   closeKioskWindow: () => ipcRenderer.invoke('close-kiosk-window'),
   toggleKioskFullscreen: () => ipcRenderer.invoke('toggle-kiosk-fullscreen'),
+
+  // Kiosk escape trigger from main process
+  onTriggerKioskEscape: (callback) => {
+    ipcRenderer.on('trigger-kiosk-escape', () => callback())
+  },
+  removeTriggerKioskEscapeListener: () => {
+    ipcRenderer.removeAllListeners('trigger-kiosk-escape')
+  },
   
   // Atualização automática
   checkForUpdates: () => ipcRenderer.invoke('check-updates'),
