@@ -15,6 +15,10 @@ contextBridge.exposeInMainWorld('electron', {
   setKioskEnabled: (enabled) => ipcRenderer.invoke('set-kiosk-enabled', enabled),
   getKioskEnabled: () => ipcRenderer.invoke('get-kiosk-enabled'),
   
+  // Start mode config
+  setStartMode: (mode) => ipcRenderer.invoke('set-start-mode', mode),
+  getStartMode: () => ipcRenderer.invoke('get-start-mode'),
+  
   // Kiosk 2nd window
   openKioskWindow: () => ipcRenderer.invoke('open-kiosk-window'),
   closeKioskWindow: () => ipcRenderer.invoke('close-kiosk-window'),
