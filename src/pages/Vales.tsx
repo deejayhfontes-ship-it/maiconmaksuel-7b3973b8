@@ -295,7 +295,33 @@ const Vales = () => {
   };
 
   const handleExport = () => {
-    toast({ title: "Exportação", description: "Funcionalidade em desenvolvimento." });
+    if (vales.length === 0) {
+      toast({ title: "Nada para exportar", description: "A lista de vales está vazia.", variant: "destructive" });
+      return;
+    }
+
+    const headers = ["Data", "Profissional", "Valor Total", "Valor Pago", "Saldo", "Status", "Motivo"];
+    const csvContent = [
+      headers.join(","),
+      ...vales.map(v => [
+        format(new Date(v.data_lancamento), "dd/MM/yyyy"),
+        v.profissional?.nome || "N/A",
+        v.valor_total.toFixed(2).replace(".", ","),
+        v.valor_pago.toFixed(2).replace(".", ","),
+        v.saldo_restante.toFixed(2).replace(".", ","),
+        v.status,
+        `"${v.motivo.replace(/"/g, '""')}"`
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `vales_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleModalClose = (refresh?: boolean) => {
