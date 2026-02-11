@@ -21,6 +21,7 @@ export type Database = {
           data_hora: string
           duracao_minutos: number
           id: string
+          lembrete_enviado: boolean
           observacoes: string | null
           profissional_id: string
           servico_id: string
@@ -33,6 +34,7 @@ export type Database = {
           data_hora: string
           duracao_minutos: number
           id?: string
+          lembrete_enviado?: boolean
           observacoes?: string | null
           profissional_id: string
           servico_id: string
@@ -45,6 +47,7 @@ export type Database = {
           data_hora?: string
           duracao_minutos?: number
           id?: string
+          lembrete_enviado?: boolean
           observacoes?: string | null
           profissional_id?: string
           servico_id?: string
