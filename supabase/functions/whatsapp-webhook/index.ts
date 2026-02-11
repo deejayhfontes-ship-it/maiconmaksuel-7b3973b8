@@ -57,6 +57,179 @@ serve(async (req) => {
 
     console.log(`[WEBHOOK] De: ${numeroRemetente}, Msg: "${textoMensagem}"`);
 
+    // === CHECK FOR CONFIRMATION RESPONSES (SIM/NÃO) ===
+    const textoLower = textoMensagem.toLowerCase().trim();
+    const isConfirmacao = ["sim", "s", "confirmo", "confirmar"].includes(textoLower);
+    const isCancelamento = ["nao", "não", "n", "cancelar", "cancelo"].includes(textoLower);
+
+    if (isConfirmacao || isCancelamento) {
+      // Find pending confirmation for this phone number
+      const { data: cliente } = await supabase
+        .from("clientes")
+        .select("id")
+        .eq("celular", numeroRemetente)
+        .maybeSingle();
+
+      if (!cliente) {
+        // Try with 55 prefix
+        const { data: cliente55 } = await supabase
+          .from("clientes")
+          .select("id")
+          .or(`celular.eq.55${numeroRemetente},celular.eq.${numeroRemetente}`)
+          .maybeSingle();
+
+        if (cliente55) {
+          // Find pending confirmation
+          const { data: confirmacao } = await supabase
+            .from("confirmacoes_agendamento")
+            .select("id, agendamento_id")
+            .eq("status", "pendente")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (confirmacao) {
+            // Check if the agendamento belongs to this client
+            const { data: agendamento } = await supabase
+              .from("agendamentos")
+              .select("id")
+              .eq("id", confirmacao.agendamento_id)
+              .eq("cliente_id", cliente55.id)
+              .maybeSingle();
+
+            if (agendamento) {
+              if (isConfirmacao) {
+                await supabase
+                  .from("confirmacoes_agendamento")
+                  .update({ status: "confirmado", confirmado_em: new Date().toISOString() })
+                  .eq("id", confirmacao.id);
+                await supabase
+                  .from("agendamentos")
+                  .update({ status: "confirmado" })
+                  .eq("id", confirmacao.agendamento_id);
+              } else {
+                await supabase
+                  .from("confirmacoes_agendamento")
+                  .update({ status: "cancelado", cancelado_em: new Date().toISOString() })
+                  .eq("id", confirmacao.id);
+                await supabase
+                  .from("agendamentos")
+                  .update({ status: "cancelado" })
+                  .eq("id", confirmacao.agendamento_id);
+              }
+
+              const resposta = isConfirmacao
+                ? "✅ Seu agendamento foi confirmado! Até lá!"
+                : "❌ Seu agendamento foi cancelado. Caso queira reagendar, entre em contato.";
+
+              await fetch(`${supabaseUrl}/functions/v1/whatsapp-send`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({ telefone: numeroRemetente, mensagem: resposta }),
+              });
+
+              // Update statistics
+              const today = new Date().toISOString().split("T")[0];
+              const statField = isConfirmacao ? "agendamentos_confirmados" : "agendamentos_cancelados";
+              const { data: stats } = await supabase
+                .from("comunicacao_estatisticas")
+                .select("*")
+                .eq("data", today)
+                .maybeSingle();
+
+              if (stats) {
+                await supabase
+                  .from("comunicacao_estatisticas")
+                  .update({ [statField]: (stats[statField] || 0) + 1 })
+                  .eq("id", stats.id);
+              } else {
+                await supabase
+                  .from("comunicacao_estatisticas")
+                  .insert([{ data: today, [statField]: 1 }]);
+              }
+
+              return new Response(
+                JSON.stringify({ ok: true, action: isConfirmacao ? "confirmed" : "cancelled" }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          }
+        }
+      } else {
+        // Client found directly
+        const { data: confirmacao } = await supabase
+          .from("confirmacoes_agendamento")
+          .select("id, agendamento_id, agendamentos!inner(cliente_id)")
+          .eq("status", "pendente")
+          .eq("agendamentos.cliente_id", cliente.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (confirmacao) {
+          if (isConfirmacao) {
+            await supabase
+              .from("confirmacoes_agendamento")
+              .update({ status: "confirmado", confirmado_em: new Date().toISOString() })
+              .eq("id", confirmacao.id);
+            await supabase
+              .from("agendamentos")
+              .update({ status: "confirmado" })
+              .eq("id", confirmacao.agendamento_id);
+          } else {
+            await supabase
+              .from("confirmacoes_agendamento")
+              .update({ status: "cancelado", cancelado_em: new Date().toISOString() })
+              .eq("id", confirmacao.id);
+            await supabase
+              .from("agendamentos")
+              .update({ status: "cancelado" })
+              .eq("id", confirmacao.agendamento_id);
+          }
+
+          const resposta = isConfirmacao
+            ? "✅ Seu agendamento foi confirmado! Até lá!"
+            : "❌ Seu agendamento foi cancelado. Caso queira reagendar, entre em contato.";
+
+          await fetch(`${supabaseUrl}/functions/v1/whatsapp-send`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({ telefone: numeroRemetente, mensagem: resposta }),
+          });
+
+          const today = new Date().toISOString().split("T")[0];
+          const statField = isConfirmacao ? "agendamentos_confirmados" : "agendamentos_cancelados";
+          const { data: stats } = await supabase
+            .from("comunicacao_estatisticas")
+            .select("*")
+            .eq("data", today)
+            .maybeSingle();
+
+          if (stats) {
+            await supabase
+              .from("comunicacao_estatisticas")
+              .update({ [statField]: (stats[statField] || 0) + 1 })
+              .eq("id", stats.id);
+          } else {
+            await supabase
+              .from("comunicacao_estatisticas")
+              .insert([{ data: today, [statField]: 1 }]);
+          }
+
+          return new Response(
+            JSON.stringify({ ok: true, action: isConfirmacao ? "confirmed" : "cancelled" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     // Fetch active auto-responses ordered by priority
     const { data: respostas, error: respErr } = await supabase
       .from("comunicacao_respostas_automaticas")
