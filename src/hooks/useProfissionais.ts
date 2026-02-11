@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { localPut, localGetAll, localDelete, localClear, addToSyncQueue, EntityStore } from '@/lib/offlineDb';
+import { getOnlineStatus, addOnlineStatusListener } from '@/lib/syncService';
+import { toast } from 'sonner';
 
 export interface Profissional {
   id: string;
@@ -47,7 +49,6 @@ export interface ComissaoDetalhada {
   cliente_nome: string | null;
 }
 
-// Debug info interface
 export interface DebugInfo {
   remoteCount: number;
   localCount: number;
@@ -64,15 +65,20 @@ export function useProfissionais() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [debugInfo, setDebugInfo] = useState<DebugInfo>({
-    remoteCount: 0,
-    localCount: 0,
-    lastQuery: '',
-    httpStatus: null,
-    error: null,
-    timestamp: ''
+    remoteCount: 0, localCount: 0, lastQuery: '', httpStatus: null, error: null, timestamp: ''
   });
 
-  // Get current month date range
+  // Auto-refetch on reconnect
+  useEffect(() => {
+    const unsub = addOnlineStatusListener((online) => {
+      if (online) {
+        console.log('[PROFISSIONAIS] online_reconnect → refetch');
+        fetchProfissionais();
+      }
+    });
+    return unsub;
+  }, []);
+
   const getMonthRange = useCallback(() => {
     const now = new Date();
     const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -80,175 +86,110 @@ export function useProfissionais() {
     return { inicioMes, fimMes };
   }, []);
 
-  // Calculate realized values and commissions
   const calculateMetrics = useCallback(async (profData: Profissional[]): Promise<ProfissionalComMetas[]> => {
     const { inicioMes, fimMes } = getMonthRange();
 
-    // Fetch services from closed atendimentos
     const { data: servicosData } = await supabase
       .from('atendimento_servicos')
-      .select(`
-        profissional_id,
-        subtotal,
-        comissao_percentual,
-        comissao_valor,
-        atendimento:atendimentos!inner(status, data_hora)
-      `)
+      .select(`profissional_id, subtotal, comissao_percentual, comissao_valor, atendimento:atendimentos!inner(status, data_hora)`)
       .eq('atendimento.status', 'fechado')
       .gte('atendimento.data_hora', inicioMes)
       .lte('atendimento.data_hora', fimMes);
 
-    // Fetch products from closed atendimentos (linked to profissionais via atendimento_servicos)
     const { data: produtosData } = await supabase
       .from('atendimento_produtos')
-      .select(`
-        subtotal,
-        atendimento:atendimentos!inner(
-          status, 
-          data_hora,
-          atendimento_servicos(profissional_id)
-        )
-      `)
+      .select(`subtotal, atendimento:atendimentos!inner(status, data_hora, atendimento_servicos(profissional_id))`)
       .eq('atendimento.status', 'fechado')
       .gte('atendimento.data_hora', inicioMes)
       .lte('atendimento.data_hora', fimMes);
 
-    // Aggregate by professional
-    const metricas: Record<string, {
-      servicos: number;
-      produtos: number;
-      comissaoServicos: number;
-      comissaoProdutos: number;
-      atendimentos: Set<string>;
-    }> = {};
+    const metricas: Record<string, { servicos: number; produtos: number; comissaoServicos: number; comissaoProdutos: number; atendimentos: Set<string> }> = {};
 
-    // Process services
     servicosData?.forEach((item: any) => {
       const profId = item.profissional_id;
-      if (!metricas[profId]) {
-        metricas[profId] = { 
-          servicos: 0, 
-          produtos: 0, 
-          comissaoServicos: 0, 
-          comissaoProdutos: 0,
-          atendimentos: new Set()
-        };
-      }
+      if (!metricas[profId]) metricas[profId] = { servicos: 0, produtos: 0, comissaoServicos: 0, comissaoProdutos: 0, atendimentos: new Set() };
       metricas[profId].servicos += Number(item.subtotal || 0);
       metricas[profId].comissaoServicos += Number(item.comissao_valor || 0);
-      if (item.atendimento?.id) {
-        metricas[profId].atendimentos.add(item.atendimento.id);
-      }
+      if (item.atendimento?.id) metricas[profId].atendimentos.add(item.atendimento.id);
     });
 
-    // Process products (distribute among professionals in the atendimento)
     produtosData?.forEach((item: any) => {
-      const profissionais = item.atendimento?.atendimento_servicos || [];
-      const uniqueProfs = [...new Set(profissionais.map((s: any) => s.profissional_id))] as string[];
-      
+      const profs = item.atendimento?.atendimento_servicos || [];
+      const uniqueProfs = [...new Set(profs.map((s: any) => s.profissional_id))] as string[];
       if (uniqueProfs.length > 0) {
         const valorPorProf = Number(item.subtotal || 0) / uniqueProfs.length;
         uniqueProfs.forEach(profId => {
-          if (!metricas[profId]) {
-            metricas[profId] = { 
-              servicos: 0, 
-              produtos: 0, 
-              comissaoServicos: 0, 
-              comissaoProdutos: 0,
-              atendimentos: new Set()
-            };
-          }
+          if (!metricas[profId]) metricas[profId] = { servicos: 0, produtos: 0, comissaoServicos: 0, comissaoProdutos: 0, atendimentos: new Set() };
           metricas[profId].produtos += valorPorProf;
         });
       }
     });
 
-    // Calculate product commissions based on professional's rate
     return profData.map(prof => {
-      const m = metricas[prof.id] || { 
-        servicos: 0, 
-        produtos: 0, 
-        comissaoServicos: 0, 
-        comissaoProdutos: 0,
-        atendimentos: new Set()
-      };
-      
-      // Calculate product commission if not already calculated
-      const comissaoProdutosValor = m.produtos * (prof.comissao_produtos / 100);
-      
+      const m = metricas[prof.id] || { servicos: 0, produtos: 0, comissaoServicos: 0, comissaoProdutos: 0, atendimentos: new Set() };
       return {
         ...prof,
         realizado_servicos: m.servicos,
         realizado_produtos: m.produtos,
         comissao_servicos_valor: m.comissaoServicos,
-        comissao_produtos_valor: comissaoProdutosValor,
+        comissao_produtos_valor: m.produtos * (prof.comissao_produtos / 100),
         total_atendimentos: m.atendimentos.size,
       };
     });
   }, [getMonthRange]);
 
-  // Fetch all profissionais with metrics
   const fetchProfissionais = useCallback(async (forceRemote: boolean = false) => {
     setLoading(true);
-    const queryStr = "SELECT * FROM profissionais ORDER BY nome ASC";
     
     try {
-      // Get local count first
       const localData = await localGetAll<Profissional>(STORE_NAME);
-      const localCount = localData.length;
-      
-      // Try to fetch from Supabase first
+
+      if (!getOnlineStatus()) {
+        console.log('[PROFISSIONAIS] offline → using local data');
+        const profissionaisComMetas = await calculateMetrics(localData);
+        setProfissionais(profissionaisComMetas);
+        setLoading(false);
+        return;
+      }
+
       const { data: remoteData, error, status } = await supabase
         .from('profissionais')
         .select('*')
         .order('nome', { ascending: true });
 
-      // Update debug info
       setDebugInfo({
-        remoteCount: remoteData?.length || 0,
-        localCount,
-        lastQuery: queryStr,
-        httpStatus: status,
-        error: error?.message || null,
-        timestamp: new Date().toISOString()
+        remoteCount: remoteData?.length || 0, localCount: localData.length,
+        lastQuery: "SELECT * FROM profissionais ORDER BY nome ASC",
+        httpStatus: status, error: error?.message || null, timestamp: new Date().toISOString()
       });
 
       if (error) {
-        console.error('[Profissionais] Erro HTTP:', status, error.message);
-        throw error;
+        console.error('[PROFISSIONAIS] supabase_fetch_fail', { status, error: error.message });
+        toast.error(`Falha ao carregar profissionais: ${error.message}`);
+        const profissionaisComMetas = await calculateMetrics(localData);
+        setProfissionais(profissionaisComMetas);
+        return;
       }
 
-      console.log(`[Profissionais] Remoto: ${remoteData?.length || 0}, Local: ${localCount}`);
+      console.log(`[PROFISSIONAIS] supabase_fetch_ok { count: ${remoteData?.length || 0} }`);
 
-      // CRITICAL: Only update local if we got data (prevent empty overwrite)
       if (remoteData && remoteData.length > 0) {
-        // Store locally for offline use
-        for (const prof of remoteData) {
-          await localPut(STORE_NAME, prof);
-        }
-        // Calculate metrics
+        // Clear + replace to prevent deleted items resurrecting
+        try {
+          await localClear(STORE_NAME);
+          for (const prof of remoteData) await localPut(STORE_NAME, prof, true);
+        } catch { /* ignore */ }
         const profissionaisComMetas = await calculateMetrics(remoteData);
         setProfissionais(profissionaisComMetas);
-      } else if (remoteData && remoteData.length === 0 && localCount > 0 && !forceRemote) {
-        // Remote returned empty but we have local data - use local as fallback
-        console.warn('[Profissionais] Remoto vazio mas local tem dados - usando local');
+      } else if (remoteData && remoteData.length === 0 && localData.length > 0 && !forceRemote) {
+        console.warn('[PROFISSIONAIS] remote_empty_local_has_data → using local');
         const profissionaisComMetas = await calculateMetrics(localData);
         setProfissionais(profissionaisComMetas);
       } else {
-        // Remote is truly empty
         setProfissionais([]);
       }
     } catch (error: any) {
-      console.error('[Profissionais] Erro ao buscar, usando cache local:', error);
-      
-      // Update debug info with error
-      setDebugInfo(prev => ({
-        ...prev,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }));
-      
-      // Fallback to local data
+      console.error('[PROFISSIONAIS] fetch_error', error);
       const localData = await localGetAll<Profissional>(STORE_NAME);
       const profissionaisComMetas = await calculateMetrics(localData);
       setProfissionais(profissionaisComMetas);
@@ -257,46 +198,24 @@ export function useProfissionais() {
     }
   }, [calculateMetrics]);
 
-  // Force reload ignoring cache
   const forceReload = useCallback(async () => {
     await localClear(STORE_NAME);
     await fetchProfissionais(true);
   }, [fetchProfissionais]);
 
-  // Clear local cache only
   const clearLocalCache = useCallback(async () => {
     await localClear(STORE_NAME);
-    setDebugInfo(prev => ({
-      ...prev,
-      localCount: 0,
-      timestamp: new Date().toISOString()
-    }));
+    setDebugInfo(prev => ({ ...prev, localCount: 0, timestamp: new Date().toISOString() }));
   }, []);
 
-  // Get detailed commissions for a professional
-  const getComissoesDetalhadas = useCallback(async (
-    profissionalId: string,
-    mes?: Date
-  ): Promise<ComissaoDetalhada[]> => {
+  const getComissoesDetalhadas = useCallback(async (profissionalId: string, mes?: Date): Promise<ComissaoDetalhada[]> => {
     const targetDate = mes || new Date();
     const inicioMes = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1).toISOString();
     const fimMes = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
     const { data: servicosData } = await supabase
       .from('atendimento_servicos')
-      .select(`
-        id,
-        subtotal,
-        comissao_percentual,
-        comissao_valor,
-        servico:servicos(nome),
-        atendimento:atendimentos!inner(
-          id,
-          data_hora,
-          status,
-          cliente:clientes(nome)
-        )
-      `)
+      .select(`id, subtotal, comissao_percentual, comissao_valor, servico:servicos(nome), atendimento:atendimentos!inner(id, data_hora, status, cliente:clientes(nome))`)
       .eq('profissional_id', profissionalId)
       .eq('atendimento.status', 'fechado')
       .gte('atendimento.data_hora', inicioMes)
@@ -304,30 +223,20 @@ export function useProfissionais() {
       .order('atendimento(data_hora)', { ascending: false });
 
     const comissoes: ComissaoDetalhada[] = [];
-
     servicosData?.forEach((item: any) => {
       comissoes.push({
-        id: item.id,
-        data: item.atendimento?.data_hora,
-        tipo: 'servico',
-        descricao: item.servico?.nome || 'Serviço',
-        valor_base: Number(item.subtotal),
-        percentual: Number(item.comissao_percentual),
-        valor_comissao: Number(item.comissao_valor),
-        atendimento_id: item.atendimento?.id,
-        cliente_nome: item.atendimento?.cliente?.nome || null,
+        id: item.id, data: item.atendimento?.data_hora, tipo: 'servico',
+        descricao: item.servico?.nome || 'Serviço', valor_base: Number(item.subtotal),
+        percentual: Number(item.comissao_percentual), valor_comissao: Number(item.comissao_valor),
+        atendimento_id: item.atendimento?.id, cliente_nome: item.atendimento?.cliente?.nome || null,
       });
     });
 
-    return comissoes.sort((a, b) => 
-      new Date(b.data).getTime() - new Date(a.data).getTime()
-    );
+    return comissoes.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   }, []);
 
-  // Create or update a professional
   const saveProfissional = useCallback(async (
-    data: Partial<Profissional> & { nome: string },
-    id?: string
+    data: Partial<Profissional> & { nome: string }, id?: string
   ): Promise<{ success: boolean; id?: string; error?: string }> => {
     setSyncing(true);
     
@@ -335,45 +244,45 @@ export function useProfissionais() {
       const now = new Date().toISOString();
       
       if (id) {
-        // Update
         const updateData = { ...data, updated_at: now };
         
-        const { error } = await supabase
-          .from('profissionais')
-          .update(updateData)
-          .eq('id', id);
-
-        if (error) {
-          // Queue for sync
-          await addToSyncQueue({
-            entity: STORE_NAME,
-            operation: 'update',
-            data: { id, ...updateData },
-            timestamp: now,
-          });
+        if (getOnlineStatus()) {
+          const { error } = await supabase.from('profissionais').update(updateData).eq('id', id);
+          if (error) {
+            console.error('[PROFISSIONAIS] supabase_update_fail', error);
+            await addToSyncQueue({ entity: STORE_NAME, operation: 'update', data: { id, ...updateData }, timestamp: now });
+            toast.warning('Sem internet: alteração salva e será sincronizada');
+          } else {
+            console.info('[PROFISSIONAIS] supabase_update_ok', { id });
+            toast.success('Profissional atualizado com sucesso!');
+          }
+        } else {
+          await addToSyncQueue({ entity: STORE_NAME, operation: 'update', data: { id, ...updateData }, timestamp: now });
+          toast.info('Sem internet: alteração salva e será sincronizada');
         }
 
-        // Update locally
         const existing = profissionais.find(p => p.id === id);
-        if (existing) {
-          await localPut(STORE_NAME, { ...existing, ...updateData } as Profissional);
-        }
-
+        if (existing) await localPut(STORE_NAME, { ...existing, ...updateData } as Profissional);
         return { success: true, id };
       } else {
-        // Create
-        const { data: newData, error } = await supabase
-          .from('profissionais')
-          .insert([data])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        await localPut(STORE_NAME, newData);
-        return { success: true, id: newData.id };
+        if (getOnlineStatus()) {
+          const { data: newData, error } = await supabase.from('profissionais').insert([data]).select().single();
+          if (error) {
+            console.error('[PROFISSIONAIS] supabase_create_fail', error);
+            toast.error(`Falha ao criar profissional: ${error.message}`);
+            throw error;
+          }
+          console.info('[PROFISSIONAIS] supabase_create_ok', { id: newData.id });
+          await localPut(STORE_NAME, newData);
+          toast.success('Profissional criado com sucesso!');
+          return { success: true, id: newData.id };
+        } else {
+          toast.error('Sem internet: não é possível criar profissional offline');
+          return { success: false, error: 'Sem conexão' };
+        }
       }
     } catch (error: any) {
+      console.error('[PROFISSIONAIS] save_fail', error);
       return { success: false, error: error.message };
     } finally {
       setSyncing(false);
@@ -381,78 +290,56 @@ export function useProfissionais() {
     }
   }, [profissionais, fetchProfissionais]);
 
-  // Delete a professional
   const deleteProfissional = useCallback(async (id: string): Promise<boolean> => {
+    console.log('[PROFISSIONAIS] delete_start', { id });
     setSyncing(true);
     
     try {
-      const { error } = await supabase
-        .from('profissionais')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        // Queue for sync
-        await addToSyncQueue({
-          entity: STORE_NAME,
-          operation: 'delete',
-          data: { id },
-          timestamp: new Date().toISOString(),
-        });
+      if (getOnlineStatus()) {
+        const { error } = await supabase.from('profissionais').delete().eq('id', id);
+        if (error) {
+          console.error('[PROFISSIONAIS] supabase_delete_fail', error);
+          await addToSyncQueue({ entity: STORE_NAME, operation: 'delete', data: { id }, timestamp: new Date().toISOString() });
+          toast.warning('Exclusão será sincronizada quando online');
+        } else {
+          console.info('[PROFISSIONAIS] delete_ok', { id });
+          toast.success('Profissional excluído com sucesso!');
+        }
+      } else {
+        await addToSyncQueue({ entity: STORE_NAME, operation: 'delete', data: { id }, timestamp: new Date().toISOString() });
+        toast.info('Sem internet: exclusão será sincronizada');
       }
 
       await localDelete(STORE_NAME, id);
       await fetchProfissionais();
       return true;
-    } catch (error) {
-      console.error('Error deleting professional:', error);
+    } catch (error: any) {
+      console.error('[PROFISSIONAIS] delete_fail', error);
+      toast.error(`Falha ao excluir profissional: ${error.message}`);
       return false;
     } finally {
       setSyncing(false);
     }
   }, [fetchProfissionais]);
 
-  // Search profissionais
   const searchProfissionais = useCallback((term: string): ProfissionalComMetas[] => {
     if (!term) return profissionais;
-    
     const searchLower = term.toLowerCase();
     return profissionais.filter(p => 
-      p.nome.toLowerCase().includes(searchLower) ||
-      p.telefone?.includes(term) ||
-      p.cpf?.includes(term) ||
-      p.funcao?.toLowerCase().includes(searchLower)
+      p.nome.toLowerCase().includes(searchLower) || p.telefone?.includes(term) || p.cpf?.includes(term) || p.funcao?.toLowerCase().includes(searchLower)
     );
   }, [profissionais]);
 
-  // Get active profissionais only
-  const profissionaisAtivos = useMemo(() => 
-    profissionais.filter(p => p.ativo),
-  [profissionais]);
+  const profissionaisAtivos = useMemo(() => profissionais.filter(p => p.ativo), [profissionais]);
+  const profissionaisVendedores = useMemo(() => profissionais.filter(p => p.ativo && p.pode_vender_produtos), [profissionais]);
 
-  // Get profissionais that can sell products
-  const profissionaisVendedores = useMemo(() => 
-    profissionais.filter(p => p.ativo && p.pode_vender_produtos),
-  [profissionais]);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchProfissionais();
-  }, []);
+  useEffect(() => { fetchProfissionais(); }, []);
 
   return {
-    profissionais,
-    profissionaisAtivos,
-    profissionaisVendedores,
-    loading,
-    syncing,
-    debugInfo,
-    fetchProfissionais,
-    forceReload,
-    clearLocalCache,
-    saveProfissional,
-    deleteProfissional,
-    searchProfissionais,
+    profissionais, profissionaisAtivos, profissionaisVendedores,
+    loading, syncing, debugInfo,
+    fetchProfissionais, forceReload, clearLocalCache,
+    saveProfissional, deleteProfissional, searchProfissionais,
     getComissoesDetalhadas,
   };
 }

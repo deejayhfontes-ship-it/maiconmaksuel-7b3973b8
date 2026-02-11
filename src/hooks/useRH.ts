@@ -88,17 +88,35 @@ export function useRH() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      console.log('[RH] load_data_start');
       const [funcRes, profRes, configRes] = await Promise.all([
         supabase.from('funcionarios').select('*').order('nome'),
         supabase.from('profissionais').select('id, nome, especialidade, ativo, comissao_padrao').order('nome'),
-        supabase.from('configuracoes_rh').select('*').limit(1).single(),
+        supabase.from('configuracoes_rh').select('*').limit(1).maybeSingle(),
       ]);
 
-      if (funcRes.data) setFuncionarios(funcRes.data);
-      if (profRes.data) setProfissionais(profRes.data as Profissional[]);
-      if (configRes.data) setConfig(configRes.data as ConfiguracoesRH);
-    } catch (error) {
-      console.error('Error loading RH data:', error);
+      if (funcRes.error) {
+        console.error('[RH] supabase_funcionarios_fail', funcRes.error);
+        toast.error(`Falha ao carregar funcionários: ${funcRes.error.message}`);
+      } else {
+        console.info(`[RH] funcionarios_loaded { count: ${funcRes.data?.length || 0} }`);
+        setFuncionarios(funcRes.data || []);
+      }
+
+      if (profRes.error) {
+        console.error('[RH] supabase_profissionais_fail', profRes.error);
+      } else {
+        setProfissionais((profRes.data as Profissional[]) || []);
+      }
+
+      if (configRes.error) {
+        console.error('[RH] supabase_config_fail', configRes.error);
+      } else if (configRes.data) {
+        setConfig(configRes.data as ConfiguracoesRH);
+      }
+    } catch (error: any) {
+      console.error('[RH] load_data_fail', error);
+      toast.error(`Erro ao carregar dados RH: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -118,16 +136,18 @@ export function useRH() {
         .lte('data_referencia', format(endDate, 'yyyy-MM-dd'))
         .order('data_referencia', { ascending: false });
 
-      if (profissionalId) {
-        query = query.eq('profissional_id', profissionalId);
-      }
+      if (profissionalId) query = query.eq('profissional_id', profissionalId);
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('[RH] comissoes_fetch_fail', error);
+        toast.error(`Falha ao carregar comissões: ${error.message}`);
+        throw error;
+      }
       setComissoes(data || []);
       return data || [];
     } catch (error) {
-      console.error('Error loading commissions:', error);
+      console.error('[RH] comissoes_error', error);
       return [];
     }
   }, []);
@@ -142,11 +162,15 @@ export function useRH() {
         .eq('mes_referencia', mesStr)
         .order('tipo_pessoa', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[RH] folhas_ponto_fetch_fail', error);
+        toast.error(`Falha ao carregar folhas de ponto: ${error.message}`);
+        throw error;
+      }
       setFolhasPonto(data || []);
       return data || [];
     } catch (error) {
-      console.error('Error loading time sheets:', error);
+      console.error('[RH] folhas_ponto_error', error);
       return [];
     }
   }, []);
@@ -158,6 +182,12 @@ export function useRH() {
     mesReferencia: Date
   ) => {
     try {
+      if (!pessoaId) {
+        console.error('[RH] blocked_missing_pessoa_id', { tipoPessoa });
+        toast.error('Erro: ID da pessoa ausente');
+        return null;
+      }
+
       const inicio = startOfMonth(mesReferencia);
       const fim = endOfMonth(mesReferencia);
 
@@ -169,7 +199,10 @@ export function useRH() {
         .gte('data', format(inicio, 'yyyy-MM-dd'))
         .lte('data', format(fim, 'yyyy-MM-dd'));
 
-      if (error) throw error;
+      if (error) {
+        console.error('[RH] ponto_registros_fetch_fail', error);
+        throw error;
+      }
 
       let totalMinutos = 0;
       let diasTrabalhados = 0;
@@ -181,13 +214,10 @@ export function useRH() {
       (pontos || []).forEach(ponto => {
         if (ponto.entrada_manha && ponto.saida) {
           diasTrabalhados++;
-          
-          // Calculate worked hours
           const entrada = parseISO(`2000-01-01T${ponto.entrada_manha}`);
           const saida = parseISO(`2000-01-01T${ponto.saida}`);
           let minutosDia = differenceInMinutes(saida, entrada);
 
-          // Subtract lunch break
           if (ponto.saida_almoco && ponto.entrada_tarde) {
             const saidaAlmoco = parseISO(`2000-01-01T${ponto.saida_almoco}`);
             const entradaTarde = parseISO(`2000-01-01T${ponto.entrada_tarde}`);
@@ -196,12 +226,9 @@ export function useRH() {
 
           totalMinutos += Math.max(0, minutosDia);
 
-          // Check for lateness (simplified)
           const horarioPadrao = parseISO(`2000-01-01T08:00`);
           const atraso = differenceInMinutes(entrada, horarioPadrao);
-          if (atraso > toleranciaAtraso) {
-            totalAtrasos += atraso - toleranciaAtraso;
-          }
+          if (atraso > toleranciaAtraso) totalAtrasos += atraso - toleranciaAtraso;
         }
       });
 
@@ -216,19 +243,17 @@ export function useRH() {
         total_atrasos_minutos: totalAtrasos,
         dias_trabalhados: diasTrabalhados,
         banco_horas_saldo: Number(bancoHoras.toFixed(2)),
-        total_faltas: 0, // Would need calendar integration
+        total_faltas: 0,
       };
-    } catch (error) {
-      console.error('Error calculating time sheet:', error);
+    } catch (error: any) {
+      console.error('[RH] calcular_folha_fail', error);
+      toast.error(`Erro ao calcular folha: ${error.message}`);
       return null;
     }
   }, [config]);
 
-  // Generate/update time sheet for a person
   const gerarFolhaPonto = useCallback(async (
-    tipoPessoa: 'funcionario' | 'profissional',
-    pessoaId: string,
-    mesReferencia: Date
+    tipoPessoa: 'funcionario' | 'profissional', pessoaId: string, mesReferencia: Date
   ) => {
     const dados = await calcularFolhaPonto(tipoPessoa, pessoaId, mesReferencia);
     if (!dados) return null;
@@ -236,133 +261,77 @@ export function useRH() {
     const mesStr = format(startOfMonth(mesReferencia), 'yyyy-MM-dd');
 
     try {
-      // Upsert the time sheet
       const { data, error } = await supabase
         .from('folha_ponto_mensal')
-        .upsert({
-          tipo_pessoa: tipoPessoa,
-          pessoa_id: pessoaId,
-          mes_referencia: mesStr,
-          ...dados,
-          status: 'aberta',
-        }, {
-          onConflict: 'tipo_pessoa,pessoa_id,mes_referencia',
-        })
-        .select()
-        .single();
+        .upsert({ tipo_pessoa: tipoPessoa, pessoa_id: pessoaId, mes_referencia: mesStr, ...dados, status: 'aberta' },
+          { onConflict: 'tipo_pessoa,pessoa_id,mes_referencia' })
+        .select().single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[RH] gerar_folha_fail', error);
+        toast.error(`Erro ao gerar folha de ponto: ${error.message}`);
+        throw error;
+      }
+      console.info('[RH] gerar_folha_ok', { id: data.id });
       toast.success('Folha de ponto atualizada!');
       return data;
-    } catch (error) {
-      console.error('Error generating time sheet:', error);
-      toast.error('Erro ao gerar folha de ponto');
+    } catch (error: any) {
+      console.error('[RH] gerar_folha_error', error);
       return null;
     }
   }, [calcularFolhaPonto]);
 
-  // Close time sheet
   const fecharFolhaPonto = useCallback(async (folhaId: string, fechadoPor: string) => {
     try {
-      const { error } = await supabase
-        .from('folha_ponto_mensal')
-        .update({
-          status: 'fechada',
-          fechada_em: new Date().toISOString(),
-          fechada_por: fechadoPor,
-        })
+      const { error } = await supabase.from('folha_ponto_mensal')
+        .update({ status: 'fechada', fechada_em: new Date().toISOString(), fechada_por: fechadoPor })
         .eq('id', folhaId);
 
-      if (error) throw error;
+      if (error) { console.error('[RH] fechar_folha_fail', error); toast.error(`Erro: ${error.message}`); throw error; }
       toast.success('Folha de ponto fechada!');
       return true;
-    } catch (error) {
-      console.error('Error closing time sheet:', error);
-      toast.error('Erro ao fechar folha de ponto');
-      return false;
-    }
+    } catch { return false; }
   }, []);
 
-  // Reopen time sheet (admin only)
   const reabrirFolhaPonto = useCallback(async (folhaId: string, motivo: string, reabertoPor: string) => {
     try {
-      const { error } = await supabase
-        .from('folha_ponto_mensal')
-        .update({
-          status: 'reaberta',
-          reaberta_em: new Date().toISOString(),
-          reaberta_por: reabertoPor,
-          motivo_reabertura: motivo,
-        })
+      const { error } = await supabase.from('folha_ponto_mensal')
+        .update({ status: 'reaberta', reaberta_em: new Date().toISOString(), reaberta_por: reabertoPor, motivo_reabertura: motivo })
         .eq('id', folhaId);
 
-      if (error) throw error;
+      if (error) { console.error('[RH] reabrir_folha_fail', error); toast.error(`Erro: ${error.message}`); throw error; }
       toast.success('Folha de ponto reaberta!');
       return true;
-    } catch (error) {
-      console.error('Error reopening time sheet:', error);
-      toast.error('Erro ao reabrir folha de ponto');
-      return false;
-    }
+    } catch { return false; }
   }, []);
 
-  // Mark commission as paid
   const pagarComissao = useCallback(async (comissaoId: string) => {
     try {
-      const { error } = await supabase
-        .from('comissoes')
-        .update({
-          status: 'paga',
-          data_pagamento: new Date().toISOString(),
-        })
+      const { error } = await supabase.from('comissoes')
+        .update({ status: 'paga', data_pagamento: new Date().toISOString() })
         .eq('id', comissaoId);
 
-      if (error) throw error;
+      if (error) { console.error('[RH] pagar_comissao_fail', error); toast.error(`Erro: ${error.message}`); throw error; }
       toast.success('Comissão marcada como paga!');
       return true;
-    } catch (error) {
-      console.error('Error paying commission:', error);
-      toast.error('Erro ao registrar pagamento');
-      return false;
-    }
+    } catch { return false; }
   }, []);
 
-  // Update RH config
   const updateConfig = useCallback(async (updates: Partial<ConfiguracoesRH>) => {
     if (!config) return false;
-
     try {
-      const { error } = await supabase
-        .from('configuracoes_rh')
-        .update(updates)
-        .eq('id', config.id);
-
-      if (error) throw error;
+      const { error } = await supabase.from('configuracoes_rh').update(updates).eq('id', config.id);
+      if (error) { console.error('[RH] update_config_fail', error); toast.error(`Erro: ${error.message}`); throw error; }
       setConfig({ ...config, ...updates });
       toast.success('Configurações atualizadas!');
       return true;
-    } catch (error) {
-      console.error('Error updating config:', error);
-      toast.error('Erro ao salvar configurações');
-      return false;
-    }
+    } catch { return false; }
   }, [config]);
 
   return {
-    funcionarios,
-    profissionais,
-    comissoes,
-    folhasPonto,
-    config,
-    loading,
-    loadData,
-    loadComissoes,
-    loadFolhasPonto,
-    calcularFolhaPonto,
-    gerarFolhaPonto,
-    fecharFolhaPonto,
-    reabrirFolhaPonto,
-    pagarComissao,
-    updateConfig,
+    funcionarios, profissionais, comissoes, folhasPonto, config, loading,
+    loadData, loadComissoes, loadFolhasPonto,
+    calcularFolhaPonto, gerarFolhaPonto, fecharFolhaPonto, reabrirFolhaPonto,
+    pagarComissao, updateConfig,
   };
 }

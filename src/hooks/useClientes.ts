@@ -6,12 +6,12 @@ import {
   localGetAll,
   localPut,
   localDelete,
+  localClear,
   addToSyncQueue,
 } from '@/lib/offlineDb';
 import {
   getOnlineStatus,
   addOnlineStatusListener,
-  syncEntityFromServer,
 } from '@/lib/syncService';
 import { toast } from 'sonner';
 
@@ -82,135 +82,114 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
   const [error, setError] = useState<Error | null>(null);
   const [isOnline, setIsOnline] = useState(getOnlineStatus());
 
-  // Listen for online status changes
+  // Listen for online status changes + auto-refetch on reconnect
   useEffect(() => {
-    return addOnlineStatusListener(setIsOnline);
+    const unsubscribe = addOnlineStatusListener((online) => {
+      setIsOnline(online);
+      if (online) {
+        console.log('[CLIENTES] online_reconnect → refetch');
+        fetchData();
+      }
+    });
+    return unsubscribe;
   }, []);
 
-  // Fetch data
+  // Apply local filters/sort to data
+  const applyFiltersAndSort = useCallback((data: Cliente[]): Cliente[] => {
+    let result = [...data];
+
+    if (filter === 'ativos') result = result.filter(c => c.ativo);
+    else if (filter === 'inativos') result = result.filter(c => !c.ativo);
+
+    if (searchTerm) {
+      const term = removeAccents(searchTerm.toLowerCase());
+      const termNumbers = searchTerm.replace(/\D/g, "");
+      result = result.filter(c => {
+        try {
+          const nomeMatch = removeAccents(safeStr(c.nome).toLowerCase()).includes(term);
+          const emailMatch = safeStr(c.email).toLowerCase().includes(term);
+          const celularClean = safeStr(c.celular).replace(/\D/g, "");
+          const telefoneClean = safeStr(c.telefone).replace(/\D/g, "");
+          const telefoneMatch = termNumbers && (celularClean.includes(termNumbers) || telefoneClean.includes(termNumbers));
+          const cpfClean = safeStr(c.cpf).replace(/\D/g, "");
+          const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
+          return nomeMatch || emailMatch || telefoneMatch || cpfMatch;
+        } catch (err) {
+          console.error('[CLIENTES] filter_error', { id: c?.id, err });
+          return false;
+        }
+      });
+    }
+
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (orderBy) {
+        case 'nome': comparison = safeStr(a.nome).localeCompare(safeStr(b.nome)); break;
+        case 'created_at': comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); break;
+        case 'ultima_visita':
+          const aV = a.ultima_visita ? new Date(a.ultima_visita).getTime() : 0;
+          const bV = b.ultima_visita ? new Date(b.ultima_visita).getTime() : 0;
+          comparison = aV - bV; break;
+      }
+      return orderDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [filter, searchTerm, orderBy, orderDirection]);
+
+  // Fetch data — Supabase is source of truth when online
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // First, get local data
-      let localData = await localGetAll<Cliente>('clientes');
-      
-      // Apply filter
-      if (filter === 'ativos') {
-        localData = localData.filter(c => c.ativo);
-      } else if (filter === 'inativos') {
-        localData = localData.filter(c => !c.ativo);
-      }
-      
-      // Apply search
-      if (searchTerm) {
-        const term = removeAccents(searchTerm.toLowerCase());
-        const termNumbers = searchTerm.replace(/\D/g, "");
-        
-        localData = localData.filter(c => {
+      if (isOnline || getOnlineStatus()) {
+        // ONLINE: Fetch from Supabase, clear local, replace
+        console.log('[CLIENTES] fetch_supabase_start');
+        const { data: remoteData, error: fetchError } = await supabase
+          .from('clientes')
+          .select('*')
+          .order('nome', { ascending: true });
+
+        if (fetchError) {
+          console.error('[CLIENTES] supabase_fetch_fail', fetchError);
+          // Fall back to local
+          const localData = await localGetAll<Cliente>('clientes');
+          setClientes(applyFiltersAndSort(localData));
+        } else {
+          console.log(`[CLIENTES] supabase_fetch_ok { count: ${remoteData?.length || 0} }`);
+          const data = (remoteData || []) as Cliente[];
+
+          // Clear local and replace — prevents deleted items from resurrecting
           try {
-            const nomeMatch = removeAccents(safeStr(c.nome).toLowerCase()).includes(term);
-            const emailMatch = safeStr(c.email).toLowerCase().includes(term);
-            const celularClean = safeStr(c.celular).replace(/\D/g, "");
-            const telefoneClean = safeStr(c.telefone).replace(/\D/g, "");
-            const telefoneMatch = termNumbers && (celularClean.includes(termNumbers) || telefoneClean.includes(termNumbers));
-            const cpfClean = safeStr(c.cpf).replace(/\D/g, "");
-            const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
-            
-            return nomeMatch || emailMatch || telefoneMatch || cpfMatch;
-          } catch (err) {
-            console.error('[useClientes] Erro ao filtrar cliente:', { id: c?.id, nome: c?.nome, celular: c?.celular, err });
-            return false;
-          }
-        });
-      }
-      
-      // Apply ordering
-      localData.sort((a, b) => {
-        let comparison = 0;
-        
-        switch (orderBy) {
-          case 'nome':
-            comparison = safeStr(a.nome).localeCompare(safeStr(b.nome));
-            break;
-          case 'created_at':
-            comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-            break;
-          case 'ultima_visita':
-            const aVisita = a.ultima_visita ? new Date(a.ultima_visita).getTime() : 0;
-            const bVisita = b.ultima_visita ? new Date(b.ultima_visita).getTime() : 0;
-            comparison = aVisita - bVisita;
-            break;
-        }
-        
-        return orderDirection === 'asc' ? comparison : -comparison;
-      });
-      
-      setClientes(localData);
-      
-      // If online, sync from server
-      if (isOnline) {
-        await syncEntityFromServer<Cliente>('clientes');
-        
-        // Refetch and re-apply filters
-        let updatedData = await localGetAll<Cliente>('clientes');
-        
-        if (filter === 'ativos') {
-          updatedData = updatedData.filter(c => c.ativo);
-        } else if (filter === 'inativos') {
-          updatedData = updatedData.filter(c => !c.ativo);
-        }
-        
-        if (searchTerm) {
-          const term = removeAccents(searchTerm.toLowerCase());
-          const termNumbers = searchTerm.replace(/\D/g, "");
-          
-          updatedData = updatedData.filter(c => {
-            try {
-              const nomeMatch = removeAccents(safeStr(c.nome).toLowerCase()).includes(term);
-              const emailMatch = safeStr(c.email).toLowerCase().includes(term);
-              const celularClean = safeStr(c.celular).replace(/\D/g, "");
-              const telefoneClean = safeStr(c.telefone).replace(/\D/g, "");
-              const telefoneMatch = termNumbers && (celularClean.includes(termNumbers) || telefoneClean.includes(termNumbers));
-              const cpfClean = safeStr(c.cpf).replace(/\D/g, "");
-              const cpfMatch = termNumbers && cpfClean.includes(termNumbers);
-              
-              return nomeMatch || emailMatch || telefoneMatch || cpfMatch;
-            } catch (err) {
-              console.error('[useClientes] Erro ao filtrar cliente (sync):', { id: c?.id, nome: c?.nome, err });
-              return false;
+            await localClear('clientes');
+            for (const c of data) {
+              await localPut('clientes', c, true);
             }
-          });
-        }
-        
-        updatedData.sort((a, b) => {
-          let comparison = 0;
-          switch (orderBy) {
-            case 'nome':
-              comparison = safeStr(a.nome).localeCompare(safeStr(b.nome));
-              break;
-            case 'created_at':
-              comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-              break;
-            case 'ultima_visita':
-              const aVisita = a.ultima_visita ? new Date(a.ultima_visita).getTime() : 0;
-              const bVisita = b.ultima_visita ? new Date(b.ultima_visita).getTime() : 0;
-              comparison = aVisita - bVisita;
-              break;
+          } catch (cacheErr) {
+            console.warn('[CLIENTES] cache_sync_fail', cacheErr);
           }
-          return orderDirection === 'asc' ? comparison : -comparison;
-        });
-        
-        setClientes(updatedData);
+
+          setClientes(applyFiltersAndSort(data));
+        }
+      } else {
+        // OFFLINE: Use local data
+        console.log('[CLIENTES] fetch_local (offline)');
+        const localData = await localGetAll<Cliente>('clientes');
+        setClientes(applyFiltersAndSort(localData));
       }
     } catch (err) {
-      console.error('[useClientes] Error:', err);
+      console.error('[CLIENTES] fetch_error', err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
+      // Last resort: try local
+      try {
+        const localData = await localGetAll<Cliente>('clientes');
+        setClientes(applyFiltersAndSort(localData));
+      } catch { /* ignore */ }
     } finally {
       setLoading(false);
     }
-  }, [filter, searchTerm, orderBy, orderDirection, isOnline]);
+  }, [isOnline, applyFiltersAndSort]);
 
   // Initial fetch
   useEffect(() => {
@@ -232,42 +211,37 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
     try {
       // Save locally first
       await localPut('clientes', newCliente, false);
+      setClientes(prev => applyFiltersAndSort([newCliente, ...prev]));
       
-      // Update state
-      setClientes(prev => [newCliente, ...prev]);
-      
-      if (isOnline) {
-        const { error: syncError } = await supabase.from('clientes').insert(newCliente);
+      if (getOnlineStatus()) {
+        const { data: remoteData, error: syncError } = await supabase
+          .from('clientes')
+          .upsert(newCliente, { onConflict: 'id' })
+          .select()
+          .maybeSingle();
         
         if (syncError) {
-          console.error('[useClientes] Sync error:', syncError);
-          await addToSyncQueue({
-            entity: 'clientes',
-            operation: 'create',
-            data: newCliente as unknown as Record<string, unknown>,
-            timestamp: now,
-          });
-          toast.info('Cliente salvo localmente. Será sincronizado quando online.');
+          console.error('[CLIENTES] supabase_create_fail', syncError);
+          await addToSyncQueue({ entity: 'clientes', operation: 'create', data: newCliente as unknown as Record<string, unknown>, timestamp: now });
+          toast.warning('Sem internet: cliente salvo e será sincronizado');
         } else {
-          await localPut('clientes', newCliente, true);
+          console.info('[CLIENTES] supabase_create_ok', { id: remoteData?.id || newCliente.id });
+          await localPut('clientes', (remoteData || newCliente) as Cliente, true);
           toast.success('Cliente cadastrado com sucesso!');
         }
       } else {
-        await addToSyncQueue({
-          entity: 'clientes',
-          operation: 'create',
-          data: newCliente as unknown as Record<string, unknown>,
-          timestamp: now,
-        });
-        toast.info('Cliente salvo localmente. Será sincronizado quando online.');
+        console.log('[CLIENTES] queued_offline', { localId: newCliente.id });
+        await addToSyncQueue({ entity: 'clientes', operation: 'create', data: newCliente as unknown as Record<string, unknown>, timestamp: now });
+        toast.info('Sem internet: cliente salvo e será sincronizado');
       }
       
       return newCliente;
-    } catch (err) {
-      console.error('[useClientes] Create error:', err);
+    } catch (err: any) {
+      console.error('[CLIENTES] create_fail', err);
+      toast.error(`Falha ao salvar cliente: ${err.message || 'Tente novamente'}`);
       throw err;
     }
-  }, [isOnline]);
+  }, [applyFiltersAndSort]);
 
   // Update cliente
   const update = useCallback(async (id: string, updates: Partial<Cliente>): Promise<Cliente | null> => {
@@ -275,100 +249,89 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
     
     try {
       const current = await localGet<Cliente>('clientes', id);
-      if (!current) return null;
+      if (!current) {
+        console.error('[CLIENTES] update_not_found', { id });
+        toast.error('Cliente não encontrado');
+        return null;
+      }
       
-      const updatedCliente: Cliente = {
-        ...current,
-        ...updates,
-        updated_at: now,
-      };
-      
+      const updatedCliente: Cliente = { ...current, ...updates, updated_at: now };
       await localPut('clientes', updatedCliente, false);
-      
       setClientes(prev => prev.map(c => c.id === id ? updatedCliente : c));
       
-      if (isOnline) {
+      if (getOnlineStatus()) {
         const { error: syncError } = await supabase
           .from('clientes')
           .update({ ...updates, updated_at: now })
           .eq('id', id);
         
         if (syncError) {
-          console.error('[useClientes] Sync error:', syncError);
-          await addToSyncQueue({
-            entity: 'clientes',
-            operation: 'update',
-            data: updatedCliente as unknown as Record<string, unknown>,
-            timestamp: now,
-          });
+          console.error('[CLIENTES] supabase_update_fail', syncError);
+          await addToSyncQueue({ entity: 'clientes', operation: 'update', data: updatedCliente as unknown as Record<string, unknown>, timestamp: now });
+          toast.warning('Sem internet: alteração salva e será sincronizada');
         } else {
+          console.info('[CLIENTES] supabase_update_ok', { id });
           await localPut('clientes', updatedCliente, true);
+          toast.success('Cliente atualizado com sucesso!');
         }
       } else {
-        await addToSyncQueue({
-          entity: 'clientes',
-          operation: 'update',
-          data: updatedCliente as unknown as Record<string, unknown>,
-          timestamp: now,
-        });
+        console.log('[CLIENTES] queued_offline (update)', { localId: id });
+        await addToSyncQueue({ entity: 'clientes', operation: 'update', data: updatedCliente as unknown as Record<string, unknown>, timestamp: now });
+        toast.info('Sem internet: alteração salva e será sincronizada');
       }
       
       return updatedCliente;
-    } catch (err) {
-      console.error('[useClientes] Update error:', err);
+    } catch (err: any) {
+      console.error('[CLIENTES] update_fail', err);
+      toast.error(`Falha ao atualizar cliente: ${err.message || 'Tente novamente'}`);
       throw err;
     }
-  }, [isOnline]);
+  }, []);
 
   // Delete cliente
   const remove = useCallback(async (id: string): Promise<void> => {
+    console.log('[CLIENTES] delete_start', { id });
     try {
-      const cliente = await localGet<Cliente>('clientes', id);
-      
-      await localDelete('clientes', id);
+      // 1. Optimistic remove from UI
       setClientes(prev => prev.filter(c => c.id !== id));
+
+      // 2. Remove from IndexedDB
+      try { await localDelete('clientes', id); } catch { /* ignore */ }
       
-      if (isOnline) {
+      if (getOnlineStatus()) {
         const { error: syncError } = await supabase.from('clientes').delete().eq('id', id);
         
         if (syncError && syncError.code !== 'PGRST116') {
-          console.error('[useClientes] Sync error:', syncError);
-          if (cliente) {
-            await addToSyncQueue({
-              entity: 'clientes',
-              operation: 'delete',
-              data: { id },
-              timestamp: new Date().toISOString(),
-            });
-          }
+          console.error('[CLIENTES] supabase_delete_fail', syncError);
+          await addToSyncQueue({ entity: 'clientes', operation: 'delete', data: { id }, timestamp: new Date().toISOString() });
+          toast.warning('Exclusão será sincronizada quando online');
+        } else {
+          console.info('[CLIENTES] delete_ok', { id });
+          toast.success('Cliente excluído com sucesso!');
         }
-      } else if (cliente) {
-        await addToSyncQueue({
-          entity: 'clientes',
-          operation: 'delete',
-          data: { id },
-          timestamp: new Date().toISOString(),
-        });
+      } else {
+        console.log('[CLIENTES] queued_offline (delete)', { id });
+        await addToSyncQueue({ entity: 'clientes', operation: 'delete', data: { id }, timestamp: new Date().toISOString() });
+        toast.info('Sem internet: exclusão será sincronizada');
       }
-      
-      toast.success('Cliente excluído com sucesso!');
-    } catch (err) {
-      console.error('[useClientes] Delete error:', err);
+    } catch (err: any) {
+      console.error('[CLIENTES] delete_fail', err);
+      toast.error(`Falha ao excluir cliente: ${err.message || 'Tente novamente'}`);
       throw err;
     }
-  }, [isOnline]);
+  }, []);
 
   // Get by ID
   const getById = useCallback(async (id: string): Promise<Cliente | undefined> => {
     try {
       let cliente = await localGet<Cliente>('clientes', id);
       
-      if (!cliente && isOnline) {
+      if (!cliente && getOnlineStatus()) {
         const { data: serverData } = await supabase
           .from('clientes')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
         
         if (serverData) {
           cliente = serverData as Cliente;
@@ -378,10 +341,10 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
       
       return cliente;
     } catch (err) {
-      console.error('[useClientes] GetById error:', err);
+      console.error('[CLIENTES] getById_error', err);
       return undefined;
     }
-  }, [isOnline]);
+  }, []);
 
   // Search clientes (for autocomplete)
   const searchClientes = useCallback(async (term: string): Promise<Cliente[]> => {
@@ -400,10 +363,7 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
             const celularMatch = termNumbers && safeStr(c.celular).replace(/\D/g, "").includes(termNumbers);
             const cpfMatch = termNumbers && safeStr(c.cpf).replace(/\D/g, "").includes(termNumbers);
             return nomeMatch || celularMatch || cpfMatch;
-          } catch (err) {
-            console.error('[useClientes] Erro ao buscar cliente:', { id: c?.id, err });
-            return false;
-          }
+          } catch { return false; }
         })
         .slice(0, 10);
     } catch {
@@ -411,18 +371,13 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
     }
   }, []);
 
-  // Get recent clientes (for quick selection)
+  // Get recent clientes
   const getRecentClientes = useCallback(async (limit: number = 8): Promise<Cliente[]> => {
     try {
       const allClientes = await localGetAll<Cliente>('clientes');
-      
       return allClientes
         .filter(c => c.ativo && c.ultima_visita)
-        .sort((a, b) => {
-          const aVisita = new Date(a.ultima_visita!).getTime();
-          const bVisita = new Date(b.ultima_visita!).getTime();
-          return bVisita - aVisita;
-        })
+        .sort((a, b) => new Date(b.ultima_visita!).getTime() - new Date(a.ultima_visita!).getTime())
         .slice(0, limit);
     } catch {
       return [];
