@@ -495,7 +495,7 @@ const Relatorios = () => {
       nome: p.nome,
       estoque_atual: p.estoque_atual,
       estoque_minimo: p.estoque_minimo,
-      status: p.estoque_atual <= p.estoque_minimo ? "baixo" : p.estoque_atual <= p.estoque_minimo * 2 ? "atencao" : "ok",
+      status: (p.estoque_minimo != null && p.estoque_minimo > 0) ? (p.estoque_atual <= p.estoque_minimo ? "baixo" : p.estoque_atual <= p.estoque_minimo * 2 ? "atencao" : "ok") : (p.estoque_atual <= 0 ? "baixo" : "ok"),
     })).sort((a, b) => a.estoque_atual - b.estoque_atual);
   }, [produtos]);
 
@@ -2143,371 +2143,246 @@ const Relatorios = () => {
         );
 
       case "top_lucro_servicos":
-      case "top_lucro_produtos":
-      case "vales_adiantamentos":
-      case "valores_pagar":
-      case "pagamentos_realizados":
         return (
           <div className="space-y-6">
-            {/* Cards de navegação */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Card Top Lucro - Serviços */}
-              <Card 
-                className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg bg-white border-0 shadow-sm relative overflow-hidden"
-                onClick={() => selectReport("profissionais", "top_lucro_servicos")}
-              >
-                <Badge className="absolute top-3 right-3 bg-blue-500 text-white text-xs">Novo</Badge>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl" style={{ backgroundColor: "#FFD70020" }}>
-                      <Trophy className="h-6 w-6" style={{ color: "#FFD700" }} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">Top Lucro - Serviços</h3>
-                      <p className="text-sm text-muted-foreground">Ranking por lucro em serviços</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5" style={{ color: "#FFD700" }} />
+                  Ranking de Lucro por Serviços
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(comissoesPorProfissional.map(p => ({ profissional: p.nome, faturamento: p.totalServicos, comissao: p.totalComissao, lucro: p.totalServicos - p.totalComissao })), "top-lucro-servicos")}>
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => exportToPDF("Top Lucro - Serviços por Profissional", ["#", "Profissional", "Faturamento", "Comissão", "Lucro Empresa"], comissoesPorProfissional.map((p, i) => [(i+1).toString(), p.nome, formatCurrency(p.totalServicos), formatCurrency(p.totalComissao), formatCurrency(p.totalServicos - p.totalComissao)]), "top-lucro-servicos")}>
+                    <FileText className="h-4 w-4 mr-1" /> PDF
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Posição</TableHead>
+                      <TableHead>Profissional</TableHead>
+                      <TableHead className="text-right">Faturamento</TableHead>
+                      <TableHead className="text-right">Comissão</TableHead>
+                      <TableHead className="text-right">Lucro Empresa</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {comissoesPorProfissional.length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum dado no período</TableCell></TableRow>
+                    ) : comissoesPorProfissional.map((item, idx) => (
+                      <TableRow key={item.id}>
+                        <TableCell><Badge variant={idx === 0 ? "default" : "secondary"} className={idx === 0 ? "bg-yellow-500" : idx === 1 ? "bg-gray-400" : idx === 2 ? "bg-amber-600" : ""}>#{idx + 1}</Badge></TableCell>
+                        <TableCell className="font-medium">{item.nome}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.totalServicos)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatCurrency(item.totalComissao)}</TableCell>
+                        <TableCell className="text-right font-semibold text-green-600">{formatCurrency(item.totalServicos - item.totalComissao)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
 
-              {/* Card Top Lucro - Produtos */}
-              <Card 
-                className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg bg-white border-0 shadow-sm relative overflow-hidden"
-                onClick={() => selectReport("profissionais", "top_lucro_produtos")}
-              >
-                <Badge className="absolute top-3 right-3 bg-blue-500 text-white text-xs">Novo</Badge>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl" style={{ backgroundColor: "#AF52DE20" }}>
-                      <ShoppingCart className="h-6 w-6" style={{ color: "#AF52DE" }} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">Top Lucro - Produtos</h3>
-                      <p className="text-sm text-muted-foreground">Ranking por lucro em produtos</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Card Vales e Adiantamentos */}
-              <Card 
-                className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg bg-white border-0 shadow-sm"
-                onClick={() => selectReport("profissionais", "vales_adiantamentos")}
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl" style={{ backgroundColor: "#FFCC0020" }}>
-                      <FileText className="h-6 w-6" style={{ color: "#FFCC00" }} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">Vales e Adiantamentos</h3>
-                      <p className="text-sm text-muted-foreground">Controle de vales dos profissionais</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Conteúdo específico de cada relatório */}
-            {reportType === "top_lucro_servicos" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5" style={{ color: "#FFD700" }} />
-                    Ranking de Lucro por Serviços
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+      case "top_lucro_produtos":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" style={{ color: "#AF52DE" }} />
+                  Ranking de Lucro por Produtos
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(produtosMaisVendidos.map(p => ({ produto: p.nome, quantidade: p.quantidade, valor: p.valor })), "top-lucro-produtos")}>
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => exportToPDF("Top Lucro - Produtos", ["#", "Produto", "Qtd", "Valor Total"], produtosMaisVendidos.map((p, i) => [(i+1).toString(), p.nome, p.quantidade.toString(), formatCurrency(p.valor)]), "top-lucro-produtos")}>
+                    <FileText className="h-4 w-4 mr-1" /> PDF
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {produtosMaisVendidos.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Posição</TableHead>
-                        <TableHead>Profissional</TableHead>
-                        <TableHead className="text-right">Faturamento em Serviços</TableHead>
-                        <TableHead className="text-right">Comissão Gerada</TableHead>
-                        <TableHead className="text-right">Lucro para Empresa</TableHead>
+                        <TableHead>Produto</TableHead>
+                        <TableHead className="text-center">Qtd</TableHead>
+                        <TableHead className="text-right">Valor Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {comissoesPorProfissional.map((item, idx) => {
-                        const lucroEmpresa = item.totalServicos - item.totalComissao;
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <Badge 
-                                variant={idx === 0 ? "default" : "secondary"}
-                                className={idx === 0 ? "bg-yellow-500" : idx === 1 ? "bg-gray-400" : idx === 2 ? "bg-amber-600" : ""}
-                              >
-                                #{idx + 1}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-medium">{item.nome}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.totalServicos)}</TableCell>
-                            <TableCell className="text-right text-muted-foreground">{formatCurrency(item.totalComissao)}</TableCell>
-                            <TableCell className="text-right font-semibold text-green-600">{formatCurrency(lucroEmpresa)}</TableCell>
-                          </TableRow>
-                        );
-                      })}
+                      {produtosMaisVendidos.map((item, idx) => (
+                        <TableRow key={item.nome}>
+                          <TableCell><Badge variant={idx === 0 ? "default" : "secondary"} className={idx === 0 ? "bg-purple-500" : idx === 1 ? "bg-gray-400" : idx === 2 ? "bg-amber-600" : ""}>#{idx + 1}</Badge></TableCell>
+                          <TableCell className="font-medium">{item.nome}</TableCell>
+                          <TableCell className="text-center">{item.quantidade}</TableCell>
+                          <TableCell className="text-right font-semibold text-purple-600">{formatCurrency(item.valor)}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">Nenhuma venda de produto no período</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
 
-            {reportType === "top_lucro_produtos" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" style={{ color: "#AF52DE" }} />
-                    Ranking de Lucro por Produtos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {produtosMaisVendidos.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Posição</TableHead>
-                          <TableHead>Produto</TableHead>
-                          <TableHead className="text-center">Quantidade Vendida</TableHead>
-                          <TableHead className="text-right">Valor Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {produtosMaisVendidos.map((item, idx) => (
-                          <TableRow key={item.nome}>
-                            <TableCell>
-                              <Badge 
-                                variant={idx === 0 ? "default" : "secondary"}
-                                className={idx === 0 ? "bg-purple-500" : idx === 1 ? "bg-gray-400" : idx === 2 ? "bg-amber-600" : ""}
-                              >
-                                #{idx + 1}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-medium">{item.nome}</TableCell>
-                            <TableCell className="text-center">{item.quantidade}</TableCell>
-                            <TableCell className="text-right font-semibold text-purple-600">{formatCurrency(item.valor)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">Nenhuma venda de produto no período</p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {reportType === "vales_adiantamentos" && (
-              <div className="space-y-6">
-                {/* Cards de resumo */}
-                <div className="grid gap-4 md:grid-cols-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total em Aberto</p>
-                          <p className="text-2xl font-bold text-amber-600">{formatCurrency(valesRelatorio.totalAbertos)}</p>
-                        </div>
-                        <FileText className="h-8 w-8 text-amber-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Vales Abertos</p>
-                          <p className="text-2xl font-bold">{valesRelatorio.qtdAbertos}</p>
-                        </div>
-                        <Archive className="h-8 w-8 text-red-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Vales Quitados</p>
-                          <p className="text-2xl font-bold text-green-600">{valesRelatorio.qtdQuitados}</p>
-                        </div>
-                        <CheckCircle className="h-8 w-8 text-green-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total no Período</p>
-                          <p className="text-2xl font-bold">{formatCurrency(valesRelatorio.totalGeral)}</p>
-                        </div>
-                        <DollarSign className="h-8 w-8 text-blue-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
+      case "vales_adiantamentos":
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total em Aberto</p><p className="text-2xl font-bold text-amber-600">{formatCurrency(valesRelatorio.totalAbertos)}</p></div><FileText className="h-8 w-8 text-amber-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Vales Abertos</p><p className="text-2xl font-bold">{valesRelatorio.qtdAbertos}</p></div><Archive className="h-8 w-8 text-red-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Vales Quitados</p><p className="text-2xl font-bold text-green-600">{valesRelatorio.qtdQuitados}</p></div><CheckCircle className="h-8 w-8 text-green-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total no Período</p><p className="text-2xl font-bold">{formatCurrency(valesRelatorio.totalGeral)}</p></div><DollarSign className="h-8 w-8 text-blue-500" /></div></CardContent></Card>
+            </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Vales por Profissional</CardTitle>
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(valesRelatorio.porProfissional.map(p => ({ profissional: p.nome, abertos: p.abertos, quitados: p.quitados, saldo: p.saldo })), "vales-adiantamentos")}>
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => exportToPDF("Vales e Adiantamentos", ["Profissional", "Abertos", "Quitados", "Saldo"], valesRelatorio.porProfissional.map(p => [p.nome, p.abertos.toString(), p.quitados.toString(), formatCurrency(p.saldo)]), "vales-adiantamentos")}>
+                    <FileText className="h-4 w-4 mr-1" /> PDF
+                  </Button>
                 </div>
-
-                {/* Por profissional */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Vales por Profissional</CardTitle>
-                    {valesRelatorio.porProfissional.length > 0 && (
-                      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => exportToExcel(valesRelatorio.porProfissional.map(p => ({ profissional: p.nome, vales_abertos: p.abertos, vales_quitados: p.quitados, saldo_devedor: p.saldo })), "vales_profissionais")}>
-                        <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    {valesRelatorio.porProfissional.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Profissional</TableHead>
-                            <TableHead className="text-center">Vales Abertos</TableHead>
-                            <TableHead className="text-center">Vales Quitados</TableHead>
-                            <TableHead className="text-right">Saldo Devedor</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {valesRelatorio.porProfissional.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="font-medium">{item.nome}</TableCell>
-                              <TableCell className="text-center">
-                                {item.abertos > 0 ? (
-                                  <Badge variant="destructive">{item.abertos}</Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">0</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="secondary">{item.quitados}</Badge>
-                              </TableCell>
-                              <TableCell className={cn("text-right font-semibold", item.saldo > 0 ? "text-red-600" : "text-green-600")}>
-                                {formatCurrency(item.saldo)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">Nenhum vale no período selecionado</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Lista de vales */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Histórico de Vales</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {valesRelatorio.lista.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Profissional</TableHead>
-                            <TableHead>Motivo</TableHead>
-                            <TableHead className="text-right">Valor</TableHead>
-                            <TableHead className="text-right">Saldo</TableHead>
-                            <TableHead className="text-center">Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {valesRelatorio.lista.map((vale) => (
-                            <TableRow key={vale.id}>
-                              <TableCell>{format(new Date(vale.data_lancamento), "dd/MM/yyyy")}</TableCell>
-                              <TableCell className="font-medium">{vale.profissional?.nome || "—"}</TableCell>
-                              <TableCell className="max-w-[200px] truncate">{vale.motivo}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(vale.valor_total)}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(vale.saldo_restante || 0)}</TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant={vale.status === "quitado" ? "default" : "destructive"}>
-                                  {vale.status === "quitado" ? "Quitado" : "Aberto"}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">Nenhum vale registrado no período</p>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {reportType === "valores_pagar" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Valores a Pagar aos Profissionais</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Profissional</TableHead>
-                        <TableHead className="text-center">Atendimentos</TableHead>
-                        <TableHead className="text-right">Comissão Pendente</TableHead>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Profissional</TableHead>
+                      <TableHead className="text-center">Abertos</TableHead>
+                      <TableHead className="text-center">Quitados</TableHead>
+                      <TableHead className="text-right">Saldo em Aberto</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {valesRelatorio.porProfissional.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhum vale no período</TableCell></TableRow>
+                    ) : valesRelatorio.porProfissional.map(p => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.nome}</TableCell>
+                        <TableCell className="text-center">{p.abertos}</TableCell>
+                        <TableCell className="text-center">{p.quitados}</TableCell>
+                        <TableCell className="text-right font-semibold text-amber-600">{formatCurrency(p.saldo)}</TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {comissoesPorProfissional.filter(p => !comissoesStatus[p.id]).map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.nome}</TableCell>
-                          <TableCell className="text-center">{item.atendimentos}</TableCell>
-                          <TableCell className="text-right font-semibold text-red-600">{formatCurrency(item.totalComissao)}</TableCell>
-                        </TableRow>
-                      ))}
-                      {comissoesPorProfissional.filter(p => !comissoesStatus[p.id]).length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                            Nenhum valor pendente para pagamento
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
 
-            {reportType === "pagamentos_realizados" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pagamentos Realizados</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Profissional</TableHead>
-                        <TableHead className="text-center">Atendimentos</TableHead>
-                        <TableHead className="text-right">Valor Pago</TableHead>
+      case "valores_pagar":
+        const valesPorProfPagar: Record<string, number> = {};
+        vales.filter(v => v.status === "aberto").forEach(v => {
+          if (!valesPorProfPagar[v.profissional_id]) valesPorProfPagar[v.profissional_id] = 0;
+          valesPorProfPagar[v.profissional_id] += Number(v.saldo_restante || 0);
+        });
+        const valoresComVales = comissoesPorProfissional.map(p => ({
+          ...p, valesAbertos: valesPorProfPagar[p.id] || 0, comissaoLiquida: p.totalComissao - (valesPorProfPagar[p.id] || 0),
+        }));
+        const totalValesAbertosPagar = Object.values(valesPorProfPagar).reduce((sum, v) => sum + v, 0);
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total em Comissões</p><p className="text-2xl font-bold">{formatCurrency(comissoesPorProfissional.reduce((s, p) => s + p.totalComissao, 0))}</p></div><DollarSign className="h-8 w-8 text-green-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Vales a Descontar</p><p className="text-2xl font-bold text-amber-600">-{formatCurrency(totalValesAbertosPagar)}</p></div><FileText className="h-8 w-8 text-amber-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Líquido a Pagar</p><p className="text-2xl font-bold text-primary">{formatCurrency(comissoesPorProfissional.reduce((s, p) => s + p.totalComissao, 0) - totalValesAbertosPagar)}</p></div><Wallet className="h-8 w-8 text-primary" /></div></CardContent></Card>
+            </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Valores a Pagar</CardTitle>
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(valoresComVales.map(p => ({ profissional: p.nome, comissao_bruta: p.totalComissao, vales: p.valesAbertos, liquido: p.comissaoLiquida })), "valores-pagar")}>
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => exportToPDF("Valores a Pagar", ["Profissional", "Comissão Bruta", "Vales", "Líquido"], valoresComVales.map(p => [p.nome, formatCurrency(p.totalComissao), formatCurrency(p.valesAbertos), formatCurrency(p.comissaoLiquida)]), "valores-pagar")}>
+                    <FileText className="h-4 w-4 mr-1" /> PDF
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Profissional</TableHead>
+                      <TableHead className="text-right">Comissão Bruta</TableHead>
+                      <TableHead className="text-right">Vales</TableHead>
+                      <TableHead className="text-right">Líquido</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {valoresComVales.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhum dado no período</TableCell></TableRow>
+                    ) : valoresComVales.map(item => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.nome}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.totalComissao)}</TableCell>
+                        <TableCell className="text-right">{item.valesAbertos > 0 ? <span className="text-amber-600">-{formatCurrency(item.valesAbertos)}</span> : <span className="text-muted-foreground">—</span>}</TableCell>
+                        <TableCell className={cn("text-right font-semibold", item.comissaoLiquida >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(item.comissaoLiquida)}</TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {comissoesPorProfissional.filter(p => comissoesStatus[p.id]).map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.nome}</TableCell>
-                          <TableCell className="text-center">{item.atendimentos}</TableCell>
-                          <TableCell className="text-right font-semibold text-green-600">{formatCurrency(item.totalComissao)}</TableCell>
-                        </TableRow>
-                      ))}
-                      {comissoesPorProfissional.filter(p => comissoesStatus[p.id]).length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                            Nenhum pagamento realizado no período
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case "pagamentos_realizados":
+        const pagosRealizados = comissoesPorProfissional.filter(p => comissoesStatus[p.id]);
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" style={{ color: '#34C759' }} />
+                  Pagamentos de Comissão Realizados
+                </CardTitle>
+                {pagosRealizados.length > 0 && (
+                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(pagosRealizados.map(p => ({ profissional: p.nome, valor: p.totalComissao })), "pagamentos-realizados")}>
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Profissional</TableHead>
+                      <TableHead className="text-right">Valor Pago</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagosRealizados.length > 0 ? pagosRealizados.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.nome}</TableCell>
+                        <TableCell className="text-right text-green-600">{formatCurrency(item.totalComissao)}</TableCell>
+                        <TableCell className="text-center"><Badge className="bg-green-500">Pago</Badge></TableCell>
+                      </TableRow>
+                    )) : (
+                      <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Nenhum pagamento realizado no período</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </div>
         );
     }
@@ -2765,12 +2640,26 @@ const Relatorios = () => {
 
     switch (reportType) {
       case "dre":
+        const totalDespesasPagar = contasPagar.filter(c => c.status === "pendente" || c.status === "pago").reduce((sum, c) => sum + (c.valor || 0), 0);
+        const totalSangriasDRE = sangrias.reduce((sum, s) => sum + (s.valor || 0), 0);
+        const despesasTotal = totalComissoes + totalDespesasPagar + totalSangriasDRE;
+        const resultadoOperacional = totalReceitas - despesasTotal;
         return (
           <div className="space-y-6">
             {financeiroCards}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>DRE - Demonstrativo de Resultados</CardTitle>
+                <Button size="sm" variant="destructive" onClick={() => exportToPDF("DRE - Demonstrativo de Resultados", ["Item", "Valor"], [
+                  ["Receita Bruta (Vendas)", formatCurrency(totalReceitas)],
+                  ["(-) Comissões Profissionais", formatCurrency(totalComissoes)],
+                  ["(-) Contas a Pagar", formatCurrency(totalDespesasPagar)],
+                  ["(-) Sangrias", formatCurrency(totalSangriasDRE)],
+                  ["= Total de Despesas", formatCurrency(despesasTotal)],
+                  ["= Resultado Operacional", formatCurrency(resultadoOperacional)],
+                ], "dre")}>
+                  <FileText className="h-4 w-4 mr-1" /> PDF
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -2779,12 +2668,24 @@ const Relatorios = () => {
                     <span className="text-lg font-bold text-green-600">{formatCurrency(totalReceitas)}</span>
                   </div>
                   <div className="flex justify-between items-center py-2 pl-4">
-                    <span className="text-muted-foreground">(-) Comissões</span>
+                    <span className="text-muted-foreground">(-) Comissões Profissionais</span>
                     <span className="text-red-600">{formatCurrency(totalComissoes)}</span>
                   </div>
-                  <div className="flex justify-between items-center py-3 border-t border-b bg-muted/30 px-3 rounded">
+                  <div className="flex justify-between items-center py-2 pl-4">
+                    <span className="text-muted-foreground">(-) Contas a Pagar</span>
+                    <span className="text-red-600">{formatCurrency(totalDespesasPagar)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 pl-4">
+                    <span className="text-muted-foreground">(-) Sangrias</span>
+                    <span className="text-red-600">{formatCurrency(totalSangriasDRE)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 pl-4 border-t">
+                    <span className="font-medium">= Total de Despesas</span>
+                    <span className="font-medium text-red-600">{formatCurrency(despesasTotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-t-2 bg-muted/30 px-3 rounded">
                     <span className="font-semibold text-lg">Resultado Operacional</span>
-                    <span className={cn("text-lg font-bold", lucro >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(lucro)}</span>
+                    <span className={cn("text-lg font-bold", resultadoOperacional >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(resultadoOperacional)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -2802,16 +2703,16 @@ const Relatorios = () => {
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Despesas (Comissões)</p>
-                    <p className="text-2xl font-bold text-red-600">{formatCurrency(totalComissoes)}</p>
+                    <p className="text-sm text-muted-foreground">Total Despesas</p>
+                    <p className="text-2xl font-bold text-red-600">{formatCurrency(despesasTotal)}</p>
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                    <p className={cn("text-2xl font-bold", lucro >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(lucro)}</p>
+                    <p className="text-sm text-muted-foreground">Resultado</p>
+                    <p className={cn("text-2xl font-bold", resultadoOperacional >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(resultadoOperacional)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -2820,45 +2721,85 @@ const Relatorios = () => {
         );
 
       case "fluxo":
+        // Calcular fluxo real com entradas e saídas por dia
+        const fluxoPorDia: Record<string, { data: string; entradas: number; saidas: number; saldo: number }> = {};
+        // Entradas: vendas fechadas
+        atendimentos.filter(a => a.status === "fechado").forEach(a => {
+          const dia = format(new Date(a.data_hora), "dd/MM");
+          if (!fluxoPorDia[dia]) fluxoPorDia[dia] = { data: dia, entradas: 0, saidas: 0, saldo: 0 };
+          fluxoPorDia[dia].entradas += a.valor_final || 0;
+        });
+        // Entradas: reforços
+        reforcos.forEach(r => {
+          const dia = format(new Date(r.data_hora), "dd/MM");
+          if (!fluxoPorDia[dia]) fluxoPorDia[dia] = { data: dia, entradas: 0, saidas: 0, saldo: 0 };
+          fluxoPorDia[dia].entradas += r.valor || 0;
+        });
+        // Saídas: sangrias
+        sangrias.forEach(s => {
+          const dia = format(new Date(s.data_hora), "dd/MM");
+          if (!fluxoPorDia[dia]) fluxoPorDia[dia] = { data: dia, entradas: 0, saidas: 0, saldo: 0 };
+          fluxoPorDia[dia].saidas += s.valor || 0;
+        });
+        const fluxoDados = Object.values(fluxoPorDia).sort((a, b) => a.data.localeCompare(b.data));
+        // Calcular saldo acumulado
+        let saldoAcum = 0;
+        fluxoDados.forEach(d => { saldoAcum += d.entradas - d.saidas; d.saldo = saldoAcum; });
+        const totalEntradasFluxo = fluxoDados.reduce((s, d) => s + d.entradas, 0);
+        const totalSaidasFluxo = fluxoDados.reduce((s, d) => s + d.saidas, 0);
+
         return (
           <div className="space-y-6">
             {financeiroCards}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-muted-foreground">Total Entradas</p><p className="text-2xl font-bold text-green-600">{formatCurrency(totalEntradasFluxo)}</p></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-muted-foreground">Total Saídas</p><p className="text-2xl font-bold text-red-600">{formatCurrency(totalSaidasFluxo)}</p></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-muted-foreground">Saldo</p><p className={cn("text-2xl font-bold", saldoAcum >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(saldoAcum)}</p></div></CardContent></Card>
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle>Fluxo de Caixa</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={vendasPorPeriodo.porDia}>
+                  <BarChart data={fluxoDados}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="data" className="text-xs" />
                     <YAxis className="text-xs" tickFormatter={(v) => `R$${v}`} />
-                    <RechartsTooltip formatter={(value: number) => [formatCurrency(value), "Valor"]} />
-                    <Line type="monotone" dataKey="valor" stroke="#34C759" strokeWidth={2} dot={{ fill: "#34C759" }} name="Entradas" />
-                  </LineChart>
+                    <RechartsTooltip formatter={(value: number) => [formatCurrency(value)]} />
+                    <Bar dataKey="entradas" fill="#34C759" radius={[4, 4, 0, 0]} name="Entradas" />
+                    <Bar dataKey="saidas" fill="#FF3B30" radius={[4, 4, 0, 0]} name="Saídas" />
+                    <Legend />
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-
             <Card>
-              <CardHeader>
-                <CardTitle>Entradas por Dia</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Detalhamento por Dia</CardTitle>
+                <Button size="sm" variant="destructive" onClick={() => exportToPDF("Fluxo de Caixa", ["Data", "Entradas", "Saídas", "Saldo Acum."], fluxoDados.map(d => [d.data, formatCurrency(d.entradas), formatCurrency(d.saidas), formatCurrency(d.saldo)]), "fluxo-caixa")}>
+                  <FileText className="h-4 w-4 mr-1" /> PDF
+                </Button>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data</TableHead>
-                      <TableHead className="text-center">Atendimentos</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-right">Entradas</TableHead>
+                      <TableHead className="text-right">Saídas</TableHead>
+                      <TableHead className="text-right">Saldo Acum.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vendasPorPeriodo.porDia.map((item) => (
-                      <TableRow key={item.data}>
-                        <TableCell>{item.data}</TableCell>
-                        <TableCell className="text-center">{item.quantidade}</TableCell>
-                        <TableCell className="text-right text-green-600">{formatCurrency(item.valor)}</TableCell>
+                    {fluxoDados.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhuma movimentação no período</TableCell></TableRow>
+                    ) : fluxoDados.map(d => (
+                      <TableRow key={d.data}>
+                        <TableCell>{d.data}</TableCell>
+                        <TableCell className="text-right text-green-600">{formatCurrency(d.entradas)}</TableCell>
+                        <TableCell className="text-right text-red-600">{formatCurrency(d.saidas)}</TableCell>
+                        <TableCell className={cn("text-right font-medium", d.saldo >= 0 ? "text-green-600" : "text-red-600")}>{formatCurrency(d.saldo)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
