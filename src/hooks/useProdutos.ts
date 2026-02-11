@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   localPut, 
   localGetAll, 
   localDelete, 
   localGet,
+  localClear,
   addToSyncQueue 
 } from '@/lib/offlineDb';
+import { getOnlineStatus, addOnlineStatusListener } from '@/lib/syncService';
 
 export interface Produto {
   id: string;
@@ -31,7 +33,17 @@ export function useProdutos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const { toast } = useToast();
+
+  // Auto-refetch on reconnect
+  useEffect(() => {
+    const unsub = addOnlineStatusListener((online) => {
+      if (online) {
+        console.log('[PRODUTOS] online_reconnect → refetch');
+        loadProdutos();
+      }
+    });
+    return unsub;
+  }, []);
 
   // Load from local first, then sync with Supabase
   const loadProdutos = useCallback(async () => {
@@ -41,10 +53,17 @@ export function useProdutos() {
       const localData = await localGetAll<Produto>('produtos');
       if (localData.length > 0) {
         setProdutos(localData.sort((a, b) => a.nome.localeCompare(b.nome)));
-        console.log(`[Produtos] Carregados ${localData.length} do cache local`);
+        console.log(`[PRODUTOS] local_loaded { count: ${localData.length} }`);
       }
 
-      // Then sync with Supabase (source of truth)
+      if (!getOnlineStatus()) {
+        console.log('[PRODUTOS] offline → using local data');
+        if (localData.length === 0) toast.info('Modo offline: sem dados locais de produtos');
+        setLoading(false);
+        return;
+      }
+
+      // Supabase is source of truth
       setSyncing(true);
       const { data: remoteData, error } = await supabase
         .from('produtos')
@@ -52,329 +71,183 @@ export function useProdutos() {
         .order('nome', { ascending: true });
 
       if (error) {
-        console.error('[Produtos] Erro ao buscar do Supabase:', error);
-        if (localData.length === 0) {
-          toast({
-            title: 'Modo offline',
-            description: 'Usando dados locais. Sincronização pendente.',
-          });
-        }
+        console.error('[PRODUTOS] supabase_fetch_fail', error);
+        toast.error(`Falha ao carregar produtos: ${error.message}`);
       } else if (remoteData) {
-        console.log(`[Produtos] Recebidos ${remoteData.length} do Supabase`);
-        // Supabase is the source of truth: use remote data directly
-        // and sync IndexedDB to match
+        console.log(`[PRODUTOS] supabase_fetch_ok { count: ${remoteData.length} }`);
         setProdutos(remoteData.sort((a, b) => a.nome.localeCompare(b.nome)));
 
-        // Clear local store and replace with remote data to prevent
-        // deleted items from reappearing
+        // Clear local and replace — prevents deleted items from resurrecting
         try {
-          const { localClear } = await import('@/lib/offlineDb');
           await localClear('produtos');
           for (const produto of remoteData) {
             await localPut('produtos', produto, true);
           }
-          console.log(`[Produtos] Cache local sincronizado: ${remoteData.length} itens`);
         } catch (cacheErr) {
-          console.warn('[Produtos] Falha ao atualizar cache local:', cacheErr);
+          console.warn('[PRODUTOS] cache_sync_fail', cacheErr);
         }
       }
-    } catch (error) {
-      console.error('[Produtos] Erro ao carregar:', error);
+    } catch (error: any) {
+      console.error('[PRODUTOS] fetch_error', error);
+      toast.error(`Erro ao carregar produtos: ${error.message}`);
     } finally {
       setLoading(false);
       setSyncing(false);
     }
-  }, [toast]);
-
-  // mergeWithLocal removed — Supabase is source of truth when online
+  }, []);
 
   // Create new product
   const createProduto = useCallback(async (data: ProdutoInput): Promise<Produto | null> => {
     const now = new Date().toISOString();
-    const newProduto: Produto = {
-      ...data,
-      id: crypto.randomUUID(),
-      created_at: now,
-      updated_at: now,
-    };
+    const newProduto: Produto = { ...data, id: crypto.randomUUID(), created_at: now, updated_at: now };
 
     try {
       await localPut('produtos', newProduto);
       setProdutos((prev) => [...prev, newProduto].sort((a, b) => a.nome.localeCompare(b.nome)));
 
-      const { data: remoteData, error } = await supabase
-        .from('produtos')
-        .insert([{
-          id: newProduto.id,
-          nome: newProduto.nome,
-          descricao: newProduto.descricao,
-          codigo_barras: newProduto.codigo_barras,
-          preco_custo: newProduto.preco_custo,
-          preco_venda: newProduto.preco_venda,
-          estoque_atual: newProduto.estoque_atual,
-          estoque_minimo: newProduto.estoque_minimo,
-          categoria: newProduto.categoria,
-          foto_url: newProduto.foto_url,
-          ativo: newProduto.ativo,
-        }])
-        .select()
-        .single();
+      if (getOnlineStatus()) {
+        const { data: remoteData, error } = await supabase
+          .from('produtos')
+          .upsert(newProduto, { onConflict: 'id' })
+          .select()
+          .maybeSingle();
 
-      if (error) {
-        console.error('Error syncing to Supabase:', error);
-        await addToSyncQueue({
-          entity: 'produtos',
-          operation: 'create',
-          data: newProduto as unknown as Record<string, unknown>,
-          timestamp: new Date().toISOString(),
-        });
-        toast({
-          title: 'Salvo localmente',
-          description: 'Será sincronizado quando houver conexão.',
-        });
-      } else if (remoteData) {
-        await localPut('produtos', remoteData);
-        setProdutos((prev) =>
-          prev.map((p) => (p.id === remoteData.id ? remoteData : p))
-        );
+        if (error) {
+          console.error('[PRODUTOS] supabase_create_fail', error);
+          await addToSyncQueue({ entity: 'produtos', operation: 'create', data: newProduto as unknown as Record<string, unknown>, timestamp: now });
+          toast.warning('Sem internet: produto salvo e será sincronizado');
+        } else {
+          console.info('[PRODUTOS] supabase_create_ok', { id: remoteData?.id });
+          if (remoteData) await localPut('produtos', remoteData, true);
+          toast.success('Produto criado com sucesso!');
+        }
+      } else {
+        console.log('[PRODUTOS] queued_offline', { localId: newProduto.id });
+        await addToSyncQueue({ entity: 'produtos', operation: 'create', data: newProduto as unknown as Record<string, unknown>, timestamp: now });
+        toast.info('Sem internet: produto salvo e será sincronizado');
       }
 
       return newProduto;
-    } catch (error) {
-      console.error('Error creating produto:', error);
-      toast({
-        title: 'Erro ao criar produto',
-        description: 'Tente novamente.',
-        variant: 'destructive',
-      });
+    } catch (error: any) {
+      console.error('[PRODUTOS] create_fail', error);
+      toast.error(`Falha ao criar produto: ${error.message}`);
       return null;
     }
-  }, [toast]);
+  }, []);
 
   // Update existing product
-  const updateProduto = useCallback(async (
-    id: string,
-    data: Partial<ProdutoInput>
-  ): Promise<Produto | null> => {
-    const existing = produtos.find((p) => p.id === id);
-    if (!existing) return null;
+  const updateProduto = useCallback(async (id: string, data: Partial<ProdutoInput>): Promise<Produto | null> => {
+    const existing = produtos.find((p) => p.id === id) || await localGet<Produto>('produtos', id);
+    if (!existing) { toast.error('Produto não encontrado'); return null; }
 
-    const updated: Produto = {
-      ...existing,
-      ...data,
-      updated_at: new Date().toISOString(),
-    };
+    const updated: Produto = { ...existing, ...data, updated_at: new Date().toISOString() };
 
     try {
       await localPut('produtos', updated);
-      setProdutos((prev) =>
-        prev.map((p) => (p.id === id ? updated : p)).sort((a, b) => a.nome.localeCompare(b.nome))
-      );
+      setProdutos((prev) => prev.map((p) => (p.id === id ? updated : p)).sort((a, b) => a.nome.localeCompare(b.nome)));
 
-      const { data: remoteData, error } = await supabase
-        .from('produtos')
-        .update({
-          nome: updated.nome,
-          descricao: updated.descricao,
-          codigo_barras: updated.codigo_barras,
-          preco_custo: updated.preco_custo,
-          preco_venda: updated.preco_venda,
-          estoque_atual: updated.estoque_atual,
-          estoque_minimo: updated.estoque_minimo,
-          categoria: updated.categoria,
-          foto_url: updated.foto_url,
-          ativo: updated.ativo,
-          updated_at: updated.updated_at,
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      if (getOnlineStatus()) {
+        const { error } = await supabase.from('produtos').update({ ...data, updated_at: updated.updated_at }).eq('id', id);
 
-      if (error) {
-        console.error('Error syncing update to Supabase:', error);
-        await addToSyncQueue({
-          entity: 'produtos',
-          operation: 'update',
-          data: updated as unknown as Record<string, unknown>,
-          timestamp: new Date().toISOString(),
-        });
-        toast({
-          title: 'Atualizado localmente',
-          description: 'Será sincronizado quando houver conexão.',
-        });
-      } else if (remoteData) {
-        await localPut('produtos', remoteData);
-        setProdutos((prev) =>
-          prev.map((p) => (p.id === id ? remoteData : p))
-        );
+        if (error) {
+          console.error('[PRODUTOS] supabase_update_fail', error);
+          await addToSyncQueue({ entity: 'produtos', operation: 'update', data: updated as unknown as Record<string, unknown>, timestamp: updated.updated_at });
+          toast.warning('Sem internet: alteração salva e será sincronizada');
+        } else {
+          console.info('[PRODUTOS] supabase_update_ok', { id });
+          await localPut('produtos', updated, true);
+          toast.success('Produto atualizado com sucesso!');
+        }
+      } else {
+        console.log('[PRODUTOS] queued_offline (update)', { id });
+        await addToSyncQueue({ entity: 'produtos', operation: 'update', data: updated as unknown as Record<string, unknown>, timestamp: updated.updated_at });
+        toast.info('Sem internet: alteração salva e será sincronizada');
       }
 
       return updated;
-    } catch (error) {
-      console.error('Error updating produto:', error);
-      toast({
-        title: 'Erro ao atualizar produto',
-        description: 'Tente novamente.',
-        variant: 'destructive',
-      });
+    } catch (error: any) {
+      console.error('[PRODUTOS] update_fail', error);
+      toast.error(`Falha ao atualizar produto: ${error.message}`);
       return null;
     }
-  }, [produtos, toast]);
+  }, [produtos]);
 
   // Delete product
   const deleteProduto = useCallback(async (id: string): Promise<boolean> => {
-    console.log(`[Produtos] Excluindo produto id=${id}`);
+    console.log('[PRODUTOS] delete_start', { id });
     try {
-      // 1. Remove from UI immediately (optimistic)
       setProdutos((prev) => prev.filter((p) => p.id !== id));
+      try { await localDelete('produtos', id); } catch { /* ignore */ }
 
-      // 2. Remove from IndexedDB
-      try {
-        await localDelete('produtos', id);
-        console.log(`[Produtos] Removido do IndexedDB: ${id}`);
-      } catch (localErr) {
-        console.warn('[Produtos] Falha ao remover do IndexedDB:', localErr);
-      }
-
-      // 3. Delete from Supabase
-      const { error, count } = await supabase
-        .from('produtos')
-        .delete()
-        .eq('id', id)
-        .select('id');
-
-      if (error) {
-        console.error('[Produtos] Erro ao excluir do Supabase:', error);
-        await addToSyncQueue({
-          entity: 'produtos',
-          operation: 'delete',
-          data: { id } as Record<string, unknown>,
-          timestamp: new Date().toISOString(),
-        });
-        toast({
-          title: 'Excluído localmente',
-          description: 'Será sincronizado quando houver conexão.',
-        });
+      if (getOnlineStatus()) {
+        const { error } = await supabase.from('produtos').delete().eq('id', id);
+        if (error) {
+          console.error('[PRODUTOS] supabase_delete_fail', error);
+          await addToSyncQueue({ entity: 'produtos', operation: 'delete', data: { id } as Record<string, unknown>, timestamp: new Date().toISOString() });
+          toast.warning('Exclusão será sincronizada quando online');
+        } else {
+          console.info('[PRODUTOS] delete_ok', { id });
+          toast.success('Produto excluído com sucesso!');
+        }
       } else {
-        console.log(`[Produtos] Excluído do Supabase com sucesso: ${id}`);
+        console.log('[PRODUTOS] queued_offline (delete)', { id });
+        await addToSyncQueue({ entity: 'produtos', operation: 'delete', data: { id } as Record<string, unknown>, timestamp: new Date().toISOString() });
+        toast.info('Sem internet: exclusão será sincronizada');
       }
 
       return true;
-    } catch (error) {
-      console.error('[Produtos] Erro ao excluir produto:', error);
-      toast({
-        title: 'Erro ao excluir produto',
-        description: 'Tente novamente.',
-        variant: 'destructive',
-      });
+    } catch (error: any) {
+      console.error('[PRODUTOS] delete_fail', error);
+      toast.error(`Falha ao excluir produto: ${error.message}`);
       return false;
     }
-  }, [toast]);
+  }, []);
 
-  // Deduct stock when product is sold (called from atendimentos)
-  const deductStock = useCallback(async (
-    productId: string,
-    quantity: number
-  ): Promise<boolean> => {
-    const produto = produtos.find((p) => p.id === productId) || 
-                   await localGet<Produto>('produtos', productId);
-    
-    if (!produto) {
-      console.error('Product not found for stock deduction:', productId);
-      return false;
-    }
+  // Deduct stock
+  const deductStock = useCallback(async (productId: string, quantity: number): Promise<boolean> => {
+    const produto = produtos.find((p) => p.id === productId) || await localGet<Produto>('produtos', productId);
+    if (!produto) { console.error('[PRODUTOS] stock_deduct_not_found', productId); return false; }
 
     const newStock = Math.max(0, produto.estoque_atual - quantity);
     const updated = await updateProduto(productId, { estoque_atual: newStock });
     
     if (updated && newStock < produto.estoque_minimo) {
-      toast({
-        title: 'Estoque baixo',
-        description: `${produto.nome} está abaixo do estoque mínimo.`,
-        variant: 'default',
-      });
+      toast.warning(`${produto.nome} está abaixo do estoque mínimo.`);
     }
-
     return !!updated;
-  }, [produtos, updateProduto, toast]);
+  }, [produtos, updateProduto]);
 
-  // Add stock (for returns or restocking)
-  const addStock = useCallback(async (
-    productId: string,
-    quantity: number
-  ): Promise<boolean> => {
-    const produto = produtos.find((p) => p.id === productId) ||
-                   await localGet<Produto>('produtos', productId);
-    
-    if (!produto) {
-      console.error('Product not found for stock addition:', productId);
-      return false;
-    }
-
-    const newStock = produto.estoque_atual + quantity;
-    const updated = await updateProduto(productId, { estoque_atual: newStock });
-    
-    return !!updated;
+  // Add stock
+  const addStock = useCallback(async (productId: string, quantity: number): Promise<boolean> => {
+    const produto = produtos.find((p) => p.id === productId) || await localGet<Produto>('produtos', productId);
+    if (!produto) return false;
+    return !!(await updateProduto(productId, { estoque_atual: produto.estoque_atual + quantity }));
   }, [produtos, updateProduto]);
 
   // Search products
   const searchProdutos = useCallback((term: string): Produto[] => {
     if (!term) return produtos;
     const lower = term.toLowerCase();
-    return produtos.filter(
-      (p) =>
-        p.nome.toLowerCase().includes(lower) ||
-        p.codigo_barras?.includes(term) ||
-        p.categoria?.toLowerCase().includes(lower)
-    );
+    return produtos.filter((p) => p.nome.toLowerCase().includes(lower) || p.codigo_barras?.includes(term) || p.categoria?.toLowerCase().includes(lower));
   }, [produtos]);
 
-  // Get products by category
   const getProdutosByCategoria = useCallback((categoria: string): Produto[] => {
     if (!categoria || categoria === 'todas') return produtos;
     return produtos.filter((p) => p.categoria === categoria);
   }, [produtos]);
 
-  // Get active products only
-  const getActiveProdutos = useCallback((): Produto[] => {
-    return produtos.filter((p) => p.ativo);
-  }, [produtos]);
+  const getActiveProdutos = useCallback((): Produto[] => produtos.filter((p) => p.ativo), [produtos]);
+  const getLowStockProdutos = useCallback((): Produto[] => produtos.filter((p) => p.estoque_atual < p.estoque_minimo), [produtos]);
+  const getProdutoById = useCallback((id: string): Produto | undefined => produtos.find((p) => p.id === id), [produtos]);
+  const getProdutoByBarcode = useCallback((barcode: string): Produto | undefined => produtos.find((p) => p.codigo_barras === barcode), [produtos]);
 
-  // Get products with low stock
-  const getLowStockProdutos = useCallback((): Produto[] => {
-    return produtos.filter((p) => p.estoque_atual < p.estoque_minimo);
-  }, [produtos]);
-
-  // Get product by ID
-  const getProdutoById = useCallback((id: string): Produto | undefined => {
-    return produtos.find((p) => p.id === id);
-  }, [produtos]);
-
-  // Get product by barcode
-  const getProdutoByBarcode = useCallback((barcode: string): Produto | undefined => {
-    return produtos.find((p) => p.codigo_barras === barcode);
-  }, [produtos]);
-
-  // Initial load
-  useEffect(() => {
-    loadProdutos();
-  }, [loadProdutos]);
+  useEffect(() => { loadProdutos(); }, [loadProdutos]);
 
   return {
-    produtos,
-    loading,
-    syncing,
-    loadProdutos,
-    createProduto,
-    updateProduto,
-    deleteProduto,
-    deductStock,
-    addStock,
-    searchProdutos,
-    getProdutosByCategoria,
-    getActiveProdutos,
-    getLowStockProdutos,
-    getProdutoById,
-    getProdutoByBarcode,
+    produtos, loading, syncing, loadProdutos,
+    createProduto, updateProduto, deleteProduto,
+    deductStock, addStock, searchProdutos,
+    getProdutosByCategoria, getActiveProdutos,
+    getLowStockProdutos, getProdutoById, getProdutoByBarcode,
   };
 }

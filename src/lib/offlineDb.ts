@@ -23,7 +23,10 @@ export const ENTITY_STORES = [
   'registro_ponto',
 ] as const;
 
-// Entities that have an updated_at column and can be synced via syncEntityFromServer
+// Entities that have an updated_at column and can be synced via syncEntityFromServer.
+// IMPORTANT: Only tables with updated_at belong here. registro_ponto has its own dedicated sync.
+// Tables WITHOUT updated_at (atendimento_servicos, atendimento_produtos, pagamentos,
+// caixa_movimentacoes, gorjetas, dividas_pagamentos) must NOT be listed here.
 export const SYNCABLE_ENTITY_STORES: EntityStore[] = [
   'clientes',
   'profissionais',
@@ -32,8 +35,6 @@ export const SYNCABLE_ENTITY_STORES: EntityStore[] = [
   'agendamentos',
   'atendimentos',
   'caixa',
-  'vales',
-  'dividas',
   'cheques',
 ];
 
