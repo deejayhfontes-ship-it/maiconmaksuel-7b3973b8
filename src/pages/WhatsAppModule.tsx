@@ -145,31 +145,6 @@ export default function WhatsAppModule() {
 }
 
 // Placeholder components for features not yet implemented
-function PosAtendimentoPlaceholder() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Star className="h-6 w-6 text-primary" />
-          Pós-atendimento
-        </h2>
-        <p className="text-muted-foreground mt-1">
-          Mensagens automáticas após finalização do atendimento
-        </p>
-      </div>
-      
-      <div className="flex items-center justify-center py-16 border-2 border-dashed rounded-xl">
-        <div className="text-center">
-          <Star className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-          <h3 className="font-semibold text-lg">Em breve</h3>
-          <p className="text-muted-foreground text-sm mt-1">
-            Configure mensagens de agradecimento e feedback
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function AvaliacaoPlaceholder() {
   return (
