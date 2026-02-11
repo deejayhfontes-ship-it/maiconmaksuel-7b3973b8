@@ -129,7 +129,7 @@ export function WhatsAppModal({ isOpen, onClose, alert, templates, onSend }: Wha
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-green-500" />
@@ -137,7 +137,7 @@ export function WhatsAppModal({ isOpen, onClose, alert, templates, onSend }: Wha
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Recipient info */}
           <div className="p-3 bg-muted rounded-lg">
             <p className="text-sm font-medium">{alert.entity_name}</p>
@@ -150,7 +150,7 @@ export function WhatsAppModal({ isOpen, onClose, alert, templates, onSend }: Wha
           </div>
 
           {/* Template selection */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>Template</Label>
             <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
               <SelectTrigger>
@@ -167,12 +167,12 @@ export function WhatsAppModal({ isOpen, onClose, alert, templates, onSend }: Wha
           </div>
 
           {/* Message preview/edit */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>Mensagem</Label>
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              rows={6}
+              rows={5}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
@@ -181,7 +181,7 @@ export function WhatsAppModal({ isOpen, onClose, alert, templates, onSend }: Wha
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
           <Button variant="outline" onClick={handleCopy} className="gap-2">
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             {copied ? 'Copiado!' : 'Copiar'}
