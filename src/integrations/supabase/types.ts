@@ -664,6 +664,45 @@ export type Database = {
           },
         ]
       }
+      comunicacao_avaliacao_config: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          dias_da_semana: number[]
+          enviar_apos_minutos: number
+          id: string
+          incluir_link_avaliacao: boolean
+          nota_minima_destaque: number
+          solicitar_comentario: boolean
+          template_mensagem: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          dias_da_semana?: number[]
+          enviar_apos_minutos?: number
+          id?: string
+          incluir_link_avaliacao?: boolean
+          nota_minima_destaque?: number
+          solicitar_comentario?: boolean
+          template_mensagem?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          dias_da_semana?: number[]
+          enviar_apos_minutos?: number
+          id?: string
+          incluir_link_avaliacao?: boolean
+          nota_minima_destaque?: number
+          solicitar_comentario?: boolean
+          template_mensagem?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       comunicacao_avaliacoes: {
         Row: {
           atendimento_id: string | null
