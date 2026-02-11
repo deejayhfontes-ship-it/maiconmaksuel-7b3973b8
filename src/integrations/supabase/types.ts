@@ -195,6 +195,7 @@ export type Database = {
           nota_fiscal_solicitada: boolean
           numero_comanda: number
           observacoes: string | null
+          pos_atendimento_enviado: boolean
           status: string
           subtotal: number
           updated_at: string
@@ -210,6 +211,7 @@ export type Database = {
           nota_fiscal_solicitada?: boolean
           numero_comanda?: number
           observacoes?: string | null
+          pos_atendimento_enviado?: boolean
           status?: string
           subtotal?: number
           updated_at?: string
@@ -225,6 +227,7 @@ export type Database = {
           nota_fiscal_solicitada?: boolean
           numero_comanda?: number
           observacoes?: string | null
+          pos_atendimento_enviado?: boolean
           status?: string
           subtotal?: number
           updated_at?: string
@@ -904,6 +907,48 @@ export type Database = {
           template_mensagem?: string
           tipo?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      comunicacao_pos_atendimento: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          cupom_desconto: string | null
+          dias_da_semana: number[]
+          enviar_apos_minutos: number
+          id: string
+          incluir_cupom: boolean
+          incluir_link_avaliacao: boolean
+          nome: string
+          template_mensagem: string
+          tipo: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          cupom_desconto?: string | null
+          dias_da_semana?: number[]
+          enviar_apos_minutos?: number
+          id?: string
+          incluir_cupom?: boolean
+          incluir_link_avaliacao?: boolean
+          nome: string
+          template_mensagem: string
+          tipo: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          cupom_desconto?: string | null
+          dias_da_semana?: number[]
+          enviar_apos_minutos?: number
+          id?: string
+          incluir_cupom?: boolean
+          incluir_link_avaliacao?: boolean
+          nome?: string
+          template_mensagem?: string
+          tipo?: string
         }
         Relationships: []
       }

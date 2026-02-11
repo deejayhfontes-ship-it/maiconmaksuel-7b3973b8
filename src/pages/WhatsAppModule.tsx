@@ -21,6 +21,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ComunicacaoConfirmacoes } from "@/components/comunicacao/ComunicacaoConfirmacoes";
 import { ComunicacaoLembretes } from "@/components/comunicacao/ComunicacaoLembretes";
 import { ComunicacaoCampanhas } from "@/components/comunicacao/ComunicacaoCampanhas";
+import { ComunicacaoPosAtendimento } from "@/components/comunicacao/ComunicacaoPosAtendimento";
 import { useComunicacao } from "@/hooks/useComunicacao";
 
 const tabs = [
@@ -124,7 +125,7 @@ export default function WhatsAppModule() {
         </TabsContent>
 
         <TabsContent value="pos-atendimento" className="mt-6">
-          <PosAtendimentoPlaceholder />
+          <ComunicacaoPosAtendimento />
         </TabsContent>
 
         <TabsContent value="avaliacao" className="mt-6">
