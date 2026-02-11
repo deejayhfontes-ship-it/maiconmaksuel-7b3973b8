@@ -202,31 +202,43 @@ export function useProdutos() {
       console.log('[PRODUTO] delete_local_ok', { id });
 
       if (isOnline) {
-        const { data, error } = await supabase
-          .from('produtos')
-          .delete()
-          .eq('id', id)
-          .select('id')
-          .maybeSingle();
+        let deleted = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const { data, error } = await supabase
+            .from('produtos')
+            .delete()
+            .eq('id', id)
+            .select('id')
+            .maybeSingle();
 
-        if (error) {
-          console.error('[PRODUTO] delete_supabase_fail', { id, error: error.message });
-          // Rollback UI
-          setProdutos(snapshot);
-          toast.error(`Falha ao excluir: ${error.message}`);
-          return false;
+          if (!error) {
+            deleted = true;
+            if (!data) {
+              console.warn('[PRODUTO] delete_supabase_not_found', { id, attempt });
+            }
+            console.log('[PRODUTO] delete_supabase_ok', { id, attempt });
+            break;
+          }
+
+          console.warn('[PRODUTO] delete_supabase_retry', { id, attempt, error: error.message });
+          if (attempt < 3) {
+            await new Promise(r => setTimeout(r, 500 * attempt));
+          }
         }
 
-        if (!data) {
-          console.warn('[PRODUTO] delete_supabase_not_found', { id });
-          // Item already gone from DB — keep it removed from UI
+        if (deleted) {
+          toast.success('Produto excluído');
+          await loadProdutos();
+        } else {
+          console.error('[PRODUTO] delete_supabase_all_retries_failed', { id });
+          await addToSyncQueue({
+            entity: 'produtos',
+            operation: 'delete',
+            data: { id } as Record<string, unknown>,
+            timestamp: new Date().toISOString(),
+          });
+          toast.warning('Falha ao excluir no servidor. Será sincronizado depois.');
         }
-
-        console.log('[PRODUTO] delete_supabase_ok', { id });
-        toast.success('Produto excluído');
-
-        // Force refetch to guarantee consistency
-        await loadProdutos();
       } else {
         // Offline: queue tombstone
         console.log('[PRODUTO] delete_queued_offline', { id });
