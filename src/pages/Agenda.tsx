@@ -383,6 +383,7 @@ const Agenda = () => {
                         key={ag.id}
                         open={openPopoverId === ag.id}
                         onOpenChange={(open) => setOpenPopoverId(open ? ag.id : null)}
+                        modal={true}
                       >
                         <PopoverTrigger asChild>
                           <div
