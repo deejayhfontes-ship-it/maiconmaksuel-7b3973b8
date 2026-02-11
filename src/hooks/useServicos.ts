@@ -296,17 +296,43 @@ export function useServicos() {
       const { error } = await supabase.from('servicos').delete().eq('id', id);
 
       if (error) {
-        console.error('Error syncing delete to Supabase:', error);
-        await addToSyncQueue({
-          entity: 'servicos',
-          operation: 'delete',
-          data: { id } as Record<string, unknown>,
-          timestamp: new Date().toISOString(),
-        });
-        toast({
-          title: 'Excluído localmente',
-          description: 'Será sincronizado quando houver conexão.',
-        });
+        if (error.code === '23503') {
+          // Foreign key violation — soft delete instead
+          console.warn('[SERVICO] delete_fk_violation → soft_delete', { id });
+          const { error: updateErr } = await supabase
+            .from('servicos')
+            .update({ ativo: false, updated_at: new Date().toISOString() })
+            .eq('id', id);
+
+          if (updateErr) {
+            console.error('[SERVICO] soft_delete_fail', updateErr);
+            toast({
+              title: 'Erro ao desativar serviço',
+              description: 'Tente novamente.',
+              variant: 'destructive',
+            });
+            return false;
+          }
+
+          // Reload to reflect soft-deleted state
+          await loadServicos();
+          toast({
+            title: 'Serviço desativado',
+            description: 'Serviço desativado (possui atendimentos vinculados).',
+          });
+        } else {
+          console.error('Error syncing delete to Supabase:', error);
+          await addToSyncQueue({
+            entity: 'servicos',
+            operation: 'delete',
+            data: { id } as Record<string, unknown>,
+            timestamp: new Date().toISOString(),
+          });
+          toast({
+            title: 'Excluído localmente',
+            description: 'Será sincronizado quando houver conexão.',
+          });
+        }
       }
 
       return true;
