@@ -2,9 +2,13 @@
  * Offline-first hook for employee time clock (Ponto Eletrônico)
  * Writes to `ponto_registros` table (the one FolhaPontoPanel reads)
  * Supports 4 event types: entrada, inicio_almoco, volta_almoco, saida
+ *
+ * Logging contract:
+ *   [PONTO] submit_start / queued_offline / supabase_upsert_ok / supabase_upsert_fail
+ *   [PONTO] blocked_missing_profissional_id / sync_flush_start / sync_flush_ok
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -74,13 +78,21 @@ export function usePonto() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const syncingRef = useRef(false);
 
   const deviceId = getDeviceId();
   const hoje = format(new Date(), 'yyyy-MM-dd');
 
+  // --- Online/Offline listeners ---
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => {
+      console.log('[PONTO] network_online');
+      setIsOnline(true);
+    };
+    const handleOffline = () => {
+      console.log('[PONTO] network_offline');
+      setIsOnline(false);
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
@@ -89,6 +101,7 @@ export function usePonto() {
     };
   }, []);
 
+  // --- Load people ---
   const loadPessoas = useCallback(async () => {
     try {
       if (isOnline) {
@@ -113,65 +126,75 @@ export function usePonto() {
         setPessoas(cached.filter(p => p.ativo));
       }
     } catch (error) {
-      console.error('[Ponto] Erro ao carregar pessoas:', error);
+      console.error('[PONTO] load_pessoas_error', error);
     }
   }, [isOnline]);
 
+  // --- Load today's records – always prefer Supabase when online ---
   const loadRegistrosHoje = useCallback(async () => {
     try {
-      // Local cache
+      // Always load local for immediate display
       const localRegs = await localGetAll<PontoRegistroLocal>('registro_ponto');
       const hojeLocal = localRegs.filter((r) => r.data === hoje);
-      setRegistrosHoje(hojeLocal);
 
       if (isOnline) {
+        // Authoritative source is Supabase
         const { data, error } = await supabase
           .from('ponto_registros')
           .select('*')
           .eq('data', hoje);
 
-        if (!error && data) {
-          const dbRegistros: PontoRegistroLocal[] = [];
-          for (const row of data) {
-            const tipos: { col: string; evento: TipoEvento }[] = [
-              { col: 'entrada_manha', evento: 'entrada' },
-              { col: 'saida_almoco', evento: 'inicio_almoco' },
-              { col: 'entrada_tarde', evento: 'volta_almoco' },
-              { col: 'saida', evento: 'saida' },
-            ];
-            for (const t of tipos) {
-              const val = (row as any)[t.col];
-              if (val) {
-                dbRegistros.push({
-                  id: `${row.id}-${t.evento}`,
-                  tipo_pessoa: row.tipo_pessoa as 'profissional' | 'funcionario',
-                  pessoa_id: row.pessoa_id,
-                  tipo_evento: t.evento,
-                  hora: val,
-                  data: row.data,
-                  device_id: '',
-                  created_at: row.created_at || new Date().toISOString(),
-                  _synced: true,
-                });
-              }
+        if (error) {
+          console.error('[PONTO] load_registros_supabase_error', error);
+          // Fall back to local
+          setRegistrosHoje(hojeLocal);
+          return;
+        }
+
+        const dbRegistros: PontoRegistroLocal[] = [];
+        for (const row of data || []) {
+          const tipos: { col: string; evento: TipoEvento }[] = [
+            { col: 'entrada_manha', evento: 'entrada' },
+            { col: 'saida_almoco', evento: 'inicio_almoco' },
+            { col: 'entrada_tarde', evento: 'volta_almoco' },
+            { col: 'saida', evento: 'saida' },
+          ];
+          for (const t of tipos) {
+            const val = (row as any)[t.col];
+            if (val) {
+              dbRegistros.push({
+                id: `${row.id}-${t.evento}`,
+                tipo_pessoa: row.tipo_pessoa as 'profissional' | 'funcionario',
+                pessoa_id: row.pessoa_id,
+                tipo_evento: t.evento,
+                hora: val,
+                data: row.data,
+                device_id: '',
+                created_at: row.created_at || new Date().toISOString(),
+                _synced: true,
+              });
             }
           }
-
-          const unsyncedLocal = hojeLocal.filter(r => !r._synced);
-          const dbKeys = new Set(dbRegistros.map(r => `${r.pessoa_id}-${r.tipo_evento}`));
-          const merged = [
-            ...dbRegistros,
-            ...unsyncedLocal.filter(r => !dbKeys.has(`${r.pessoa_id}-${r.tipo_evento}`)),
-          ];
-          setRegistrosHoje(merged);
-          setLastSync(new Date());
         }
+
+        // Merge: DB records + any unsynced local-only records
+        const unsyncedLocal = hojeLocal.filter(r => !r._synced);
+        const dbKeys = new Set(dbRegistros.map(r => `${r.pessoa_id}-${r.tipo_evento}`));
+        const merged = [
+          ...dbRegistros,
+          ...unsyncedLocal.filter(r => !dbKeys.has(`${r.pessoa_id}-${r.tipo_evento}`)),
+        ];
+        setRegistrosHoje(merged);
+        setLastSync(new Date());
+      } else {
+        setRegistrosHoje(hojeLocal);
       }
     } catch (error) {
-      console.error('[Ponto] Erro ao carregar registros:', error);
+      console.error('[PONTO] load_registros_error', error);
     }
   }, [hoje, isOnline]);
 
+  // --- Check pending queue count ---
   const checkPending = useCallback(async () => {
     try {
       const queue = await getSyncQueue();
@@ -180,6 +203,7 @@ export function usePonto() {
     } catch { /* ignore */ }
   }, []);
 
+  // --- Initial load ---
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -191,50 +215,90 @@ export function usePonto() {
     init();
   }, [loadPessoas, loadRegistrosHoje, checkPending]);
 
+  // --- Dedicated ponto queue flush (NOT the generic sync) ---
   const processQueue = useCallback(async () => {
-    if (!isOnline || syncing) return;
+    if (!isOnline || syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
+
+    console.log('[PONTO] sync_flush_start');
     try {
       const queue = await getSyncQueue();
       const pontoOps = queue.filter((op) => op.entity === 'registro_ponto');
 
+      if (pontoOps.length === 0) {
+        console.log('[PONTO] sync_flush_ok { pending: 0 }');
+        syncingRef.current = false;
+        setSyncing(false);
+        return;
+      }
+
+      let ok = 0;
+      let fail = 0;
+
       for (const op of pontoOps) {
         try {
           const d = op.data as unknown as PontoRegistroLocal;
-          const column = TIPO_TO_COLUMN[d.tipo_evento];
 
-          const { error } = await supabase
+          // Guard: never sync without pessoa_id
+          if (!d.pessoa_id) {
+            console.warn('[PONTO] sync_skip_missing_pessoa_id', { opId: op.id });
+            await removeSyncOperation(op.id);
+            fail++;
+            continue;
+          }
+
+          const column = TIPO_TO_COLUMN[d.tipo_evento];
+          const upsertPayload: Record<string, unknown> = {
+            tipo_pessoa: d.tipo_pessoa,
+            pessoa_id: d.pessoa_id,
+            data: d.data,
+            [column]: d.hora,
+          };
+
+          const { data: upsertResult, error } = await supabase
             .from('ponto_registros')
-            .upsert(
-              {
-                tipo_pessoa: d.tipo_pessoa,
-                pessoa_id: d.pessoa_id,
-                data: d.data,
-                [column]: d.hora,
-              } as any,
-              { onConflict: 'tipo_pessoa,pessoa_id,data' }
-            );
+            .upsert(upsertPayload as any, { onConflict: 'tipo_pessoa,pessoa_id,data' })
+            .select()
+            .maybeSingle();
 
           if (!error) {
+            console.log('[PONTO] supabase_upsert_ok (sync)', { id: upsertResult?.id, data: d.data, evento: d.tipo_evento });
             await removeSyncOperation(op.id);
             await localPut('registro_ponto', { ...d, _synced: true }, true);
+            ok++;
           } else {
-            console.error('[Ponto] Sync error:', error);
+            console.error('[PONTO] supabase_upsert_fail (sync)', { error: error.message });
+            fail++;
           }
-        } catch (err) {
-          console.error('[Ponto] Sync op error:', err);
+        } catch (err: any) {
+          console.error('[PONTO] sync_op_error', { error: err.message });
+          fail++;
         }
+      }
+
+      console.log(`[PONTO] sync_flush_ok { ok: ${ok}, fail: ${fail} }`);
+
+      if (fail > 0) {
+        toast.error(`${fail} registro(s) de ponto falharam na sincronização`);
+      }
+      if (ok > 0) {
+        toast.success(`${ok} registro(s) de ponto sincronizado(s)`);
       }
 
       await setMetadata('ponto_last_sync', new Date().toISOString());
       setLastSync(new Date());
       await checkPending();
       await loadRegistrosHoje();
+    } catch (err) {
+      console.error('[PONTO] sync_flush_error', err);
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
     }
-  }, [isOnline, syncing, checkPending, loadRegistrosHoje]);
+  }, [isOnline, checkPending, loadRegistrosHoje]);
 
+  // --- Auto-flush on online + periodic ---
   useEffect(() => {
     if (isOnline) {
       processQueue();
@@ -243,6 +307,7 @@ export function usePonto() {
     }
   }, [isOnline, processQueue]);
 
+  // --- Helpers ---
   const getRegistrosPessoa = useCallback(
     (pessoaId: string): PontoRegistroLocal[] => {
       return registrosHoje
@@ -288,6 +353,7 @@ export function usePonto() {
     [getRegistrosPessoa]
   );
 
+  // --- Main: register point ---
   const registrarPonto = useCallback(
     async (
       pessoaId: string,
@@ -295,13 +361,27 @@ export function usePonto() {
       tipoEvento: TipoEvento,
       observacao?: string
     ): Promise<{ success: boolean; offline: boolean; error?: string }> => {
+
+      const now = new Date();
+      const tsLocal = now.toISOString();
+      const tsUtc = now.toISOString(); // JS Date.toISOString() is always UTC
+
+      // B) Validate profissional_id
+      if (!pessoaId) {
+        console.error('[PONTO] blocked_missing_profissional_id', { tipoPessoa, tipoEvento });
+        toast.error('Erro: ID do profissional ausente. Não é possível registrar o ponto.');
+        return { success: false, offline: false, error: 'profissional_id ausente' };
+      }
+
+      // A) Log submit_start
+      console.log('[PONTO] submit_start', { tipo_pessoa: tipoPessoa, profissional_id: pessoaId, ts_local: tsLocal, ts_utc: tsUtc, tipoEvento });
+
       const validation = isAcaoValida(pessoaId, tipoEvento);
       if (!validation.valid) {
         toast.error(validation.reason || 'Ação inválida');
         return { success: false, offline: false, error: validation.reason };
       }
 
-      const now = new Date();
       const hora = format(now, 'HH:mm:ss');
       const data = format(now, 'yyyy-MM-dd');
 
@@ -313,19 +393,21 @@ export function usePonto() {
         hora, data,
         device_id: deviceId,
         observacao,
-        created_at: now.toISOString(),
+        created_at: tsUtc,
         _synced: false,
       };
 
       try {
+        // Save locally first (offline-first)
         await localPut('registro_ponto', registro, false);
         setRegistrosHoje((prev) => [...prev, registro]);
 
+        // Queue for sync
         await addToSyncQueue({
           entity: 'registro_ponto',
           operation: 'create',
           data: registro as unknown as Record<string, unknown>,
-          timestamp: now.toISOString(),
+          timestamp: tsUtc,
         });
 
         if (isOnline) {
@@ -338,37 +420,47 @@ export function usePonto() {
           };
           if (observacao) upsertData.observacoes = observacao;
 
-          const { error } = await supabase
+          const { data: upsertResult, error } = await supabase
             .from('ponto_registros')
-            .upsert(upsertData as any, { onConflict: 'tipo_pessoa,pessoa_id,data' });
+            .upsert(upsertData as any, { onConflict: 'tipo_pessoa,pessoa_id,data' })
+            .select()
+            .maybeSingle();
 
           if (error) {
-            console.error('[Ponto] DB error:', error);
-            toast.warning(`${TIPO_EVENTO_LABELS[tipoEvento]} salva offline — sincronizará ao reconectar`);
+            // A) Log failure
+            console.error('[PONTO] supabase_upsert_fail', { error: error.message, code: error.code });
+            toast.warning(`Sem internet: ponto salvo e será sincronizado`);
             await checkPending();
             return { success: true, offline: true };
           }
 
+          // A) Log success
+          console.log('[PONTO] supabase_upsert_ok', { id: upsertResult?.id, data, evento: tipoEvento, hora });
+
+          // Mark synced
           await localPut('registro_ponto', { ...registro, _synced: true }, true);
           setRegistrosHoje((prev) =>
             prev.map((r) => (r.id === registro.id ? { ...r, _synced: true } : r))
           );
 
+          // Remove from sync queue
           const queue = await getSyncQueue();
           const match = queue.find(q => (q.data as any)?.id === registro.id);
           if (match) await removeSyncOperation(match.id);
 
-          toast.success(`✅ ${TIPO_EVENTO_LABELS[tipoEvento]} registrada às ${format(now, 'HH:mm')}`);
+          toast.success(`✅ Ponto registrado online — ${TIPO_EVENTO_LABELS[tipoEvento]} às ${format(now, 'HH:mm')}`);
           await checkPending();
           return { success: true, offline: false };
         } else {
-          toast.info(`${TIPO_EVENTO_LABELS[tipoEvento]} salva offline — sincronizará ao reconectar`);
+          // A) Log offline queue
+          console.log('[PONTO] queued_offline', { localId: registro.id });
+          toast.info(`Sem internet: ponto salvo e será sincronizado`);
           await checkPending();
           return { success: true, offline: true };
         }
       } catch (error: any) {
-        console.error('[Ponto] Erro:', error);
-        toast.error(`Erro ao registrar ponto: ${error.message || 'Tente novamente'}`);
+        console.error('[PONTO] supabase_upsert_fail', { error: error.message });
+        toast.error(`Falha ao registrar ponto: ${error.message || 'Tente novamente'}`);
         return { success: false, offline: false, error: error.message };
       }
     },

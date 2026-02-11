@@ -111,7 +111,7 @@ export function FolhaPontoPanel() {
     }
   };
 
-  const loadPontos = async () => {
+  const loadPontos = async (showToast = false) => {
     if (!selectedPessoa) return;
 
     setLoading(true);
@@ -119,6 +119,8 @@ export function FolhaPontoPanel() {
       const [tipo, id] = selectedPessoa.split('-');
       const inicio = startOfMonth(mesReferencia);
       const fim = endOfMonth(mesReferencia);
+
+      console.log('[FOLHA_PONTO] fetch_supabase', { tipo, id, inicio: format(inicio, 'yyyy-MM-dd'), fim: format(fim, 'yyyy-MM-dd') });
 
       const { data, error } = await supabase
         .from('ponto_registros')
@@ -151,8 +153,10 @@ export function FolhaPontoPanel() {
       });
 
       setPontos(pontosCompletos);
+      if (showToast) toast.success('Dados atualizados do servidor');
     } catch (error) {
-      console.error('Error loading pontos:', error);
+      console.error('[FOLHA_PONTO] fetch_error', error);
+      if (showToast) toast.error('Erro ao atualizar dados');
     } finally {
       setLoading(false);
     }
@@ -419,9 +423,14 @@ export function FolhaPontoPanel() {
             </SelectContent>
           </Select>
 
+          <Button variant="outline" onClick={() => loadPontos(true)} disabled={processing || loading || !selectedPessoa}>
+            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+
           <Button variant="outline" onClick={handleGerarFolha} disabled={processing || !selectedPessoa}>
             <RefreshCw className="h-4 w-4 mr-1" />
-            Atualizar Folha
+            Gerar Folha
           </Button>
 
           {isAdmin && folha && (
