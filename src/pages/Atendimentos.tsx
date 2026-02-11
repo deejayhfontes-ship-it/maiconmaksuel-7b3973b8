@@ -57,7 +57,6 @@ import { ClienteSelector } from "@/components/atendimentos/ClienteSelector";
 import { ProductSearchInput } from "@/components/atendimentos/ProductSearchInput";
 import { cn } from "@/lib/utils";
 import { useAtendimentos, AtendimentoServico, AtendimentoProduto } from "@/hooks/useAtendimentos";
-import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 
 interface Cliente {
   id: string;
@@ -149,9 +148,6 @@ const Atendimentos = () => {
     getItemsServicos,
     getItemsProdutos,
   } = useAtendimentos();
-
-  // Realtime: auto-refresh when atendimentos change in another tab/device
-  useRealtimeCallback('atendimentos', refetch);
 
   // Polling fallback: refresh every 30s
   useEffect(() => {

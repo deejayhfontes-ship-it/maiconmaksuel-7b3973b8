@@ -39,7 +39,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 
 interface Comanda {
   id: string;
@@ -142,9 +141,6 @@ export default function CaixaComandas() {
   useEffect(() => {
     fetchComandas();
   }, [fetchComandas]);
-
-  // Realtime: auto-refresh when atendimentos change in another tab/device
-  useRealtimeCallback('atendimentos', fetchComandas);
 
   const handleFinalizar = (comanda: Comanda) => {
     setSelectedComanda(comanda);

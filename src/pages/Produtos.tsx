@@ -37,7 +37,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useProdutos, Produto } from "@/hooks/useProdutos";
-import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 import ProdutoFormDialog from "@/components/produtos/ProdutoFormDialog";
 
 const ITEMS_PER_PAGE = 10;
@@ -64,9 +63,6 @@ const Produtos = () => {
     getLowStockProdutos
   } = useProdutos();
 
-  // Realtime: auto-refresh when produtos change in another tab/device
-  useRealtimeCallback('produtos', loadProdutos);
-  
   const [searchTerm, setSearchTerm] = useState("");
   const [estoqueFilter, setEstoqueFilter] = useState("todos");
   const [sortOrder, setSortOrder] = useState("nome-asc");

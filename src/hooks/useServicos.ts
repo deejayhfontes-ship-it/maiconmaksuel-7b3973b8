@@ -7,6 +7,7 @@ import {
   localDelete, 
   addToSyncQueue 
 } from '@/lib/offlineDb';
+import { useRealtimeCallback } from '@/hooks/useRealtimeSubscription';
 
 export interface Servico {
   id: string;
@@ -357,6 +358,9 @@ export function useServicos() {
   const getServicoById = useCallback((id: string): Servico | undefined => {
     return servicos.find((s) => s.id === id);
   }, [servicos]);
+
+  // Realtime: auto-refresh when servicos change in another tab/device
+  useRealtimeCallback('servicos', loadServicos);
 
   // Initial load
   useEffect(() => {

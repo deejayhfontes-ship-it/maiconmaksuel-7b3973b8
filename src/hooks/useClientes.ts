@@ -14,6 +14,7 @@ import {
   addOnlineStatusListener,
 } from '@/lib/syncService';
 import { toast } from 'sonner';
+import { useRealtimeCallback } from '@/hooks/useRealtimeSubscription';
 
 export interface Cliente {
   id: string;
@@ -192,6 +193,9 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
       setLoading(false);
     }
   }, [isOnline, applyFiltersAndSort]);
+
+  // Realtime: auto-refresh when clientes change in another tab/device
+  useRealtimeCallback('clientes', fetchData);
 
   // Initial fetch
   useEffect(() => {

@@ -60,7 +60,6 @@ import { useAgendamentos, AgendamentoCompleto } from "@/hooks/useAgendamentos";
 import { usePinAuth } from "@/contexts/PinAuthContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { supabase } from "@/integrations/supabase/client";
-import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
@@ -113,9 +112,6 @@ const Agenda = () => {
     markAttended,
     markNoShow,
   } = useAgendamentos({ date: selectedDate, profissionalId: profissionalFilter });
-
-  // Realtime: auto-refresh when agendamentos change in another tab/device
-  useRealtimeCallback('agendamentos', refetch);
 
   const displayedProfissionais = useMemo(() => {
     if (profissionalFilter === "todos") return profissionais;
