@@ -51,7 +51,7 @@ import {
   UserX,
   Eye,
 } from "lucide-react";
-import { format, addDays, subDays, isSameDay, parseISO, addMonths, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format, addDays, subDays, isSameDay, parseISO, addMonths, subMonths, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,7 @@ import AgendamentoFormDialog from "@/components/agenda/AgendamentoFormDialog";
 import { useAgendamentos, AgendamentoCompleto } from "@/hooks/useAgendamentos";
 import { usePinAuth } from "@/contexts/PinAuthContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
+import { supabase } from "@/integrations/supabase/client";
 
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
@@ -159,11 +160,80 @@ const Agenda = () => {
     setOpenPopoverId(null);
   };
 
+  // Auto-criar comanda ao confirmar agendamento
+  const autoCreateComanda = async (ag: AgendamentoCompleto) => {
+    try {
+      const agDate = new Date(ag.data_hora);
+      const inicioHoje = startOfDay(agDate).toISOString();
+      const fimHoje = endOfDay(agDate).toISOString();
+
+      // Verificar se o cliente já tem comanda aberta no dia
+      const { data: comandasExistentes } = await supabase
+        .from("atendimentos")
+        .select("id, numero_comanda")
+        .eq("status", "aberto")
+        .eq("cliente_id", ag.cliente_id)
+        .gte("data_hora", inicioHoje)
+        .lte("data_hora", fimHoje);
+
+      if (comandasExistentes && comandasExistentes.length > 0) {
+        // Adicionar serviço à comanda existente
+        const comanda = comandasExistentes[0];
+        const servico = ag.servico;
+        
+        await supabase.from("atendimento_servicos").insert([{
+          atendimento_id: comanda.id,
+          servico_id: ag.servico_id,
+          profissional_id: ag.profissional_id,
+          quantidade: 1,
+          preco_unitario: servico.preco,
+          comissao_percentual: 0,
+          comissao_valor: 0,
+          subtotal: servico.preco,
+        }]);
+        
+        toast({ title: `Serviço adicionado à Comanda #${comanda.numero_comanda.toString().padStart(3, "0")}` });
+      } else {
+        // Criar nova comanda com o serviço do agendamento
+        const { data: novaComanda, error } = await supabase
+          .from("atendimentos")
+          .insert([{ cliente_id: ag.cliente_id, status: "aberto" }])
+          .select("id, numero_comanda")
+          .single();
+
+        if (error || !novaComanda) {
+          console.error("[Agenda] Erro ao criar comanda:", error);
+          return;
+        }
+
+        // Adicionar serviço do agendamento
+        const servico = ag.servico;
+        await supabase.from("atendimento_servicos").insert([{
+          atendimento_id: novaComanda.id,
+          servico_id: ag.servico_id,
+          profissional_id: ag.profissional_id,
+          quantidade: 1,
+          preco_unitario: servico.preco,
+          comissao_percentual: 0,
+          comissao_valor: 0,
+          subtotal: servico.preco,
+        }]);
+
+        toast({ title: `Comanda #${novaComanda.numero_comanda.toString().padStart(3, "0")} criada automaticamente!` });
+      }
+    } catch (err) {
+      console.error("[Agenda] Erro ao criar comanda automática:", err);
+    }
+  };
+
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     try {
       switch (newStatus) {
         case 'confirmado':
           await confirmAppointment(id);
+          // Auto-criar comanda ao confirmar
+          const ag = agendamentos.find(a => a.id === id);
+          if (ag) await autoCreateComanda(ag);
           break;
         case 'atendido':
           await markAttended(id);

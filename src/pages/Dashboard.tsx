@@ -151,6 +151,10 @@ const Dashboard = () => {
     0
   );
 
+  const ticketMedio = data.atendimentosHoje.length > 0
+    ? faturamentoHoje / data.atendimentosHoje.length
+    : 0;
+
   const allStats = [
     {
       title: "Faturamento Hoje",
@@ -161,7 +165,7 @@ const Dashboard = () => {
       icon: DollarSign,
       iconColor: "#34C759",
       iconBg: "rgba(52, 199, 89, 0.12)",
-      hideForNotebook: true, // Ocultar faturamento para notebook
+      hideForNotebook: true,
     },
     {
       title: "Atendimentos Hoje",
@@ -182,6 +186,17 @@ const Dashboard = () => {
       icon: Calendar,
       iconColor: "#FF9500",
       iconBg: "rgba(255, 149, 0, 0.12)",
+    },
+    {
+      title: "Ticket Médio",
+      value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(ticketMedio),
+      change: "",
+      changeType: "neutral" as const,
+      subtitle: data.atendimentosHoje.length > 0 ? `${data.atendimentosHoje.length} atendimento(s)` : "sem atendimentos",
+      icon: TrendingUp,
+      iconColor: "#AF52DE",
+      iconBg: "rgba(175, 82, 222, 0.12)",
+      hideForNotebook: true,
     },
     {
       title: "Novos Clientes",

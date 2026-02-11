@@ -790,7 +790,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
         }
       }
 
-      // Update product stock
+      // Update product stock and alert low stock
       for (const item of itemsProdutos) {
         const produto = produtos.find(p => p.id === item.produto_id);
         if (produto) {
@@ -800,6 +800,14 @@ export function useAtendimentos(): UseAtendimentosReturn {
             await supabase.from('produtos').update({
               estoque_atual: newStock,
             }).eq('id', item.produto_id);
+
+            // Low stock alert
+            if (newStock < (produto as any).estoque_minimo) {
+              toast({ 
+                title: `⚠️ Estoque baixo: ${produto.nome}`,
+                description: `Apenas ${newStock} unidade(s) restantes.`,
+              });
+            }
           }
 
           // Update local stock
@@ -807,6 +815,41 @@ export function useAtendimentos(): UseAtendimentosReturn {
           if (localProduto) {
             await localPut('produtos', { ...localProduto, estoque_atual: newStock }, false);
           }
+        }
+      }
+
+      // Register comissões for each profissional
+      const itemsServicos = await getItemsServicos(atendimentoId);
+      if (isOnline) {
+        for (const item of itemsServicos) {
+          if (Number(item.comissao_valor) > 0) {
+            await supabase.from('comissoes').insert([{
+              profissional_id: item.profissional_id,
+              atendimento_id: atendimentoId,
+              atendimento_servico_id: item.id,
+              tipo: 'servico',
+              descricao: `Comanda #${current.numero_comanda.toString().padStart(3, '0')} - ${item.servico?.nome || 'Serviço'}`,
+              valor_base: Number(item.subtotal),
+              percentual_comissao: Number(item.comissao_percentual),
+              valor_comissao: Number(item.comissao_valor),
+              status: 'pendente',
+              data_referencia: new Date().toISOString().split('T')[0],
+            }]);
+          }
+        }
+
+        // Register gorjetas as separate caixa movements
+        if (gorjetas && gorjetas.length > 0 && caixaId) {
+          const totalGorjetas = gorjetas.reduce((acc, g) => acc + g.valor, 0);
+          await supabase.from('caixa_movimentacoes').insert([{
+            caixa_id: caixaId,
+            tipo: 'entrada',
+            categoria: 'gorjeta',
+            descricao: `Gorjetas - Comanda #${current.numero_comanda.toString().padStart(3, '0')}`,
+            valor: totalGorjetas,
+            forma_pagamento: 'dinheiro',
+            atendimento_id: atendimentoId,
+          }]);
         }
       }
 
@@ -863,7 +906,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
       console.error('[useAtendimentos] Fechar comanda error:', err);
       throw err;
     }
-  }, [isOnline, clientes, produtos, getItemsProdutos, toast]);
+  }, [isOnline, clientes, produtos, getItemsProdutos, getItemsServicos, toast]);
 
   // Cancelar comanda
   const cancelarComanda = useCallback(async (atendimentoId: string): Promise<void> => {
