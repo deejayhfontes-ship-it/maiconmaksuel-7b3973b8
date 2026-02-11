@@ -10,6 +10,8 @@ import { format, startOfDay, endOfDay, subDays } from "date-fns";
 export interface DashboardData {
   agendamentosHoje: any[];
   atendimentosHoje: any[];
+  atendimentosOntem: any[];
+  agendamentosOntemCount: number;
   novosClientesMes: number;
   faturamentoMensal: any[];
   servicosMes: any[];
@@ -30,6 +32,9 @@ export async function loadDashboardData(): Promise<DashboardData> {
   const hoje = new Date();
   const inicioHoje = startOfDay(hoje).toISOString();
   const fimHoje = endOfDay(hoje).toISOString();
+  const ontem = subDays(hoje, 1);
+  const inicioOntem = startOfDay(ontem).toISOString();
+  const fimOntem = endOfDay(ontem).toISOString();
   const inicioMes = new Date(
     hoje.getFullYear(),
     hoje.getMonth(),
@@ -41,6 +46,8 @@ export async function loadDashboardData(): Promise<DashboardData> {
   const [
     agendamentosRes,
     atendimentosRes,
+    atendimentosOntemRes,
+    agendamentosOntemRes,
     clientesRes,
     atendimentos30Res,
     servicosMesRes,
@@ -74,6 +81,22 @@ export async function loadDashboardData(): Promise<DashboardData> {
       .eq("status", "fechado")
       .gte("data_hora", inicioHoje)
       .lte("data_hora", fimHoje),
+
+    // Atendimentos fechados ontem
+    supabase
+      .from("atendimentos")
+      .select("valor_final")
+      .eq("status", "fechado")
+      .gte("data_hora", inicioOntem)
+      .lte("data_hora", fimOntem),
+
+    // Agendamentos de ontem (count)
+    supabase
+      .from("agendamentos")
+      .select("id", { count: "exact", head: true })
+      .gte("data_hora", inicioOntem)
+      .lte("data_hora", fimOntem)
+      .neq("status", "cancelado"),
 
     // Novos clientes este mês (using count param)
     supabase
@@ -145,6 +168,8 @@ export async function loadDashboardData(): Promise<DashboardData> {
 
   const agendamentosHoje = agendamentosRes.data || [];
   const atendimentosHoje = atendimentosRes.data || [];
+  const atendimentosOntem = atendimentosOntemRes.data || [];
+  const agendamentosOntemCount = agendamentosOntemRes.count || 0;
   const novosClientesMes = clientesRes.count || 0;
 
   // Process faturamento (group by day)
@@ -200,6 +225,8 @@ export async function loadDashboardData(): Promise<DashboardData> {
   return {
     agendamentosHoje,
     atendimentosHoje,
+    atendimentosOntem,
+    agendamentosOntemCount,
     novosClientesMes,
     faturamentoMensal,
     servicosMes: servicosMesData,

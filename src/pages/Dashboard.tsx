@@ -140,6 +140,8 @@ const Dashboard = () => {
   const data = dashboardData || {
     agendamentosHoje: [],
     atendimentosHoje: [],
+    atendimentosOntem: [],
+    agendamentosOntemCount: 0,
     novosClientesMes: 0,
     faturamentoMensal: [],
     servicosMes: [],
@@ -151,6 +153,28 @@ const Dashboard = () => {
     0
   );
 
+  const faturamentoOntem = (data.atendimentosOntem || []).reduce(
+    (acc: number, at: any) => acc + Number(at.valor_final || 0),
+    0
+  );
+
+  const agendamentosHojeCount = data.agendamentosHoje.length;
+  const agendamentosOntemCount = data.agendamentosOntemCount || 0;
+  
+  const atendimentosHojeCount = data.atendimentosHoje.length;
+  const atendimentosOntemCount = (data.atendimentosOntem || []).length;
+
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? "+100%" : "0%";
+    const diff = ((current - previous) / previous) * 100;
+    return `${diff > 0 ? "+" : ""}${diff.toFixed(0)}%`;
+  };
+
+  const getChangeType = (current: number, previous: number) => {
+    if (current === previous) return "neutral";
+    return current > previous ? "positive" : "negative" as const;
+  };
+
   const ticketMedio = data.atendimentosHoje.length > 0
     ? faturamentoHoje / data.atendimentosHoje.length
     : 0;
@@ -159,8 +183,8 @@ const Dashboard = () => {
     {
       title: "Faturamento Hoje",
       value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(faturamentoHoje),
-      change: "+12%",
-      changeType: "positive" as const,
+      change: calculateChange(faturamentoHoje, faturamentoOntem),
+      changeType: getChangeType(faturamentoHoje, faturamentoOntem),
       subtitle: "vs ontem",
       icon: DollarSign,
       iconColor: "#34C759",
@@ -169,9 +193,9 @@ const Dashboard = () => {
     },
     {
       title: "Atendimentos Hoje",
-      value: data.atendimentosHoje.length.toString(),
-      change: "+8%",
-      changeType: "positive" as const,
+      value: atendimentosHojeCount.toString(),
+      change: calculateChange(atendimentosHojeCount, atendimentosOntemCount),
+      changeType: getChangeType(atendimentosHojeCount, atendimentosOntemCount),
       subtitle: "vs ontem",
       icon: Users,
       iconColor: "#007AFF",
@@ -179,10 +203,10 @@ const Dashboard = () => {
     },
     {
       title: "Agendamentos Hoje",
-      value: data.agendamentosHoje.length.toString(),
-      change: "",
-      changeType: "neutral" as const,
-      subtitle: "confirmados",
+      value: agendamentosHojeCount.toString(),
+      change: calculateChange(agendamentosHojeCount, agendamentosOntemCount),
+      changeType: getChangeType(agendamentosHojeCount, agendamentosOntemCount),
+      subtitle: "vs ontem",
       icon: Calendar,
       iconColor: "#FF9500",
       iconBg: "rgba(255, 149, 0, 0.12)",

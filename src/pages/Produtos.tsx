@@ -49,8 +49,8 @@ const formatPrice = (price: number) => {
 };
 
 const calculateMargin = (custo: number | null, venda: number) => {
-  if (!custo || custo === 0) return null;
-  return ((venda - custo) / custo) * 100;
+  if (!custo || custo === 0 || !venda || venda === 0) return null;
+  return ((venda - custo) / venda) * 100;
 };
 
 const Produtos = () => {
