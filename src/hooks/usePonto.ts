@@ -374,7 +374,8 @@ export function usePonto() {
       }
 
       // A) Log submit_start
-      console.log('[PONTO] submit_start', { tipo_pessoa: tipoPessoa, profissional_id: pessoaId, ts_local: tsLocal, ts_utc: tsUtc, tipoEvento });
+      const projectRef = (import.meta.env.VITE_SUPABASE_URL || '').replace(/^https?:\/\//, '').split('.')[0];
+      console.log('[PONTO] upsert_start', { profissional_id: pessoaId, data_local: tsLocal, data_utc: tsUtc, tipoEvento, supabase_projectRef: projectRef });
 
       const validation = isAcaoValida(pessoaId, tipoEvento);
       if (!validation.valid) {
@@ -428,14 +429,14 @@ export function usePonto() {
 
           if (error) {
             // A) Log failure
-            console.error('[PONTO] supabase_upsert_fail', { error: error.message, code: error.code });
+            console.error('[PONTO] upsert_fail', { error: error.message, code: error.code });
             toast.warning(`Sem internet: ponto salvo e será sincronizado`);
             await checkPending();
             return { success: true, offline: true };
           }
 
           // A) Log success
-          console.log('[PONTO] supabase_upsert_ok', { id: upsertResult?.id, data, evento: tipoEvento, hora });
+          console.log('[PONTO] upsert_ok', { id: upsertResult?.id, created_at: (upsertResult as any)?.created_at, updated_at: (upsertResult as any)?.updated_at, data, evento: tipoEvento, hora });
 
           // Mark synced
           await localPut('registro_ponto', { ...registro, _synced: true }, true);
