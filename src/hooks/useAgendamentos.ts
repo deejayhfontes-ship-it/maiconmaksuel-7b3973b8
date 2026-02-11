@@ -158,17 +158,8 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
       const startDate = startOfDay(date);
       const endDate = endOfDay(date);
 
-      // Load from local first
-      const localData = await localGetAll<Agendamento>('agendamentos');
-      const filteredLocal = localData.filter(ag => {
-        const agDate = new Date(ag.data_hora);
-        return agDate >= startDate && agDate <= endDate;
-      });
-      
-      setAllAgendamentos(filteredLocal);
-
-      // Sync from server if online
       if (isOnline) {
+        // Online: fetch directly from server (single state update)
         const { data: serverData, error } = await supabase
           .from('agendamentos')
           .select('*')
@@ -178,27 +169,27 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
 
         if (error) {
           console.error('[useAgendamentos] Server fetch error:', error);
-        } else if (serverData) {
-          // Merge server data with local - server wins for same ID
-          const merged = new Map<string, Agendamento>();
-          
-          // Add local first
-          filteredLocal.forEach(ag => merged.set(ag.id, ag));
-          
-          // Overwrite with server data (more recent)
-          serverData.forEach(ag => {
-            const local = merged.get(ag.id);
-            if (!local || new Date(ag.updated_at || 0) >= new Date(local.updated_at || 0)) {
-              merged.set(ag.id, ag as Agendamento);
-            }
+          // Fallback to local
+          const localData = await localGetAll<Agendamento>('agendamentos');
+          const filteredLocal = localData.filter(ag => {
+            const agDate = new Date(ag.data_hora);
+            return agDate >= startDate && agDate <= endDate;
           });
-          
-          const mergedData = Array.from(merged.values());
-          setAllAgendamentos(mergedData);
-          
-          // Update local storage
-          await localBulkPut('agendamentos', mergedData);
+          setAllAgendamentos(filteredLocal);
+        } else if (serverData) {
+          const typedData = serverData as Agendamento[];
+          setAllAgendamentos(typedData);
+          // Update local storage in background
+          localBulkPut('agendamentos', typedData).catch(() => {});
         }
+      } else {
+        // Offline: load from local
+        const localData = await localGetAll<Agendamento>('agendamentos');
+        const filteredLocal = localData.filter(ag => {
+          const agDate = new Date(ag.data_hora);
+          return agDate >= startDate && agDate <= endDate;
+        });
+        setAllAgendamentos(filteredLocal);
       }
     } catch (err) {
       console.error('[useAgendamentos] Fetch error:', err);
@@ -429,21 +420,27 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
     });
   }, [agendamentos]);
 
-  // Refetch wrapper
+  // Refetch wrapper - only refetch agendamentos, not all related entities
   const refetch = useCallback(async () => {
+    await fetchAgendamentos();
+  }, [fetchAgendamentos]);
+
+  // Full reload including related entities (use sparingly)
+  const fullReload = useCallback(async () => {
     await loadRelatedEntities();
     await fetchAgendamentos();
   }, [loadRelatedEntities, fetchAgendamentos]);
 
   // Realtime: auto-refresh when agendamentos change in another tab/device
   // Skip if a local mutation is in progress to avoid race conditions
+  // Use higher throttle (3s) to prevent flickering
   const safeRealtimeRefetch = useCallback(() => {
     if (!mutationLockRef.current) {
       refetch();
     }
   }, [refetch]);
   
-  useRealtimeCallback('agendamentos', safeRealtimeRefetch);
+  useRealtimeCallback('agendamentos', safeRealtimeRefetch, { throttleMs: 3000 });
 
   return {
     agendamentos,
