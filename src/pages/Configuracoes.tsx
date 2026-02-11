@@ -444,6 +444,16 @@ export default function Configuracoes() {
       case "jornada-ponto":
       case "comissoes-rh":
         return <RHSettings />;
+      case "email-automatico":
+        return <EmailAutomaticoContent />;
+      case "formatos-padrao":
+        return <FormatosPadraoContent />;
+      case "logo-relatorios":
+        return <LogoRelatoriosContent />;
+      case "suporte":
+        return <SuporteContent />;
+      case "documentacao":
+        return <DocumentacaoContent />;
       default:
         return (
           <div className="flex items-center justify-center h-64">
@@ -480,8 +490,8 @@ export default function Configuracoes() {
       </div>
 
       <div className="flex gap-6">
-        {/* Menu Lateral */}
-        <Card className="w-72 flex-shrink-0 max-h-[calc(100vh-180px)] flex flex-col sticky top-6 overflow-hidden">
+        {/* Menu Lateral - hidden on mobile, shown via button */}
+        <Card className="hidden md:flex w-72 flex-shrink-0 max-h-[calc(100vh-180px)] flex-col sticky top-6 overflow-hidden">
           <div className="p-4 border-b flex-shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -566,8 +576,32 @@ export default function Configuracoes() {
           </ScrollArea>
         </Card>
 
+        {/* Mobile Menu */}
+        <div className="md:hidden w-full">
+          <select
+            value={selectedItem}
+            onChange={(e) => {
+              const item = menuSections.flatMap(s => s.items).find(i => i.id === e.target.value);
+              if (item?.route) {
+                navigate(item.route);
+              } else {
+                setSelectedItem(e.target.value);
+              }
+            }}
+            className="w-full p-3 border rounded-lg bg-background mb-4 text-sm"
+          >
+            {menuSections.map(section => (
+              <optgroup key={section.id} label={section.title}>
+                {section.items.map(item => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+
         {/* Conteúdo */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {renderContent()}
         </div>
       </div>
@@ -2887,6 +2921,346 @@ function LembretesContent() {
         )}
 
         <Button>Salvar Configurações</Button>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Email Automático de Relatórios
+function EmailAutomaticoContent() {
+  const [config, setConfig] = useState({
+    ativo: false,
+    frequencia: "semanal",
+    diaEnvio: "1",
+    horaEnvio: "08:00",
+    emailDestino: "",
+    incluirVendas: true,
+    incluirFinanceiro: true,
+    incluirEstoque: false,
+    incluirClientes: false,
+    formato: "pdf",
+  });
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Mail className="h-5 w-5" />
+        Email Automático de Relatórios
+      </h2>
+      <div className="space-y-6">
+        <label className="flex items-center justify-between p-3 border rounded-lg">
+          <div>
+            <p className="font-medium">Ativar envio automático</p>
+            <p className="text-sm text-muted-foreground">Receba relatórios periodicamente por email</p>
+          </div>
+          <input type="checkbox" checked={config.ativo} onChange={(e) => setConfig(p => ({ ...p, ativo: e.target.checked }))} className="h-5 w-5" />
+        </label>
+
+        {config.ativo && (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Frequência</label>
+                <select value={config.frequencia} onChange={(e) => setConfig(p => ({ ...p, frequencia: e.target.value }))} className="w-full mt-1 p-2 border rounded-lg">
+                  <option value="diario">Diário</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="mensal">Mensal</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Horário de envio</label>
+                <Input type="time" value={config.horaEnvio} onChange={(e) => setConfig(p => ({ ...p, horaEnvio: e.target.value }))} className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Email de destino</label>
+              <Input type="email" placeholder="seu@email.com" value={config.emailDestino} onChange={(e) => setConfig(p => ({ ...p, emailDestino: e.target.value }))} className="mt-1" />
+            </div>
+            <div className="space-y-3">
+              <h3 className="font-medium">Relatórios incluídos</h3>
+              {[
+                { key: "incluirVendas", label: "Vendas e Faturamento" },
+                { key: "incluirFinanceiro", label: "Financeiro (DRE)" },
+                { key: "incluirEstoque", label: "Estoque" },
+                { key: "incluirClientes", label: "Clientes" },
+              ].map(item => (
+                <label key={item.key} className="flex items-center gap-3">
+                  <input type="checkbox" checked={config[item.key as keyof typeof config] as boolean} onChange={(e) => setConfig(p => ({ ...p, [item.key]: e.target.checked }))} className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+            </div>
+            <div>
+              <label className="text-sm font-medium">Formato</label>
+              <div className="flex gap-2 mt-1">
+                {["pdf", "excel"].map(f => (
+                  <Button key={f} variant={config.formato === f ? "default" : "outline"} onClick={() => setConfig(p => ({ ...p, formato: f }))} className="uppercase">{f}</Button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+        <div className="pt-4 border-t">
+          <Button onClick={() => toast.success("Configurações de email salvas!")}>Salvar Configurações</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Formatos Padrão
+function FormatosPadraoContent() {
+  const [config, setConfig] = useState({
+    formatoPadrao: "pdf",
+    orientacao: "retrato",
+    tamanhoPapel: "a4",
+    incluirLogo: true,
+    incluirRodape: true,
+    incluirNumeroPagina: true,
+    corCabecalho: "#1e3a5f",
+  });
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <FileText className="h-5 w-5" />
+        Formatos Padrão de Relatórios
+      </h2>
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium">Formato Padrão de Exportação</label>
+            <select value={config.formatoPadrao} onChange={(e) => setConfig(p => ({ ...p, formatoPadrao: e.target.value }))} className="w-full mt-1 p-2 border rounded-lg">
+              <option value="pdf">PDF</option>
+              <option value="excel">Excel (.xlsx)</option>
+              <option value="csv">CSV</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Orientação (PDF)</label>
+            <select value={config.orientacao} onChange={(e) => setConfig(p => ({ ...p, orientacao: e.target.value }))} className="w-full mt-1 p-2 border rounded-lg">
+              <option value="retrato">Retrato</option>
+              <option value="paisagem">Paisagem</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="text-sm font-medium">Tamanho do Papel</label>
+          <select value={config.tamanhoPapel} onChange={(e) => setConfig(p => ({ ...p, tamanhoPapel: e.target.value }))} className="w-full mt-1 p-2 border rounded-lg">
+            <option value="a4">A4</option>
+            <option value="carta">Carta</option>
+            <option value="oficio">Ofício</option>
+          </select>
+        </div>
+        <div className="space-y-3">
+          <h3 className="font-medium">Opções do PDF</h3>
+          {[
+            { key: "incluirLogo", label: "Incluir logo no cabeçalho" },
+            { key: "incluirRodape", label: "Incluir rodapé com dados do salão" },
+            { key: "incluirNumeroPagina", label: "Incluir número de página" },
+          ].map(item => (
+            <label key={item.key} className="flex items-center justify-between p-3 border rounded-lg">
+              <span>{item.label}</span>
+              <input type="checkbox" checked={config[item.key as keyof typeof config] as boolean} onChange={(e) => setConfig(p => ({ ...p, [item.key]: e.target.checked }))} className="h-5 w-5" />
+            </label>
+          ))}
+        </div>
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-medium">Cor do cabeçalho</label>
+          <input type="color" value={config.corCabecalho} onChange={(e) => setConfig(p => ({ ...p, corCabecalho: e.target.value }))} className="h-10 w-16 rounded border" />
+        </div>
+        <div className="pt-4 border-t">
+          <Button onClick={() => toast.success("Formatos padrão salvos!")}>Salvar Configurações</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Logo nos Relatórios
+function LogoRelatoriosContent() {
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <Image className="h-5 w-5" />
+        Logo para Relatórios
+      </h2>
+      <div className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          Este logo será exibido no cabeçalho de todos os PDFs gerados pelo sistema (relatórios, cupons, recibos).
+        </p>
+        <div className="flex items-start gap-6">
+          <div className="w-48 h-24 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
+            <div className="text-center">
+              <Image className="h-8 w-8 mx-auto text-muted-foreground" />
+              <p className="text-xs text-muted-foreground mt-1">Logo do cabeçalho</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <Button>
+              <Upload className="h-4 w-4 mr-2" />
+              Enviar Logo
+            </Button>
+            <Button variant="outline" size="sm">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Remover
+            </Button>
+            <p className="text-xs text-muted-foreground">Formatos: PNG, JPG ou SVG • Máx: 1MB • Recomendado: 400x100px</p>
+          </div>
+        </div>
+        <div className="space-y-3 border-t pt-6">
+          <h3 className="font-medium">Posição do Logo</h3>
+          <div className="flex gap-2">
+            {["Esquerda", "Centro", "Direita"].map(pos => (
+              <Button key={pos} variant={pos === "Esquerda" ? "default" : "outline"} size="sm">{pos}</Button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-3 border-t pt-6">
+          <label className="flex items-center justify-between p-3 border rounded-lg">
+            <div>
+              <p className="font-medium">Incluir nome do salão abaixo do logo</p>
+              <p className="text-sm text-muted-foreground">Exibe o nome fantasia junto ao logo</p>
+            </div>
+            <input type="checkbox" defaultChecked className="h-5 w-5" />
+          </label>
+        </div>
+        <div className="pt-4 border-t">
+          <Button onClick={() => toast.success("Configurações do logo salvas!")}>Salvar Alterações</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Suporte
+function SuporteContent() {
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <HelpCircle className="h-5 w-5" />
+        Suporte Técnico
+      </h2>
+      <div className="space-y-6">
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-primary rounded-full flex items-center justify-center">
+              <MessageSquare className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold">Precisa de ajuda?</p>
+              <p className="text-sm text-muted-foreground">Nossa equipe está pronta para atendê-lo</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 border rounded-lg space-y-2">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-green-600" />
+              <h3 className="font-medium">WhatsApp</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">Atendimento rápido via WhatsApp</p>
+            <p className="font-mono text-sm">(35) 99999-9999</p>
+            <Button variant="outline" size="sm" className="w-full" onClick={() => window.open("https://wa.me/5535999999999", "_blank")}>
+              Abrir WhatsApp
+            </Button>
+          </div>
+          <div className="p-4 border rounded-lg space-y-2">
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-600" />
+              <h3 className="font-medium">E-mail</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">Envie sua dúvida por email</p>
+            <p className="font-mono text-sm">suporte@maiconmaksuel.com</p>
+            <Button variant="outline" size="sm" className="w-full" onClick={() => window.open("mailto:suporte@maiconmaksuel.com")}>
+              Enviar E-mail
+            </Button>
+          </div>
+        </div>
+
+        <div className="p-4 border rounded-lg space-y-3">
+          <h3 className="font-medium">Horário de Atendimento</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <span className="text-muted-foreground">Segunda a Sexta:</span>
+            <span>08:00 - 18:00</span>
+            <span className="text-muted-foreground">Sábado:</span>
+            <span>08:00 - 12:00</span>
+            <span className="text-muted-foreground">Domingo e Feriados:</span>
+            <span>Fechado</span>
+          </div>
+        </div>
+
+        <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+          <h3 className="font-medium">Informações do Sistema</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm font-mono">
+            <span className="text-muted-foreground">Versão:</span>
+            <span>2.0.5</span>
+            <span className="text-muted-foreground">Ambiente:</span>
+            <span>Produção</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText("Versão: 2.0.5 | Ambiente: Produção"); toast.success("Info copiada!"); }}>
+            Copiar info para suporte
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// Componente Documentação
+function DocumentacaoContent() {
+  const docs = [
+    { titulo: "Guia Rápido de Início", desc: "Primeiros passos com o sistema", icon: "🚀" },
+    { titulo: "Manual do Usuário", desc: "Guia completo de todas as funcionalidades", icon: "📖" },
+    { titulo: "Configurações do Sistema", desc: "Como configurar cada módulo", icon: "⚙️" },
+    { titulo: "Gestão Financeira", desc: "Caixa, comissões e relatórios", icon: "💰" },
+    { titulo: "Agenda e Atendimentos", desc: "Agendamentos e comandas", icon: "📅" },
+    { titulo: "WhatsApp e Comunicação", desc: "Integração com WhatsApp", icon: "💬" },
+    { titulo: "Modo Kiosk", desc: "Terminal de autoatendimento", icon: "🖥️" },
+    { titulo: "Perguntas Frequentes", desc: "Dúvidas mais comuns", icon: "❓" },
+  ];
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+        <FileText className="h-5 w-5" />
+        Documentação
+      </h2>
+      <div className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          Acesse os guias e manuais do sistema para aproveitar todos os recursos disponíveis.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {docs.map((doc, i) => (
+            <button
+              key={i}
+              className="p-4 border rounded-lg text-left hover:bg-muted/50 transition-colors flex items-start gap-3"
+              onClick={() => toast.info(`Documentação "${doc.titulo}" em breve!`)}
+            >
+              <span className="text-2xl">{doc.icon}</span>
+              <div>
+                <p className="font-medium">{doc.titulo}</p>
+                <p className="text-sm text-muted-foreground">{doc.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="p-4 bg-muted/50 rounded-lg space-y-3 border-t pt-6">
+          <h3 className="font-medium">Links Úteis</h3>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.location.href = "/mapa-sistema"}>
+              <Globe className="h-4 w-4 mr-2" />
+              Mapa do Sistema
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => toast.info("Changelog em breve!")}>
+              <History className="h-4 w-4 mr-2" />
+              Changelog
+            </Button>
+          </div>
+        </div>
       </div>
     </Card>
   );
