@@ -309,6 +309,17 @@ const Atendimentos = () => {
       return;
     }
 
+    // Verificar estoque disponível antes de adicionar
+    const prod = produtos.find(p => p.id === produtoId);
+    if (prod && prod.estoque_atual < produtoQtd) {
+      toast({ 
+        title: "Estoque insuficiente", 
+        description: `${prod.nome} tem apenas ${prod.estoque_atual} unidade(s) em estoque.`,
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const subtotalItem = produtoPreco * produtoQtd;
 
     const { error } = await supabase.from("atendimento_produtos").insert([{
@@ -387,6 +398,13 @@ const Atendimentos = () => {
     if (itemsServicos.length === 0 && itemsProdutos.length === 0) {
       toast({ title: "Comanda vazia", description: "Adicione itens antes de fechar", variant: "destructive" });
       return;
+    }
+    // Alertar se o cliente tem saldo devedor
+    if (clienteCredito.saldoDevedor > 0) {
+      toast({ 
+        title: "⚠️ Cliente com saldo devedor", 
+        description: `Este cliente tem R$ ${clienteCredito.saldoDevedor.toFixed(2)} em dívidas pendentes.`,
+      });
     }
     setIsPaymentOpen(true);
   };
@@ -472,14 +490,55 @@ const Atendimentos = () => {
       }
     }
 
-    // Atualizar estoque dos produtos vendidos
+    // Atualizar estoque dos produtos vendidos e alertar estoque baixo
     for (const item of itemsProdutos) {
       const produto = produtos.find(p => p.id === item.produto_id);
       if (produto) {
+        const novoEstoque = Math.max(0, produto.estoque_atual - item.quantidade);
         await supabase.from("produtos").update({
-          estoque_atual: Math.max(0, produto.estoque_atual - item.quantidade),
+          estoque_atual: novoEstoque,
         }).eq("id", item.produto_id);
+
+        // Alerta de estoque baixo
+        if (novoEstoque < (produto as any).estoque_minimo) {
+          toast({ 
+            title: "⚠️ Estoque baixo", 
+            description: `${produto.nome} está abaixo do estoque mínimo (${novoEstoque} restantes).`,
+          });
+        }
       }
+    }
+
+    // Registrar comissões dos profissionais
+    for (const item of itemsServicos) {
+      if (item.comissao_valor > 0) {
+        await supabase.from("comissoes").insert([{
+          profissional_id: item.profissional_id,
+          atendimento_id: selectedAtendimento.id,
+          atendimento_servico_id: item.id,
+          tipo: "servico",
+          descricao: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} - ${item.servico.nome}`,
+          valor_base: Number(item.subtotal),
+          percentual_comissao: Number(item.comissao_percentual),
+          valor_comissao: Number(item.comissao_valor),
+          status: "pendente",
+          data_referencia: new Date().toISOString().split("T")[0],
+        }]);
+      }
+    }
+
+    // Registrar gorjetas como movimentação separada no caixa
+    if (gorjetas && gorjetas.length > 0 && caixaAberto) {
+      const totalGorjetas = gorjetas.reduce((acc, g) => acc + g.valor, 0);
+      await supabase.from("caixa_movimentacoes").insert([{
+        caixa_id: caixaAberto.id,
+        tipo: "entrada",
+        categoria: "gorjeta",
+        descricao: `Gorjetas - Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")}`,
+        valor: totalGorjetas,
+        forma_pagamento: "dinheiro",
+        atendimento_id: selectedAtendimento.id,
+      }]);
     }
 
     // NÃO fechar o atendimento aqui — isso será feito no FecharComandaModal
