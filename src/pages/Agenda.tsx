@@ -152,12 +152,13 @@ const Agenda = () => {
   };
 
   const handleAgendamentoClick = (ag: AgendamentoCompleto) => {
+    setOpenPopoverId(null);
     setSelectedAgendamento(ag);
     setFormInitialDate(undefined);
     setFormInitialTime(undefined);
     setFormInitialProfissionalId(undefined);
-    setIsFormOpen(true);
-    setOpenPopoverId(null);
+    // Delay dialog open to avoid Popover/Dialog focus conflict
+    setTimeout(() => setIsFormOpen(true), 50);
   };
 
   // Auto-criar comanda ao confirmar agendamento

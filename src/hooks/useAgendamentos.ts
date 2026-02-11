@@ -1,5 +1,5 @@
 // Offline-first hook for agendamentos with status management
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   localGet,
@@ -94,6 +94,13 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
   const [isOnline, setIsOnline] = useState(getOnlineStatus());
   const [pendingSync, setPendingSync] = useState(0);
   const { toast } = useToast();
+  
+  // Mutation lock: skip realtime refetches during local mutations to avoid race conditions
+  const mutationLockRef = useRef(false);
+  const lockMutation = useCallback(() => {
+    mutationLockRef.current = true;
+    setTimeout(() => { mutationLockRef.current = false; }, 2000);
+  }, []);
 
   // Listen for online status changes
   useEffect(() => {
@@ -255,6 +262,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
     };
 
     try {
+      lockMutation();
       // Save locally first
       await localPut('agendamentos', newAgendamento, false);
       
@@ -298,6 +306,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
     const now = new Date().toISOString();
     
     try {
+      lockMutation();
       const current = await localGet<Agendamento>('agendamentos', id);
       if (!current) throw new Error('Agendamento não encontrado');
 
@@ -343,6 +352,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
   // Delete agendamento
   const remove = useCallback(async (id: string): Promise<void> => {
     try {
+      lockMutation();
       const current = await localGet<Agendamento>('agendamentos', id);
       
       // Remove from local
@@ -426,7 +436,14 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
   }, [loadRelatedEntities, fetchAgendamentos]);
 
   // Realtime: auto-refresh when agendamentos change in another tab/device
-  useRealtimeCallback('agendamentos', refetch);
+  // Skip if a local mutation is in progress to avoid race conditions
+  const safeRealtimeRefetch = useCallback(() => {
+    if (!mutationLockRef.current) {
+      refetch();
+    }
+  }, [refetch]);
+  
+  useRealtimeCallback('agendamentos', safeRealtimeRefetch);
 
   return {
     agendamentos,
