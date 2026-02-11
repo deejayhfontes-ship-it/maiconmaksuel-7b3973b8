@@ -1,5 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -20,6 +22,7 @@ import {
   RefreshCw,
   Zap
 } from "lucide-react";
+import { Send } from "lucide-react";
 import { ComunicacaoConfigAvancadas as ConfigType, ComunicacaoCreditos } from "@/hooks/useComunicacao";
 import {
   Select,
@@ -62,6 +65,8 @@ export function ComunicacaoConfigAvancadas({
 }: Props) {
   const [generatingQR, setGeneratingQR] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [testEnvio, setTestEnvio] = useState(false);
+  const [telefoneTeste, setTelefoneTeste] = useState("");
 
   if (!config) {
     return (
@@ -80,6 +85,34 @@ export function ComunicacaoConfigAvancadas({
       setQrCodeData("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=whatsapp-connect-" + Date.now());
     } finally {
       setGeneratingQR(false);
+    }
+  };
+
+  const handleTestarEnvio = async () => {
+    if (!telefoneTeste.trim()) {
+      toast.error("Informe um número de telefone para teste");
+      return;
+    }
+    setTestEnvio(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+        body: {
+          telefone: telefoneTeste,
+          mensagem: "✅ Teste de envio do sistema Maicon Maksuel. Se recebeu, a integração está funcionando!",
+          cliente_nome: "Teste",
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success("Mensagem de teste enviada com sucesso!");
+      } else {
+        toast.error(data?.error || "Falha ao enviar mensagem de teste");
+      }
+    } catch (err: any) {
+      console.error("[WHATSAPP] test_send_fail", err);
+      toast.error(`Erro: ${err.message || "Falha ao chamar a função"}`);
+    } finally {
+      setTestEnvio(false);
     }
   };
 
@@ -193,7 +226,45 @@ export function ComunicacaoConfigAvancadas({
                 value={configWhatsApp?.api_token || ""}
                 onChange={(e) => onConfigWhatsAppChange({ api_token: e.target.value })}
               />
-            </div>
+      </div>
+
+      {/* Testar Envio */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Send className="h-5 w-5 text-primary" />
+            Testar Envio de Mensagem
+          </CardTitle>
+          <CardDescription>
+            Envie uma mensagem de teste para verificar se a integração está funcionando
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Número de teste (com DDD)</Label>
+            <Input
+              placeholder="(11) 99999-8888"
+              value={telefoneTeste}
+              onChange={(e) => setTelefoneTeste(e.target.value)}
+            />
+          </div>
+          <Button
+            onClick={handleTestarEnvio}
+            disabled={testEnvio || !telefoneTeste.trim()}
+            className="w-full"
+          >
+            {testEnvio ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
+            {testEnvio ? "Enviando..." : "Testar Envio"}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Salve as configurações da API antes de testar. A mensagem será enviada via a Edge Function whatsapp-send.
+          </p>
+        </CardContent>
+      </Card>
 
             <div className="space-y-2">
               <Label>Número do WhatsApp</Label>
