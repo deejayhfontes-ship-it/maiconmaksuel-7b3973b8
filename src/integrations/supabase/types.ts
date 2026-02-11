@@ -1694,6 +1694,7 @@ export type Database = {
           api_url: string | null
           created_at: string
           id: string
+          instance_name: string | null
           numero_whatsapp: string | null
           qrcode_conectado: boolean
           sessao_ativa: boolean
@@ -1705,6 +1706,7 @@ export type Database = {
           api_url?: string | null
           created_at?: string
           id?: string
+          instance_name?: string | null
           numero_whatsapp?: string | null
           qrcode_conectado?: boolean
           sessao_ativa?: boolean
@@ -1716,6 +1718,7 @@ export type Database = {
           api_url?: string | null
           created_at?: string
           id?: string
+          instance_name?: string | null
           numero_whatsapp?: string | null
           qrcode_conectado?: boolean
           sessao_ativa?: boolean

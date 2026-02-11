@@ -7,20 +7,25 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Settings, 
   Moon, 
   MessageSquare, 
   User, 
-  Image, 
-  Bell,
-  Save,
-  Smartphone,
   Shield,
   CreditCard,
   QrCode,
   RefreshCw,
-  Zap
+  Zap,
+  Save,
+  Smartphone,
+  BookOpen,
+  CheckCircle2,
+  XCircle,
+  Copy,
+  Webhook,
+  Terminal
 } from "lucide-react";
 import { Send } from "lucide-react";
 import { ComunicacaoConfigAvancadas as ConfigType, ComunicacaoCreditos } from "@/hooks/useComunicacao";
@@ -40,6 +45,7 @@ interface ConfigWhatsApp {
   numero_whatsapp: string | null;
   sessao_ativa?: boolean;
   qrcode_conectado?: boolean;
+  instance_name?: string | null;
 }
 
 interface Props {
@@ -65,8 +71,11 @@ export function ComunicacaoConfigAvancadas({
 }: Props) {
   const [generatingQR, setGeneratingQR] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [testEnvio, setTestEnvio] = useState(false);
   const [telefoneTeste, setTelefoneTeste] = useState("");
+  const [verificandoConexao, setVerificandoConexao] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
   if (!config) {
     return (
@@ -76,13 +85,69 @@ export function ComunicacaoConfigAvancadas({
     );
   }
 
-  const handleGerarQRCode = async () => {
-    setGeneratingQR(true);
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL || "https://dqcvdgugqqvdjxjflwaq.supabase.co"}/functions/v1/whatsapp-webhook`;
+
+  const handleVerificarConexao = async () => {
+    if (!configWhatsApp?.api_url || !configWhatsApp?.api_token || !configWhatsApp?.instance_name) {
+      toast.error("Preencha URL da API, Token e Nome da Instância primeiro");
+      return;
+    }
+    setVerificandoConexao(true);
+    setConnectionStatus(null);
     try {
-      // Simula geração de QR Code
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      // QR Code placeholder (em produção viria da API)
-      setQrCodeData("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=whatsapp-connect-" + Date.now());
+      const url = `${configWhatsApp.api_url}/instance/connectionState/${configWhatsApp.instance_name}`;
+      const res = await fetch(url, {
+        headers: { apikey: configWhatsApp.api_token },
+      });
+      const data = await res.json();
+      const state = data?.instance?.state || data?.state || "unknown";
+      setConnectionStatus(state);
+      
+      if (state === "open") {
+        toast.success("✅ WhatsApp conectado!");
+        // Update sessao_ativa
+        onConfigWhatsAppChange({ sessao_ativa: true, qrcode_conectado: true });
+      } else {
+        toast.warning(`Status: ${state}. Escaneie o QR Code para conectar.`);
+        onConfigWhatsAppChange({ sessao_ativa: false, qrcode_conectado: false });
+      }
+    } catch (err: any) {
+      console.error("[WHATSAPP] connection check fail", err);
+      toast.error(`Erro ao verificar: ${err.message}`);
+      setConnectionStatus("error");
+    } finally {
+      setVerificandoConexao(false);
+    }
+  };
+
+  const handleGerarQRCode = async () => {
+    if (!configWhatsApp?.api_url || !configWhatsApp?.api_token || !configWhatsApp?.instance_name) {
+      toast.error("Preencha URL da API, Token e Nome da Instância primeiro");
+      return;
+    }
+    setGeneratingQR(true);
+    setQrCodeData(null);
+    try {
+      const url = `${configWhatsApp.api_url}/instance/connect/${configWhatsApp.instance_name}`;
+      const res = await fetch(url, {
+        headers: { apikey: configWhatsApp.api_token },
+      });
+      const data = await res.json();
+      
+      // Evolution API returns base64 QR or pairingCode
+      const qrBase64 = data?.base64 || data?.qrcode?.base64 || data?.code;
+      if (qrBase64) {
+        const imgSrc = qrBase64.startsWith("data:") ? qrBase64 : `data:image/png;base64,${qrBase64}`;
+        setQrCodeData(imgSrc);
+        setQrModalOpen(true);
+        toast.success("QR Code gerado! Escaneie com seu WhatsApp.");
+      } else {
+        toast.error("Não foi possível gerar QR Code. Verifique se a instância existe.");
+        console.log("[QR] Response:", data);
+      }
+    } catch (err: any) {
+      console.error("[WHATSAPP] QR generation fail", err);
+      toast.error(`Erro: ${err.message}`);
     } finally {
       setGeneratingQR(false);
     }
@@ -116,70 +181,88 @@ export function ComunicacaoConfigAvancadas({
     }
   };
 
+  const handleCopyWebhook = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast.success("URL do webhook copiada!");
+  };
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Conexão WhatsApp - QR Code */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Smartphone className="h-5 w-5 text-[#25D366]" />
-              Conexão WhatsApp
-            </CardTitle>
-            <CardDescription>
-              Status da conexão com a API do WhatsApp
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Badge 
-              variant={configWhatsApp?.sessao_ativa ? "default" : "destructive"}
-              className={configWhatsApp?.sessao_ativa ? "bg-success" : ""}
-            >
-              {configWhatsApp?.sessao_ativa ? "✅ Conectado" : "❌ Não conectado"}
-            </Badge>
-
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p className="font-medium">Para conectar:</p>
-              <ol className="list-decimal list-inside space-y-1 ml-2">
-                <li>Clique em "Gerar QR Code"</li>
-                <li>Abra WhatsApp no celular</li>
-                <li>Vá em Aparelhos Conectados</li>
-                <li>Escaneie o QR Code</li>
-              </ol>
-            </div>
-
-            <Button 
-              onClick={handleGerarQRCode} 
-              disabled={generatingQR}
-              className="w-full bg-[#25D366] hover:bg-[#128C7E]"
-            >
-              {generatingQR ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <QrCode className="h-4 w-4 mr-2" />
-              )}
-              Gerar QR Code
-            </Button>
-
-            {/* QR Code Display */}
-            <div className="flex justify-center p-4 bg-white rounded-lg border min-h-[200px] items-center">
-              {qrCodeData ? (
-                <img 
-                  src={qrCodeData} 
-                  alt="QR Code WhatsApp" 
-                  className="w-48 h-48"
-                />
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  <QrCode className="h-16 w-16 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">Clique em "Gerar QR Code" para conectar</p>
+      {/* Como Configurar - Evolution API Setup Guide */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary" />
+            Como Configurar a Evolution API
+          </CardTitle>
+          <CardDescription>
+            Siga os passos abaixo para conectar seu WhatsApp
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex gap-3 items-start">
+              <Badge variant="outline" className="mt-0.5 shrink-0 font-mono">1</Badge>
+              <div>
+                <p className="text-sm font-medium">Instale a Evolution API via Docker</p>
+                <div className="mt-1 bg-muted rounded-md p-2 font-mono text-xs overflow-x-auto flex items-center gap-2">
+                  <Terminal className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <code>docker run -d --name evolution-api -p 8080:8080 atendai/evolution-api</code>
                 </div>
-              )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Provedor de API */}
+            <div className="flex gap-3 items-start">
+              <Badge variant="outline" className="mt-0.5 shrink-0 font-mono">2</Badge>
+              <div>
+                <p className="text-sm font-medium">Acesse <code className="bg-muted px-1 rounded text-xs">http://localhost:8080</code> e crie uma instância</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Escolha um nome para a instância (ex: "meu-salao")</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 items-start">
+              <Badge variant="outline" className="mt-0.5 shrink-0 font-mono">3</Badge>
+              <div>
+                <p className="text-sm font-medium">Copie a API Key gerada</p>
+                <p className="text-xs text-muted-foreground mt-0.5">A chave aparece ao criar a instância no painel</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 items-start">
+              <Badge variant="outline" className="mt-0.5 shrink-0 font-mono">4</Badge>
+              <div>
+                <p className="text-sm font-medium">Preencha os campos abaixo:</p>
+                <ul className="text-xs text-muted-foreground mt-1 space-y-0.5 list-disc list-inside">
+                  <li><strong>API URL:</strong> http://localhost:8080 (ou IP do servidor)</li>
+                  <li><strong>API Token:</strong> a key copiada no passo 3</li>
+                  <li><strong>Nome da Instância:</strong> o nome que você criou</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-3 items-start">
+              <Badge variant="outline" className="mt-0.5 shrink-0 font-mono">5</Badge>
+              <div>
+                <p className="text-sm font-medium">Clique em "Gerar QR Code" e escaneie com seu WhatsApp</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Abra WhatsApp → Aparelhos Conectados → Conectar dispositivo</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 items-start">
+              <Badge variant="outline" className="mt-0.5 shrink-0 font-mono">6</Badge>
+              <div>
+                <p className="text-sm font-medium">Configure o Webhook no Evolution API</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  No painel da Evolution API, configure o webhook da sua instância com a URL abaixo e o evento <code className="bg-muted px-1 rounded">MESSAGES_UPSERT</code>
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Provedor + Campos de API */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -222,11 +305,147 @@ export function ComunicacaoConfigAvancadas({
               <Label>Token de Autenticação</Label>
               <Input
                 type="password"
-                placeholder="Seu token aqui"
+                placeholder="Sua API Key aqui"
                 value={configWhatsApp?.api_token || ""}
                 onChange={(e) => onConfigWhatsAppChange({ api_token: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nome da Instância</Label>
+              <Input
+                placeholder="meu-salao"
+                value={(configWhatsApp as any)?.instance_name || ""}
+                onChange={(e) => onConfigWhatsAppChange({ instance_name: e.target.value } as any)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Número do WhatsApp</Label>
+              <Input
+                placeholder="(11) 99999-8888"
+                value={configWhatsApp?.numero_whatsapp || ""}
+                onChange={(e) => onConfigWhatsAppChange({ numero_whatsapp: e.target.value })}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={onSaveWhatsApp} disabled={saving} className="flex-1">
+                <Save className="h-4 w-4 mr-2" />
+                Salvar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Conexão WhatsApp */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Smartphone className="h-5 w-5 text-[#25D366]" />
+              Conexão WhatsApp
+            </CardTitle>
+            <CardDescription>
+              Verifique a conexão e escaneie o QR Code
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Status */}
+            <div className="flex items-center gap-2">
+              {connectionStatus === "open" ? (
+                <Badge className="bg-[#25D366] gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Conectado
+                </Badge>
+              ) : connectionStatus === "close" || connectionStatus === "error" ? (
+                <Badge variant="destructive" className="gap-1">
+                  <XCircle className="h-3 w-3" /> Desconectado
+                </Badge>
+              ) : (
+                <Badge variant={configWhatsApp?.sessao_ativa ? "default" : "secondary"} className={configWhatsApp?.sessao_ativa ? "bg-[#25D366]" : ""}>
+                  {configWhatsApp?.sessao_ativa ? "✅ Conectado" : "⏳ Não verificado"}
+                </Badge>
+              )}
+            </div>
+
+            {/* Verificar Conexão */}
+            <Button
+              variant="outline"
+              onClick={handleVerificarConexao}
+              disabled={verificandoConexao}
+              className="w-full"
+            >
+              {verificandoConexao ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4 mr-2" />
+              )}
+              Verificar Conexão
+            </Button>
+
+            {/* Gerar QR Code */}
+            <Button
+              onClick={handleGerarQRCode}
+              disabled={generatingQR}
+              className="w-full bg-[#25D366] hover:bg-[#128C7E]"
+            >
+              {generatingQR ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <QrCode className="h-4 w-4 mr-2" />
+              )}
+              Gerar QR Code
+            </Button>
+
+            {/* Inline QR placeholder */}
+            <div className="flex justify-center p-4 bg-white rounded-lg border min-h-[160px] items-center">
+              <div className="text-center text-muted-foreground">
+                <QrCode className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                <p className="text-xs">Clique em "Gerar QR Code" para conectar</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Webhook Config */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Webhook className="h-5 w-5 text-amber-600" />
+            Configuração do Webhook
+          </CardTitle>
+          <CardDescription>
+            Configure este webhook no painel da Evolution API para receber mensagens automaticamente
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>URL do Webhook</Label>
+            <div className="flex gap-2">
+              <Input value={webhookUrl} readOnly className="font-mono text-xs" />
+              <Button variant="outline" size="icon" onClick={handleCopyWebhook}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Eventos para ativar</Label>
+            <div className="flex gap-2 flex-wrap">
+              <Badge variant="secondary" className="font-mono text-xs">MESSAGES_UPSERT</Badge>
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground space-y-1">
+            <p><strong>No Evolution API:</strong></p>
+            <ol className="list-decimal list-inside space-y-0.5 ml-2">
+              <li>Acesse o painel da sua instância</li>
+              <li>Vá em "Webhook" ou "Settings"</li>
+              <li>Cole a URL acima no campo "Webhook URL"</li>
+              <li>Ative o evento <code className="bg-background px-1 rounded">MESSAGES_UPSERT</code></li>
+              <li>Salve as configurações</li>
+            </ol>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Testar Envio */}
       <Card>
@@ -261,33 +480,10 @@ export function ComunicacaoConfigAvancadas({
             {testEnvio ? "Enviando..." : "Testar Envio"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            Salve as configurações da API antes de testar. A mensagem será enviada via a Edge Function whatsapp-send.
+            Salve as configurações da API antes de testar.
           </p>
         </CardContent>
       </Card>
-
-            <div className="space-y-2">
-              <Label>Número do WhatsApp</Label>
-              <Input
-                placeholder="(11) 99999-8888"
-                value={configWhatsApp?.numero_whatsapp || ""}
-                onChange={(e) => onConfigWhatsAppChange({ numero_whatsapp: e.target.value })}
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" disabled={saving}>
-                <Zap className="h-4 w-4 mr-2" />
-                Testar Conexão
-              </Button>
-              <Button onClick={onSaveWhatsApp} disabled={saving} className="flex-1">
-                <Save className="h-4 w-4 mr-2" />
-                Salvar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Horário de Silêncio */}
       <Card>
@@ -487,6 +683,37 @@ export function ComunicacaoConfigAvancadas({
           </CardContent>
         </Card>
       )}
+
+      {/* QR Code Modal */}
+      <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-[#25D366]" />
+              Escaneie o QR Code
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            {qrCodeData ? (
+              <img src={qrCodeData} alt="QR Code WhatsApp" className="w-64 h-64 rounded-lg" />
+            ) : (
+              <div className="w-64 h-64 flex items-center justify-center bg-muted rounded-lg">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium">Abra o WhatsApp no celular</p>
+              <p className="text-xs text-muted-foreground">
+                Vá em Aparelhos Conectados → Conectar um dispositivo → Escaneie este código
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => { setQrModalOpen(false); handleVerificarConexao(); }}>
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Já escaneei, verificar conexão
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

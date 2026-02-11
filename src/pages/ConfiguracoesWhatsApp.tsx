@@ -30,6 +30,7 @@ interface ConfigWhatsApp {
   numero_whatsapp: string | null;
   qrcode_conectado: boolean;
   sessao_ativa: boolean;
+  instance_name: string | null;
 }
 
 export default function ConfiguracoesWhatsApp() {
@@ -90,6 +91,7 @@ export default function ConfiguracoesWhatsApp() {
           api_url: configWhatsApp.api_url,
           api_token: configWhatsApp.api_token,
           numero_whatsapp: configWhatsApp.numero_whatsapp,
+          instance_name: (configWhatsApp as any).instance_name,
         })
         .eq("id", configWhatsApp.id);
 
