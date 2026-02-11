@@ -120,18 +120,25 @@ export function FolhaPontoPanel() {
       const inicio = startOfMonth(mesReferencia);
       const fim = endOfMonth(mesReferencia);
 
-      console.log('[FOLHA_PONTO] fetch_supabase', { tipo, id, inicio: format(inicio, 'yyyy-MM-dd'), fim: format(fim, 'yyyy-MM-dd') });
+      const projectRef = (import.meta.env.VITE_SUPABASE_URL || '').replace(/^https?:\/\//, '').split('.')[0];
+      const rangeStart = format(inicio, 'yyyy-MM-dd');
+      const rangeEnd = format(fim, 'yyyy-MM-dd');
+      console.log('[PONTO_WEB] fetch_start', { range_start_utc: rangeStart, range_end_utc: rangeEnd, profissional_id: id, tipo_pessoa: tipo, supabase_projectRef: projectRef });
 
       const { data, error } = await supabase
         .from('ponto_registros')
         .select('*')
         .eq('tipo_pessoa', tipo)
         .eq('pessoa_id', id)
-        .gte('data', format(inicio, 'yyyy-MM-dd'))
-        .lte('data', format(fim, 'yyyy-MM-dd'))
+        .gte('data', rangeStart)
+        .lte('data', rangeEnd)
         .order('data', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[PONTO_WEB] fetch_fail', { error: error.message });
+        throw error;
+      }
+      console.log('[PONTO_WEB] fetch_ok', { count: (data || []).length, supabase_projectRef: projectRef });
 
       // Create a map of all days in the month
       const diasDoMes = eachDayOfInterval({ start: inicio, end: fim });
