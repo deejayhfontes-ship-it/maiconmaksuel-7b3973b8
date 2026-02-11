@@ -339,7 +339,10 @@ const Caixa = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <p className="text-muted-foreground">Carregando...</p>
+        <div className="flex flex-col items-center gap-3">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando caixa...</p>
+        </div>
       </div>
     );
   }

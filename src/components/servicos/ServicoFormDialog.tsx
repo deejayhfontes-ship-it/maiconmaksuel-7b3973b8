@@ -47,11 +47,11 @@ const categorias = [
 ];
 
 const servicoSchema = z.object({
-  nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  descricao: z.string().optional(),
+  nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Máximo 100 caracteres"),
+  descricao: z.string().max(500, "Máximo 500 caracteres").optional(),
   categoria: z.string().optional(),
   duracao_minutos: z.number().min(5, "Mínimo 5 minutos").max(480, "Máximo 8 horas"),
-  preco: z.number().min(0, "Preço inválido"),
+  preco: z.number().min(0, "Preço não pode ser negativo"),
   comissao_padrao: z.number().min(0, "Mínimo 0%").max(100, "Máximo 100%"),
   ativo: z.boolean(),
   tipo_servico: z.enum(["normal", "cortesia", "controle_interno"]),
@@ -247,7 +247,7 @@ export default function ServicoFormDialog({
                 <FormItem>
                   <FormLabel>Nome *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nome do serviço" {...field} />
+                    <Input placeholder="Nome do serviço" maxLength={100} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -289,6 +289,7 @@ export default function ServicoFormDialog({
                     <Textarea
                       placeholder="Descrição do serviço..."
                       rows={3}
+                      maxLength={500}
                       {...field}
                     />
                   </FormControl>

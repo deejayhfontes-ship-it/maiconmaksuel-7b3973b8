@@ -46,11 +46,11 @@ const categorias = [
 ];
 
 const produtoSchema = z.object({
-  nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  codigo_barras: z.string().optional(),
+  nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Máximo 100 caracteres"),
+  codigo_barras: z.string().max(50, "Máximo 50 caracteres").optional(),
   categoria: z.string().optional(),
-  descricao: z.string().optional(),
-  preco_custo: z.number().min(0, "Preço deve ser positivo").optional(),
+  descricao: z.string().max(500, "Máximo 500 caracteres").optional(),
+  preco_custo: z.number().min(0, "Preço não pode ser negativo").optional(),
   preco_venda: z.number().min(0.01, "Preço de venda é obrigatório"),
   estoque_atual: z.number().min(0, "Estoque não pode ser negativo"),
   estoque_minimo: z.number().min(0, "Estoque mínimo não pode ser negativo"),
@@ -304,7 +304,7 @@ export default function ProdutoFormDialog({
                   <FormItem className="col-span-2">
                     <FormLabel>Nome *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nome do produto" {...field} />
+                      <Input placeholder="Nome do produto" maxLength={100} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -318,7 +318,7 @@ export default function ProdutoFormDialog({
                   <FormItem>
                     <FormLabel>Código de Barras</FormLabel>
                     <FormControl>
-                      <Input placeholder="0000000000000" {...field} />
+                      <Input placeholder="0000000000000" maxLength={50} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -360,6 +360,7 @@ export default function ProdutoFormDialog({
                       <Textarea
                         placeholder="Descrição do produto..."
                         rows={2}
+                        maxLength={500}
                         {...field}
                       />
                     </FormControl>

@@ -172,6 +172,7 @@ const Servicos = () => {
             size="icon"
             onClick={() => loadServicos()}
             disabled={loading}
+            aria-label="Atualizar lista"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
@@ -231,13 +232,38 @@ const Servicos = () => {
 
       {/* Grid de Cards */}
       {loading ? (
-        <div className="p-8 text-center text-muted-foreground">
-          Carregando serviços...
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-5 space-y-4">
+                <div className="flex justify-between">
+                  <div className="space-y-2 flex-1">
+                    <div className="h-5 w-3/4 bg-muted rounded" />
+                    <div className="h-4 w-20 bg-muted rounded-full" />
+                  </div>
+                </div>
+                <div className="h-4 w-24 bg-muted rounded" />
+                <div className="h-6 w-20 bg-muted rounded" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : filteredServicos.length === 0 ? (
-        <div className="p-8 text-center text-muted-foreground">
-          Nenhum serviço encontrado
-        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Scissors className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">Nenhum serviço encontrado</h3>
+            <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
+              {searchTerm ? `Nenhum serviço corresponde a "${searchTerm}".` : "Comece cadastrando seu primeiro serviço."}
+            </p>
+            <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Serviço
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServicos.map((servico) => {
@@ -326,6 +352,7 @@ const Servicos = () => {
                           size="icon"
                           onClick={() => handleEdit(servico)}
                           className="h-8 w-8"
+                          aria-label={`Editar ${servico.nome}`}
                         >
                           <Edit className="h-4 w-4 text-muted-foreground" />
                         </Button>
@@ -334,6 +361,7 @@ const Servicos = () => {
                           size="icon"
                           onClick={() => handleDeleteClick(servico)}
                           className="h-8 w-8"
+                          aria-label={`Excluir ${servico.nome}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
