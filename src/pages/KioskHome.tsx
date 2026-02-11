@@ -289,32 +289,13 @@ export default function KioskHome() {
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-gray-50 p-6 select-none relative">
         <WindowControls />
         
-        {/* Header with logo and time */}
-        <header className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
-          <div className="flex items-center gap-4">
-            {logoUrl ? (
-              <img 
-                src={logoUrl} 
-                alt={salonName}
-                className="h-12 w-auto rounded-xl shadow-sm object-contain"
-              />
-            ) : (
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-primary" />
-              </div>
-            )}
-            <div>
-              <h1 className={cn(
-                "font-bold text-gray-900",
-                settings.tipografia_grande ? "text-xl" : "text-lg"
-              )}>
-                {salonName}
-              </h1>
-              <p className="text-sm text-gray-400">
-                {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </p>
-            </div>
-          </div>
+        {/* Header with logo only */}
+         <header className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
+           <img 
+             src={logoUrl} 
+             alt={salonName}
+             className="h-12 w-auto rounded-xl shadow-sm object-contain"
+           />
           <div className={cn(
             "font-bold text-primary tabular-nums",
             settings.tipografia_grande ? "text-3xl" : "text-2xl"
