@@ -377,7 +377,7 @@ export default function AgendamentoFormDialog({
   const selectedProfissional = profissionais.find(p => p.id === form.watch("profissional_id"));
 
   return (
-    <Dialog open={open} onOpenChange={() => onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">

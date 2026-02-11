@@ -153,12 +153,14 @@ const Agenda = () => {
 
   const handleAgendamentoClick = (ag: AgendamentoCompleto) => {
     setOpenPopoverId(null);
-    setSelectedAgendamento(ag);
-    setFormInitialDate(undefined);
-    setFormInitialTime(undefined);
-    setFormInitialProfissionalId(undefined);
-    // Delay dialog open to avoid Popover/Dialog focus conflict
-    setTimeout(() => setIsFormOpen(true), 50);
+    // Use requestAnimationFrame to ensure Popover fully unmounts before Dialog opens
+    requestAnimationFrame(() => {
+      setSelectedAgendamento(ag);
+      setFormInitialDate(undefined);
+      setFormInitialTime(undefined);
+      setFormInitialProfissionalId(undefined);
+      setIsFormOpen(true);
+    });
   };
 
   // Auto-criar comanda ao confirmar agendamento
@@ -257,9 +259,11 @@ const Agenda = () => {
   };
 
   const handleDeleteClick = (ag: AgendamentoCompleto) => {
-    setSelectedAgendamento(ag);
-    setIsDeleteOpen(true);
     setOpenPopoverId(null);
+    requestAnimationFrame(() => {
+      setSelectedAgendamento(ag);
+      setIsDeleteOpen(true);
+    });
   };
 
   const handleDelete = async () => {
