@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   DollarSign, 
@@ -17,6 +17,7 @@ import {
   Settings
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { addOnlineStatusListener } from '@/lib/syncService';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,7 +115,13 @@ const GestaoRH = () => {
   useEffect(() => {
     fetchData();
     const timer = setInterval(() => setHoraAtual(new Date()), 1000);
-    return () => clearInterval(timer);
+    const unsub = addOnlineStatusListener((online) => {
+      if (online) {
+        console.log('[FUNCIONARIO_WEB] online_reconnect → refetch');
+        fetchData();
+      }
+    });
+    return () => { clearInterval(timer); unsub(); };
   }, []);
 
   useEffect(() => {
@@ -125,15 +132,23 @@ const GestaoRH = () => {
     }
   }, [pessoaSelecionada]);
 
+  const projectRef = (import.meta.env.VITE_SUPABASE_URL || '').replace(/^https?:\/\//, '').split('.')[0];
+
   const fetchData = async () => {
     setLoading(true);
     try {
+      console.log('[FUNCIONARIO_WEB] fetch_start', { projectRef });
       // Buscar funcionários
-      const { data: funcData } = await supabase
+      const { data: funcData, error: funcError } = await supabase
         .from('funcionarios')
         .select('*')
         .order('nome');
       
+      if (funcError) {
+        console.error('[FUNCIONARIO_WEB] fetch_fail', { error: funcError, projectRef });
+      } else {
+        console.log('[FUNCIONARIO_WEB] fetch_ok', { count: funcData?.length || 0, projectRef });
+      }
       if (funcData) setFuncionarios(funcData);
 
       // Buscar profissionais
@@ -368,6 +383,10 @@ const GestaoRH = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => fetchData()}>
+            <Search className="w-4 h-4" />
+            Atualizar
+          </Button>
           <Link to="/ponto">
             <Button variant="outline" className="gap-2">
               <Clock className="w-4 h-4" />

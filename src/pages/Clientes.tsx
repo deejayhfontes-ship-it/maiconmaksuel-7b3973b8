@@ -290,10 +290,16 @@ const Clientes = () => {
             </p>
           </div>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Cliente
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            <Search className="h-4 w-4 mr-2" />
+            Atualizar
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Cliente
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
