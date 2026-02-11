@@ -7,7 +7,9 @@ import {
   localDelete, 
   localGet,
   localClear,
-  addToSyncQueue 
+  localBulkPut,
+  addToSyncQueue,
+  getSyncQueue,
 } from '@/lib/offlineDb';
 import { getOnlineStatus, addOnlineStatusListener } from '@/lib/syncService';
 
@@ -45,25 +47,36 @@ export function useProdutos() {
     return unsub;
   }, []);
 
-  // Load from local first, then sync with Supabase
+  // Load from local first, then sync with Supabase (remote wins, tombstone-aware)
   const loadProdutos = useCallback(async () => {
     setLoading(true);
     try {
       // Load from IndexedDB first for instant UI
       const localData = await localGetAll<Produto>('produtos');
-      if (localData.length > 0) {
-        setProdutos(localData.sort((a, b) => a.nome.localeCompare(b.nome)));
-        console.log(`[PRODUTOS] local_loaded { count: ${localData.length} }`);
+      
+      // Get pending delete tombstones to filter them out
+      const queue = await getSyncQueue();
+      const deleteTombstoneIds = new Set(
+        queue
+          .filter(op => op.entity === 'produtos' && op.operation === 'delete')
+          .map(op => op.data.id as string)
+      );
+      
+      const filteredLocal = localData.filter(p => !deleteTombstoneIds.has(p.id));
+      
+      if (filteredLocal.length > 0) {
+        setProdutos(filteredLocal.sort((a, b) => a.nome.localeCompare(b.nome)));
+        console.log(`[PRODUTO] local_loaded { count: ${filteredLocal.length}, tombstones: ${deleteTombstoneIds.size} }`);
       }
 
       if (!getOnlineStatus()) {
-        console.log('[PRODUTOS] offline → using local data');
-        if (localData.length === 0) toast.info('Modo offline: sem dados locais de produtos');
+        console.log('[PRODUTO] offline → using local data');
+        if (filteredLocal.length === 0) toast.info('Modo offline: sem dados locais de produtos');
         setLoading(false);
         return;
       }
 
-      // Supabase is source of truth
+      // Supabase is source of truth when online
       setSyncing(true);
       const { data: remoteData, error } = await supabase
         .from('produtos')
@@ -71,24 +84,24 @@ export function useProdutos() {
         .order('nome', { ascending: true });
 
       if (error) {
-        console.error('[PRODUTOS] supabase_fetch_fail', error);
+        console.error('[PRODUTO] supabase_fetch_fail', error);
         toast.error(`Falha ao carregar produtos: ${error.message}`);
       } else if (remoteData) {
-        console.log(`[PRODUTOS] supabase_fetch_ok { count: ${remoteData.length} }`);
-        setProdutos(remoteData.sort((a, b) => a.nome.localeCompare(b.nome)));
+        // Filter out tombstoned items (pending offline deletes)
+        const finalData = remoteData.filter(p => !deleteTombstoneIds.has(p.id));
+        console.log(`[PRODUTO] supabase_fetch_ok { remote: ${remoteData.length}, after_tombstone_filter: ${finalData.length} }`);
+        setProdutos(finalData.sort((a, b) => a.nome.localeCompare(b.nome)));
 
         // Clear local and replace — prevents deleted items from resurrecting
         try {
           await localClear('produtos');
-          for (const produto of remoteData) {
-            await localPut('produtos', produto, true);
-          }
+          await localBulkPut('produtos', finalData);
         } catch (cacheErr) {
-          console.warn('[PRODUTOS] cache_sync_fail', cacheErr);
+          console.warn('[PRODUTO] cache_sync_fail', cacheErr);
         }
       }
     } catch (error: any) {
-      console.error('[PRODUTOS] fetch_error', error);
+      console.error('[PRODUTO] fetch_error', error);
       toast.error(`Erro ao carregar produtos: ${error.message}`);
     } finally {
       setLoading(false);
@@ -172,36 +185,67 @@ export function useProdutos() {
     }
   }, [produtos]);
 
-  // Delete product
+  // Delete product — with rollback, tombstone, and forced refetch
   const deleteProduto = useCallback(async (id: string): Promise<boolean> => {
-    console.log('[PRODUTOS] delete_start', { id });
-    try {
-      setProdutos((prev) => prev.filter((p) => p.id !== id));
-      try { await localDelete('produtos', id); } catch { /* ignore */ }
+    const nome = produtos.find(p => p.id === id)?.nome || id;
+    const isOnline = getOnlineStatus();
+    console.log('[PRODUTO] delete_start', { id, nome, isOnline });
 
-      if (getOnlineStatus()) {
-        const { error } = await supabase.from('produtos').delete().eq('id', id);
+    // Optimistic UI removal + snapshot for rollback
+    const snapshot = [...produtos];
+    setProdutos((prev) => prev.filter((p) => p.id !== id));
+
+    try {
+      // Remove from local cache
+      try { await localDelete('produtos', id); } catch { /* ok if missing */ }
+      console.log('[PRODUTO] delete_local_ok', { id });
+
+      if (isOnline) {
+        const { data, error } = await supabase
+          .from('produtos')
+          .delete()
+          .eq('id', id)
+          .select('id')
+          .maybeSingle();
+
         if (error) {
-          console.error('[PRODUTOS] supabase_delete_fail', error);
-          await addToSyncQueue({ entity: 'produtos', operation: 'delete', data: { id } as Record<string, unknown>, timestamp: new Date().toISOString() });
-          toast.warning('Exclusão será sincronizada quando online');
-        } else {
-          console.info('[PRODUTOS] delete_ok', { id });
-          toast.success('Produto excluído com sucesso!');
+          console.error('[PRODUTO] delete_supabase_fail', { id, error: error.message });
+          // Rollback UI
+          setProdutos(snapshot);
+          toast.error(`Falha ao excluir: ${error.message}`);
+          return false;
         }
+
+        if (!data) {
+          console.warn('[PRODUTO] delete_supabase_not_found', { id });
+          // Item already gone from DB — keep it removed from UI
+        }
+
+        console.log('[PRODUTO] delete_supabase_ok', { id });
+        toast.success('Produto excluído');
+
+        // Force refetch to guarantee consistency
+        await loadProdutos();
       } else {
-        console.log('[PRODUTOS] queued_offline (delete)', { id });
-        await addToSyncQueue({ entity: 'produtos', operation: 'delete', data: { id } as Record<string, unknown>, timestamp: new Date().toISOString() });
+        // Offline: queue tombstone
+        console.log('[PRODUTO] delete_queued_offline', { id });
+        await addToSyncQueue({
+          entity: 'produtos',
+          operation: 'delete',
+          data: { id } as Record<string, unknown>,
+          timestamp: new Date().toISOString(),
+        });
         toast.info('Sem internet: exclusão será sincronizada');
       }
 
       return true;
     } catch (error: any) {
-      console.error('[PRODUTOS] delete_fail', error);
+      console.error('[PRODUTO] delete_fail', { id, error: error.message });
+      setProdutos(snapshot);
       toast.error(`Falha ao excluir produto: ${error.message}`);
       return false;
     }
-  }, []);
+  }, [produtos, loadProdutos]);
 
   // Deduct stock
   const deductStock = useCallback(async (productId: string, quantity: number): Promise<boolean> => {
