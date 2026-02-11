@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.check-lembretes]
 verify_jwt = false
+
+[functions.run-campanhas]
+verify_jwt = false
