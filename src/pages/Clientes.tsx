@@ -446,7 +446,7 @@ const Clientes = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {highlightMatch(formatPhone(cliente.celular), searchTerm)}
+                        {cliente.celular ? highlightMatch(formatPhone(cliente.celular), searchTerm) : "-"}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <span className="font-semibold">{cliente.total_visitas ?? 0}</span>

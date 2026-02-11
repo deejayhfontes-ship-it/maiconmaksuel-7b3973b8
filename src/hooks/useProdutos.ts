@@ -202,42 +202,43 @@ export function useProdutos() {
       console.log('[PRODUTO] delete_local_ok', { id });
 
       if (isOnline) {
-        let deleted = false;
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          const { data, error } = await supabase
-            .from('produtos')
-            .delete()
-            .eq('id', id)
-            .select('id')
-            .maybeSingle();
+        const { error } = await supabase
+          .from('produtos')
+          .delete()
+          .eq('id', id);
 
-          if (!error) {
-            deleted = true;
-            if (!data) {
-              console.warn('[PRODUTO] delete_supabase_not_found', { id, attempt });
+        if (error) {
+          if (error.code === '23503') {
+            // Foreign key violation — soft delete instead
+            console.warn('[PRODUTO] delete_fk_violation → soft_delete', { id });
+            const { error: updateErr } = await supabase
+              .from('produtos')
+              .update({ ativo: false, updated_at: new Date().toISOString() })
+              .eq('id', id);
+
+            if (updateErr) {
+              console.error('[PRODUTO] soft_delete_fail', updateErr);
+              setProdutos(snapshot);
+              toast.error('Falha ao desativar produto');
+              return false;
             }
-            console.log('[PRODUTO] delete_supabase_ok', { id, attempt });
-            break;
-          }
 
-          console.warn('[PRODUTO] delete_supabase_retry', { id, attempt, error: error.message });
-          if (attempt < 3) {
-            await new Promise(r => setTimeout(r, 500 * attempt));
+            toast.success('Produto desativado (possui atendimentos vinculados)');
+            await loadProdutos();
+          } else {
+            console.error('[PRODUTO] delete_supabase_fail', error);
+            await addToSyncQueue({
+              entity: 'produtos',
+              operation: 'delete',
+              data: { id } as Record<string, unknown>,
+              timestamp: new Date().toISOString(),
+            });
+            toast.warning('Falha ao excluir no servidor. Será sincronizado depois.');
           }
-        }
-
-        if (deleted) {
+        } else {
+          console.log('[PRODUTO] delete_supabase_ok', { id });
           toast.success('Produto excluído');
           await loadProdutos();
-        } else {
-          console.error('[PRODUTO] delete_supabase_all_retries_failed', { id });
-          await addToSyncQueue({
-            entity: 'produtos',
-            operation: 'delete',
-            data: { id } as Record<string, unknown>,
-            timestamp: new Date().toISOString(),
-          });
-          toast.warning('Falha ao excluir no servidor. Será sincronizado depois.');
         }
       } else {
         // Offline: queue tombstone
