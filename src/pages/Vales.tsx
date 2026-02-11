@@ -32,6 +32,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -134,19 +135,11 @@ const Vales = () => {
   useEffect(() => {
     fetchVales();
     fetchProfissionais();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel("vales_changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "vales" }, () => {
-        fetchVales();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
+
+  // Realtime: auto-refresh when vales change in another tab/device
+  useRealtimeCallback('vales', fetchVales);
+
 
   const filteredVales = useMemo(() => {
     let result = [...vales];

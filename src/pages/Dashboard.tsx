@@ -31,6 +31,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { usePinAuth } from "@/contexts/PinAuthContext";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import KioskActivationModal from "@/components/kiosk/KioskActivationModal";
@@ -96,6 +97,11 @@ const Dashboard = () => {
   
   // Optimized: Single parallel data load via React Query
   const { data: dashboardData, isLoading, refetch } = useDashboardData();
+
+  // Realtime: auto-refresh dashboard when key tables change
+  useRealtimeSubscription('atendimentos', ['dashboard-data']);
+  useRealtimeSubscription('agendamentos', ['dashboard-data']);
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [motivationalMessage] = useState(() => 
     motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)]

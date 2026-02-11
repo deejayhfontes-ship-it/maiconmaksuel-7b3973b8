@@ -81,6 +81,7 @@ import { AcoesRapidasSection } from "@/components/caixa/AcoesRapidasSection";
 import { ChequesListModal } from "@/components/caixa/ChequesListModal";
 import { ChequeFormModal } from "@/components/caixa/ChequeFormModal";
 import { isFeatureAllowed, getDeviceInfo, DeviceInfo } from "@/lib/deviceType";
+import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -123,6 +124,16 @@ const Caixa = () => {
     registrarDespesa,
     refresh,
   } = useCaixa();
+
+  // Realtime: auto-refresh when caixa changes in another tab/device
+  useRealtimeCallback('caixa_movimentacoes', refresh);
+  useRealtimeCallback('caixa', refresh);
+
+  // Polling fallback: refresh every 30s
+  useEffect(() => {
+    const interval = setInterval(refresh, 30000);
+    return () => clearInterval(interval);
+  }, [refresh]);
 
   // Device info for access control
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>(getDeviceInfo());
