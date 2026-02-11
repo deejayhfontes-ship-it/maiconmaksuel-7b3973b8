@@ -377,12 +377,13 @@ const Agenda = () => {
                     const endTime = getEndTime(startTime, ag.duracao_minutos);
                     const isCancelled = ag.status === "cancelado";
                     const isFaltou = ag.status === "faltou";
+                    const popoverId = isMobile ? `mobile-${ag.id}` : ag.id;
 
                     return (
                       <Popover
-                        key={ag.id}
-                        open={openPopoverId === ag.id}
-                        onOpenChange={(open) => setOpenPopoverId(open ? ag.id : null)}
+                        key={popoverId}
+                        open={openPopoverId === popoverId}
+                        onOpenChange={(open) => setOpenPopoverId(open ? popoverId : null)}
                       >
                         <PopoverTrigger asChild>
                           <div
