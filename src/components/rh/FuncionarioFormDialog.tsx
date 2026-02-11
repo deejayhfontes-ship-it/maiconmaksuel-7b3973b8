@@ -164,6 +164,8 @@ export function FuncionarioFormDialog({ open, onOpenChange, funcionario, onSucce
     }
   };
 
+  const projectRef = (import.meta.env.VITE_SUPABASE_URL || '').replace(/^https?:\/\//, '').split('.')[0];
+
   const handleSave = async () => {
     if (!form.nome || !form.cpf || !form.data_admissao || !form.salario_base) {
       toast.error("Preencha todos os campos obrigatórios");
@@ -171,6 +173,7 @@ export function FuncionarioFormDialog({ open, onOpenChange, funcionario, onSucce
     }
 
     setSaving(true);
+    console.log('[FUNCIONARIO] write_start', { nome: form.nome, cpf: form.cpf, projectRef, isEdit: !!funcionario?.id });
     try {
       const data = {
         nome: form.nome,
@@ -207,26 +210,30 @@ export function FuncionarioFormDialog({ open, onOpenChange, funcionario, onSucce
       };
 
       if (funcionario?.id) {
-        const { error } = await supabase
+        const { data: retData, error } = await supabase
           .from("funcionarios")
           .update(data)
-          .eq("id", funcionario.id);
+          .eq("id", funcionario.id)
+          .select('id')
+          .maybeSingle();
         if (error) throw error;
+        console.info('[FUNCIONARIO] write_ok', { id: retData?.id || funcionario.id, projectRef });
         toast.success("Funcionário atualizado com sucesso!");
       } else {
-        const { error } = await supabase.from("funcionarios").insert(data);
+        const { data: retData, error } = await supabase.from("funcionarios").insert(data).select('id').maybeSingle();
         if (error) throw error;
+        console.info('[FUNCIONARIO] write_ok', { id: retData?.id, projectRef });
         toast.success("Funcionário cadastrado com sucesso!");
       }
 
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Erro ao salvar:", error);
+      console.error('[FUNCIONARIO] write_fail', { error: error.message, code: error.code, projectRef });
       if (error.code === "23505") {
         toast.error("CPF já cadastrado no sistema");
       } else {
-        toast.error("Erro ao salvar funcionário");
+        toast.error(`Erro ao salvar funcionário: ${error.message}`);
       }
     } finally {
       setSaving(false);

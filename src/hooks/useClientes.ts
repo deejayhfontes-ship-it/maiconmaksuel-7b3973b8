@@ -137,6 +137,8 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
     return result;
   }, [filter, searchTerm, orderBy, orderDirection]);
 
+  const projectRef = (import.meta.env.VITE_SUPABASE_URL || '').replace(/^https?:\/\//, '').split('.')[0];
+
   // Fetch data — Supabase is source of truth when online
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -145,19 +147,19 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
     try {
       if (isOnline || getOnlineStatus()) {
         // ONLINE: Fetch from Supabase, clear local, replace
-        console.log('[CLIENTES] fetch_supabase_start');
+        console.log('[CLIENTE_WEB] fetch_start', { projectRef, filter, searchTerm });
         const { data: remoteData, error: fetchError } = await supabase
           .from('clientes')
           .select('*')
           .order('nome', { ascending: true });
 
         if (fetchError) {
-          console.error('[CLIENTES] supabase_fetch_fail', fetchError);
+          console.error('[CLIENTE_WEB] fetch_fail', { error: fetchError, projectRef });
           // Fall back to local
           const localData = await localGetAll<Cliente>('clientes');
           setClientes(applyFiltersAndSort(localData));
         } else {
-          console.log(`[CLIENTES] supabase_fetch_ok { count: ${remoteData?.length || 0} }`);
+          console.log('[CLIENTE_WEB] fetch_ok', { count: remoteData?.length || 0, projectRef });
           const data = (remoteData || []) as Cliente[];
 
           // Clear local and replace — prevents deleted items from resurrecting
@@ -209,6 +211,7 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
     };
     
     try {
+      console.log('[CLIENTE] write_start', { id: newCliente.id, nome: newCliente.nome, projectRef, isOnline: getOnlineStatus() });
       // Save locally first
       await localPut('clientes', newCliente, false);
       setClientes(prev => applyFiltersAndSort([newCliente, ...prev]));
@@ -221,16 +224,16 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
           .maybeSingle();
         
         if (syncError) {
-          console.error('[CLIENTES] supabase_create_fail', syncError);
+          console.error('[CLIENTE] write_fail', { error: syncError, projectRef });
           await addToSyncQueue({ entity: 'clientes', operation: 'create', data: newCliente as unknown as Record<string, unknown>, timestamp: now });
           toast.warning('Sem internet: cliente salvo e será sincronizado');
         } else {
-          console.info('[CLIENTES] supabase_create_ok', { id: remoteData?.id || newCliente.id });
+          console.info('[CLIENTE] write_ok', { id: remoteData?.id || newCliente.id, projectRef });
           await localPut('clientes', (remoteData || newCliente) as Cliente, true);
           toast.success('Cliente cadastrado com sucesso!');
         }
       } else {
-        console.log('[CLIENTES] queued_offline', { localId: newCliente.id });
+        console.log('[CLIENTE] queued_offline', { localId: newCliente.id, projectRef });
         await addToSyncQueue({ entity: 'clientes', operation: 'create', data: newCliente as unknown as Record<string, unknown>, timestamp: now });
         toast.info('Sem internet: cliente salvo e será sincronizado');
       }
@@ -248,9 +251,10 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
     const now = new Date().toISOString();
     
     try {
+      console.log('[CLIENTE] write_start', { id, projectRef, isOnline: getOnlineStatus() });
       const current = await localGet<Cliente>('clientes', id);
       if (!current) {
-        console.error('[CLIENTES] update_not_found', { id });
+        console.error('[CLIENTE] write_fail', { id, error: 'not_found' });
         toast.error('Cliente não encontrado');
         return null;
       }
@@ -266,16 +270,16 @@ export function useClientes(options: UseClientesOptions = {}): UseClientesReturn
           .eq('id', id);
         
         if (syncError) {
-          console.error('[CLIENTES] supabase_update_fail', syncError);
+          console.error('[CLIENTE] write_fail', { id, error: syncError, projectRef });
           await addToSyncQueue({ entity: 'clientes', operation: 'update', data: updatedCliente as unknown as Record<string, unknown>, timestamp: now });
           toast.warning('Sem internet: alteração salva e será sincronizada');
         } else {
-          console.info('[CLIENTES] supabase_update_ok', { id });
+          console.info('[CLIENTE] write_ok', { id, projectRef });
           await localPut('clientes', updatedCliente, true);
           toast.success('Cliente atualizado com sucesso!');
         }
       } else {
-        console.log('[CLIENTES] queued_offline (update)', { localId: id });
+        console.log('[CLIENTE] queued_offline', { localId: id, projectRef });
         await addToSyncQueue({ entity: 'clientes', operation: 'update', data: updatedCliente as unknown as Record<string, unknown>, timestamp: now });
         toast.info('Sem internet: alteração salva e será sincronizada');
       }
