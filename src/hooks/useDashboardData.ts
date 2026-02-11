@@ -14,7 +14,7 @@ export function useDashboardData() {
     gcTime: 1000 * 60 * 5, // 5 min - manter em cache
     refetchOnWindowFocus: true, // Refetch ao focar na janela
     refetchOnMount: true, // Refetch ao montar (navegação)
-    refetchInterval: false, // Sem polling automático
+    refetchInterval: 30000, // Polling fallback: 30s
     retry: 2,
   });
 }

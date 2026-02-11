@@ -43,6 +43,7 @@ import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import ClienteViewDialog from "@/components/clientes/ClienteViewDialog";
 import { LocalErrorBoundary } from "@/components/common/LocalErrorBoundary";
 import { safeStr } from "@/utils/safe";
+import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 
 const ITEMS_PER_PAGE = 10;
 const DEBUG_CLIENTES = import.meta.env.VITE_DEBUG_CLIENTES === 'true';
@@ -178,6 +179,9 @@ const Clientes = () => {
     orderBy: sortOrder === 'recentes' ? 'created_at' : 'nome',
     orderDirection: sortOrder === 'nome-desc' ? 'desc' : sortOrder === 'recentes' ? 'desc' : 'asc',
   });
+
+  // Realtime: auto-refresh when clientes change in another tab/device
+  useRealtimeCallback('clientes', refetch);
 
   const filteredClientes = useMemo(() => {
     let result = clientes.map(normalizeCliente);

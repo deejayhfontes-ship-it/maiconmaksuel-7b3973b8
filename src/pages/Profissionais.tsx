@@ -36,6 +36,7 @@ import { ProfissionalTable } from "@/components/profissionais/ProfissionalTable"
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 
 const Profissionais = () => {
   const { 
@@ -47,6 +48,10 @@ const Profissionais = () => {
     clearLocalCache,
     debugInfo 
   } = useProfissionais();
+
+  // Realtime: auto-refresh when profissionais change in another tab/device
+  useRealtimeCallback('profissionais', fetchProfissionais);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [perfServicosFilter, setPerfServicosFilter] = useState("todos");
