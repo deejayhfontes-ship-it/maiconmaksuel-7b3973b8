@@ -81,8 +81,8 @@ export default function KioskHome() {
   const autoDismissSeconds = 10;
   const thankYouDuration = 6000;
 
-  // Get logo URL - prioritize kiosk settings, fallback to salon
-  const logoUrl = settings.logo_url || salonData?.logo_url;
+  // Get logo URL - prioritize kiosk settings, fallback to salon, then imported logo
+  const logoUrl = settings.logo_url || salonData?.logo_url || logoMaiconMaksuel;
   const salonName = salonData?.nome_salao || "Salão de Beleza";
 
   // Update time every second
