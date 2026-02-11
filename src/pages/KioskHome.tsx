@@ -63,6 +63,20 @@ export default function KioskHome() {
   const [comanda, setComanda] = useState<ComandaData | null>(null);
   const autoReturnTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Guard: Remove any debug overlays in production
+  // Only show diagnostic components in development mode
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      // Remove any debug/diagnostic overlays that might be injected
+      const debugElements = document.querySelectorAll('[data-debug="true"], [role="complementary"][class*="debug"], [class*="diagnostic-overlay"]');
+      debugElements.forEach(el => {
+        if (el instanceof HTMLElement && el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
+    }
+  }, []);
+
   // Get configurable timeouts from settings with defaults
   const autoDismissSeconds = 10;
   const thankYouDuration = 6000;
