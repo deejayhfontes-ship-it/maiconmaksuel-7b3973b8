@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { localPut, localGetAll, localDelete, localClear, addToSyncQueue, EntityStore } from '@/lib/offlineDb';
 import { getOnlineStatus, addOnlineStatusListener } from '@/lib/syncService';
 import { toast } from 'sonner';
+import { useRealtimeCallback } from '@/hooks/useRealtimeSubscription';
 
 export interface Profissional {
   id: string;
@@ -332,6 +333,9 @@ export function useProfissionais() {
 
   const profissionaisAtivos = useMemo(() => profissionais.filter(p => p.ativo), [profissionais]);
   const profissionaisVendedores = useMemo(() => profissionais.filter(p => p.ativo && p.pode_vender_produtos), [profissionais]);
+
+  // Realtime: auto-refresh when profissionais change in another tab/device
+  useRealtimeCallback('profissionais', fetchProfissionais);
 
   useEffect(() => { fetchProfissionais(); }, []);
 

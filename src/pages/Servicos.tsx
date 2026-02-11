@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useServicos, Servico } from "@/hooks/useServicos";
-import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 import ServicoFormDialog from "@/components/servicos/ServicoFormDialog";
 
 // iOS Colors for Service Categories
@@ -65,9 +64,6 @@ const Servicos = () => {
     deleteServico 
   } = useServicos();
 
-  // Realtime: auto-refresh when servicos change in another tab/device
-  useRealtimeCallback('servicos', loadServicos);
-  
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("todas");
   const [tipoFilter, setTipoFilter] = useState("todos");

@@ -10,6 +10,7 @@ import {
   EntityStore,
 } from '@/lib/offlineDb';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeCallback } from '@/hooks/useRealtimeSubscription';
 
 // Types
 export interface Caixa {
@@ -527,6 +528,10 @@ export function useCaixa(): UseCaixaReturn {
     await syncWithServer();
     setLoading(false);
   }, [loadLocalData, syncWithServer]);
+
+  // Realtime: auto-refresh when caixa changes in another tab/device
+  useRealtimeCallback('caixa', refresh);
+  useRealtimeCallback('caixa_movimentacoes', refresh);
 
   const syncNow = useCallback(async () => {
     await syncWithServer();

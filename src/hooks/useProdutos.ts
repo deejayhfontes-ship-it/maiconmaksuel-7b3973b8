@@ -12,6 +12,7 @@ import {
   getSyncQueue,
 } from '@/lib/offlineDb';
 import { getOnlineStatus, addOnlineStatusListener } from '@/lib/syncService';
+import { useRealtimeCallback } from '@/hooks/useRealtimeSubscription';
 
 export interface Produto {
   id: string;
@@ -284,6 +285,9 @@ export function useProdutos() {
   const getLowStockProdutos = useCallback((): Produto[] => produtos.filter((p) => p.estoque_atual < p.estoque_minimo), [produtos]);
   const getProdutoById = useCallback((id: string): Produto | undefined => produtos.find((p) => p.id === id), [produtos]);
   const getProdutoByBarcode = useCallback((barcode: string): Produto | undefined => produtos.find((p) => p.codigo_barras === barcode), [produtos]);
+
+  // Realtime: auto-refresh when produtos change in another tab/device
+  useRealtimeCallback('produtos', loadProdutos);
 
   useEffect(() => { loadProdutos(); }, [loadProdutos]);
 

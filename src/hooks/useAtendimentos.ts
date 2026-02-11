@@ -15,6 +15,7 @@ import {
   addOnlineStatusListener,
 } from '@/lib/syncService';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeCallback } from '@/hooks/useRealtimeSubscription';
 
 export interface Cliente {
   id: string;
@@ -939,6 +940,9 @@ export function useAtendimentos(): UseAtendimentosReturn {
       throw err;
     }
   }, [isOnline, toast]);
+
+  // Realtime: auto-refresh when atendimentos change in another tab/device
+  useRealtimeCallback('atendimentos', fetchAtendimentos);
 
   return {
     atendimentos,

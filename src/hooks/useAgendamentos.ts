@@ -14,6 +14,7 @@ import {
 } from '@/lib/syncService';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeCallback } from '@/hooks/useRealtimeSubscription';
 
 export interface Cliente {
   id: string;
@@ -423,6 +424,9 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
     await loadRelatedEntities();
     await fetchAgendamentos();
   }, [loadRelatedEntities, fetchAgendamentos]);
+
+  // Realtime: auto-refresh when agendamentos change in another tab/device
+  useRealtimeCallback('agendamentos', refetch);
 
   return {
     agendamentos,

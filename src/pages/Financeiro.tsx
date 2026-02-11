@@ -65,7 +65,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, addDays, subDays, parseISO, isBefore, startOfWeek, endOfWeek, addMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { useRealtimeCallback } from "@/hooks/useRealtimeSubscription";
 
 interface ContaPagar {
   id: string;
@@ -248,10 +247,6 @@ const Financeiro = () => {
     };
     loadData();
   }, [filtroPeriodo, filtroStatus, filtroCategoria]);
-
-  // Realtime: auto-refresh when financial data changes
-  useRealtimeCallback('contas_pagar', fetchContasPagar);
-  useRealtimeCallback('contas_receber', fetchContasReceber);
 
   // Stats calculations
   const statsPagar = {
