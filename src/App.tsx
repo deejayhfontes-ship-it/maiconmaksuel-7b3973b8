@@ -133,6 +133,7 @@ const App = () => (
                 <Route path="/whatsapp" element={<WhatsAppModule />} />
                 <Route path="/atendimento-whatsapp" element={<AtendimentoWhatsApp />} />
                 <Route path="/gestao-rh" element={<GestaoRH />} />
+                <Route path="/ponto" element={<PontoEletronico />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
                 <Route path="/configuracoes/alertas" element={<CentroAlertas />} />
                 <Route path="/configuracoes/notificacoes" element={<ConfiguracoesNotificacoes />} />
