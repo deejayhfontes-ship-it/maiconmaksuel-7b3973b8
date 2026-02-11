@@ -285,54 +285,54 @@ export function useServicos() {
     }
   }, [servicos, toast]);
 
-  // Delete service
+  // Delete service (cascade: remove dependent records first)
   const deleteServico = useCallback(async (id: string): Promise<boolean> => {
     try {
       // Delete locally first
       await localDelete('servicos', id);
       setServicos((prev) => prev.filter((s) => s.id !== id));
 
-      // Try to sync with Supabase
+      // 1. Delete comissoes linked to atendimento_servicos of this service
+      const { data: aServicos } = await supabase
+        .from('atendimento_servicos')
+        .select('id')
+        .eq('servico_id', id);
+
+      if (aServicos && aServicos.length > 0) {
+        const asIds = aServicos.map((s) => s.id);
+        await supabase
+          .from('comissoes')
+          .delete()
+          .in('atendimento_servico_id', asIds);
+      }
+
+      // 2. Delete atendimento_servicos
+      await supabase
+        .from('atendimento_servicos')
+        .delete()
+        .eq('servico_id', id);
+
+      // 3. Delete agendamentos
+      await supabase
+        .from('agendamentos')
+        .delete()
+        .eq('servico_id', id);
+
+      // 4. Now delete the service itself
       const { error } = await supabase.from('servicos').delete().eq('id', id);
 
       if (error) {
-        if (error.code === '23503') {
-          // Foreign key violation — soft delete instead
-          console.warn('[SERVICO] delete_fk_violation → soft_delete', { id });
-          const { error: updateErr } = await supabase
-            .from('servicos')
-            .update({ ativo: false, updated_at: new Date().toISOString() })
-            .eq('id', id);
-
-          if (updateErr) {
-            console.error('[SERVICO] soft_delete_fail', updateErr);
-            toast({
-              title: 'Erro ao desativar serviço',
-              description: 'Tente novamente.',
-              variant: 'destructive',
-            });
-            return false;
-          }
-
-          // Reload to reflect soft-deleted state
-          await loadServicos();
-          toast({
-            title: 'Serviço desativado',
-            description: 'Serviço desativado (possui atendimentos vinculados).',
-          });
-        } else {
-          console.error('Error syncing delete to Supabase:', error);
-          await addToSyncQueue({
-            entity: 'servicos',
-            operation: 'delete',
-            data: { id } as Record<string, unknown>,
-            timestamp: new Date().toISOString(),
-          });
-          toast({
-            title: 'Excluído localmente',
-            description: 'Será sincronizado quando houver conexão.',
-          });
-        }
+        console.error('Error deleting servico from Supabase:', error);
+        await addToSyncQueue({
+          entity: 'servicos',
+          operation: 'delete',
+          data: { id } as Record<string, unknown>,
+          timestamp: new Date().toISOString(),
+        });
+        toast({
+          title: 'Excluído localmente',
+          description: 'Será sincronizado quando houver conexão.',
+        });
       }
 
       return true;
