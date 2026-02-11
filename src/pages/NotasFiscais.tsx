@@ -248,13 +248,14 @@ export default function NotasFiscais() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : notasFiltradas && notasFiltradas.length > 0 ? (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Número</TableHead>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead className="hidden sm:table-cell">Tipo</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Data</TableHead>
+                  <TableHead className="hidden md:table-cell">Data</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -268,13 +269,13 @@ export default function NotasFiscais() {
                       <TableCell className="font-mono font-medium">
                         {formatarNumero(nota.numero)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <Badge variant="outline" className="uppercase">
                           {nota.tipo}
                         </Badge>
                       </TableCell>
-                      <TableCell>{nota.cliente_nome || "Consumidor"}</TableCell>
-                      <TableCell>
+                      <TableCell className="max-w-[120px] truncate">{nota.cliente_nome || "Consumidor"}</TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {format(parseISO(nota.data_emissao), "dd/MM/yyyy", { locale: ptBR })}
                       </TableCell>
                       <TableCell className="text-right font-medium">
@@ -289,7 +290,7 @@ export default function NotasFiscais() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Ações da nota fiscal">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -340,6 +341,7 @@ export default function NotasFiscais() {
                 })}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <FileText className="h-12 w-12 text-muted-foreground mb-4" />

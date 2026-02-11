@@ -24,6 +24,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Target,
   ArrowLeft,
   Plus,
@@ -331,14 +341,25 @@ const MetasSalao = () => {
     setShowForm(true);
   };
 
-  const deleteMeta = async (id: string) => {
-    const { error } = await supabase.from("metas").delete().eq("id", id);
+  const [isDeleteMetaOpen, setIsDeleteMetaOpen] = useState(false);
+  const [metaToDelete, setMetaToDelete] = useState<MetaComProgresso | null>(null);
+
+  const handleDeleteMetaClick = (meta: MetaComProgresso) => {
+    setMetaToDelete(meta);
+    setIsDeleteMetaOpen(true);
+  };
+
+  const deleteMeta = async () => {
+    if (!metaToDelete) return;
+    const { error } = await supabase.from("metas").delete().eq("id", metaToDelete.id);
     if (error) {
       toast({ title: "Erro ao excluir", variant: "destructive" });
     } else {
       toast({ title: "Meta excluída!" });
       fetchMetas();
     }
+    setIsDeleteMetaOpen(false);
+    setMetaToDelete(null);
   };
 
   const resumoGeral = useMemo(() => {
@@ -413,7 +434,22 @@ const MetasSalao = () => {
 
       {/* Goals Grid */}
       {loading ? (
-        <div className="text-center py-8 text-muted-foreground">Carregando metas...</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 bg-muted rounded-lg" />
+                  <div className="h-5 w-32 bg-muted rounded" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="h-3 w-full bg-muted rounded-full" />
+                <div className="h-4 w-24 bg-muted rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : metas.length === 0 ? (
         <Card className="py-12">
           <CardContent className="text-center">
@@ -449,10 +485,10 @@ const MetasSalao = () => {
                         <CardTitle className="text-base">{meta.nome}</CardTitle>
                       </div>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditMeta(meta)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditMeta(meta)} aria-label="Editar meta">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMeta(meta.id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteMetaClick(meta)} aria-label="Excluir meta">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -690,6 +726,28 @@ const MetasSalao = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Meta Confirmation */}
+      <AlertDialog open={isDeleteMetaOpen} onOpenChange={setIsDeleteMetaOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir meta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a meta <strong>{metaToDelete?.nome}</strong>?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteMeta}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

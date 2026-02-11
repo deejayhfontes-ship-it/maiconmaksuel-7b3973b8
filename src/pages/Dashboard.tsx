@@ -276,8 +276,15 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent className="p-0 md:p-6 md:pt-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Carregando...
+            <div className="p-4 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-4 p-3 animate-pulse">
+                  <div className="h-4 w-16 bg-muted rounded" />
+                  <div className="h-4 flex-1 bg-muted rounded" />
+                  <div className="h-4 w-24 bg-muted rounded hidden sm:block" />
+                  <div className="h-4 w-20 bg-muted rounded" />
+                </div>
+              ))}
             </div>
           ) : data.agendamentosHoje.length > 0 ? (
             <div className="overflow-x-auto">

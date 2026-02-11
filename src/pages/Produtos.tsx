@@ -186,6 +186,7 @@ const Produtos = () => {
             size="icon"
             onClick={() => loadProdutos()}
             disabled={loading}
+            aria-label="Atualizar lista"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
@@ -252,12 +253,31 @@ const Produtos = () => {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <div className="p-8 text-center text-muted-foreground">
-              Carregando produtos...
+            <div className="p-4 space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-3 animate-pulse">
+                  <div className="h-10 w-10 bg-muted rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-1/2 bg-muted rounded" />
+                    <div className="h-3 w-1/4 bg-muted rounded" />
+                  </div>
+                  <div className="h-4 w-16 bg-muted rounded" />
+                </div>
+              ))}
             </div>
           ) : paginatedProdutos.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              Nenhum produto encontrado
+            <div className="p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Package className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Nenhum produto encontrado</h3>
+              <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
+                {searchTerm ? `Nenhum produto corresponde a "${searchTerm}".` : "Comece cadastrando seu primeiro produto."}
+              </p>
+              <Button onClick={() => setIsFormOpen(true)} className="bg-success hover:bg-success/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Produto
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
