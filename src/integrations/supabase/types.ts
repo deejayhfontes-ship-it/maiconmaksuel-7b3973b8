@@ -1290,6 +1290,9 @@ export type Database = {
           bloquear_tamanho_janela: boolean | null
           created_at: string
           desabilitar_teclado: boolean | null
+          duracao_comanda: number | null
+          duracao_obrigado: number | null
+          fonte_tamanho: number | null
           forcar_fullscreen: boolean | null
           fundo_tipo: string | null
           fundo_valor: string | null
@@ -1297,18 +1300,28 @@ export type Database = {
           logo_animacao: string | null
           logo_animacao_velocidade: number | null
           logo_url: string | null
+          mensagem_obrigado: string | null
+          mensagens_idle: Json | null
+          modo_alto_contraste: boolean | null
+          modulo_agenda: boolean | null
           modulo_comandas_abertas: boolean | null
           modulo_espelho_caixa: boolean | null
+          modulo_fechamento_comanda: boolean | null
+          modulo_mensagens_idle: boolean | null
           modulo_mini_agenda: boolean | null
           modulo_ponto: boolean | null
+          modulo_relogio: boolean | null
           modulo_tela_espera: boolean | null
           ocultar_controles_janela: boolean | null
+          offline_cache_config: boolean | null
+          offline_mensagem: string | null
           ponto_habilitado: boolean | null
           ponto_metodo: string | null
           ponto_mostrar_foto_nome: boolean | null
           ponto_prevenir_duplicados: boolean | null
           ponto_requer_confirmacao: boolean | null
           rotas_habilitadas: Json | null
+          som_toque: boolean | null
           tema_kiosk: string | null
           tipografia_grande: boolean | null
           ultimo_acesso_rotas: Json | null
@@ -1330,6 +1343,9 @@ export type Database = {
           bloquear_tamanho_janela?: boolean | null
           created_at?: string
           desabilitar_teclado?: boolean | null
+          duracao_comanda?: number | null
+          duracao_obrigado?: number | null
+          fonte_tamanho?: number | null
           forcar_fullscreen?: boolean | null
           fundo_tipo?: string | null
           fundo_valor?: string | null
@@ -1337,18 +1353,28 @@ export type Database = {
           logo_animacao?: string | null
           logo_animacao_velocidade?: number | null
           logo_url?: string | null
+          mensagem_obrigado?: string | null
+          mensagens_idle?: Json | null
+          modo_alto_contraste?: boolean | null
+          modulo_agenda?: boolean | null
           modulo_comandas_abertas?: boolean | null
           modulo_espelho_caixa?: boolean | null
+          modulo_fechamento_comanda?: boolean | null
+          modulo_mensagens_idle?: boolean | null
           modulo_mini_agenda?: boolean | null
           modulo_ponto?: boolean | null
+          modulo_relogio?: boolean | null
           modulo_tela_espera?: boolean | null
           ocultar_controles_janela?: boolean | null
+          offline_cache_config?: boolean | null
+          offline_mensagem?: string | null
           ponto_habilitado?: boolean | null
           ponto_metodo?: string | null
           ponto_mostrar_foto_nome?: boolean | null
           ponto_prevenir_duplicados?: boolean | null
           ponto_requer_confirmacao?: boolean | null
           rotas_habilitadas?: Json | null
+          som_toque?: boolean | null
           tema_kiosk?: string | null
           tipografia_grande?: boolean | null
           ultimo_acesso_rotas?: Json | null
@@ -1370,6 +1396,9 @@ export type Database = {
           bloquear_tamanho_janela?: boolean | null
           created_at?: string
           desabilitar_teclado?: boolean | null
+          duracao_comanda?: number | null
+          duracao_obrigado?: number | null
+          fonte_tamanho?: number | null
           forcar_fullscreen?: boolean | null
           fundo_tipo?: string | null
           fundo_valor?: string | null
@@ -1377,18 +1406,28 @@ export type Database = {
           logo_animacao?: string | null
           logo_animacao_velocidade?: number | null
           logo_url?: string | null
+          mensagem_obrigado?: string | null
+          mensagens_idle?: Json | null
+          modo_alto_contraste?: boolean | null
+          modulo_agenda?: boolean | null
           modulo_comandas_abertas?: boolean | null
           modulo_espelho_caixa?: boolean | null
+          modulo_fechamento_comanda?: boolean | null
+          modulo_mensagens_idle?: boolean | null
           modulo_mini_agenda?: boolean | null
           modulo_ponto?: boolean | null
+          modulo_relogio?: boolean | null
           modulo_tela_espera?: boolean | null
           ocultar_controles_janela?: boolean | null
+          offline_cache_config?: boolean | null
+          offline_mensagem?: string | null
           ponto_habilitado?: boolean | null
           ponto_metodo?: string | null
           ponto_mostrar_foto_nome?: boolean | null
           ponto_prevenir_duplicados?: boolean | null
           ponto_requer_confirmacao?: boolean | null
           rotas_habilitadas?: Json | null
+          som_toque?: boolean | null
           tema_kiosk?: string | null
           tipografia_grande?: boolean | null
           ultimo_acesso_rotas?: Json | null
