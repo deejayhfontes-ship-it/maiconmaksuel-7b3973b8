@@ -1,0 +1,1140 @@
+import { useEffect, useState, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useNavigate } from "react-router-dom";
+import InputMask from "react-input-mask";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Search, Upload, X, Loader2, Camera, AlertTriangle, DollarSign, ExternalLink } from "lucide-react";
+import { WebcamCapture } from "./WebcamCapture";
+
+// Interface para dívidas pendentes
+interface DividaPendente {
+  id: string;
+  data_origem: string;
+  data_vencimento: string;
+  valor_original: number;
+  saldo: number;
+  status: string;
+  vencida: boolean;
+}
+
+const estados = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+];
+
+const clienteSchema = z.object({
+  nome: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
+  celular: z.string().refine((val) => {
+    const digits = val.replace(/\D/g, "");
+    return digits.length >= 10 && digits.length <= 11;
+  }, "Celular inválido - deve ter 10 ou 11 dígitos"),
+  telefone: z.string().optional(),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
+  cpf: z.string().optional(),
+  data_nascimento: z.string().optional(),
+  cep: z.string().optional(),
+  endereco: z.string().optional(),
+  numero: z.string().optional(),
+  complemento: z.string().optional(),
+  bairro: z.string().optional(),
+  cidade: z.string().optional(),
+  estado: z.string().optional(),
+  observacoes: z.string().optional(),
+  ativo: z.boolean(),
+  sempre_emitir_nf: z.boolean(),
+  receber_mensagens: z.boolean(),
+  elegivel_crediario: z.boolean(),
+  limite_crediario: z.number().min(0).optional(),
+  dia_vencimento_crediario: z.number().min(1).max(28).optional(),
+});
+
+type ClienteFormData = z.infer<typeof clienteSchema>;
+
+interface Cliente {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  celular: string;
+  email: string | null;
+  cpf: string | null;
+  data_nascimento: string | null;
+  endereco: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+  observacoes: string | null;
+  foto_url: string | null;
+  ativo: boolean;
+  sempre_emitir_nf?: boolean;
+  receber_mensagens?: boolean;
+  elegivel_crediario?: boolean;
+  limite_crediario?: number;
+  dia_vencimento_crediario?: number;
+  ultima_visita: string | null;
+  total_visitas?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ClienteFormDialogProps {
+  open: boolean;
+  onClose: (refresh?: boolean) => void;
+  cliente: Cliente | null;
+}
+
+const getInitials = (name: string | null | undefined) => {
+  const safe = (name ?? '').toString();
+  if (!safe) return "?";
+  return safe
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+};
+
+export default function ClienteFormDialog({
+  open,
+  onClose,
+  cliente,
+}: ClienteFormDialogProps) {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const isEditing = !!cliente;
+  const [loadingCep, setLoadingCep] = useState(false);
+  const [loadingFoto, setLoadingFoto] = useState(false);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [showWebcam, setShowWebcam] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Estados para validação de crediário
+  const [dividasPendentes, setDividasPendentes] = useState<DividaPendente[]>([]);
+  const [showDividasAlert, setShowDividasAlert] = useState(false);
+  const [loadingDividas, setLoadingDividas] = useState(false);
+
+  const form = useForm<ClienteFormData>({
+    resolver: zodResolver(clienteSchema),
+    defaultValues: {
+      nome: "",
+      celular: "",
+      telefone: "",
+      email: "",
+      cpf: "",
+      data_nascimento: "",
+      cep: "",
+      endereco: "",
+      numero: "",
+      complemento: "",
+      bairro: "",
+      cidade: "",
+      estado: "",
+      observacoes: "",
+      ativo: true,
+      sempre_emitir_nf: false,
+      receber_mensagens: true,
+      elegivel_crediario: false,
+      limite_crediario: 0,
+      dia_vencimento_crediario: 10,
+    },
+  });
+
+  useEffect(() => {
+    if (cliente) {
+      form.reset({
+        nome: cliente.nome,
+        celular: cliente.celular,
+        telefone: cliente.telefone || "",
+        email: cliente.email || "",
+        cpf: cliente.cpf || "",
+        data_nascimento: cliente.data_nascimento || "",
+        cep: cliente.cep || "",
+        endereco: cliente.endereco || "",
+        numero: cliente.numero || "",
+        complemento: cliente.complemento || "",
+        bairro: cliente.bairro || "",
+        cidade: cliente.cidade || "",
+        estado: cliente.estado || "",
+        observacoes: cliente.observacoes || "",
+        ativo: cliente.ativo,
+        sempre_emitir_nf: cliente.sempre_emitir_nf || false,
+        receber_mensagens: cliente.receber_mensagens !== false,
+        elegivel_crediario: cliente.elegivel_crediario || false,
+        limite_crediario: cliente.limite_crediario || 0,
+        dia_vencimento_crediario: cliente.dia_vencimento_crediario || 10,
+      });
+      setFotoPreview(cliente.foto_url);
+    } else {
+      form.reset({
+        nome: "",
+        celular: "",
+        telefone: "",
+        email: "",
+        cpf: "",
+        data_nascimento: "",
+        cep: "",
+        endereco: "",
+        numero: "",
+        complemento: "",
+        bairro: "",
+        cidade: "",
+        estado: "",
+        observacoes: "",
+        ativo: true,
+        sempre_emitir_nf: false,
+        receber_mensagens: true,
+        elegivel_crediario: false,
+        limite_crediario: 0,
+        dia_vencimento_crediario: 10,
+      });
+      setFotoPreview(null);
+    }
+    setFotoFile(null);
+    setDividasPendentes([]);
+    setShowDividasAlert(false);
+  }, [cliente, form, open]);
+
+  // Buscar dívidas pendentes do cliente (quando editando)
+  useEffect(() => {
+    if (cliente?.id && isEditing) {
+      fetchDividasPendentes(cliente.id);
+    }
+  }, [cliente?.id, isEditing]);
+
+  const fetchDividasPendentes = async (clienteId: string) => {
+    setLoadingDividas(true);
+    try {
+      const { data, error } = await supabase
+        .from("dividas")
+        .select("*")
+        .eq("cliente_id", clienteId)
+        .in("status", ["pendente", "vencida"])
+        .order("data_vencimento", { ascending: true });
+
+      if (error) throw error;
+
+      const hoje = new Date();
+      const dividasComStatus = (data || []).map(d => ({
+        ...d,
+        vencida: new Date(d.data_vencimento) < hoje
+      }));
+
+      setDividasPendentes(dividasComStatus);
+    } catch (error) {
+      console.error("Erro ao buscar dívidas:", error);
+    } finally {
+      setLoadingDividas(false);
+    }
+  };
+
+  // Validação do toggle de crediário
+  const handleCrediarioChange = (novoValor: boolean) => {
+    const valorAtual = form.getValues("elegivel_crediario");
+    
+    // Se está tentando DESATIVAR (true → false) e tem dívidas pendentes
+    if (valorAtual && !novoValor && dividasPendentes.length > 0) {
+      setShowDividasAlert(true);
+      return; // Bloquear a alteração
+    }
+    
+    // Permitir a alteração
+    form.setValue("elegivel_crediario", novoValor);
+  };
+
+  const formatMoney = (valor: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(valor);
+  };
+
+  const calcularTotalDividas = () => {
+    return dividasPendentes.reduce((total, d) => total + d.saldo, 0);
+  };
+
+  const calcularDiasAtraso = () => {
+    const hoje = new Date();
+    const vencidas = dividasPendentes.filter(d => d.vencida);
+    if (vencidas.length === 0) return 0;
+    
+    const maisAntiga = new Date(vencidas[0].data_vencimento);
+    const diff = Math.floor((hoje.getTime() - maisAntiga.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
+
+  const buscarCep = async () => {
+    const cep = form.getValues("cep")?.replace(/\D/g, "");
+    if (!cep || cep.length !== 8) {
+      toast({
+        title: "CEP inválido",
+        description: "Digite um CEP com 8 dígitos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        toast({
+          title: "CEP não encontrado",
+          description: "Verifique o CEP digitado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      form.setValue("endereco", data.logradouro || "");
+      form.setValue("bairro", data.bairro || "");
+      form.setValue("cidade", data.localidade || "");
+      form.setValue("estado", data.uf || "");
+
+      toast({
+        title: "Endereço encontrado!",
+        description: `${data.logradouro}, ${data.bairro} - ${data.localidade}/${data.uf}`,
+      });
+    } catch {
+      toast({
+        title: "Erro ao buscar CEP",
+        description: "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Arquivo inválido",
+        description: "Selecione uma imagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "A imagem deve ter no máximo 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setFotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeFoto = () => {
+    setFotoFile(null);
+    setFotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleWebcamCapture = (file: File) => {
+    setFotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setFotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+    setShowWebcam(false);
+  };
+
+  const uploadFoto = async (clienteId: string): Promise<string | null> => {
+    if (!fotoFile) return cliente?.foto_url || null;
+
+    const fileExt = fotoFile.name.split(".").pop();
+    const fileName = `${clienteId}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("clientes-fotos")
+      .upload(fileName, fotoFile, { upsert: true });
+
+    if (error) {
+      console.error("Erro upload:", error);
+      return cliente?.foto_url || null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("clientes-fotos")
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  };
+
+  const onSubmit = async (data: ClienteFormData) => {
+    setLoadingFoto(true);
+
+    try {
+      const payload = {
+        nome: data.nome,
+        celular: data.celular,
+        telefone: data.telefone || null,
+        email: data.email || null,
+        cpf: data.cpf || null,
+        data_nascimento: data.data_nascimento || null,
+        cep: data.cep || null,
+        endereco: data.endereco || null,
+        numero: data.numero || null,
+        complemento: data.complemento || null,
+        bairro: data.bairro || null,
+        cidade: data.cidade || null,
+        estado: data.estado || null,
+        observacoes: data.observacoes || null,
+        ativo: data.ativo,
+        sempre_emitir_nf: data.sempre_emitir_nf || false,
+        receber_mensagens: data.receber_mensagens !== false,
+        elegivel_crediario: data.elegivel_crediario || false,
+        limite_crediario: data.limite_crediario || 0,
+        dia_vencimento_crediario: data.dia_vencimento_crediario || 10,
+      };
+
+      if (isEditing && cliente) {
+        const fotoUrl = await uploadFoto(cliente.id);
+        
+        const { error } = await supabase
+          .from("clientes")
+          .update({ ...payload, foto_url: fotoUrl })
+          .eq("id", cliente.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Cliente atualizado!",
+          description: "Os dados foram salvos com sucesso.",
+        });
+      } else {
+        const { data: newCliente, error } = await supabase
+          .from("clientes")
+          .insert([payload])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        if (fotoFile && newCliente) {
+          const fotoUrl = await uploadFoto(newCliente.id);
+          await supabase
+            .from("clientes")
+            .update({ foto_url: fotoUrl })
+            .eq("id", newCliente.id);
+        }
+
+        toast({
+          title: "Cliente cadastrado!",
+          description: "Novo cliente adicionado com sucesso.",
+        });
+      }
+
+      onClose(true);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao salvar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingFoto(false);
+    }
+  };
+
+  const nomeValue = form.watch("nome");
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl">
+            {isEditing ? "Editar Cliente" : "Novo Cliente"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Foto */}
+            <div className="flex items-center gap-6 pb-4 border-b">
+              <div className="relative">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={fotoPreview || undefined} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                    {nomeValue ? getInitials(nomeValue) : "?"}
+                  </AvatarFallback>
+                </Avatar>
+                {fotoPreview && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                    onClick={removeFoto}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFotoChange}
+                  className="hidden"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowWebcam(true)}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Tirar Foto
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG até 5MB
+                </p>
+              </div>
+            </div>
+
+            {/* Modal de captura por webcam */}
+            <WebcamCapture
+              open={showWebcam}
+              onClose={() => setShowWebcam(false)}
+              onCapture={handleWebcamCapture}
+            />
+
+            {/* Dados Pessoais e Contato */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                  Dados Pessoais
+                </h3>
+
+                <FormField
+                  control={form.control}
+                  name="nome"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome Completo *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nome completo" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="cpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CPF</FormLabel>
+                      <FormControl>
+                        <InputMask
+                          mask="999.999.999-99"
+                          value={field.value}
+                          onChange={field.onChange}
+                        >
+                          {(inputProps: any) => (
+                            <Input {...inputProps} placeholder="000.000.000-00" />
+                          )}
+                        </InputMask>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="data_nascimento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Data de Nascimento</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="email@exemplo.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                  Contato
+                </h3>
+
+                <FormField
+                  control={form.control}
+                  name="celular"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Celular / WhatsApp *</FormLabel>
+                      <FormControl>
+                        <InputMask
+                          mask="(99) 99999-9999"
+                          value={field.value}
+                          onChange={field.onChange}
+                        >
+                          {(inputProps: any) => (
+                            <Input {...inputProps} placeholder="(00) 00000-0000" />
+                          )}
+                        </InputMask>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="telefone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefone Fixo</FormLabel>
+                      <FormControl>
+                        <InputMask
+                          mask="(99) 9999-9999"
+                          value={field.value}
+                          onChange={field.onChange}
+                        >
+                          {(inputProps: any) => (
+                            <Input {...inputProps} placeholder="(00) 0000-0000" />
+                          )}
+                        </InputMask>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Endereço */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Endereço
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="cep"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <InputMask
+                            mask="99999-999"
+                            value={field.value}
+                            onChange={field.onChange}
+                          >
+                            {(inputProps: any) => (
+                              <Input {...inputProps} placeholder="00000-000" />
+                            )}
+                          </InputMask>
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={buscarCep}
+                          disabled={loadingCep}
+                        >
+                          {loadingCep ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Search className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <FormField
+                  control={form.control}
+                  name="endereco"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Endereço</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Rua, Avenida..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="numero"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nº" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="complemento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Complemento</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Apto, Bloco..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="bairro"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bairro</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Bairro" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="cidade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cidade</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Cidade" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="estado"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="UF" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {estados.map((uf) => (
+                            <SelectItem key={uf} value={uf}>
+                              {uf}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Crediário */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Crediário (Fiado)
+              </h3>
+
+              <FormField
+                control={form.control}
+                name="elegivel_crediario"
+                render={({ field }) => (
+                  <FormItem className="rounded-lg border p-4 bg-amber-50/50 dark:bg-amber-900/10">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <FormLabel className="text-base">Elegível para Crediário</FormLabel>
+                          {isEditing && dividasPendentes.length > 0 && (
+                            <Badge variant="destructive" className="flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              {dividasPendentes.length} dívida{dividasPendentes.length > 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Permite que o cliente compre no fiado
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={handleCrediarioChange}
+                          disabled={loadingDividas}
+                        />
+                      </FormControl>
+                    </div>
+                    
+                    {/* Indicador de dívidas quando há pendências */}
+                    {isEditing && dividasPendentes.length > 0 && field.value && (
+                      <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                              Total devido: {formatMoney(calcularTotalDividas())}
+                            </span>
+                            {calcularDiasAtraso() > 0 && (
+                              <span className="text-xs text-destructive">
+                                ({calcularDiasAtraso()} dias em atraso)
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              onClose();
+                              navigate("/caixa/dividas");
+                            }}
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            Ver Dívidas
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("elegivel_crediario") && (
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="limite_crediario"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Limite de Crédito (R$)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            min={0} 
+                            placeholder="0,00" 
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="dia_vencimento_crediario"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dia de Vencimento</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min={1} 
+                            max={28} 
+                            placeholder="10" 
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Outros */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Outros
+              </h3>
+
+              <FormField
+                control={form.control}
+                name="observacoes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Observações sobre o cliente..."
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="receber_mensagens"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Receber Mensagens</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Cliente aceita receber notificações e lembretes
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="ativo"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Cliente Ativo</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Clientes inativos não aparecem nas buscas
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={() => onClose()}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loadingFoto}>
+                {loadingFoto && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isEditing ? "Salvar Alterações" : "Cadastrar Cliente"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+
+      {/* Modal de alerta - Dívidas pendentes */}
+      <AlertDialog open={showDividasAlert} onOpenChange={setShowDividasAlert}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Não é possível desativar o crediário
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-left">
+                <p className="text-foreground font-medium">
+                  Este cliente possui dívidas pendentes no crediário!
+                </p>
+                
+                {/* Resumo da Dívida */}
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Resumo da Dívida
+                  </h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Total devido:</span>
+                      <span className="font-bold text-destructive">
+                        {formatMoney(calcularTotalDividas())}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Parcelas em aberto:</span>
+                      <span className="font-medium">{dividasPendentes.length}</span>
+                    </div>
+                    {calcularDiasAtraso() > 0 && (
+                      <div className="flex justify-between">
+                        <span>Dias em atraso:</span>
+                        <span className="font-medium text-destructive">
+                          {calcularDiasAtraso()} dias
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Detalhamento */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-foreground">
+                    📋 Detalhamento:
+                  </h4>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {dividasPendentes.slice(0, 5).map((divida) => (
+                      <div 
+                        key={divida.id} 
+                        className="flex justify-between items-center text-sm bg-background rounded p-2 border"
+                      >
+                        <span className="text-muted-foreground">
+                          {new Date(divida.data_origem).toLocaleDateString("pt-BR")}
+                        </span>
+                        <span className="font-medium">
+                          {formatMoney(divida.saldo)}
+                        </span>
+                        <Badge 
+                          variant={divida.vencida ? "destructive" : "outline"}
+                          className="text-xs"
+                        >
+                          {divida.vencida ? "⚠️ Vencida" : "A vencer"}
+                        </Badge>
+                      </div>
+                    ))}
+                    {dividasPendentes.length > 5 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        +{dividasPendentes.length - 5} dívida(s)...
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-sm text-muted-foreground italic">
+                  💡 O crediário só pode ser desativado após a quitação total das dívidas pendentes.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Fechar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowDividasAlert(false);
+                onClose();
+                navigate("/caixa/dividas");
+              }}
+              className="bg-primary"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Ir para Pagamentos
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Dialog>
+  );
+}

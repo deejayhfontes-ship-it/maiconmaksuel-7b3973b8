@@ -1,0 +1,434 @@
+/**
+ * Kiosk Mode Settings Page - Complete Configuration
+ * Comprehensive configuration for kiosk mode operation
+ */
+
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useKioskSettings } from "@/hooks/useKioskSettings";
+import { isDesktopWrapper } from "@/lib/desktopDetection";
+import { setKioskDeviceEnabled, isKioskDeviceEnabled } from "@/lib/startMode";
+import { toast } from "sonner";
+import { 
+  Tablet, 
+  Palette, 
+  Hand, 
+  FileText, 
+  Wrench, 
+  Eye,
+  Fingerprint,
+  Calendar,
+  Receipt,
+  Shield,
+  Power,
+  Activity,
+  Monitor,
+  Maximize2,
+  XCircle,
+} from "lucide-react";
+
+import KioskVisualSettings from "./KioskVisualSettings";
+import KioskContentSettings from "./KioskContentSettings";
+import KioskInteractionSettings from "./KioskInteractionSettings";
+import KioskMaintenanceSettings from "./KioskMaintenanceSettings";
+import KioskLivePreview from "./KioskLivePreview";
+import KioskSecurityInfo from "./KioskSecurityInfo";
+import KioskDiagnostico from "./KioskDiagnostico";
+import KioskLauncher from "./KioskLauncher";
+
+const tabs = [
+  { id: 'overview', label: 'Visão Geral', icon: Tablet },
+  { id: 'launcher', label: 'Abrir Kiosk', icon: Power },
+  { id: 'visual', label: 'Visual', icon: Palette },
+  { id: 'content', label: 'Conteúdo', icon: FileText },
+  { id: 'interaction', label: 'Interação', icon: Hand },
+  { id: 'maintenance', label: 'Manutenção', icon: Wrench },
+  { id: 'security', label: 'Segurança', icon: Shield },
+  { id: 'diagnostico', label: 'Diagnóstico', icon: Activity },
+  { id: 'preview', label: 'Preview', icon: Eye },
+];
+
+export default function KioskModeSettings() {
+  const [activeTab, setActiveTab] = useState('overview');
+  const { settings, updateSettings, isSaving } = useKioskSettings();
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <Tablet className="h-5 w-5" />
+          Modo Kiosk
+        </h2>
+        <p className="text-muted-foreground">
+          Configure o comportamento do sistema em modo kiosk (totem de atendimento)
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid grid-cols-4 lg:grid-cols-8 h-auto gap-1 p-1">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <TabsTrigger
+              key={id}
+              value={id}
+              className="flex flex-col items-center gap-1 py-2 px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Icon className="h-4 w-4" />
+              <span className="text-xs">{label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4">
+          <KioskOverview 
+            settings={settings} 
+            updateSettings={updateSettings} 
+            isSaving={isSaving}
+          />
+        </TabsContent>
+
+        <TabsContent value="launcher" className="space-y-4">
+          <KioskLauncher />
+        </TabsContent>
+
+        <TabsContent value="visual" className="space-y-4">
+          <KioskVisualSettings />
+        </TabsContent>
+
+        <TabsContent value="content" className="space-y-4">
+          <KioskContentSettings />
+        </TabsContent>
+
+        <TabsContent value="interaction" className="space-y-4">
+          <KioskInteractionSettings />
+        </TabsContent>
+
+        <TabsContent value="maintenance" className="space-y-4">
+          <KioskMaintenanceSettings />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-4">
+          <KioskSecurityInfo />
+        </TabsContent>
+
+        <TabsContent value="diagnostico" className="space-y-4">
+          <KioskDiagnostico />
+        </TabsContent>
+
+        <TabsContent value="preview" className="space-y-4">
+          <KioskLivePreview />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/**
+ * Kiosk Overview - Quick configuration summary and module toggles
+ */
+interface KioskOverviewProps {
+  settings: ReturnType<typeof useKioskSettings>['settings'];
+  updateSettings: ReturnType<typeof useKioskSettings>['updateSettings'];
+  isSaving: boolean;
+}
+
+function KioskOverview({ settings, updateSettings, isSaving }: KioskOverviewProps) {
+  const navigate = useNavigate();
+  const isDesktop = isDesktopWrapper();
+  const [deviceKioskEnabled, setDeviceKioskEnabled] = useState(isKioskDeviceEnabled());
+
+  const handleToggleDeviceKiosk = async (enabled: boolean) => {
+    // Persist via Electron IPC
+    try {
+      await window.electron?.setKioskEnabled(enabled);
+    } catch {
+      // ignore
+    }
+    // Also persist in localStorage for React-side
+    setKioskDeviceEnabled(enabled);
+    setDeviceKioskEnabled(enabled);
+
+    if (enabled) {
+      toast.success("Kiosk ativado neste dispositivo. No próximo boot, abrirá no Kiosk.");
+    } else {
+      toast.success("Kiosk desativado neste dispositivo. No próximo boot, abrirá no admin.");
+      navigate("/dashboard");
+    }
+  };
+
+  const handleOpenKiosk = () => {
+    if (isDesktop) {
+      navigate("/kiosk");
+    } else {
+      window.open("/kiosk", "_blank");
+    }
+  };
+
+  const handleOpenPonto = () => {
+    if (isDesktop) {
+      navigate("/kiosk/ponto");
+    } else {
+      window.open("/kiosk/ponto", "_blank");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Device Kiosk Toggle - Desktop only */}
+      {isDesktop && (
+        <Card className="border-orange-200 bg-orange-50/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-orange-100">
+                  <Monitor className="h-6 w-6 text-orange-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Kiosk neste dispositivo</CardTitle>
+                  <CardDescription>
+                    Quando ativado, o app iniciará no modo Kiosk ao abrir
+                  </CardDescription>
+                </div>
+              </div>
+              <Switch
+                checked={deviceKioskEnabled}
+                onCheckedChange={handleToggleDeviceKiosk}
+              />
+            </div>
+          </CardHeader>
+        </Card>
+      )}
+
+      {/* Status Card */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-primary/10">
+                <Tablet className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Kiosk Touch</CardTitle>
+                <CardDescription>
+                  Terminal de atendimento para clientes e funcionários
+                </CardDescription>
+              </div>
+            </div>
+            <Badge 
+              variant={settings.modulo_tela_espera ? "default" : "secondary"}
+              className="text-sm"
+            >
+              {settings.modulo_tela_espera ? "Ativo" : "Inativo"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="p-3 bg-white rounded-xl border">
+              <p className="text-muted-foreground">Tema</p>
+              <p className="font-semibold capitalize">{settings.tema_kiosk}</p>
+            </div>
+            <div className="p-3 bg-white rounded-xl border">
+              <p className="text-muted-foreground">Tipografia</p>
+              <p className="font-semibold">{settings.tipografia_grande ? "Grande" : "Normal"}</p>
+            </div>
+            <div className="p-3 bg-white rounded-xl border">
+              <p className="text-muted-foreground">Touch</p>
+              <p className="font-semibold">{settings.alvos_touch_grandes ? "Grande" : "Normal"}</p>
+            </div>
+            <div className="p-3 bg-white rounded-xl border">
+              <p className="text-muted-foreground">Fullscreen</p>
+              <p className="font-semibold">{settings.forcar_fullscreen ? "Automático" : "Manual"}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Module Toggles */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Power className="h-5 w-5" />
+            Módulos Disponíveis
+          </CardTitle>
+          <CardDescription>
+            Escolha quais funcionalidades estarão disponíveis no kiosk
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Ponto Module */}
+          <div className="flex items-center justify-between p-4 rounded-xl border bg-gray-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-orange-100">
+                <Fingerprint className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <Label className="font-medium">Ponto Eletrônico</Label>
+                <p className="text-xs text-muted-foreground">
+                  Permite registro de ponto pelos funcionários
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.modulo_ponto}
+              onCheckedChange={(checked) => updateSettings({ 
+                modulo_ponto: checked,
+                ponto_habilitado: checked,
+              })}
+              disabled={isSaving}
+            />
+          </div>
+
+          {/* Agenda Module */}
+          <div className="flex items-center justify-between p-4 rounded-xl border bg-gray-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <Calendar className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <Label className="font-medium">Agenda (Simplificada)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Visualização somente leitura dos agendamentos
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.modulo_agenda}
+              onCheckedChange={(checked) => updateSettings({ 
+                modulo_agenda: checked,
+                agenda_visivel: checked,
+                rotas_habilitadas: {
+                  ...settings.rotas_habilitadas,
+                  kiosk_agenda: checked,
+                }
+              })}
+              disabled={isSaving}
+            />
+          </div>
+
+          {/* Fechamento Comanda Module */}
+          <div className="flex items-center justify-between p-4 rounded-xl border bg-gray-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100">
+                <Receipt className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <Label className="font-medium">Fechamento de Comanda</Label>
+                <p className="text-xs text-muted-foreground">
+                  Exibe resumo do atendimento quando finalizado
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.modulo_fechamento_comanda}
+              onCheckedChange={(checked) => updateSettings({ modulo_fechamento_comanda: checked })}
+              disabled={isSaving}
+            />
+          </div>
+
+          {/* Idle Screen Module */}
+          <div className="flex items-center justify-between p-4 rounded-xl border bg-gray-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-100">
+                <Eye className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <Label className="font-medium">Tela de Espera (Branding)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Logo animada e mensagens rotativas
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.modulo_tela_espera}
+              onCheckedChange={(checked) => updateSettings({ modulo_tela_espera: checked })}
+              disabled={isSaving}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Access */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Acesso Rápido</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={handleOpenKiosk}
+            >
+              <Tablet className="h-4 w-4 mr-2" />
+              Abrir Kiosk
+            </Button>
+
+            {/* 2ª Janela Kiosk */}
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (window.electron?.openKioskWindow) {
+                  await window.electron.openKioskWindow();
+                  toast.success("Kiosk aberto em 2ª janela");
+                } else {
+                  window.open("/kiosk", "_blank");
+                  toast.success("Kiosk aberto em nova aba");
+                }
+              }}
+            >
+              <Monitor className="h-4 w-4 mr-2" />
+              Abrir Kiosk (2ª janela)
+            </Button>
+
+            {/* Fullscreen Kiosk - Electron only */}
+            {isDesktop && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (window.electron?.toggleKioskFullscreen) {
+                    await window.electron.toggleKioskFullscreen();
+                    toast.success("Fullscreen alternado");
+                  }
+                }}
+              >
+                <Maximize2 className="h-4 w-4 mr-2" />
+                Fullscreen Kiosk
+              </Button>
+            )}
+
+            {/* Fechar Kiosk - Electron only */}
+            {isDesktop && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (window.electron?.closeKioskWindow) {
+                    await window.electron.closeKioskWindow();
+                    toast.success("Janela Kiosk fechada");
+                  }
+                }}
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Fechar Kiosk
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              onClick={handleOpenPonto}
+              disabled={!settings.modulo_ponto}
+            >
+              <Fingerprint className="h-4 w-4 mr-2" />
+              Abrir Ponto
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
