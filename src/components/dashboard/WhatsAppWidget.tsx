@@ -71,11 +71,11 @@ function useWhatsAppStatus() {
       .from("configuracoes_whatsapp")
       .select("api_url, api_token, sessao_ativa")
       .maybeSingle();
-    
+
     if (error && error.code !== 'PGRST116') {
       console.error("Erro ao buscar config WhatsApp:", error);
     }
-    
+
     setConfig(data || { api_url: null, api_token: null, sessao_ativa: false });
     setLoading(false);
   };
@@ -119,29 +119,10 @@ export function WhatsAppDashboardCard() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // Simular notificações pendentes (em produção, viriam de webhooks)
-    const mockNotificacoes: Notificacao[] = [
-      {
-        id: "1",
-        tipo: "resposta",
-        titulo: "Nova resposta",
-        mensagem: "Cliente respondeu à confirmação",
-        cliente: "Maria Silva",
-        data: new Date(),
-        lida: false,
-      },
-      {
-        id: "2",
-        tipo: "confirmacao",
-        titulo: "Confirmado",
-        mensagem: "Agendamento confirmado",
-        cliente: "João Santos",
-        data: new Date(Date.now() - 3600000),
-        lida: false,
-      },
-    ];
-    setNotificacoes(mockNotificacoes);
-    setUnreadCount(mockNotificacoes.filter((n) => !n.lida).length);
+    // Notificações virão de webhooks reais do WhatsApp (Z-API)
+    // Por enquanto inicializa vazio — sem dados de demonstração
+    setNotificacoes([]);
+    setUnreadCount(0);
   }, []);
 
   const getNotificacaoIcon = (tipo: Notificacao["tipo"]) => {
@@ -243,9 +224,8 @@ export function WhatsAppDashboardCard() {
               {notificacoes.slice(0, 5).map((notif) => (
                 <div
                   key={notif.id}
-                  className={`flex items-start gap-2 rounded-lg p-2 transition-colors ${
-                    notif.lida ? "bg-muted/30" : "bg-primary/10"
-                  }`}
+                  className={`flex items-start gap-2 rounded-lg p-2 transition-colors ${notif.lida ? "bg-muted/30" : "bg-primary/10"
+                    }`}
                 >
                   <div className="mt-0.5">{getNotificacaoIcon(notif.tipo)}</div>
                   <div className="flex-1 min-w-0">
@@ -461,9 +441,8 @@ export function WhatsAppFloatingButton() {
                             setSelectedCliente(cliente);
                             setSearchQuery("");
                           }}
-                          className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors hover:bg-muted ${
-                            selectedCliente?.id === cliente.id ? "bg-primary/10" : ""
-                          }`}
+                          className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors hover:bg-muted ${selectedCliente?.id === cliente.id ? "bg-primary/10" : ""
+                            }`}
                         >
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={cliente.foto_url || undefined} />
