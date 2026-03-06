@@ -51,7 +51,7 @@ async function runAgent(
     let contents = [...history.slice(-12), { role: 'user', parts: [{ text: msg }] }];
     for (let i = 0; i < 5; i++) {
         // Tenta gemini-2.0-flash, fallback para gemini-1.5-flash se 404
-        const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+        const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
         let res: Response | null = null;
         for (const model of models) {
             res = await fetch(
