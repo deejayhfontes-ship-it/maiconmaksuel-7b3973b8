@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, Trash2, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TOOL_DECLARATIONS, executeTool } from "@/hooks/useAgenteVirtualTools";
+import { GoogleGenAI } from '@google/genai';
 
 // ── Paleta Dourada ──
 const G = {
@@ -26,8 +27,8 @@ async function getKey() {
     // Re-fetch a cada 60s para pegar chave atualizada (ex: após troca no Configurações)
     if (_key && Date.now() - _keyTs < 60_000) return _key;
     try {
-        const r = await fetch(`${SB_URL}/rest/v1/api_keys?service=eq.gemini&is_active=eq.true&select=api_key&limit=1`,
-            { headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}` } });
+        const r = await fetch(`${SB_URL} /rest/v1 / api_keys ? service = eq.gemini & is_active=eq.true & select=api_key & limit=1`,
+            { headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON} ` } });
         const d: { api_key: string }[] = await r.json();
         if (d[0]?.api_key) { _key = d[0].api_key; _keyTs = Date.now(); }
     } catch { /**/ }
@@ -36,9 +37,9 @@ async function getKey() {
 
 const SYSTEM = `Você é a Max, assistente inteligente do Salão Maicon Maksuel.
 Acesso real ao sistema: agendamentos, clientes, WhatsApp, lembretes, resumos.
-Criatividade: posts, campanhas, hashtags, fidelização.
-Hoje: ${new Date().toLocaleDateString('pt-BR')}. Responda em português, de forma breve e direta.
-Textos de post/WhatsApp: sempre prontos para copiar.`;
+    Criatividade: posts, campanhas, hashtags, fidelização.
+        Hoje: ${new Date().toLocaleDateString('pt-BR')}. Responda em português, de forma breve e direta.
+Textos de post / WhatsApp: sempre prontos para copiar.`;
 
 async function runAgent(
     history: { role: string; parts: unknown[] }[],
@@ -46,77 +47,86 @@ async function runAgent(
     onTool: (n: string) => void
 ): Promise<{ text: string; tools: string[] }> {
     const key = await getKey();
-    if (!key) throw new Error("Chave Gemini não configurada.");
-    const tools: string[] = [];
-    let contents = [...history.slice(-12), { role: 'user', parts: [{ text: msg }] }];
+    if (!key) throw new Error("Chave Gemini não configurada. Vá em Configurações → Integrações → APIs de IA.");
 
-    // Modelos em ordem de preferência (todos suportados no AI Studio)
-    const MODELS = [
+    const usedTools: string[] = [];
+    const genAI = new GoogleGenAI({ apiKey: key });
+
+    // Modelos de texto atualizados — igual ao gerador de imagens
+    const TEXT_MODELS = [
+        'gemini-3.1-pro-preview',
         'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
         'gemini-1.5-flash',
-        'gemini-pro',
-        'gemini-1.0-pro',
     ];
 
-    // Helper para chamar o Gemini com ou sem function declarations
-    const callGemini = async (model: string, useTools: boolean) => {
-        const body: Record<string, unknown> = {
-            system_instruction: { parts: [{ text: SYSTEM }] },
-            contents,
-            generationConfig: { temperature: 0.8, maxOutputTokens: 1024 },
-        };
-        if (useTools) body.tools = [{ functionDeclarations: TOOL_DECLARATIONS }];
-        return fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-        );
-    };
-
-    // Encontra o primeiro modelo disponível
-    let workingModel: string | null = null;
-    let firstRes: Response | null = null;
-    for (const model of MODELS) {
-        const r = await callGemini(model, true);
-        if (r.ok || r.status !== 404) { workingModel = model; firstRes = r; break; }
+    // Encontra o primeiro modelo disponível via SDK
+    let workingModel = '';
+    let lastErr = '';
+    for (const model of TEXT_MODELS) {
+        try {
+            await genAI.models.generateContent({
+                model,
+                contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+                config: { maxOutputTokens: 1 },
+            });
+            workingModel = model;
+            break;
+        } catch (e: unknown) {
+            const err = e as { message?: string };
+            lastErr = err?.message || String(e);
+            // Se não for 404/not found, pode ser erro de quota/rede — usa esse modelo mesmo
+            if (!lastErr.includes('404') && !lastErr.includes('not found') && !lastErr.includes('not supported')) {
+                workingModel = model;
+                break;
+            }
+        }
     }
-    // Fallback sem function declarations
+
     if (!workingModel) {
-        for (const model of MODELS) {
-            const r = await callGemini(model, false);
-            if (r.ok || r.status !== 404) { workingModel = model; firstRes = r; break; }
-        }
-    }
-    if (!workingModel || !firstRes) {
-        throw new Error('Nenhum modelo Gemini disponível para esta chave. Verifique a chave em Configurações → Integrações → APIs de IA.');
+        throw new Error(`Nenhum modelo Gemini disponível. Erro: ${lastErr.slice(0, 150)}`);
     }
 
-    // Agora faz o loop de agentic tool calling com o modelo que funcionou
-    const useTools = workingModel !== null;
-    const currentRes = firstRes;
+    // Histórico formatado (últimas 12 trocas)
+    let contents: { role: string; parts: unknown[] }[] = [
+        ...history.slice(-12),
+        { role: 'user', parts: [{ text: msg }] }
+    ];
 
+    // Agentic loop — até 5 rodadas de tool calling
     for (let i = 0; i < 5; i++) {
-        const res = i === 0 ? currentRes : await callGemini(workingModel, useTools);
-        if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`Gemini ${res.status}: ${errText.slice(0, 200)}`);
+        const response = await genAI.models.generateContent({
+            model: workingModel,
+            contents,
+            config: {
+                systemInstruction: SYSTEM,
+                tools: [{ functionDeclarations: TOOL_DECLARATIONS as any[] }],
+                temperature: 0.8,
+                maxOutputTokens: 1024,
+            } as Record<string, unknown>,
+        });
+
+        const candidate = (response as any).candidates?.[0];
+        const parts = candidate?.content?.parts ?? [];
+        const funcCalls = parts.filter((p: any) => p.functionCall);
+
+        if (!funcCalls.length) {
+            const text = (response as any).text?.trim() || parts.find((p: any) => p.text)?.text?.trim() || 'Pronto!';
+            return { text, tools: usedTools };
         }
-        const data = await res.json() as {
-            candidates?: Array<{ content?: { parts?: Array<{ text?: string; functionCall?: { name: string; args: Record<string, unknown> } }> } }>;
-        };
-        const parts = data.candidates?.[0]?.content?.parts ?? [];
-        const calls = parts.filter(p => p.functionCall);
-        if (!calls.length) return { text: parts.find(p => p.text)?.text ?? "Pronto!", tools };
+
         contents = [...contents, { role: 'model', parts }];
-        const responses = [];
-        for (const p of calls) {
-            const { name, args } = p.functionCall!;
-            onTool(name); tools.push(name);
+        const responses: unknown[] = [];
+        for (const p of funcCalls) {
+            const { name, args } = p.functionCall;
+            onTool(name);
+            usedTools.push(name);
             const r = await executeTool(name, args);
             responses.push({ functionResponse: { name, response: { result: r.mensagem, dados: r.dados } } });
         }
         contents = [...contents, { role: 'user', parts: responses }];
     }
-    return { text: "Concluído!", tools };
+    return { text: 'Concluído!', tools: usedTools };
 }
 
 interface Msg { id: string; role: 'user' | 'ai'; text: string; time: string; tools?: string[] }
@@ -264,16 +274,16 @@ export default function FloatingAgent() {
     return (
         <>
             <style>{`
-                @keyframes maxFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-                @keyframes maxPulse { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(2);opacity:0} }
-                @keyframes maxSlide { from{opacity:0;transform:translateY(10px) scale(.96)} to{opacity:1;transform:none} }
-                @keyframes maxDot   { 0%,80%,100%{transform:scale(.5);opacity:.3} 40%{transform:scale(1);opacity:1} }
-                .mfloat { animation:maxFloat 3s ease-in-out infinite; }
-                .mslide { animation:maxSlide .2s cubic-bezier(.22,1,.36,1) forwards; }
-                .mdot   { animation:maxDot 1.2s ease-in-out infinite; }
-                .mdot2  { animation-delay:.2s; }
-                .mdot3  { animation-delay:.4s; }
-            `}</style>
+@keyframes maxFloat { 0 %, 100 % { transform: translateY(0) } 50 % { transform: translateY(-6px) } }
+@keyframes maxPulse { 0 % { transform: scale(1); opacity: .6 } 100 % { transform: scale(2); opacity: 0 } }
+@keyframes maxSlide { from{ opacity: 0; transform: translateY(10px) scale(.96) } to{ opacity: 1; transform: none } }
+@keyframes maxDot   { 0 %, 80 %, 100 % { transform: scale(.5); opacity: .3 } 40 % { transform: scale(1); opacity: 1 } }
+                .mfloat { animation:maxFloat 3s ease -in -out infinite; }
+                .mslide { animation:maxSlide .2s cubic - bezier(.22, 1, .36, 1) forwards; }
+                .mdot   { animation:maxDot 1.2s ease -in -out infinite; }
+                .mdot2  { animation - delay: .2s; }
+                .mdot3  { animation - delay: .4s; }
+`}</style>
 
             {/* ── Painel Glass ── */}
             {open && (
@@ -287,7 +297,7 @@ export default function FloatingAgent() {
                         backdropFilter: 'blur(24px)',
                         WebkitBackdropFilter: 'blur(24px)',
                         border: '1px solid rgba(212,160,23,0.2)',
-                        boxShadow: `0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,160,23,0.1)`,
+                        boxShadow: `0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(212, 160, 23, 0.1)`,
                     }}>
 
                     {/* Header minimalista */}
@@ -333,7 +343,7 @@ export default function FloatingAgent() {
                         {!msgs.length && (
                             <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
                                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center mfloat"
-                                    style={{ background: G.btn, boxShadow: `0 6px 20px ${G.glow}` }}>
+                                    style={{ background: G.btn, boxShadow: `0 6px 20px ${G.glow} ` }}>
                                     <Bot size={32} />
                                 </div>
                                 <p className="text-white/80 text-sm font-medium">Oi! Sou a Max 👋</p>
@@ -460,7 +470,7 @@ export default function FloatingAgent() {
                         className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl relative overflow-hidden cursor-pointer transition-all duration-200", !open && "mfloat")}
                         style={{
                             background: open ? G.btnOpen : G.btn,
-                            boxShadow: `0 8px 28px ${G.glow}, 0 2px 8px rgba(0,0,0,0.5)`,
+                            boxShadow: `0 8px 28px ${G.glow}, 0 2px 8px rgba(0, 0, 0, 0.5)`,
                         }}>
                         <div className="absolute inset-0 pointer-events-none"
                             style={{ background: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.25) 0%, transparent 55%)' }} />
