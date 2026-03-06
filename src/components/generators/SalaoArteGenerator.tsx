@@ -117,6 +117,9 @@ export default function SalaoArteGenerator() {
     const [estiloVisual, setEstiloVisual] = useState('elegant');
     const [lensType, setLensType] = useState('medium');
     const [lightingType, setLightingType] = useState('studio');
+    const [shotType, setShotType] = useState('MEDIUM');
+    const [sobriety, setSobriety] = useState(50);
+    const [negativeSpaceSide, setNegativeSpaceSide] = useState('left');
     const [subjectImage, setSubjectImage] = useState<ReferenceImage | null>(null);
     const [refImage, setRefImage] = useState<ReferenceImage | null>(null);
 
@@ -305,15 +308,13 @@ export default function SalaoArteGenerator() {
                     lens: lensType,
                     lighting: lightingType,
                     estiloVisual: estiloVisual,
+                    shotType: shotType,
+                    negativeSpaceSide: negativeSpaceSide,
+                    sobriety: sobriety,
                 }
             );
 
-            let sobriety = 60;
-            if (estiloVisual === 'institutional') sobriety = 85;
-            else if (estiloVisual === 'ultra_realistic' || estiloVisual === 'pro_portrait') sobriety = 70;
-            else if (estiloVisual === 'classic' || estiloVisual === 'minimalist') sobriety = 80;
-            else if (estiloVisual === 'bold' || estiloVisual === 'glow') sobriety = 35;
-            else if (estiloVisual === 'glamour' || estiloVisual === 'romantic') sobriety = 50;
+            // sobriety vem do slider do usuário (0-100)
 
             const referenceImages: Array<{
                 data: string;
@@ -351,7 +352,7 @@ export default function SalaoArteGenerator() {
                 environment: hasPersonPhoto
                     ? 'Premium professional environment. Cinematic lighting. High-end production quality.'
                     : 'Premium creative environment. High-end production quality.',
-                sobriety,
+                sobriety: sobriety,
                 style: estiloLabel,
                 useStyle: true,
                 colors: {
@@ -398,7 +399,7 @@ export default function SalaoArteGenerator() {
             setError(msg);
             toast.error(msg);
         }
-    }, [titulo, intencao, detalhes, tipoPeca, estiloVisual, lensType, lightingType, categoria, subjectImage, refImage, categoriasLista, buildSalaoPrompt, generate, getDimension, applyLogoOverlay]);
+    }, [titulo, intencao, detalhes, tipoPeca, estiloVisual, lensType, lightingType, shotType, sobriety, negativeSpaceSide, categoria, subjectImage, refImage, categoriasLista, buildSalaoPrompt, generate, getDimension, applyLogoOverlay]);
 
     // ── Download ──
     const handleDownload = useCallback((img: GeneratedImage) => {
@@ -723,6 +724,96 @@ export default function SalaoArteGenerator() {
                                         <p className={`text-[11px] mt-1 leading-tight ${lightingType === l.id ? 'text-amber-200' : 'text-slate-400'}`}>{l.sub}</p>
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        {/* 🎯 Tipo de Shot (extraído do DesignBuilder) */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+                            <label className="block text-sm font-bold text-slate-600 uppercase tracking-wider mb-1">
+                                🎯 Tipo de Shot
+                            </label>
+                            <p className="text-[11px] text-slate-400 mb-4">Define o recorte e foco do sujeito na cena</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[
+                                    { id: 'CLOSE_UP', label: 'Close-up', sub: 'Rosto / detalhe extremo', emoji: '👁️' },
+                                    { id: 'MEDIUM', label: 'Plano Médio', sub: 'Busto / cintura acima', emoji: '🧍' },
+                                    { id: 'AMERICAN', label: 'Americano', sub: 'Joelhos acima / postura', emoji: '🤵' },
+                                ].map((s) => (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => setShotType(s.id)}
+                                        className={`p-4 rounded-xl text-left transition-all ${shotType === s.id
+                                            ? 'bg-amber-700 text-white shadow-md scale-[1.02]'
+                                            : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-100 hover:border-slate-300'
+                                            }`}
+                                    >
+                                        <span className="text-lg mb-1 block">{s.emoji}</span>
+                                        <span className="text-sm font-semibold block">{s.label}</span>
+                                        <p className={`text-[11px] mt-1 leading-tight ${shotType === s.id ? 'text-amber-200' : 'text-slate-400'}`}>{s.sub}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ◻️ Espaço Negativo para Texto (NEGATIVE SPACE RULE do DesignBuilder) */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+                            <label className="block text-sm font-bold text-slate-600 uppercase tracking-wider mb-1">
+                                ◻️ Espaço para Texto (Negative Space)
+                            </label>
+                            <p className="text-[11px] text-slate-400 mb-4">Reserva uma área limpa para o título, slogan ou CTA. Com degradê suave e Rack Focus blur para máxima legibilidade.</p>
+                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                                {[
+                                    { id: 'left', label: 'Esquerda', emoji: '◀️' },
+                                    { id: 'right', label: 'Direita', emoji: '▶️' },
+                                    { id: 'center', label: 'Centro', emoji: '⬛' },
+                                    { id: 'top', label: 'Topo', emoji: '🔼' },
+                                    { id: 'bottom', label: 'Base', emoji: '🔽' },
+                                ].map((n) => (
+                                    <button
+                                        key={n.id}
+                                        onClick={() => setNegativeSpaceSide(n.id)}
+                                        className={`p-3 rounded-xl text-center transition-all ${negativeSpaceSide === n.id
+                                            ? 'bg-amber-700 text-white shadow-md scale-[1.02]'
+                                            : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-100 hover:border-slate-300'
+                                            }`}
+                                    >
+                                        <span className="text-xl block mb-1">{n.emoji}</span>
+                                        <span className="text-xs font-semibold">{n.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 🎛️ Sobriedade Visual (Sobriety Slider — DesignBuilder) */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+                            <label className="block text-sm font-bold text-slate-600 uppercase tracking-wider mb-1">
+                                🎛️ Intensidade Criativa
+                            </label>
+                            <p className="text-[11px] text-slate-400 mb-4">Controla o "volume" visual. Sóbrio = limpo e profissional. Impactante = drama máximo.</p>
+                            <div className="flex items-center gap-4">
+                                <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Sóbrio</span>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    value={sobriety}
+                                    aria-label="Intensidade Criativa (Sobriedade)"
+                                    title="Intensidade Criativa"
+                                    onChange={(e) => setSobriety(Number(e.target.value))}
+                                    className="flex-1 h-2 rounded-full appearance-none bg-gradient-to-r from-slate-200 via-amber-400 to-amber-700 cursor-pointer"
+                                />
+                                <span className="text-xs text-slate-500 font-medium whitespace-nowrap">Impactante</span>
+                            </div>
+                            <div className="mt-3 text-center">
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${sobriety > 70 ? 'bg-slate-100 text-slate-600' :
+                                    sobriety < 30 ? 'bg-amber-700 text-white' :
+                                        'bg-amber-100 text-amber-800'
+                                    }`}>
+                                    {sobriety > 70 ? '🔵 Sóbrio — Limpo e Profissional' :
+                                        sobriety < 30 ? '🔴 Impactante — Máximo Drama Visual' :
+                                            '🟡 Equilibrado — Impacto com Elegância'} ({sobriety}%)
+                                </span>
                             </div>
                         </div>
 
