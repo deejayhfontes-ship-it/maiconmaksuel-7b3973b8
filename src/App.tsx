@@ -73,6 +73,7 @@ import FichaAvaliacao from "./pages/FichaAvaliacao";
 import NpsPesquisa from "./pages/NpsPesquisa";
 import ConfiguracoesFiscais from "./pages/ConfiguracoesFiscais";
 import GeradorArtes from "./pages/GeradorArtes";
+import FloatingAgent from "@/components/dashboard/FloatingAgent";
 
 const queryClient = new QueryClient();
 const RouterComponent = isDesktopWrapper() ? HashRouter : BrowserRouter;
@@ -90,6 +91,7 @@ const App = () => (
                   <Toaster />
                   <Sonner position="top-right" expand closeButton richColors />
                   <RouterComponent>
+                    <FloatingAgent />
                     <Routes>
                       {/* Public routes */}
                       <Route path="/login" element={<Login />} />

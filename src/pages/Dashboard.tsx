@@ -18,7 +18,6 @@ import BlocoNotas from "@/components/dashboard/BlocoNotas";
 import Calculadora from "@/components/dashboard/Calculadora";
 import MuralAvisos from "@/components/dashboard/MuralAvisos";
 import { WhatsAppDashboardCard } from "@/components/dashboard/WhatsAppWidget";
-import AgenteVirtual from "@/components/dashboard/AgenteVirtual";
 import iconeMaicon from "@/assets/icone-maicon.svg";
 import {
   LineChart,
@@ -440,9 +439,6 @@ const Dashboard = () => {
       <div className={`grid grid-cols-1 gap-4 ${isNotebook ? 'lg:grid-cols-2' : 'lg:grid-cols-4'}`}>
         {/* WhatsApp Card */}
         <WhatsAppDashboardCard />
-
-        {/* Agente Virtual Max — IA Gemini */}
-        <AgenteVirtual />
 
         {/* Gráfico de Faturamento - OCULTO se não tiver permissão */}
         {showFaturamento && (
