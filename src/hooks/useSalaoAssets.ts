@@ -375,20 +375,21 @@ TYPOGRAPHIC HIERARCHY (render all 3 levels):
    — Position: upper quadrant of the negative space area, flush or centered.
 
 2. MAIN HEADLINE — THE CAMPAIGN TITLE (dominant):
-   — Text verbatim: "${tema}"
+   — CRITICAL: Render this EXACT text ONE TIME ONLY (do NOT translate, do NOT duplicate, do NOT add a second version): "${tema}"
    — Large, commanding size (~0.09–0.12× image height). Font: high-contrast editorial serif (Didot, Playfair Display, or Bodoni-style) OR a weightless geometric sans (Futura Light). 
    — Color: crisp white with subtle text-shadow or slight glow for depth. OR deep charcoal on light negative space.
    — Layout: Left-aligned or centered depending on negative space side. Max 3 lines. NO hyphenation.
    — Line-height tight (1.0–1.1). Optical kerning active.
+   — STRICT: Show this text ONCE. Never show it twice in different styles. Never add English translation below it.
 
 3. BODY / OFFER LINE (medium, supporting):
-   — Text: "${detalhes || intencao || 'Exclusividade e excelência em tratamentos premium'}"
+   — CRITICAL: Render this EXACT text ONE TIME ONLY: "${detalhes || intencao || 'Exclusividade e excelência em tratamentos premium'}"
    — Size: ~0.035× image height. Weight: regular (400) or light (300). Same typeface family as headline.
    — Color: 85% white or pale cream. Slightly translucent if over photo.
    — Position: directly below headline, 0.015× image height vertical gap.
 
 4. CTA PILL / ACTION LINE (smallest, bottom of text block):
-   — A refined call-to-action. Text: "Agende seu horário" or "Conheça nossa coleção" — uppercase, tracked.
+   — A refined call-to-action. Text: "Agende seu horário" — uppercase, tracked.
    — Either: (a) minimal pill border outline in white with text inside, or (b) plain text with a thin underline rule.
    — Size: ~0.025× image height. Weight: medium (500).
    — Position: 0.025× image height below body text.
@@ -401,7 +402,8 @@ LAYOUT RULES:
 — NO drop shadows on the full block — only subtle per-character shadow where needed for legibility.
 — NO rectangular background boxes behind text. Text must breathe directly over the gradient/photo.
 — NO border frames around the entire layout.
-— NO generic clipart, symbols, or decorative elements unless a single thin horizontal rule is used.`,
+— NO generic clipart, symbols, or decorative elements unless a single thin horizontal rule is used.
+— EACH TEXT ELEMENT APPEARS EXACTLY ONCE. Zero repetitions. Zero translations. Zero duplicates.`,
 
             // [SOBRIETY / INTENSIDADE CRIATIVA]
             sobrietyNote,
