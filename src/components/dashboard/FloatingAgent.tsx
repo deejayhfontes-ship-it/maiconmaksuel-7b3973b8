@@ -27,8 +27,8 @@ async function getKey() {
     // Re-fetch a cada 60s para pegar chave atualizada (ex: após troca no Configurações)
     if (_key && Date.now() - _keyTs < 60_000) return _key;
     try {
-        const r = await fetch(`${SB_URL} /rest/v1 / api_keys ? service = eq.gemini & is_active=eq.true & select=api_key & limit=1`,
-            { headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON} ` } });
+        const r = await fetch(`${SB_URL}/rest/v1/api_keys?service=eq.gemini&is_active=eq.true&select=api_key&limit=1`,
+            { headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}` } });
         const d: { api_key: string }[] = await r.json();
         if (d[0]?.api_key) { _key = d[0].api_key; _keyTs = Date.now(); }
     } catch { /**/ }
@@ -37,9 +37,9 @@ async function getKey() {
 
 const SYSTEM = `Você é a Max, assistente inteligente do Salão Maicon Maksuel.
 Acesso real ao sistema: agendamentos, clientes, WhatsApp, lembretes, resumos.
-    Criatividade: posts, campanhas, hashtags, fidelização.
-        Hoje: ${new Date().toLocaleDateString('pt-BR')}. Responda em português, de forma breve e direta.
-Textos de post / WhatsApp: sempre prontos para copiar.`;
+Criatividade: posts, campanhas, hashtags, fidelização.
+Hoje: ${new Date().toLocaleDateString('pt-BR')}. Responda em português, de forma breve e direta.
+Textos de post/WhatsApp: sempre prontos para copiar.`;
 
 async function runAgent(
     history: { role: string; parts: unknown[] }[],
