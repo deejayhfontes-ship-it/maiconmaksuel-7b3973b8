@@ -48,7 +48,8 @@ import {
   Camera,
   Plus,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
