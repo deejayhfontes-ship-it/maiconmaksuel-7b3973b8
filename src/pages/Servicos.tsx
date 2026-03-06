@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,8 +24,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useServicos, Servico } from "@/hooks/useServicos";
 import ServicoFormDialog from "@/components/servicos/ServicoFormDialog";
+import { supabase } from "@/integrations/supabase/client";
 
-// iOS Colors for Service Categories
+// Cores padrão por nome de categoria (fallback)
 const categoriaColors: Record<string, string> = {
   Cabelo: "bg-primary/12 text-primary border-primary/20",
   Barba: "bg-warning/12 text-warning border-warning/20",
@@ -37,7 +38,9 @@ const categoriaColors: Record<string, string> = {
   Outros: "bg-muted text-muted-foreground border-border",
 };
 
-const categorias = ["Cabelo", "Barba", "Manicure", "Pedicure", "Estética", "Depilação", "Massagem", "Outros"];
+// Gera classe de badge usando a cor hex da categoria do banco
+const getBadgeStyle = (cor?: string) =>
+  cor ? { backgroundColor: `${cor}20`, color: cor, borderColor: `${cor}40` } : {};
 
 const formatDuration = (minutes: number) => {
   if (minutes >= 60) {
@@ -56,14 +59,15 @@ const formatPrice = (price: number) => {
 };
 
 const Servicos = () => {
-  const { 
-    servicos, 
-    loading, 
-    syncing, 
-    loadServicos, 
-    deleteServico 
+  const {
+    servicos,
+    loading,
+    syncing,
+    loadServicos,
+    deleteServico
   } = useServicos();
 
+  const [categorias, setCategorias] = useState<{ id: string; nome: string; cor: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("todas");
   const [tipoFilter, setTipoFilter] = useState("todos");
@@ -71,6 +75,19 @@ const Servicos = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedServico, setSelectedServico] = useState<Servico | null>(null);
   const { toast } = useToast();
+
+  // Carregar categorias dinâmicas do Supabase
+  useEffect(() => {
+    supabase
+      .from("categorias_servicos")
+      .select("id, nome, cor")
+      .eq("ativo", true)
+      .order("ordem")
+      .order("nome")
+      .then(({ data }) => {
+        if (data && data.length > 0) setCategorias(data);
+      });
+  }, []);
 
   const filteredServicos = useMemo(() => {
     let result = [...servicos];
@@ -167,8 +184,8 @@ const Servicos = () => {
               Sincronizando
             </Badge>
           )}
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="icon"
             onClick={() => loadServicos()}
             disabled={loading}
@@ -206,8 +223,11 @@ const Servicos = () => {
               <SelectContent>
                 <SelectItem value="todas">Todas categorias</SelectItem>
                 {categorias.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
+                  <SelectItem key={cat.id} value={cat.nome}>
+                    <span className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: cat.cor }} />
+                      {cat.nome}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -268,13 +288,12 @@ const Servicos = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServicos.map((servico) => {
             const isControleInterno = servico.tipo_servico === "controle_interno" || servico.apenas_agenda;
-            
+
             return (
               <Card
                 key={servico.id}
-                className={`relative overflow-hidden transition-all hover:shadow-lg ${
-                  !servico.ativo ? "opacity-60" : ""
-                } ${isControleInterno ? "border-dashed border-warning/40" : ""}`}
+                className={`relative overflow-hidden transition-all hover:shadow-lg ${!servico.ativo ? "opacity-60" : ""
+                  } ${isControleInterno ? "border-dashed border-warning/40" : ""}`}
               >
                 <CardContent className="p-5">
                   <div className="space-y-4">
@@ -292,7 +311,12 @@ const Servicos = () => {
                             variant="outline"
                             className={
                               categoriaColors[servico.categoria || "Outros"] ||
-                              categoriaColors.Outros
+                              "border"
+                            }
+                            style={
+                              !categoriaColors[servico.categoria || ""] && categorias.find(c => c.nome === servico.categoria)
+                                ? getBadgeStyle(categorias.find(c => c.nome === servico.categoria)?.cor)
+                                : {}
                             }
                           >
                             {servico.categoria || "Outros"}

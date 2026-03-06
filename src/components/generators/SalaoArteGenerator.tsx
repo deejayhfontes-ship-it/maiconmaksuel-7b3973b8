@@ -115,6 +115,8 @@ export default function SalaoArteGenerator() {
     const [tipoPeca, setTipoPeca] = useState('post');
     const [formato, setFormato] = useState('quadrado');
     const [estiloVisual, setEstiloVisual] = useState('elegant');
+    const [lensType, setLensType] = useState('medium');
+    const [lightingType, setLightingType] = useState('studio');
     const [subjectImage, setSubjectImage] = useState<ReferenceImage | null>(null);
     const [refImage, setRefImage] = useState<ReferenceImage | null>(null);
 
@@ -295,9 +297,15 @@ export default function SalaoArteGenerator() {
             const prompt = buildSalaoPrompt(
                 pecaLabel,
                 titulo,
-                intencao || 'Promover servico',
+                intencao || 'brand communication',
                 detalhes,
-                catObj?.nome
+                catObj?.nome,
+                dimension,
+                {
+                    lens: lensType,
+                    lighting: lightingType,
+                    estiloVisual: estiloVisual,
+                }
             );
 
             let sobriety = 60;
@@ -335,14 +343,14 @@ export default function SalaoArteGenerator() {
             const hasPersonPhoto = !!subjectImage;
 
             const generationConfig: GenerationConfig = {
-                niche: catObj?.nome || titulo || 'Criacao de Arte',
+                niche: catObj?.nome || titulo || 'Creative Design',
                 gender: 'female',
                 subjectDescription: hasPersonPhoto
-                    ? `Replique FIELMENTE a pessoa da foto de referencia. Mantenha 100% das caracteristicas faciais, expressao e aparencia. ${titulo}`
-                    : `Material promocional premium sobre: ${titulo}. ${prompt}`,
+                    ? `Replicate EXACTLY the person in the reference photo — facial features, expression, hair, skin tone, all details must match perfectly. Subject: ${titulo}`
+                    : prompt,
                 environment: hasPersonPhoto
-                    ? 'Ambiente profissional, elegante e moderno. Iluminacao cinematografica premium.'
-                    : 'Ambiente premium, elegante e moderno. Estetica clean e sofisticada.',
+                    ? 'Premium professional environment. Cinematic lighting. High-end production quality.'
+                    : 'Premium creative environment. High-end production quality.',
                 sobriety,
                 style: estiloLabel,
                 useStyle: true,
@@ -362,7 +370,7 @@ export default function SalaoArteGenerator() {
                 useFloatingElements: false,
                 floatingElementsDescription: '',
                 shotType: hasPersonPhoto ? 'MEDIUM' : 'CLOSE_UP',
-                additionalInstructions: `${hasPersonPhoto ? prompt : `O titulo "${titulo}" deve aparecer em texto grande e legivel no material. ${prompt}`}\n\n${detalhes || ''}`,
+                additionalInstructions: prompt + (detalhes ? `\n\nExtra context: ${detalhes}` : ''),
                 dimension,
                 safeAreaSide: 'CENTER',
                 personCount: hasPersonPhoto ? 1 : 0,
@@ -390,7 +398,7 @@ export default function SalaoArteGenerator() {
             setError(msg);
             toast.error(msg);
         }
-    }, [titulo, intencao, detalhes, tipoPeca, estiloVisual, categoria, subjectImage, refImage, categoriasLista, buildSalaoPrompt, generate, getDimension, applyLogoOverlay]);
+    }, [titulo, intencao, detalhes, tipoPeca, estiloVisual, lensType, lightingType, categoria, subjectImage, refImage, categoriasLista, buildSalaoPrompt, generate, getDimension, applyLogoOverlay]);
 
     // ── Download ──
     const handleDownload = useCallback((img: GeneratedImage) => {
@@ -650,6 +658,69 @@ export default function SalaoArteGenerator() {
                                     >
                                         <span className="text-sm font-semibold">{s.label}</span>
                                         <p className={`text-xs mt-1 ${estiloVisual === s.id ? 'text-amber-200' : 'text-slate-400'}`}>{s.desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 📷 Lente / Enquadramento */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+                            <label className="block text-sm font-bold text-slate-600 uppercase tracking-wider mb-1">
+                                📷 Lente / Enquadramento
+                            </label>
+                            <p className="text-[11px] text-slate-400 mb-4">Define o crop, bokeh e perspectiva da imagem</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {[
+                                    { id: 'close_up', label: 'Close-up', sub: '85mm · f/1.8 · bokeh intenso', emoji: '🔍' },
+                                    { id: 'medium', label: 'Plano Médio', sub: '50mm · f/2.8 · perspectiva natural', emoji: '👤' },
+                                    { id: 'wide', label: 'Plano Aberto', sub: '35mm · f/4 · contexto amplo', emoji: '🏞️' },
+                                    { id: 'ultra_wide', label: 'Ultra Wide', sub: '24mm · f/5.6 · cena toda', emoji: '🌅' },
+                                    { id: 'macro', label: 'Macro', sub: '100mm · detalhe extremo', emoji: '🔬' },
+                                ].map((l) => (
+                                    <button
+                                        key={l.id}
+                                        onClick={() => setLensType(l.id)}
+                                        className={`p-4 rounded-xl text-left transition-all ${lensType === l.id
+                                            ? 'bg-amber-700 text-white shadow-md scale-[1.02]'
+                                            : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-100 hover:border-slate-300'
+                                            }`}
+                                    >
+                                        <span className="text-lg mb-1 block">{l.emoji}</span>
+                                        <span className="text-sm font-semibold block">{l.label}</span>
+                                        <p className={`text-[11px] mt-1 leading-tight ${lensType === l.id ? 'text-amber-200' : 'text-slate-400'}`}>{l.sub}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 💡 Iluminação */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+                            <label className="block text-sm font-bold text-slate-600 uppercase tracking-wider mb-1">
+                                💡 Setup de Iluminação
+                            </label>
+                            <p className="text-[11px] text-slate-400 mb-4">Controla o clima, sombra e profundidade visual</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[
+                                    { id: 'studio', label: 'Estúdio', sub: 'Key + Fill + Rim light', emoji: '🎬' },
+                                    { id: 'golden', label: 'Golden Hour', sub: 'Luz natural quente', emoji: '🌇' },
+                                    { id: 'cinematic', label: 'Cinematográfico', sub: 'Chiaroscuro dramático', emoji: '🎥' },
+                                    { id: 'neon', label: 'Neon RGB', sub: 'Luzes coloridas urbanas', emoji: '🌈' },
+                                    { id: 'soft', label: 'Suave', sub: 'Difuso, zero sombra dura', emoji: '☁️' },
+                                    { id: 'butterfly', label: 'Butterfly', sub: 'Luz glamour de beleza', emoji: '✨' },
+                                    { id: 'rembrandt', label: 'Rembrandt', sub: 'Triângulo dramático', emoji: '🖼️' },
+                                    { id: 'editorial', label: 'Editorial', sub: 'High-key, fundo branco', emoji: '📸' },
+                                ].map((l) => (
+                                    <button
+                                        key={l.id}
+                                        onClick={() => setLightingType(l.id)}
+                                        className={`p-4 rounded-xl text-left transition-all ${lightingType === l.id
+                                            ? 'bg-amber-700 text-white shadow-md scale-[1.02]'
+                                            : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-100 hover:border-slate-300'
+                                            }`}
+                                    >
+                                        <span className="text-lg mb-1 block">{l.emoji}</span>
+                                        <span className="text-sm font-semibold block">{l.label}</span>
+                                        <p className={`text-[11px] mt-1 leading-tight ${lightingType === l.id ? 'text-amber-200' : 'text-slate-400'}`}>{l.sub}</p>
                                     </button>
                                 ))}
                             </div>
