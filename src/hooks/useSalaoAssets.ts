@@ -363,11 +363,21 @@ export function useSalaoAssets(categoriaSlug?: string) {
             // [COMPOSIÇÃO + SAFE ZONE]
             `COMPOSITION: ${COMPOSITION_MAP[composition] || COMPOSITION_MAP.rule_of_thirds}.`,
 
+            // [DIAGRAMAÇÃO DE ANÚNCIO — OBRIGATÓRIO]
+            // A imagem DEVE conter texto tipografado como num anúncio publicitário real.
+            // O texto deve estar renderizado diretamente sobre o negative space reservado.
+            `ADVERTISEMENT LAYOUT — MANDATORY TEXT IN IMAGE:
+- HEADLINE (título): Render the text "${tema}" as a large, bold, high-contrast headline placed in the negative space area. Use clean sans-serif or elegant serif typography. White or cream color for dark backgrounds, dark for light backgrounds. Letter-spacing tight. Size: prominent and readable.
+- SUBHEADLINE (subtítulo): Render a short supporting line describing the offer or message: "${detalhes || intencao || 'Exclusividade e excelência em beleza'}". Smaller than headline, same typographic family. Light weight or regular.
+- CTA ELEMENT: Place a minimal call-to-action element in the negative space below the subheadline — a single line of text or a simple outlined pill/button shape with text like "Saiba mais" or "Agende já". Subtle but present.
+- TYPOGRAPHY RULES: Text must be crisp, anti-aliased, legible. NO distortion. Perfect kerning. Shadow or subtle glow for readability over photographic content.
+- The text layout must feel like a high-end advertising campaign — not like a meme or amateur overlay. Think Vogue, Louis Vuitton, Lancôme level typography.`,
+
             // [SOBRIETY / INTENSIDADE CRIATIVA]
             sobrietyNote,
 
-            // [COMANDOS DE NEGAÇÃO]
-            `AVOID: watermarks, logos, visible text in image, stock photo clichés, generic clipart, blurry faces, distorted anatomy, oversaturated flat colors, amateur composition. No salon-specific props unless they serve the narrative.`,
+            // [COMANDOS DE NEGAÇÃO — sem proibir texto, pois é obrigatório]
+            `AVOID: watermarks, stock photo clichés, generic clipart, blurry faces, distorted anatomy, oversaturated flat colors, amateur composition, illegible text, deformed letters. No salon-specific props unless they serve the narrative.`,
 
             // [ASPECT RATIO + PARÂMETROS FINAIS — linha 607 do JS]
             `${aspectRatio} --v 5 --style cinematic`,
