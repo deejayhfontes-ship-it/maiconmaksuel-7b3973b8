@@ -226,50 +226,40 @@ export default function SalaoArteGenerator() {
                     // Desenha a imagem base
                     ctx.drawImage(img, 0, 0);
 
-                    // Calcula tamanho do logo (15% da largura da imagem)
-                    const logoMaxW = img.width * 0.15;
+                    // ── TARJA MINIMALISTA full-width na base ──
+                    // Altura da tarja: 11% da imagem
+                    const tarjaH = img.height * 0.11;
+                    const tarjaY = img.height - tarjaH;
+
+                    // Gradiente vertical: transparente → preto 80%
+                    const grad = ctx.createLinearGradient(0, tarjaY, 0, img.height);
+                    grad.addColorStop(0, 'rgba(0,0,0,0)');
+                    grad.addColorStop(0.4, 'rgba(0,0,0,0.55)');
+                    grad.addColorStop(1, 'rgba(0,0,0,0.82)');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, tarjaY, img.width, tarjaH);
+
+                    // ── LOGO centralizada na tarja ──
+                    // Logo: máx 12% da largura
+                    const logoMaxW = img.width * 0.12;
                     const logoScale = logoMaxW / logo.width;
                     const logoW = logo.width * logoScale;
                     const logoH = logo.height * logoScale;
 
-                    // Margem de 3% da menor dimensão
-                    const margin = Math.min(img.width, img.height) * 0.03;
+                    // Posição: centralizada horizontalmente, verticalmente no meio da tarja
+                    const logoX = (img.width - logoW) / 2;
+                    const logoY = tarjaY + (tarjaH - logoH) / 2;
 
-                    // Posição: canto inferior direito
-                    const logoX = img.width - logoW - margin;
-                    const logoY = img.height - logoH - margin;
-
-                    // Pill escuro atrás do logo — contraste garantido em qualquer fundo
-                    const fadeW = logoW + margin * 2.5;
-                    const fadeH = logoH + margin * 2;
-                    const fadeX = img.width - fadeW - margin * 0.5;
-                    const fadeY = img.height - fadeH - margin * 0.5;
-                    const rx = fadeH * 0.35;
-
+                    // Logo em branco via globalCompositeOperation 'screen'
                     ctx.save();
-                    ctx.globalAlpha = 0.65;
-                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                    ctx.beginPath();
-                    ctx.moveTo(fadeX + rx, fadeY);
-                    ctx.arcTo(fadeX + fadeW, fadeY, fadeX + fadeW, fadeY + fadeH, rx);
-                    ctx.arcTo(fadeX + fadeW, fadeY + fadeH, fadeX, fadeY + fadeH, rx);
-                    ctx.arcTo(fadeX, fadeY + fadeH, fadeX, fadeY, rx);
-                    ctx.arcTo(fadeX, fadeY, fadeX + fadeW, fadeY, rx);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.restore();
-
-                    // Drop-shadow branco + logo em screen (fica branca sobre fundo escuro do pill)
-                    ctx.save();
-                    ctx.shadowColor = 'rgba(255,255,255,0.7)';
-                    ctx.shadowBlur = 6;
+                    ctx.globalAlpha = 0.92;
+                    ctx.shadowColor = 'rgba(255,255,255,0.3)';
+                    ctx.shadowBlur = 4;
                     ctx.globalCompositeOperation = 'screen';
                     ctx.drawImage(logo, logoX, logoY, logoW, logoH);
                     ctx.restore();
 
-                    // Restaura composição normal
                     ctx.globalCompositeOperation = 'source-over';
-
                     resolve(canvas.toDataURL('image/png'));
                 };
                 logo.onerror = () => resolve(imageSrc);
