@@ -1,6 +1,6 @@
-const CACHE_NAME = 'mm-gestao-v2';
-const APP_SHELL_CACHE = 'mm-gestao-shell-v2';
-const RUNTIME_CACHE = 'mm-gestao-runtime-v2';
+const CACHE_NAME = 'mm-gestao-v3';
+const APP_SHELL_CACHE = 'mm-gestao-shell-v3';
+const RUNTIME_CACHE = 'mm-gestao-runtime-v3';
 
 // Core app shell - these get precached on install
 const APP_SHELL = [

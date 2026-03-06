@@ -26,6 +26,7 @@ import {
   Ticket,
   ClipboardCheck,
   StarHalf,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ const allMenuItems: MenuItem[] = [
   { title: "Planos", icon: Package, path: "/planos" },
   { title: "Avaliações", icon: ClipboardCheck, path: "/ficha-avaliacao" },
   { title: "NPS", icon: StarHalf, path: "/nps" },
+  { title: "Gerador Artes", icon: Palette, path: "/gerador-artes" },
   { title: "Financeiro", icon: TrendingUp, path: "/financeiro" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
   { title: "WhatsApp", icon: MessageSquare, path: "/whatsapp" },

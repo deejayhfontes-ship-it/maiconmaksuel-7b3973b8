@@ -85,6 +85,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/planos',
     '/ficha-avaliacao',
     '/nps',
+    '/gerador-artes',
   ],
   notebook: [
     // Agenda + basic management (NO caixa, NO vales, NO faturamento, NO whatsapp, NO RH sensitive)

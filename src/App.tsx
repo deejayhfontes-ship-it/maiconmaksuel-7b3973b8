@@ -33,7 +33,6 @@ import RecuperarSenha from "./pages/RecuperarSenha";
 import NotFound from "./pages/NotFound";
 import NotasFiscais from "./pages/NotasFiscais";
 import NotaFiscalDetalhe from "./pages/NotaFiscalDetalhe";
-import ConfiguracoesFiscal from "./pages/ConfiguracoesFiscal";
 import ConfiguracoesWhatsApp from "./pages/ConfiguracoesWhatsApp";
 import ConfirmacoesWhatsApp from "./pages/ConfirmacoesWhatsApp";
 import ConfirmarAgendamento from "./pages/ConfirmarAgendamento";
@@ -72,6 +71,8 @@ import VouchersCupons from "./pages/VouchersCupons";
 import PlanosPacotes from "./pages/PlanosPacotes";
 import FichaAvaliacao from "./pages/FichaAvaliacao";
 import NpsPesquisa from "./pages/NpsPesquisa";
+import ConfiguracoesFiscais from "./pages/ConfiguracoesFiscais";
+import GeradorArtes from "./pages/GeradorArtes";
 
 const queryClient = new QueryClient();
 const RouterComponent = isDesktopWrapper() ? HashRouter : BrowserRouter;
@@ -132,7 +133,7 @@ const App = () => (
                         <Route path="/usuarios" element={<Usuarios />} />
                         <Route path="/notas-fiscais" element={<NotasFiscais />} />
                         <Route path="/nota-fiscal/:id" element={<NotaFiscalDetalhe />} />
-                        <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscal />} />
+                        <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscais />} />
                         <Route path="/configuracoes/whatsapp" element={<ConfiguracoesWhatsApp />} />
                         <Route path="/configuracoes/metas" element={<MetasSalao />} />
                         <Route path="/confirmacoes-whatsapp" element={<WhatsAppModule />} />
@@ -158,6 +159,8 @@ const App = () => (
                         <Route path="/planos" element={<PlanosPacotes />} />
                         <Route path="/ficha-avaliacao" element={<FichaAvaliacao />} />
                         <Route path="/nps" element={<NpsPesquisa />} />
+                        <Route path="/gerador-artes" element={<GeradorArtes />} />
+                        <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscais />} />
                       </Route>
 
                       {/* Kiosk routes - Minimal client-facing display */}

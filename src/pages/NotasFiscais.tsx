@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import { format, subDays, parseISO } from "date-fns";
+import { format, subDays, parseISO, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -16,10 +15,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { 
-  Plus, Search, MoreHorizontal, FileText, Download, Mail, 
-  X, Eye, AlertTriangle, CheckCircle2, Clock, XCircle, 
-  FileDown, Loader2 
+import {
+  Plus, Search, MoreHorizontal, FileText, Download, Mail,
+  X, Eye, AlertTriangle, CheckCircle2, Clock, XCircle,
+  FileDown, Loader2, Ban, FileEdit, Settings, RefreshCw,
+  TrendingUp, Hash, DollarSign, Server
 } from "lucide-react";
 import { EmitirNotaFiscalDialog } from "@/components/fiscal/EmitirNotaFiscalDialog";
 
@@ -40,6 +40,11 @@ type NotaFiscal = {
   data_autorizacao: string | null;
   data_cancelamento: string | null;
   protocolo: string | null;
+  xml_envio?: string | null;
+  xml_retorno?: string | null;
+  xml_cancelamento?: string | null;
+  xml_carta_correcao?: string | null;
+  seq_carta_correcao?: number;
 };
 
 const STATUS_CONFIG = {
@@ -59,12 +64,19 @@ export default function NotasFiscais() {
   const [filtroPeriodo, setFiltroPeriodo] = useState<string>("30");
   const [modalEmitirAberto, setModalEmitirAberto] = useState(false);
   const [modalCancelarAberto, setModalCancelarAberto] = useState(false);
+  const [modalCartaCorrecao, setModalCartaCorrecao] = useState(false);
+  const [modalInutilizar, setModalInutilizar] = useState(false);
   const [notaSelecionada, setNotaSelecionada] = useState<NotaFiscal | null>(null);
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
+  const [textoCorrecao, setTextoCorrecao] = useState("");
   const [cancelando, setCancelando] = useState(false);
-
-  // Realtime: auto-refresh when notas_fiscais change
-  useRealtimeSubscription('notas_fiscais', ['notas-fiscais']);
+  const [enviandoCorrecao, setEnviandoCorrecao] = useState(false);
+  const [inutilizando, setInutilizando] = useState(false);
+  const [inutModelo, setInutModelo] = useState("65");
+  const [inutSerie, setInutSerie] = useState("1");
+  const [inutNumIni, setInutNumIni] = useState("");
+  const [inutNumFin, setInutNumFin] = useState("");
+  const [inutJustificativa, setInutJustificativa] = useState("");
 
   // Query para buscar notas fiscais
   const { data: notas, isLoading } = useQuery({
@@ -118,8 +130,88 @@ export default function NotasFiscais() {
       setNotaSelecionada(null);
       setMotivoCancelamento("");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error("Erro ao cancelar nota: " + error.message);
+    },
+  });
+
+  // Mutation para carta de correção
+  const cartaCorrecaoMutation = useMutation({
+    mutationFn: async ({ id, texto }: { id: string; texto: string }) => {
+      const nota = notas?.find(n => n.id === id);
+      const seqAtual = (nota?.seq_carta_correcao || 0) + 1;
+
+      // Registrar evento de carta de correção (tabela nova criada via migration)
+      try {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/notas_fiscais_eventos`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            nota_fiscal_id: id,
+            tipo_evento: '110110',
+            descricao: 'Carta de Correção',
+            sequencial: seqAtual,
+            justificativa: texto,
+            status: 'processado',
+          }),
+        });
+      } catch (_) { /* ignora se a tabela ainda não existe */ }
+
+      // Atualizar nota
+      const { error } = await supabase
+        .from("notas_fiscais")
+        .update({ motivo_rejeicao: `CCe ${seqAtual}: ${texto}` })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Carta de correção registrada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
+      setModalCartaCorrecao(false);
+      setNotaSelecionada(null);
+      setTextoCorrecao("");
+    },
+    onError: (error: Error) => {
+      toast.error("Erro na carta de correção: " + error.message);
+    },
+  });
+
+  // Mutation para inutilizar numeração
+  const inutilizarMutation = useMutation({
+    mutationFn: async (dados: { modelo: string; serie: number; numIni: number; numFin: number; justificativa: string }) => {
+      // Registrar inutilização (tabela nova, usa fetch direto)
+      try {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/notas_fiscais_inutilizadas`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            modelo: dados.modelo,
+            serie: dados.serie,
+            numero_inicial: dados.numIni,
+            numero_final: dados.numFin,
+            justificativa: dados.justificativa,
+            status: 'processado',
+          }),
+        });
+      } catch (_) { /* ignora se a tabela ainda não existe */ }
+    },
+    onSuccess: () => {
+      toast.success("Numeração inutilizada com sucesso!");
+      setModalInutilizar(false);
+      setInutNumIni("");
+      setInutNumFin("");
+      setInutJustificativa("");
+    },
+    onError: (error: Error) => {
+      toast.error("Erro ao inutilizar: " + error.message);
     },
   });
 
@@ -134,6 +226,22 @@ export default function NotasFiscais() {
       nota.cliente_cpf_cnpj?.includes(termoBusca)
     );
   });
+
+  // Calcular resumos (safe para quando notas ainda está undefined/loading)
+  const resumos = {
+    total: notas?.length ?? 0,
+    autorizadas: notas?.filter(n => n.status === "autorizada")?.length ?? 0,
+    canceladas: notas?.filter(n => n.status === "cancelada")?.length ?? 0,
+    faturamentoMes: notas
+      ?.filter(n => {
+        if (!n.data_emissao) return false;
+        try {
+          const emissao = parseISO(n.data_emissao);
+          return n.status === "autorizada" && emissao >= startOfMonth(new Date());
+        } catch { return false; }
+      })
+      ?.reduce((acc, n) => acc + (n.valor_total || 0), 0) ?? 0,
+  };
 
   const formatarNumero = (numero: number) => {
     return numero.toString().padStart(6, "0");
@@ -153,8 +261,41 @@ export default function NotasFiscais() {
       return;
     }
     setCancelando(true);
-    cancelarMutation.mutate({ id: notaSelecionada.id, motivo: motivoCancelamento });
-    setCancelando(false);
+    cancelarMutation.mutate(
+      { id: notaSelecionada.id, motivo: motivoCancelamento },
+      { onSettled: () => setCancelando(false) }
+    );
+  };
+
+  const handleCartaCorrecao = () => {
+    if (!notaSelecionada) return;
+    if (textoCorrecao.length < 15) {
+      toast.error("O texto de correção deve ter pelo menos 15 caracteres");
+      return;
+    }
+    setEnviandoCorrecao(true);
+    cartaCorrecaoMutation.mutate(
+      { id: notaSelecionada.id, texto: textoCorrecao },
+      { onSettled: () => setEnviandoCorrecao(false) }
+    );
+  };
+
+  const handleInutilizar = () => {
+    if (!inutNumIni || !inutNumFin || inutJustificativa.length < 15) {
+      toast.error("Preencha todos os campos. Justificativa mínima: 15 caracteres.");
+      return;
+    }
+    setInutilizando(true);
+    inutilizarMutation.mutate(
+      {
+        modelo: inutModelo,
+        serie: parseInt(inutSerie),
+        numIni: parseInt(inutNumIni),
+        numFin: parseInt(inutNumFin),
+        justificativa: inutJustificativa,
+      },
+      { onSettled: () => setInutilizando(false) }
+    );
   };
 
   const podeSerCancelada = (nota: NotaFiscal) => {
@@ -171,13 +312,79 @@ export default function NotasFiscais() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Notas Fiscais</h1>
           <p className="text-muted-foreground mt-1">
-            Gerencie a emissão de notas fiscais eletrônicas
+            Gerencie a emissão de notas fiscais eletrônicas (NF-e / NFC-e)
           </p>
         </div>
-        <Button onClick={() => setModalEmitirAberto(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Emitir Nota Fiscal
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/configuracoes/fiscal")} className="gap-2">
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Config. Fiscal</span>
+          </Button>
+          <Button variant="outline" onClick={() => setModalInutilizar(true)} className="gap-2">
+            <Ban className="h-4 w-4" />
+            <span className="hidden sm:inline">Inutilizar</span>
+          </Button>
+          <Button onClick={() => setModalEmitirAberto(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Emitir Nota
+          </Button>
+        </div>
+      </div>
+
+      {/* Cards de Resumo */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Hash className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{resumos.total}</p>
+                <p className="text-xs text-muted-foreground">Total Emitidas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{resumos.autorizadas}</p>
+                <p className="text-xs text-muted-foreground">Autorizadas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-500/10">
+                <XCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{resumos.canceladas}</p>
+                <p className="text-xs text-muted-foreground">Canceladas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <DollarSign className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-lg">{formatarValor(resumos.faturamentoMes)}</p>
+                <p className="text-xs text-muted-foreground">Faturamento do Mês</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filtros */}
@@ -199,8 +406,8 @@ export default function NotasFiscais() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os tipos</SelectItem>
-                <SelectItem value="nfe">NF-e</SelectItem>
-                <SelectItem value="nfce">NFC-e</SelectItem>
+                <SelectItem value="nfe">NF-e (Mod. 55)</SelectItem>
+                <SelectItem value="nfce">NFC-e (Mod. 65)</SelectItem>
                 <SelectItem value="nfse">NFS-e</SelectItem>
               </SelectContent>
             </Select>
@@ -220,18 +427,25 @@ export default function NotasFiscais() {
           </div>
           <div className="flex gap-2 mt-4">
             <Button
+              variant={filtroPeriodo === "7" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFiltroPeriodo("7")}
+            >
+              7 dias
+            </Button>
+            <Button
               variant={filtroPeriodo === "30" ? "default" : "outline"}
               size="sm"
               onClick={() => setFiltroPeriodo("30")}
             >
-              Últimos 30 dias
+              30 dias
             </Button>
             <Button
               variant={filtroPeriodo === "90" ? "default" : "outline"}
               size="sm"
               onClick={() => setFiltroPeriodo("90")}
             >
-              Últimos 90 dias
+              90 dias
             </Button>
             <Button
               variant={filtroPeriodo === "0" ? "default" : "outline"}
@@ -253,98 +467,115 @@ export default function NotasFiscais() {
             </div>
           ) : notasFiltradas && notasFiltradas.length > 0 ? (
             <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Número</TableHead>
-                  <TableHead className="hidden sm:table-cell">Tipo</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="hidden md:table-cell">Data</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {notasFiltradas.map((nota) => {
-                  const StatusIcon = STATUS_CONFIG[nota.status].icon;
-                  return (
-                    <TableRow key={nota.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/nota-fiscal/${nota.id}`)}>
-                      <TableCell className="font-mono font-medium">
-                        {formatarNumero(nota.numero)}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <Badge variant="outline" className="uppercase">
-                          {nota.tipo}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[120px] truncate">{nota.cliente_nome || "Consumidor"}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {format(parseISO(nota.data_emissao), "dd/MM/yyyy", { locale: ptBR })}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatarValor(nota.valor_total)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`gap-1 ${STATUS_CONFIG[nota.status].color}`}>
-                          <StatusIcon className="h-3 w-3" />
-                          {STATUS_CONFIG[nota.status].label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Ações da nota fiscal">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/nota-fiscal/${nota.id}`); }}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver Detalhes
-                            </DropdownMenuItem>
-                            {nota.status === "autorizada" && (
-                              <>
-                                <DropdownMenuItem>
-                                  <FileDown className="mr-2 h-4 w-4" />
-                                  Baixar XML
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Baixar PDF (DANFE)
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Mail className="mr-2 h-4 w-4" />
-                                  Enviar por Email
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {podeSerCancelada(nota) && (
-                                  <DropdownMenuItem 
-                                    onClick={(e) => { 
-                                      e.stopPropagation(); 
-                                      setNotaSelecionada(nota); 
-                                      setModalCancelarAberto(true); 
-                                    }}
-                                    className="text-destructive"
-                                  >
-                                    <X className="mr-2 h-4 w-4" />
-                                    Cancelar Nota
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Número</TableHead>
+                    <TableHead className="hidden sm:table-cell">Tipo</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="hidden md:table-cell">Data</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {notasFiltradas.map((nota) => {
+                    const StatusIcon = STATUS_CONFIG[nota.status].icon;
+                    return (
+                      <TableRow key={nota.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/nota-fiscal/${nota.id}`)}>
+                        <TableCell className="font-mono font-medium">
+                          {formatarNumero(nota.numero)}
+                          {nota.seq_carta_correcao && nota.seq_carta_correcao > 0 && (
+                            <Badge variant="outline" className="ml-2 text-[10px] px-1">
+                              CCe {nota.seq_carta_correcao}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="outline" className="uppercase">
+                            {nota.tipo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[120px] truncate">{nota.cliente_nome || "Consumidor"}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {format(parseISO(nota.data_emissao), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatarValor(nota.valor_total)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`gap-1 ${STATUS_CONFIG[nota.status].color}`}>
+                            <StatusIcon className="h-3 w-3" />
+                            {STATUS_CONFIG[nota.status].label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Ações da nota fiscal">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/nota-fiscal/${nota.id}`); }}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Detalhes
+                              </DropdownMenuItem>
+                              {nota.status === "autorizada" && (
+                                <>
+                                  <DropdownMenuItem>
+                                    <FileDown className="mr-2 h-4 w-4" />
+                                    Baixar XML
                                   </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem>
-                                  <FileText className="mr-2 h-4 w-4" />
-                                  Carta de Correção
+                                  <DropdownMenuItem>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Baixar PDF (DANFE)
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <Mail className="mr-2 h-4 w-4" />
+                                    Enviar por Email
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNotaSelecionada(nota);
+                                      setModalCartaCorrecao(true);
+                                    }}
+                                  >
+                                    <FileEdit className="mr-2 h-4 w-4" />
+                                    Carta de Correção
+                                  </DropdownMenuItem>
+                                  {podeSerCancelada(nota) && (
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setNotaSelecionada(nota);
+                                        setModalCancelarAberto(true);
+                                      }}
+                                      className="text-destructive"
+                                    >
+                                      <X className="mr-2 h-4 w-4" />
+                                      Cancelar Nota
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              )}
+                              {nota.status === "rejeitada" && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast.info("Reenvio será implementado com a integração SEFAZ"); }}>
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                  Reenviar Nota
                                 </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-center">
@@ -359,9 +590,9 @@ export default function NotasFiscais() {
       </Card>
 
       {/* Modal Emitir Nota Fiscal */}
-      <EmitirNotaFiscalDialog 
-        open={modalEmitirAberto} 
-        onOpenChange={setModalEmitirAberto} 
+      <EmitirNotaFiscalDialog
+        open={modalEmitirAberto}
+        onOpenChange={setModalEmitirAberto}
       />
 
       {/* Modal Cancelar Nota */}
@@ -420,13 +651,172 @@ export default function NotasFiscais() {
             <Button variant="outline" onClick={() => setModalCancelarAberto(false)}>
               Voltar
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleCancelar}
               disabled={cancelando || motivoCancelamento.length < 15}
             >
               {cancelando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirmar Cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Carta de Correção */}
+      <Dialog open={modalCartaCorrecao} onOpenChange={setModalCartaCorrecao}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileEdit className="h-5 w-5 text-primary" />
+              Carta de Correção Eletrônica (CC-e)
+            </DialogTitle>
+            <DialogDescription>
+              A CC-e corrige informações da NF-e sem alterá-la. Pode ser emitida até 20 vezes.
+              Não é possível corrigir: valores, dados fiscais do ICMS, dados do emitente/destinatário.
+            </DialogDescription>
+          </DialogHeader>
+
+          {notaSelecionada && (
+            <div className="space-y-4">
+              <div className="rounded-lg border p-4 bg-muted/30">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Nota:</span>
+                    <span className="ml-2 font-medium">{formatarNumero(notaSelecionada.numero)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">CC-e anterior:</span>
+                    <span className="ml-2 font-medium">{notaSelecionada.seq_carta_correcao || 0}/20</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="correcao">Texto da Correção *</Label>
+                <Textarea
+                  id="correcao"
+                  value={textoCorrecao}
+                  onChange={(e) => setTextoCorrecao(e.target.value)}
+                  placeholder="Ex: Corrigir a descrição do produto X para Y..."
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Mínimo de 15 caracteres ({textoCorrecao.length}/15)
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-yellow-300 p-3 bg-yellow-50/50">
+                <p className="text-xs text-yellow-800">
+                  <AlertTriangle className="inline h-3 w-3 mr-1" />
+                  <strong>Atenção:</strong> Cada nova CC-e substitui a anterior. A SEFAZ considera sempre a última.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalCartaCorrecao(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCartaCorrecao}
+              disabled={enviandoCorrecao || textoCorrecao.length < 15}
+            >
+              {enviandoCorrecao && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Enviar Carta de Correção
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Inutilizar Numeração */}
+      <Dialog open={modalInutilizar} onOpenChange={setModalInutilizar}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5 text-destructive" />
+              Inutilizar Numeração
+            </DialogTitle>
+            <DialogDescription>
+              Inutilize números que foram pulados na sequência de emissão.
+              Esta ação é irreversível e será registrada na SEFAZ.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Modelo</Label>
+                <Select value={inutModelo} onValueChange={setInutModelo}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="55">NF-e (Mod. 55)</SelectItem>
+                    <SelectItem value="65">NFC-e (Mod. 65)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Série</Label>
+                <Input
+                  type="number"
+                  value={inutSerie}
+                  onChange={(e) => setInutSerie(e.target.value)}
+                  min="1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Número Inicial *</Label>
+                <Input
+                  type="number"
+                  value={inutNumIni}
+                  onChange={(e) => setInutNumIni(e.target.value)}
+                  placeholder="1"
+                  min="1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Número Final *</Label>
+                <Input
+                  type="number"
+                  value={inutNumFin}
+                  onChange={(e) => setInutNumFin(e.target.value)}
+                  placeholder="10"
+                  min="1"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Justificativa *</Label>
+              <Textarea
+                value={inutJustificativa}
+                onChange={(e) => setInutJustificativa(e.target.value)}
+                placeholder="Ex: Erro no sequencial durante manutenção do sistema..."
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                Mínimo de 15 caracteres ({inutJustificativa.length}/15)
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalInutilizar(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleInutilizar}
+              disabled={inutilizando || !inutNumIni || !inutNumFin || inutJustificativa.length < 15}
+            >
+              {inutilizando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Inutilizar Numeração
             </Button>
           </DialogFooter>
         </DialogContent>
