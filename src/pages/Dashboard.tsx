@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/table";
 import { DollarSign, Users, Calendar, UserPlus, TrendingUp, ArrowRight, Clock, Sparkles } from "lucide-react";
 import AtalhosRapidos from "@/components/dashboard/AtalhosRapidos";
+import BlocoNotas from "@/components/dashboard/BlocoNotas";
+import Calculadora from "@/components/dashboard/Calculadora";
+import MuralAvisos from "@/components/dashboard/MuralAvisos";
 import { WhatsAppDashboardCard } from "@/components/dashboard/WhatsAppWidget";
 import iconeMaicon from "@/assets/icone-maicon.svg";
 import {
@@ -89,12 +92,12 @@ const Dashboard = () => {
   const { can } = useUserPermissions();
   const isNotebook = session?.role === 'notebook';
   const showFaturamento = can('dashboard.faturamento_mensal');
-  
+
   // Performance tracking
   const mountTimeRef = useRef(performance.now());
   const dataReadyTimeRef = useRef<number | null>(null);
   const debugActive = isDebugPerfActive();
-  
+
   // Optimized: Single parallel data load via React Query
   const { data: dashboardData, isLoading, refetch } = useDashboardData();
 
@@ -103,21 +106,21 @@ const Dashboard = () => {
   useRealtimeSubscription('agendamentos', ['dashboard-data']);
 
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [motivationalMessage] = useState(() => 
+  const [motivationalMessage] = useState(() =>
     motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)]
   );
   const [loadMetrics, setLoadMetrics] = useState<{ mountToReady: number } | null>(null);
-  
+
   // Performance debug hook
   const perfDebug = usePerformanceDebug(!isLoading && !!dashboardData);
-  
+
   // Track when data becomes ready
   useEffect(() => {
     if (!isLoading && dashboardData && dataReadyTimeRef.current === null) {
       dataReadyTimeRef.current = performance.now();
       const mountToReady = dataReadyTimeRef.current - mountTimeRef.current;
       setLoadMetrics({ mountToReady });
-      
+
       if (debugActive) {
         console.log("[Dashboard] ⚡ Mount → Data Ready:", mountToReady.toFixed(0), "ms");
         console.log("[Dashboard] API Load Time:", dashboardData.loadTime?.toFixed(0), "ms");
@@ -137,7 +140,7 @@ const Dashboard = () => {
       console.log("Dashboard: Evento data-updated recebido, recarregando dados...");
       refetch();
     };
-    
+
     window.addEventListener('data-updated', handleDataUpdate);
     return () => window.removeEventListener('data-updated', handleDataUpdate);
   }, [refetch]);
@@ -166,7 +169,7 @@ const Dashboard = () => {
 
   const agendamentosHojeCount = data.agendamentosHoje.length;
   const agendamentosOntemCount = data.agendamentosOntemCount || 0;
-  
+
   const atendimentosHojeCount = data.atendimentosHoje.length;
   const atendimentosOntemCount = (data.atendimentosOntem || []).length;
 
@@ -241,8 +244,8 @@ const Dashboard = () => {
   ];
 
   // Filtrar stats baseado em permissão (notebook não vê faturamento)
-  const stats = showFaturamento 
-    ? allStats 
+  const stats = showFaturamento
+    ? allStats
     : allStats.filter(s => !s.hideForNotebook);
 
   return (
@@ -254,9 +257,9 @@ const Dashboard = () => {
         {/* Logo e título */}
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-            <img 
-              src={iconeMaicon} 
-              alt="Ícone" 
+            <img
+              src={iconeMaicon}
+              alt="Ícone"
               className="h-6 w-6 object-contain dark:invert"
             />
           </div>
@@ -265,7 +268,7 @@ const Dashboard = () => {
             <p className="text-muted-foreground">Visão geral do seu salão</p>
           </div>
         </div>
-        
+
         {/* Relógio e Mensagem - Responsivo */}
         <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
           <CardContent className="p-4 md:p-6">
@@ -387,8 +390,12 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Atalhos Rápidos */}
-      <AtalhosRapidos />
+      {/* Widgets: Bloco de Notas + Calculadora + Mural de Avisos */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+        <BlocoNotas />
+        <Calculadora />
+        <MuralAvisos />
+      </div>
 
       {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6">
@@ -432,40 +439,40 @@ const Dashboard = () => {
       <div className={`grid grid-cols-1 gap-4 ${isNotebook ? 'lg:grid-cols-2' : 'lg:grid-cols-4'}`}>
         {/* WhatsApp Card */}
         <WhatsAppDashboardCard />
-        
+
         {/* Gráfico de Faturamento - OCULTO se não tiver permissão */}
         {showFaturamento && (
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">
-              Faturamento Mensal
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">Últimos 30 dias</p>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.faturamentoMensal || []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground)/0.2)" />
-                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <Tooltip 
-                    formatter={(value: any) => 
-                      new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
-                    }
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))", r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">
+                Faturamento Mensal
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Últimos 30 dias</p>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={data.faturamentoMensal || []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground)/0.2)" />
+                    <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" />
+                    <YAxis stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip
+                      formatter={(value: any) =>
+                        new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
+                      }
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Top Serviços */}
