@@ -1,0 +1,189 @@
+{
+    "name": "Salao - Lembrete de Agendamento",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lembrete-agendamento",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "a1b2c3d4-0001-0001-0001-000000000001",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                300
+            ],
+            "webhookId": "lembrete-agendamento"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "cond1",
+                            "leftValue": "={{ $json.body.secret }}",
+                            "rightValue": "mm-salon-webhook-2",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "a1b2c3d4-0002-0002-0002-000000000002",
+            "name": "Verifica Secret",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const body = $input.first().json.body;\n\nconst cliente = body.cliente_nome || 'Cliente';\nconst data = body.data || '';\nconst hora = body.hora || '';\nconst servico = body.servico || 'Serviço';\nconst profissional = body.profissional || '';\nconst telefone = body.telefone || '';\n\n// Formata a mensagem\nconst msg = `Olá ${cliente}! 👋\n\nLembrando do seu agendamento:\n📅 *${data}* às *${hora}*\n✂️ Serviço: *${servico}*${profissional ? `\\n👤 Profissional: *${profissional}*` : ''}\n\nSalão Maicon Maksuel 💇‍♀️\n\nPor favor, confirme seu comparecimento respondendo *SIM* ou *NÃO*.\n\nQualquer dúvida, estamos à disposição! 😊`;\n\nreturn [{\n  json: {\n    telefone: telefone.replace(/\\D/g, ''),\n    mensagem: msg,\n    agendamento_id: body.agendamento_id || null\n  }\n}];"
+            },
+            "id": "a1b2c3d4-0003-0003-0003-000000000003",
+            "name": "Monta Mensagem",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                680,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.z-api.io/instances/{{ $vars.ZAPI_INSTANCE_ID }}/token/{{ $vars.ZAPI_TOKEN }}/send-text",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Client-Token",
+                            "value": "={{ $vars.ZAPI_CLIENT_TOKEN }}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"phone\": \"{{ $json.telefone }}\",\n  \"message\": \"{{ $json.mensagem }}\"\n}",
+                "options": {}
+            },
+            "id": "a1b2c3d4-0004-0004-0004-000000000004",
+            "name": "Envia WhatsApp Z-API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                900,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={ \"status\": \"ok\", \"message\": \"Lembrete enviado para {{ $('Monta Mensagem').first().json.telefone }}\" }"
+            },
+            "id": "a1b2c3d4-0005-0005-0005-000000000005",
+            "name": "Respond OK",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1120,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseCode": 403,
+                "responseBody": "{ \"status\": \"error\", \"message\": \"Não autorizado\" }"
+            },
+            "id": "a1b2c3d4-0006-0006-0006-000000000006",
+            "name": "Respond 403",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                680,
+                420
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Verifica Secret",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Verifica Secret": {
+            "main": [
+                [
+                    {
+                        "node": "Monta Mensagem",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 403",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Monta Mensagem": {
+            "main": [
+                [
+                    {
+                        "node": "Envia WhatsApp Z-API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Envia WhatsApp Z-API": {
+            "main": [
+                [
+                    {
+                        "node": "Respond OK",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "salao"
+        }
+    ]
+}

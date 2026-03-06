@@ -1,0 +1,219 @@
+{
+    "name": "Salao - Confirmacao/Cancelamento de Agendamento",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "confirmacao-agendamento",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "b1c2d3e4-0001-0001-0001-000000000011",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                300
+            ],
+            "webhookId": "confirmacao-agendamento"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "conditions": [
+                        {
+                            "id": "cond1",
+                            "leftValue": "={{ $json.body.secret }}",
+                            "rightValue": "mm-salon-webhook-2",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                }
+            },
+            "id": "b1c2d3e4-0002-0002-0002-000000000012",
+            "name": "Verifica Secret",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const body = $input.first().json.body;\n\nconst cliente = body.cliente_nome || 'Cliente';\nconst resposta = (body.resposta || '').toUpperCase().trim();\nconst agendamento_id = body.agendamento_id;\nconst telefone = (body.telefone || '').replace(/\\D/g, '');\n\nconst confirmado = ['SIM', 'S', 'CONFIRMO', 'CONFIRMADO', '1', 'YES'].includes(resposta);\nconst cancelado = ['NAO', 'NÃO', 'N', 'CANCELA', 'CANCELAR', 'CANCELADO', '0', 'NO'].includes(resposta);\n\nlet mensagem = '';\nlet status = 'pendente';\n\nif (confirmado) {\n  status = 'confirmado';\n  mensagem = `✅ Perfeito, ${cliente}! Agendamento *CONFIRMADO*!\\n\\nTe esperamos! Salão Maicon Maksuel 💇‍♀️`;\n} else if (cancelado) {\n  status = 'cancelado';\n  mensagem = `❌ Entendemos, ${cliente}. Agendamento *CANCELADO*.\\n\\nQuando quiser remarcar, estamos aqui! 📅`;\n} else {\n  status = 'pendente';\n  mensagem = `Olá ${cliente}! Por favor responda *SIM* para confirmar ou *NÃO* para cancelar seu agendamento.`;\n}\n\nreturn [{\n  json: { telefone, mensagem, status, agendamento_id, confirmado, cancelado }\n}];"
+            },
+            "id": "b1c2d3e4-0003-0003-0003-000000000013",
+            "name": "Processa Resposta",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                680,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=https://api.z-api.io/instances/{{ $vars.ZAPI_INSTANCE_ID }}/token/{{ $vars.ZAPI_TOKEN }}/send-text",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Client-Token",
+                            "value": "={{ $vars.ZAPI_CLIENT_TOKEN }}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"phone\": \"{{ $json.telefone }}\",\n  \"message\": \"{{ $json.mensagem }}\"\n}",
+                "options": {}
+            },
+            "id": "b1c2d3e4-0004-0004-0004-000000000014",
+            "name": "Envia Resposta WhatsApp",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                900,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://hhzvjsrsoyhjzeiuxpep.supabase.co/functions/v1/webhook-n8n",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer mm-salon-webhook-2"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"agendamento_id\": \"{{ $('Processa Resposta').first().json.agendamento_id }}\",\n  \"status\": \"{{ $('Processa Resposta').first().json.status }}\"\n}",
+                "options": {}
+            },
+            "id": "b1c2d3e4-0005-0005-0005-000000000015",
+            "name": "Atualiza Supabase",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                900,
+                280
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={ \"status\": \"ok\", \"resposta\": \"{{ $('Processa Resposta').first().json.status }}\" }"
+            },
+            "id": "b1c2d3e4-0006-0006-0006-000000000016",
+            "name": "Respond OK",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1120,
+                220
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseCode": 403,
+                "responseBody": "{ \"status\": \"error\", \"message\": \"Não autorizado\" }"
+            },
+            "id": "b1c2d3e4-0007-0007-0007-000000000017",
+            "name": "Respond 403",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                680,
+                420
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Verifica Secret",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Verifica Secret": {
+            "main": [
+                [
+                    {
+                        "node": "Processa Resposta",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 403",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Processa Resposta": {
+            "main": [
+                [
+                    {
+                        "node": "Envia Resposta WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Atualiza Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Envia Resposta WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "Respond OK",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "salao"
+        }
+    ]
+}

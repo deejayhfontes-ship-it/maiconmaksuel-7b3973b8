@@ -234,27 +234,33 @@ export default function SalaoArteGenerator() {
                     const logoX = img.width - logoW - margin;
                     const logoY = img.height - logoH - margin;
 
-                    // Fade/gradient atrás do logo para legibilidade
-                    const fadeW = logoW + margin * 2;
+                    // Pill escuro atrás do logo — contraste garantido em qualquer fundo
+                    const fadeW = logoW + margin * 2.5;
                     const fadeH = logoH + margin * 2;
-                    const fadeX = img.width - fadeW;
-                    const fadeY = img.height - fadeH;
+                    const fadeX = img.width - fadeW - margin * 0.5;
+                    const fadeY = img.height - fadeH - margin * 0.5;
+                    const rx = fadeH * 0.35;
 
-                    // Gradiente radial com cantos arredondados
-                    const gradient = ctx.createRadialGradient(
-                        fadeX + fadeW / 2, fadeY + fadeH / 2, Math.min(fadeW, fadeH) * 0.2,
-                        fadeX + fadeW / 2, fadeY + fadeH / 2, Math.max(fadeW, fadeH) * 0.7
-                    );
-                    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
-                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(fadeX, fadeY, fadeW, fadeH);
+                    ctx.save();
+                    ctx.globalAlpha = 0.65;
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    ctx.beginPath();
+                    ctx.moveTo(fadeX + rx, fadeY);
+                    ctx.arcTo(fadeX + fadeW, fadeY, fadeX + fadeW, fadeY + fadeH, rx);
+                    ctx.arcTo(fadeX + fadeW, fadeY + fadeH, fadeX, fadeY + fadeH, rx);
+                    ctx.arcTo(fadeX, fadeY + fadeH, fadeX, fadeY, rx);
+                    ctx.arcTo(fadeX, fadeY, fadeX + fadeW, fadeY, rx);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
 
-                    // Desenha logo com blend mode para ficar "branca"
-                    // Como logo é preta em fundo branco, inverte:
-                    // composição: primeiro pinta branco, depois usa multiply
+                    // Drop-shadow branco + logo em screen (fica branca sobre fundo escuro do pill)
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(255,255,255,0.7)';
+                    ctx.shadowBlur = 6;
                     ctx.globalCompositeOperation = 'screen';
                     ctx.drawImage(logo, logoX, logoY, logoW, logoH);
+                    ctx.restore();
 
                     // Restaura composição normal
                     ctx.globalCompositeOperation = 'source-over';

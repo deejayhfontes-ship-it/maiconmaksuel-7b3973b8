@@ -112,7 +112,8 @@ export function useSalaoAssets(categoriaSlug?: string) {
         tema: string,
         intencao: string,
         detalhes: string,
-        categoriaNome?: string
+        categoriaNome?: string,
+        dimensao?: string
     ) => {
         const catNome = categoriaNome || currentCategoria?.nome || 'Promoção';
         const cores = currentCategoria
@@ -146,16 +147,18 @@ export function useSalaoAssets(categoriaSlug?: string) {
             `DIRETRIZES DE DESIGN:`,
             `- Cores do salão: ${cores}`,
             `- Tipografia: similar a ${fontes}`,
-            `- O resultado DEVE parecer um flyer/post profissional de salão de beleza feminino`,
-            `- Estética: feminina, sofisticada, glamourosa — tons rosé, dourado, nude, branco e preto`,
-            `- Inclua elementos decorativos que remetam a beleza: tesouras, pentes, flores, brilhos, folhas douradas`,
-            `- Hierarquia visual: título grande → serviço/promoção → detalhes → contato`,
-            `- Reserve espaço para logotipo no rodapé ou topo`,
-            `- TEXTURA: Use texturas sutis como mármore, seda ou glitter sutil no background`,
+            `- O resultado DEVE parecer um flyer/post profissional de salão de beleza feminino premium`,
+            `- Estética: sofisticada, glamourosa, luxury — tons rosé gold, dourado, nude, branco e preto`,
+            `- Elementos decorativos PERMITIDOS: brilhos sutis, partículas douradas, efeito bokeh, glitter, linhas geométricas elegantes, folhas douradas minimalistas, texturas de mármore ou seda`,
+            `- PROIBIDO: flores, plantas, elementos naturais excessivos, cliparts genéricos`,
+            `- Hierarquia visual: título grande → serviço/promoção → detalhes → espaço para contato`,
+            `- Reserve espaço no canto inferior direito para logotipo do salão (15% da largura)`,
+            `- TEXTURA DE FUNDO: mármore branco ou nude, seda rose gold, gradiente dourado premium`,
+            `- Composição com regra dos terços, área segura de 10% nas bordas`,
             '',
             detalhes ? `Informações adicionais para incluir no material: ${detalhes}` : '',
             '',
-            `IMPORTANTE: O resultado final deve ser um FLYER/PEÇA GRÁFICA elegante e sofisticada com texto composto, NÃO uma fotografia ou imagem genérica. Deve parecer saído de uma agência de design premium.`
+            `IMPORTANTE: O resultado final deve ser um FLYER/PEÇA GRÁFICA elegante e sofisticada com texto composto, NÃO uma fotografia ou imagem genérica. Deve parecer saído de uma agência de design premium de alto padrão. Resolução: ${dimensao || '1080x1080'}.`
         ].filter(Boolean).join('\n');
 
         return prompt;
