@@ -287,24 +287,13 @@ export default function SalaoArteGenerator() {
             const catObj = categoriasLista.find(c => c.slug === categoria);
             const dimension = getDimension();
 
-            const prompt = buildSalaoPrompt(
-                pecaLabel,
-                titulo,
-                intencao || 'brand communication',
-                detalhes,
-                catObj?.nome,
-                dimension,
-                {
-                    lens: lensType,
-                    lighting: lightingType,
-                    estiloVisual: estiloVisual,
-                    shotType: shotType,
-                    negativeSpaceSide: negativeSpaceSide,
-                    sobriety: sobriety,
-                }
-            );
-
-            // sobriety vem do slider do usuário (0-100)
+            // Mapeamento: espaço negativo → lado para composição
+            const safeAreaSideMap: Record<string, 'LEFT' | 'RIGHT' | 'CENTER'> = {
+                left: 'RIGHT',   // sujeito à esquerda → espaço negativo à direita
+                right: 'LEFT',   // sujeito à direita → espaço negativo à esquerda
+                center: 'CENTER',
+            };
+            const safeAreaSide = safeAreaSideMap[negativeSpaceSide] || 'CENTER';
 
             const referenceImages: Array<{
                 data: string;
@@ -317,7 +306,7 @@ export default function SalaoArteGenerator() {
                 referenceImages.push({
                     data: `data:${subjectImage.mimeType};base64,${subjectImage.base64}`,
                     mimeType: subjectImage.mimeType,
-                    description: 'FOTO PRINCIPAL do sujeito. REPLIQUE fielmente as caracteristicas fisicas, expressao facial e aparencia desta referencia. Mantenha a identidade visual do sujeito EXATAMENTE como na foto.',
+                    description: 'FOTO PRINCIPAL do sujeito. REPLIQUE fielmente as caracteristicas fisicas, expressao facial e aparencia desta referencia.',
                     category: 'style' as const,
                 });
             }
@@ -326,22 +315,39 @@ export default function SalaoArteGenerator() {
                 referenceImages.push({
                     data: `data:${refImage.mimeType};base64,${refImage.base64}`,
                     mimeType: refImage.mimeType,
-                    description: 'Referencia de ESTILO VISUAL. Use as cores, texturas, composicao e estetica desta imagem como inspiracao para o design.',
+                    description: 'Referencia de ESTILO VISUAL. Use as cores, texturas, composicao e estetica desta imagem como inspiracao.',
                     category: 'style' as const,
                 });
             }
 
             const hasPersonPhoto = !!subjectImage;
 
+            // Intenção mapeada para inglês (para o SYSTEM_PROMPT do Gemini)
+            const intencaoMap: Record<string, string> = {
+                promover: 'promote a beauty service',
+                promocao: 'special offer or discount campaign',
+                evento: 'event announcement',
+                informar: 'informational content',
+                dica: 'beauty tip or tutorial',
+                antes_depois: 'before and after transformation',
+                novo_servico: 'new service launch',
+                agenda: 'appointment scheduling',
+            };
+            const intencaoEn = intencaoMap[intencao] || intencao || 'premium brand communication';
+
+            // ── GenerationConfig limpo ──
+            // Gemini (Etapa 1 do hook) vai usar niche, subjectDescription, environment,
+            // style, sobriety e textOverlay para gerar o prompt cinematográfico.
+            // Não passamos buildSalaoPrompt aqui — deixamos o Gemini trabalhar.
             const generationConfig: GenerationConfig = {
-                niche: catObj?.nome || titulo || 'Creative Design',
+                niche: `${catObj?.nome || 'Salon'} — ${intencaoEn} — ${pecaLabel}`,
                 gender: 'female',
                 subjectDescription: hasPersonPhoto
-                    ? `Replicate EXACTLY the person in the reference photo — facial features, expression, hair, skin tone, all details must match perfectly. Subject: ${titulo}`
-                    : prompt,
+                    ? `Replicate EXACTLY the person in the reference photo. Subject context: ${titulo}`
+                    : `Create a professional ${catObj?.nome || 'beauty salon'} campaign image. Context: ${titulo}`,
                 environment: hasPersonPhoto
-                    ? 'Premium professional environment. Cinematic lighting. High-end production quality.'
-                    : 'Premium creative environment. High-end production quality.',
+                    ? 'Premium professional studio environment. Cinematic lighting. High-end salon aesthetic.'
+                    : `High-end premium ${catObj?.nome || 'beauty salon'} environment. Luxury aesthetic. Cinematic atmosphere.`,
                 sobriety: sobriety,
                 style: estiloLabel,
                 useStyle: true,
@@ -357,14 +363,29 @@ export default function SalaoArteGenerator() {
                 },
                 ambientOpacity: 30,
                 useBlur: hasPersonPhoto,
-                useGradient: false,
+                useGradient: negativeSpaceSide !== 'center',
                 useFloatingElements: false,
                 floatingElementsDescription: '',
-                shotType: hasPersonPhoto ? 'MEDIUM' : 'CLOSE_UP',
-                additionalInstructions: prompt + (detalhes ? `\n\nExtra context: ${detalhes}` : ''),
+                shotType: shotType || (hasPersonPhoto ? 'MEDIUM' : 'CLOSE_UP'),
+                // additionalInstructions: apenas contexto extra limpo, sem prompt estático
+                additionalInstructions: detalhes
+                    ? `Campaign detail: ${detalhes}. Ad format: ${pecaLabel}.`
+                    : `Ad format: ${pecaLabel}. Premium salon marketing asset.`,
                 dimension,
-                safeAreaSide: 'CENTER',
+                safeAreaSide,
                 personCount: hasPersonPhoto ? 1 : 0,
+                // textOverlay: instrui o Gemini a incluir os textos do anúncio de forma estruturada
+                textOverlay: {
+                    h1: titulo,
+                    h2: detalhes || intencaoEn,
+                    cta: 'Agende seu horario',
+                    position: safeAreaSide === 'RIGHT'
+                        ? 'right side negative space'
+                        : safeAreaSide === 'LEFT'
+                            ? 'left side negative space'
+                            : 'center, vertically in upper third',
+                    useGradient: true,
+                },
             };
 
             const result = await generate(generationConfig, referenceImages);
@@ -389,7 +410,7 @@ export default function SalaoArteGenerator() {
             setError(msg);
             toast.error(msg);
         }
-    }, [titulo, intencao, detalhes, tipoPeca, estiloVisual, lensType, lightingType, shotType, sobriety, negativeSpaceSide, categoria, subjectImage, refImage, categoriasLista, buildSalaoPrompt, generate, getDimension, applyLogoOverlay]);
+    }, [titulo, intencao, detalhes, tipoPeca, estiloVisual, shotType, sobriety, negativeSpaceSide, categoria, subjectImage, refImage, categoriasLista, generate, getDimension, applyLogoOverlay]);
 
     // ── Download ──
     const handleDownload = useCallback((img: GeneratedImage) => {
