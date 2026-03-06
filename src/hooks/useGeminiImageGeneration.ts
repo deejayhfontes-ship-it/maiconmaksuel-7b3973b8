@@ -2,9 +2,59 @@ import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
 
 // ============================================================
-// API KEY — Configuração direta
+// API KEY — Busca dinâmica do Supabase (tabela api_keys)
 // ============================================================
-const HARDCODED_API_KEYS = ['AIzaSyBbvJd1JKeqbTbLd0MfvDBL-Rd8psMGT1k'];
+let _cachedApiKeys: string[] | null = null;
+let _cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+async function fetchApiKeysFromSupabase(): Promise<string[]> {
+    // Se o cache ainda é válido, retorna
+    if (_cachedApiKeys && Date.now() - _cacheTimestamp < CACHE_TTL) {
+        return _cachedApiKeys;
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+        console.warn('[GeminiHook] Supabase não configurado, sem API keys disponíveis.');
+        return [];
+    }
+
+    try {
+        const response = await fetch(
+            `${supabaseUrl}/rest/v1/api_keys?service=eq.gemini&is_active=eq.true&select=api_key`,
+            {
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+
+        if (!response.ok) {
+            console.warn(`[GeminiHook] Erro ao buscar API keys: ${response.status}`);
+            return _cachedApiKeys || [];
+        }
+
+        const data = await response.json();
+        const keys = data
+            .map((row: { api_key: string }) => row.api_key)
+            .filter((k: string) => k && k.trim().length > 0);
+
+        if (keys.length > 0) {
+            _cachedApiKeys = keys;
+            _cacheTimestamp = Date.now();
+        }
+
+        return keys;
+    } catch (err) {
+        console.warn('[GeminiHook] Falha ao buscar API keys do Supabase:', err);
+        return _cachedApiKeys || [];
+    }
+}
 
 // ============================================================
 // SYSTEM PROMPT — Adaptado para salão de beleza
@@ -147,9 +197,10 @@ function buildUserMessage(config: GenerationConfig): string {
 // ============================================================
 // Verifica se erro é retryável (503/500/429)
 // ============================================================
-function classifyError(err: any): { is429: boolean; is5xx: boolean; isRetryable: boolean } {
-    const msg = err?.message || '';
-    const status = err?.status || err?.httpCode || 0;
+function classifyError(err: unknown): { is429: boolean; is5xx: boolean; isRetryable: boolean } {
+    const errObj = err as { message?: string; status?: number; httpCode?: number };
+    const msg = errObj?.message || '';
+    const status = errObj?.status || errObj?.httpCode || 0;
     const is429 =
         msg.includes('429') || status === 429 || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
     const is5xx =
@@ -170,7 +221,7 @@ async function callWithKeyPool<T>(
     rounds = 2,
     baseDelay = 5000
 ): Promise<T> {
-    if (keys.length === 0) throw new Error('Nenhuma API key disponível.');
+    if (keys.length === 0) throw new Error('Nenhuma API key disponível. Verifique a configuração no Supabase.');
 
     const shuffled = [...keys].sort(() => 0.5 - Math.random());
 
@@ -186,7 +237,7 @@ async function callWithKeyPool<T>(
             for (let retry = 0; retry < maxRetries; retry++) {
                 try {
                     return await fn(key, ki, globalAttempt++);
-                } catch (err: any) {
+                } catch (err: unknown) {
                     const { is5xx, isRetryable } = classifyError(err);
                     if (!isRetryable) throw err;
                     console.warn(`[KeyPool] Key ${ki + 1}/${shuffled.length} falhou, tentando próxima...`);
@@ -216,7 +267,7 @@ async function callWithModelFallback<T>(
         || (primaryModel.includes('image') ? IMAGE_MODEL_FALLBACKS : TEXT_MODEL_FALLBACKS);
     const models = [primaryModel, ...autoList.filter(m => m !== primaryModel)];
 
-    let lastError: any = null;
+    let lastError: unknown = null;
     for (let i = 0; i < models.length; i++) {
         const model = models[i];
         try {
@@ -225,7 +276,7 @@ async function callWithModelFallback<T>(
             }
             const result = await fn(model);
             return { result, usedModel: model };
-        } catch (err: any) {
+        } catch (err: unknown) {
             lastError = err;
             const { is5xx } = classifyError(err);
             if (!is5xx) throw err;
@@ -237,7 +288,7 @@ async function callWithModelFallback<T>(
 }
 
 // ============================================================
-// Hook principal — SDK @google/genai com API key hardcoded
+// Hook principal — SDK @google/genai com API key do Supabase
 // ============================================================
 export function useGeminiImageGeneration() {
     const [isGenerating, setIsGenerating] = useState(false);
@@ -245,10 +296,10 @@ export function useGeminiImageGeneration() {
     const generationRef = useRef(false);
 
     // ============================================================
-    // Retorna as keys (hardcoded)
+    // Retorna as keys do Supabase (com cache)
     // ============================================================
-    const getKeys = useCallback(() => {
-        return HARDCODED_API_KEYS;
+    const getKeys = useCallback(async (): Promise<string[]> => {
+        return fetchApiKeysFromSupabase();
     }, []);
 
     // ============================================================
@@ -297,7 +348,7 @@ export function useGeminiImageGeneration() {
         const result = await callWithKeyPool(keys, async (apiKey) => {
             const genAI = new GoogleGenAI({ apiKey });
 
-            const contentParts: any[] = [];
+            const contentParts: Array<{ text?: string; inlineData?: { data: string; mimeType: string } }> = [];
             for (const img of referenceImages) {
                 contentParts.push({
                     inlineData: {
@@ -350,7 +401,7 @@ export function useGeminiImageGeneration() {
         setProgress('✨ Criando a mágica...');
 
         try {
-            const keys = getKeys();
+            const keys = await getKeys();
             const textModel = DEFAULT_TEXT_MODEL;
             const imageModel = DEFAULT_IMAGE_MODEL;
 
