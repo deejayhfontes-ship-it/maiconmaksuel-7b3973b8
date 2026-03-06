@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { 
-  Database, 
-  Download, 
-  Upload, 
-  RefreshCw, 
-  Trash2, 
-  Settings, 
-  FileText, 
-  MessageSquare, 
+import {
+  Database,
+  Download,
+  Upload,
+  RefreshCw,
+  Trash2,
+  Settings,
+  FileText,
+  MessageSquare,
   Target,
   Bell,
   Shield,
@@ -59,6 +59,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { usePinAuth } from "@/contexts/PinAuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 // Backup components
 import BackupManual from "@/components/configuracoes/backup/BackupManual";
@@ -317,8 +318,8 @@ export default function Configuracoes() {
   }
 
   const toggleSection = (sectionId: string) => {
-    setExpandedSections(prev => 
-      prev.includes(sectionId) 
+    setExpandedSections(prev =>
+      prev.includes(sectionId)
         ? prev.filter(id => id !== sectionId)
         : [...prev, sectionId]
     );
@@ -343,12 +344,12 @@ export default function Configuracoes() {
   // Filter sections based on search
   const filteredSections = menuSections.map(section => ({
     ...section,
-    items: section.items.filter(item => 
+    items: section.items.filter(item =>
       item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
       section.title.toLowerCase().includes(searchQuery.toLowerCase())
     )
-  })).filter(section => 
-    section.items.length > 0 || 
+  })).filter(section =>
+    section.items.length > 0 ||
     section.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -471,8 +472,8 @@ export default function Configuracoes() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           onClick={() => navigate(-1)}
         >
@@ -503,13 +504,13 @@ export default function Configuracoes() {
               />
             </div>
           </div>
-          
+
           <ScrollArea className="flex-1 min-h-0">
             <nav className="p-4 space-y-2">
               {filteredSections.map((section) => {
                 const SectionIcon = section.icon;
                 const isExpanded = expandedSections.includes(section.id);
-                
+
                 return (
                   <div key={section.id}>
                     {/* Section Header */}
@@ -530,14 +531,14 @@ export default function Configuracoes() {
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       )}
                     </button>
-                    
+
                     {/* Section Items */}
                     {isExpanded && (
                       <div className="ml-4 mt-1 space-y-1">
                         {section.items.map((item) => {
                           const ItemIcon = item.icon;
                           const isActive = selectedItem === item.id;
-                          
+
                           return (
                             <button
                               key={item.id}
@@ -547,8 +548,8 @@ export default function Configuracoes() {
                                 isActive
                                   ? "bg-primary text-primary-foreground"
                                   : item.danger
-                                  ? "text-destructive hover:bg-destructive/10"
-                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    ? "text-destructive hover:bg-destructive/10"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                               )}
                             >
                               {ItemIcon && <ItemIcon className="h-4 w-4" />}
@@ -561,7 +562,7 @@ export default function Configuracoes() {
                   </div>
                 );
               })}
-              
+
               {/* Sair */}
               <div className="pt-4 border-t mt-4">
                 <button
@@ -652,7 +653,7 @@ function AparenciaContent() {
         <Palette className="h-5 w-5" />
         Aparência e Tema
       </h2>
-      
+
       <div className="space-y-6">
         <div>
           <label className="text-sm font-medium">Tema</label>
@@ -704,7 +705,7 @@ function DadosSalaoContent() {
         <Building className="h-5 w-5" />
         Dados do Salão
       </h2>
-      
+
       <div className="space-y-6">
         {/* Informações Básicas */}
         <div className="space-y-4">
@@ -826,7 +827,7 @@ function InformacoesContent() {
         <Info className="h-5 w-5" />
         Informações do Sistema
       </h2>
-      
+
       <div className="space-y-6">
         {/* Software */}
         <div className="p-4 bg-muted/50 rounded-lg space-y-2">
@@ -882,7 +883,7 @@ function LicencaContent() {
         <Key className="h-5 w-5" />
         Licença do Sistema
       </h2>
-      
+
       <div className="space-y-6">
         <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
           <div className="flex items-center gap-3">
@@ -1048,7 +1049,7 @@ function AtualizacoesContent() {
         <RefreshCw className="h-5 w-5" />
         Atualizações do Sistema
       </h2>
-      
+
       <div className="space-y-6">
         <div className={`p-4 border rounded-lg ${bgClass}`}>
           <div className="flex items-center justify-between">
@@ -1170,7 +1171,7 @@ function LogsSistemaContent() {
         <History className="h-5 w-5" />
         Logs do Sistema
       </h2>
-      
+
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
@@ -1223,7 +1224,7 @@ function ModoDevContent() {
         <Settings className="h-5 w-5" />
         Modo Desenvolvedor
       </h2>
-      
+
       <div className="space-y-6">
         <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <p className="text-yellow-700 dark:text-yellow-400 text-sm">
@@ -1306,7 +1307,7 @@ function SobreContent() {
         <div className="w-24 h-24 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center">
           <Settings className="h-12 w-12 text-primary" />
         </div>
-        
+
         <div>
           <h2 className="text-2xl font-bold">Maicon Maksuel Gestão de Salão</h2>
           <p className="text-muted-foreground">Versão 2.0.5</p>
@@ -1365,7 +1366,7 @@ function TemasCoresContent() {
         <Palette className="h-5 w-5" />
         Tema e Cores
       </h2>
-      
+
       <div className="space-y-8">
         {/* Seleção de Tema */}
         <div className="space-y-4">
@@ -1392,7 +1393,7 @@ function TemasCoresContent() {
               <label key={cor.id} className="cursor-pointer">
                 <input type="radio" name="cor" defaultChecked={cor.id === "blue"} className="sr-only peer" />
                 <div className="w-12 h-12 rounded-full border-4 border-transparent peer-checked:border-gray-400 transition-all flex items-center justify-center"
-                     style={{ backgroundColor: cor.cor }}>
+                  style={{ backgroundColor: cor.cor }}>
                 </div>
                 <p className="text-xs text-center mt-1">{cor.nome}</p>
               </label>
@@ -1460,7 +1461,7 @@ function LogoSistemaContent() {
         <Image className="h-5 w-5" />
         Logo do Sistema
       </h2>
-      
+
       <div className="space-y-8">
         {/* Logo Principal */}
         <div className="space-y-4">
@@ -1567,7 +1568,7 @@ function HorariosFuncionamentoContent() {
         <Clock className="h-5 w-5" />
         Horários de Funcionamento
       </h2>
-      
+
       <div className="space-y-6">
         {/* Horários por Dia */}
         <div className="space-y-4">
@@ -1674,7 +1675,7 @@ function ImagensLogoContent() {
         <Image className="h-5 w-5" />
         Imagens e Logo do Salão
       </h2>
-      
+
       <div className="space-y-8">
         {/* Logo Principal */}
         <div className="space-y-4">
@@ -1785,7 +1786,7 @@ function TelaLoginContent() {
         <Globe className="h-5 w-5" />
         Personalização da Tela de Login
       </h2>
-      
+
       <div className="space-y-8">
         {/* Preview */}
         <div className="space-y-4">
@@ -1880,69 +1881,216 @@ function TelaLoginContent() {
   );
 }
 
-// Componente Categorias de Serviços
+// Componente Categorias de Serviços — CRUD real com Supabase
 function CategoriasServicosContent() {
-  const categorias = [
-    { id: 1, nome: "Cabelo", servicos: 12, ativo: true, cor: "#3b82f6" },
-    { id: 2, nome: "Unhas", servicos: 8, ativo: true, cor: "#ec4899" },
-    { id: 3, nome: "Estética", servicos: 6, ativo: true, cor: "#22c55e" },
-    { id: 4, nome: "Maquiagem", servicos: 4, ativo: true, cor: "#f97316" },
-    { id: 5, nome: "Depilação", servicos: 5, ativo: false, cor: "#8b5cf6" },
-  ];
+  const [categorias, setCategorias] = useState<{ id: string; nome: string; cor: string; ativo: boolean; ordem: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [novaCategoria, setNovaCategoria] = useState("");
+  const [novaCor, setNovaCor] = useState("#3b82f6");
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editNome, setEditNome] = useState("");
+  const [editCor, setEditCor] = useState("#3b82f6");
+  const [salvando, setSalvando] = useState(false);
+
+  const carregarCategorias = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("categorias_servicos")
+        .select("*")
+        .order("ordem")
+        .order("nome");
+      if (!error && data) setCategorias(data);
+    } catch {
+      toast("Erro ao carregar categorias");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { carregarCategorias(); }, []);
+
+  const handleAdicionar = async () => {
+    if (!novaCategoria.trim()) return;
+    setSalvando(true);
+    try {
+      const { error } = await supabase.from("categorias_servicos").insert({
+        nome: novaCategoria.trim(),
+        cor: novaCor,
+        ativo: true,
+        ordem: categorias.length + 1,
+      });
+      if (error) throw error;
+      setNovaCategoria("");
+      setNovaCor("#3b82f6");
+      toast("Categoria adicionada!");
+      carregarCategorias();
+    } catch {
+      toast("Erro ao adicionar categoria");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleToggleAtivo = async (id: string, ativo: boolean) => {
+    await supabase.from("categorias_servicos").update({ ativo: !ativo }).eq("id", id);
+    setCategorias(prev => prev.map(c => c.id === id ? { ...c, ativo: !ativo } : c));
+  };
+
+  const handleIniciarEdicao = (cat: { id: string; nome: string; cor: string }) => {
+    setEditandoId(cat.id);
+    setEditNome(cat.nome);
+    setEditCor(cat.cor);
+  };
+
+  const handleSalvarEdicao = async () => {
+    if (!editandoId || !editNome.trim()) return;
+    setSalvando(true);
+    try {
+      const { error } = await supabase
+        .from("categorias_servicos")
+        .update({ nome: editNome.trim(), cor: editCor })
+        .eq("id", editandoId);
+      if (error) throw error;
+      toast("Categoria atualizada!");
+      setEditandoId(null);
+      carregarCategorias();
+    } catch {
+      toast("Erro ao salvar");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleExcluir = async (id: string) => {
+    if (!confirm("Excluir esta categoria? Os serviços desta categoria ficarão sem categoria.")) return;
+    await supabase.from("categorias_servicos").delete().eq("id", id);
+    toast("Categoria excluída");
+    carregarCategorias();
+  };
 
   return (
-    <Card className="p-6">
+    <Card className="p-4 sm:p-6">
       <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
         <Layers className="h-5 w-5" />
         Categorias de Serviços
       </h2>
-      
+
       <div className="space-y-6">
-        {/* Adicionar Categoria */}
-        <div className="flex gap-2">
-          <Input placeholder="Nome da nova categoria..." className="flex-1" />
+        {/* Adicionar nova categoria */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input
+            placeholder="Nome da nova categoria..."
+            value={novaCategoria}
+            onChange={(e) => setNovaCategoria(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdicionar()}
+            className="flex-1"
+          />
           <div className="flex items-center gap-2">
-            <input type="color" defaultValue="#3b82f6" className="h-10 w-10 rounded border cursor-pointer" />
-            <Button>
+            <input
+              type="color"
+              value={novaCor}
+              onChange={(e) => setNovaCor(e.target.value)}
+              className="h-10 w-10 rounded border cursor-pointer p-0.5"
+              title="Escolher cor da categoria"
+              aria-label="Cor da categoria"
+            />
+            <Button onClick={handleAdicionar} disabled={salvando || !novaCategoria.trim()} className="flex-1 sm:flex-none">
+              <Plus className="h-4 w-4 mr-1" />
               Adicionar
             </Button>
           </div>
         </div>
 
-        {/* Lista de Categorias */}
-        <div className="border rounded-lg divide-y">
-          {categorias.map((cat) => (
-            <div key={cat.id} className="p-4 flex items-center gap-4 hover:bg-muted/50">
-              <div 
-                className="w-4 h-4 rounded-full" 
-                style={{ backgroundColor: cat.cor }}
-              />
-              <div className="flex-1">
-                <p className={cn("font-medium", !cat.ativo && "text-muted-foreground")}>{cat.nome}</p>
-                <p className="text-sm text-muted-foreground">{cat.servicos} serviços</p>
-              </div>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" defaultChecked={cat.ativo} className="h-4 w-4" />
-                <span className="text-sm">Ativo</span>
-              </label>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm">Editar</Button>
-                <Button variant="ghost" size="sm" className="text-destructive">Excluir</Button>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Lista de categorias */}
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-14 bg-muted animate-pulse rounded-lg" />
+            ))}
+          </div>
+        ) : categorias.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Layers className="h-10 w-10 mx-auto mb-2 opacity-30" />
+            <p>Nenhuma categoria cadastrada.</p>
+          </div>
+        ) : (
+          <div className="border rounded-lg divide-y overflow-hidden">
+            {categorias.map((cat) => (
+              <div key={cat.id} className={cn("p-3 sm:p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors", !cat.ativo && "opacity-50")}>
+                {/* Cor */}
+                {editandoId === cat.id ? (
+                  <input
+                    type="color"
+                    value={editCor}
+                    onChange={e => setEditCor(e.target.value)}
+                    className="h-8 w-8 rounded border cursor-pointer p-0.5 flex-shrink-0"
+                    aria-label="Cor da categoria"
+                    title="Cor da categoria"
+                  />
+                ) : (
+                  <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: cat.cor }} />
+                )}
 
-        {/* Ordenação */}
-        <div className="p-4 bg-muted/50 rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            💡 Arraste as categorias para reordenar a exibição no sistema
-          </p>
+                {/* Nome */}
+                <div className="flex-1 min-w-0">
+                  {editandoId === cat.id ? (
+                    <Input
+                      value={editNome}
+                      onChange={e => setEditNome(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleSalvarEdicao()}
+                      className="h-8 text-sm"
+                      autoFocus
+                    />
+                  ) : (
+                    <p className="font-medium truncate">{cat.nome}</p>
+                  )}
+                </div>
+
+                {/* Ações */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {editandoId === cat.id ? (
+                    <>
+                      <Button size="sm" onClick={handleSalvarEdicao} disabled={salvando} className="h-8 px-3">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditandoId(null)} className="h-8 px-2">
+                        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleToggleAtivo(cat.id, cat.ativo)}
+                        className={cn("h-8 px-2 rounded text-xs font-medium transition-colors hidden sm:flex items-center gap-1",
+                          cat.ativo ? "text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30" : "text-muted-foreground hover:bg-muted"
+                        )}
+                        title={cat.ativo ? "Clique para desativar" : "Clique para ativar"}
+                      >
+                        {cat.ativo ? "● Ativo" : "○ Inativo"}
+                      </button>
+                      <Button size="sm" variant="ghost" onClick={() => handleIniciarEdicao(cat)} className="h-8 w-8 p-0" title="Editar">
+                        <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleExcluir(cat.id)} className="h-8 w-8 p-0" title="Excluir">
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg text-sm text-muted-foreground">
+          💡 As categorias criadas aqui aparecem automaticamente no cadastro de serviços.
         </div>
       </div>
     </Card>
   );
 }
+
 
 // Componente Pacotes e Combos
 function PacotesCombosContent() {
@@ -1958,7 +2106,7 @@ function PacotesCombosContent() {
         <Package className="h-5 w-5" />
         Pacotes e Combos
       </h2>
-      
+
       <div className="space-y-6">
         {/* Botão Adicionar */}
         <div className="flex justify-between items-center">
@@ -2026,7 +2174,7 @@ function ApenasAgendaContent() {
         <EyeOff className="h-5 w-5" />
         Serviços Apenas Agenda
       </h2>
-      
+
       <div className="space-y-6">
         {/* Explicação */}
         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -2104,7 +2252,7 @@ function FormasPagamentoContent() {
         <CreditCard className="h-5 w-5" />
         Formas de Pagamento
       </h2>
-      
+
       <div className="space-y-6">
         {/* Adicionar */}
         <div className="flex gap-2">
@@ -2174,7 +2322,7 @@ function CategoriasDespesasContent() {
         <PiggyBank className="h-5 w-5" />
         Categorias de Despesas
       </h2>
-      
+
       <div className="space-y-6">
         {/* Adicionar */}
         <div className="flex gap-2">
@@ -2227,7 +2375,7 @@ function ContasBancariasContent() {
         <DollarSign className="h-5 w-5" />
         Contas Bancárias
       </h2>
-      
+
       <div className="space-y-6">
         {/* Adicionar */}
         <div className="flex justify-end">
@@ -2294,7 +2442,7 @@ function ComissoesContent() {
         <Percent className="h-5 w-5" />
         Configurações de Comissões
       </h2>
-      
+
       <div className="space-y-6">
         {/* Comissões Padrão */}
         <div className="space-y-4">
@@ -2407,18 +2555,18 @@ function CategoriasProdutosContent() {
         <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
           <h3 className="font-medium">Nova Categoria</h3>
           <div className="grid grid-cols-3 gap-4">
-            <Input 
+            <Input
               placeholder="Nome da categoria"
               value={novaCategoria.nome}
               onChange={(e) => setNovaCategoria(prev => ({ ...prev, nome: e.target.value }))}
             />
-            <Input 
+            <Input
               placeholder="Descrição"
               value={novaCategoria.descricao}
               onChange={(e) => setNovaCategoria(prev => ({ ...prev, descricao: e.target.value }))}
             />
             <div className="flex gap-2">
-              <Input 
+              <Input
                 type="color"
                 value={novaCategoria.cor}
                 onChange={(e) => setNovaCategoria(prev => ({ ...prev, cor: e.target.value }))}
@@ -2433,8 +2581,8 @@ function CategoriasProdutosContent() {
         <div className="border rounded-lg divide-y">
           {categorias.map((cat) => (
             <div key={cat.id} className="p-4 flex items-center gap-4">
-              <div 
-                className="w-4 h-4 rounded-full" 
+              <div
+                className="w-4 h-4 rounded-full"
                 style={{ backgroundColor: cat.cor }}
               />
               <div className="flex-1">
@@ -2531,18 +2679,18 @@ function UnidadesMedidaContent() {
         <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
           <h3 className="font-medium">Nova Unidade</h3>
           <div className="grid grid-cols-4 gap-4">
-            <Input 
+            <Input
               placeholder="Sigla (ex: UN)"
               value={novaUnidade.sigla}
               onChange={(e) => setNovaUnidade(prev => ({ ...prev, sigla: e.target.value.toUpperCase() }))}
               maxLength={5}
             />
-            <Input 
+            <Input
               placeholder="Nome"
               value={novaUnidade.nome}
               onChange={(e) => setNovaUnidade(prev => ({ ...prev, nome: e.target.value }))}
             />
-            <Input 
+            <Input
               placeholder="Descrição"
               value={novaUnidade.descricao}
               onChange={(e) => setNovaUnidade(prev => ({ ...prev, descricao: e.target.value }))}
@@ -2602,8 +2750,8 @@ function HorariosDisponiveisContent() {
           {horarios.map((h, idx) => (
             <div key={h.dia} className="p-4 flex items-center gap-4">
               <label className="flex items-center gap-2 w-32">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={h.ativo}
                   onChange={(e) => {
                     const newHorarios = [...horarios];
@@ -2618,8 +2766,8 @@ function HorariosDisponiveisContent() {
                 <>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Das</span>
-                    <Input 
-                      type="time" 
+                    <Input
+                      type="time"
                       value={h.inicio}
                       onChange={(e) => {
                         const newHorarios = [...horarios];
@@ -2629,8 +2777,8 @@ function HorariosDisponiveisContent() {
                       className="w-28"
                     />
                     <span className="text-sm text-muted-foreground">às</span>
-                    <Input 
-                      type="time" 
+                    <Input
+                      type="time"
                       value={h.fim}
                       onChange={(e) => {
                         const newHorarios = [...horarios];
@@ -2642,8 +2790,8 @@ function HorariosDisponiveisContent() {
                   </div>
                   <div className="flex items-center gap-2 ml-4">
                     <span className="text-sm text-muted-foreground">Intervalo:</span>
-                    <Input 
-                      type="time" 
+                    <Input
+                      type="time"
                       value={h.intervaloInicio}
                       onChange={(e) => {
                         const newHorarios = [...horarios];
@@ -2653,8 +2801,8 @@ function HorariosDisponiveisContent() {
                       className="w-28"
                     />
                     <span className="text-sm text-muted-foreground">-</span>
-                    <Input 
-                      type="time" 
+                    <Input
+                      type="time"
                       value={h.intervaloFim}
                       onChange={(e) => {
                         const newHorarios = [...horarios];
@@ -2749,7 +2897,7 @@ function CoresVisualizacaoContent() {
           <h3 className="font-medium">Visualização Padrão</h3>
           <div className="flex gap-2">
             {["dia", "semana", "mes"].map((v) => (
-              <Button 
+              <Button
                 key={v}
                 variant={config.visualizacaoPadrao === v ? "default" : "outline"}
                 onClick={() => setConfig(prev => ({ ...prev, visualizacaoPadrao: v }))}
@@ -2773,8 +2921,8 @@ function CoresVisualizacaoContent() {
               { key: "corAguardando", label: "Aguardando" },
             ].map((item) => (
               <label key={item.key} className="flex items-center gap-3 p-3 border rounded-lg">
-                <Input 
-                  type="color" 
+                <Input
+                  type="color"
                   value={config[item.key as keyof typeof config] as string}
                   onChange={(e) => setConfig(prev => ({ ...prev, [item.key]: e.target.value }))}
                   className="w-10 h-10 p-1"
@@ -2795,8 +2943,8 @@ function CoresVisualizacaoContent() {
           ].map((item) => (
             <label key={item.key} className="flex items-center justify-between p-3 border rounded-lg">
               <span>{item.label}</span>
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={config[item.key as keyof typeof config] as boolean}
                 onChange={(e) => setConfig(prev => ({ ...prev, [item.key]: e.target.checked }))}
                 className="h-5 w-5"
@@ -2810,7 +2958,7 @@ function CoresVisualizacaoContent() {
           <h3 className="font-medium">Tamanho do Slot (minutos)</h3>
           <div className="flex gap-2">
             {[15, 30, 45, 60].map((m) => (
-              <Button 
+              <Button
                 key={m}
                 variant={config.tamanhoSlot === m ? "default" : "outline"}
                 onClick={() => setConfig(prev => ({ ...prev, tamanhoSlot: m }))}
@@ -2852,8 +3000,8 @@ function LembretesContent() {
           </div>
           <label className="flex items-center gap-2">
             <span className="text-sm">Ativar lembretes</span>
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               checked={config.enviarLembrete}
               onChange={(e) => setConfig(prev => ({ ...prev, enviarLembrete: e.target.checked }))}
               className="h-5 w-5"
@@ -2872,8 +3020,8 @@ function LembretesContent() {
                 { key: "antecedencia1h", label: "1 hora antes" },
               ].map((item) => (
                 <label key={item.key} className="flex items-center gap-3">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={config[item.key as keyof typeof config] as boolean}
                     onChange={(e) => setConfig(prev => ({ ...prev, [item.key]: e.target.checked }))}
                     className="h-4 w-4"
@@ -2892,8 +3040,8 @@ function LembretesContent() {
                 { key: "canalEmail", label: "E-mail", icon: Mail },
               ].map((item) => (
                 <label key={item.key} className="flex items-center gap-3">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={config[item.key as keyof typeof config] as boolean}
                     onChange={(e) => setConfig(prev => ({ ...prev, [item.key]: e.target.checked }))}
                     className="h-4 w-4"
@@ -2907,7 +3055,7 @@ function LembretesContent() {
             {/* Mensagem */}
             <div className="space-y-3">
               <h3 className="font-medium">Mensagem Personalizada</h3>
-              <textarea 
+              <textarea
                 value={config.mensagemPersonalizada}
                 onChange={(e) => setConfig(prev => ({ ...prev, mensagemPersonalizada: e.target.value }))}
                 className="w-full p-3 border rounded-lg min-h-[100px]"
