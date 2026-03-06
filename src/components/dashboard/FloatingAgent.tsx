@@ -49,26 +49,56 @@ async function runAgent(
     if (!key) throw new Error("Chave Gemini não configurada.");
     const tools: string[] = [];
     let contents = [...history.slice(-12), { role: 'user', parts: [{ text: msg }] }];
-    for (let i = 0; i < 5; i++) {
-        // Tenta gemini-2.0-flash, fallback para gemini-1.5-flash se 404
-        const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-        let res: Response | null = null;
-        for (const model of models) {
-            res = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-                {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-                        system_instruction: { parts: [{ text: SYSTEM }] }, contents,
-                        tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
-                        generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
-                    })
-                }
-            );
-            if (res.ok || res.status !== 404) break;
+
+    // Modelos em ordem de preferência (todos suportados no AI Studio)
+    const MODELS = [
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-pro',
+        'gemini-1.0-pro',
+    ];
+
+    // Helper para chamar o Gemini com ou sem function declarations
+    const callGemini = async (model: string, useTools: boolean) => {
+        const body: Record<string, unknown> = {
+            system_instruction: { parts: [{ text: SYSTEM }] },
+            contents,
+            generationConfig: { temperature: 0.8, maxOutputTokens: 1024 },
+        };
+        if (useTools) body.tools = [{ functionDeclarations: TOOL_DECLARATIONS }];
+        return fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        );
+    };
+
+    // Encontra o primeiro modelo disponível
+    let workingModel: string | null = null;
+    let firstRes: Response | null = null;
+    for (const model of MODELS) {
+        const r = await callGemini(model, true);
+        if (r.ok || r.status !== 404) { workingModel = model; firstRes = r; break; }
+    }
+    // Fallback sem function declarations
+    if (!workingModel) {
+        for (const model of MODELS) {
+            const r = await callGemini(model, false);
+            if (r.ok || r.status !== 404) { workingModel = model; firstRes = r; break; }
         }
-        if (!res || !res.ok) {
-            const errText = await res?.text() ?? 'sem resposta';
-            throw new Error(`Gemini ${res?.status}: ${errText.slice(0, 200)}`);
+    }
+    if (!workingModel || !firstRes) {
+        throw new Error('Nenhum modelo Gemini disponível para esta chave. Verifique a chave em Configurações → Integrações → APIs de IA.');
+    }
+
+    // Agora faz o loop de agentic tool calling com o modelo que funcionou
+    const useTools = workingModel !== null;
+    const currentRes = firstRes;
+
+    for (let i = 0; i < 5; i++) {
+        const res = i === 0 ? currentRes : await callGemini(workingModel, useTools);
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Gemini ${res.status}: ${errText.slice(0, 200)}`);
         }
         const data = await res.json() as {
             candidates?: Array<{ content?: { parts?: Array<{ text?: string; functionCall?: { name: string; args: Record<string, unknown> } }> } }>;
