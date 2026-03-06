@@ -227,21 +227,21 @@ export default function SalaoArteGenerator() {
                     ctx.drawImage(img, 0, 0);
 
                     // ── TARJA MINIMALISTA full-width na base ──
-                    // Altura da tarja: 11% da imagem
-                    const tarjaH = img.height * 0.11;
+                    // Altura da tarja: 8% da imagem (mais discreta)
+                    const tarjaH = img.height * 0.08;
                     const tarjaY = img.height - tarjaH;
 
-                    // Gradiente vertical: transparente → preto 80%
+                    // Gradiente vertical suave: transparente → preto 60%
                     const grad = ctx.createLinearGradient(0, tarjaY, 0, img.height);
                     grad.addColorStop(0, 'rgba(0,0,0,0)');
-                    grad.addColorStop(0.4, 'rgba(0,0,0,0.55)');
-                    grad.addColorStop(1, 'rgba(0,0,0,0.82)');
+                    grad.addColorStop(0.35, 'rgba(0,0,0,0.35)');
+                    grad.addColorStop(1, 'rgba(0,0,0,0.60)');
                     ctx.fillStyle = grad;
                     ctx.fillRect(0, tarjaY, img.width, tarjaH);
 
                     // ── LOGO centralizada na tarja ──
-                    // Logo: máx 12% da largura
-                    const logoMaxW = img.width * 0.12;
+                    // Logo: 17% da largura (mais visível)
+                    const logoMaxW = img.width * 0.17;
                     const logoScale = logoMaxW / logo.width;
                     const logoW = logo.width * logoScale;
                     const logoH = logo.height * logoScale;
