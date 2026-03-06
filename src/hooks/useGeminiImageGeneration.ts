@@ -125,18 +125,19 @@ export interface GenerationResult {
 }
 
 // ============================================================
-// Modelos padrão — Gemini 3 (principal) + fallbacks
+// Modelos padrão — Gemini 3 (Nano Banana Pro) + fallbacks
 // ============================================================
-const DEFAULT_TEXT_MODEL = 'gemini-2.5-flash-preview-05-20';
-const DEFAULT_IMAGE_MODEL = 'gemini-2.0-flash-exp-image-generation';
+const DEFAULT_TEXT_MODEL = 'gemini-3.1-pro-preview';
+const DEFAULT_IMAGE_MODEL = 'gemini-3-pro-image-preview';
 
 const IMAGE_MODEL_FALLBACKS: string[] = [
+    'gemini-3-pro-image-preview',
+    'gemini-3.1-flash-image-preview',
     'gemini-2.0-flash-exp-image-generation',
-    'gemini-2.5-flash-image',
 ];
 
 const TEXT_MODEL_FALLBACKS: string[] = [
-    'gemini-2.5-flash-preview-05-20',
+    'gemini-3.1-pro-preview',
     'gemini-2.0-flash',
 ];
 
