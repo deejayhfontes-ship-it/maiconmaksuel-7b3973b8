@@ -323,7 +323,7 @@ export default function FloatingAgent() {
                                 <div className="max-w-[82%]">
                                     {/* tool badges só se tiver ferramentas */}
                                     {m.tools && m.tools.length > 0 && (
-                                        <p className="text-[9px] mb-1" style={{ color: G.muted }}>
+                                        <p className="text-[11px] mb-1" style={{ color: G.muted }}>
                                             🔧 {[...new Set(m.tools)].map(t => TOOL_LABEL[t] ?? t).join(', ')}
                                         </p>
                                     )}
@@ -333,8 +333,8 @@ export default function FloatingAgent() {
                                         ? { background: G.user }
                                         : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.9)' }
                                     }>
-                                        <p className="whitespace-pre-wrap text-[13px]">{m.text}</p>
-                                        <p className="text-[9px] mt-1 text-right opacity-35">{m.time}</p>
+                                        <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{m.text}</p>
+                                        <p className="text-[11px] mt-1 text-right opacity-35">{m.time}</p>
                                     </div>
                                 </div>
                             </div>
@@ -373,9 +373,9 @@ export default function FloatingAgent() {
                         <textarea
                             ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
                             onKeyDown={onKey} disabled={loading} rows={1}
-                            placeholder="Pergunte ou peça algo…"
+                            placeholder="Pergunte ou peça algo... (Enter envia)"
                             aria-label="Mensagem para Max"
-                            className="flex-1 resize-none text-[13px] rounded-xl px-3 py-2 focus:outline-none bg-transparent"
+                            className="flex-1 resize-none text-[15px] rounded-xl px-3 py-2 focus:outline-none bg-transparent"
                             style={{
                                 color: 'rgba(255,255,255,0.88)',
                                 border: '1px solid rgba(212,160,23,0.2)',
