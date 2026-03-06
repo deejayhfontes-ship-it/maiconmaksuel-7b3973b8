@@ -1,14 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, Sparkles, RefreshCw, Trash2, ChevronDown, ChevronUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TOOL_DECLARATIONS, executeTool } from "@/hooks/useAgenteVirtualTools";
 
-// ── Configuração da API Key (mesmo projeto Supabase separado) ──
+// ── API Key (mesmo pool do gerador de imagens) ──
 const KEYS_SUPABASE_URL = 'https://nzngwbknezmfthbyfjmx.supabase.co';
 const KEYS_SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bmd3YmtuZXptZnRoYnlmam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxODU5MDIsImV4cCI6MjA4NDc2MTkwMn0.S_2Hr2KEqrEj1nHIot1fBr2U1ihojl_f-owxDhf-iAk';
-
 let _cachedKey: string | null = null;
-
 async function getGeminiKey(): Promise<string | null> {
     if (_cachedKey) return _cachedKey;
     try {
@@ -19,153 +18,242 @@ async function getGeminiKey(): Promise<string | null> {
         const data: { api_key: string }[] = await res.json();
         _cachedKey = data[0]?.api_key ?? null;
         return _cachedKey;
-    } catch {
-        return null;
-    }
+    } catch { return null; }
 }
 
-async function callGeminiText(messages: { role: string; text: string }[], userMessage: string): Promise<string> {
+// ── Tipos de mensagem ──
+interface FunctionCallInfo { name: string; args: Record<string, unknown>; result: string; }
+interface Message {
+    id: string;
+    role: 'user' | 'assistant';
+    text: string;
+    time: string;
+    toolCalls?: FunctionCallInfo[];
+}
+
+// ── Sistema prompt ──
+const SYSTEM_PROMPT = `Você é a Max, assistente virtual inteligente do Salão Maicon Maksuel. 
+Você tem acesso completo ao sistema do salão e pode realizar ações reais!
+
+Suas capacidades:
+- 📅 Agendar, confirmar e cancelar horários
+- 👤 Buscar clientes, ver histórico e clientes inativos  
+- 💬 Enviar mensagens WhatsApp para clientes
+- 📋 Criar lembretes e listas de compras
+- 📊 Ver resumo do dia, agendamentos, faturamento
+- ✂️ Consultar serviços e profissionais disponíveis
+
+REGRAS IMPORTANTES:
+1. Sempre confirme antes de fazer ações irreversíveis (cancelar agendamento, enviar WhatsApp em massa)
+2. Quando o usuário pedir para agendar, primeiro busque o cliente e o serviço, depois crie o agendamento
+3. Para datas relativas como "amanhã", "próxima segunda", calcule com base em: ${new Date().toISOString().split('T')[0]} (data de hoje)
+4. Para horário atual: ${new Date().toLocaleTimeString('pt-BR')}
+5. Responda sempre em português brasileiro, de forma amigável e concisa
+6. Quando usar ferramentas, explique o que está fazendo de forma natural
+7. Para enviar WhatsApp, o celular deve estar no formato: 5511999999999 (DDI+DDD+número)`;
+
+// ── Chamada Gemini com function calling ──
+async function callGeminiWithTools(
+    history: { role: string; parts: unknown[] }[],
+    userMessage: string,
+    onToolCall?: (name: string, args: Record<string, unknown>) => void
+): Promise<{ text: string; toolCalls: FunctionCallInfo[] }> {
     const apiKey = await getGeminiKey();
-    if (!apiKey) throw new Error("API key não encontrada");
+    if (!apiKey) throw new Error("API key não encontrada. Configure em Configurações → Geral.");
 
-    // Monta histórico + sistema
-    const history = messages.slice(-10).map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }]
-    }));
+    const allToolCalls: FunctionCallInfo[] = [];
 
-    const body = {
-        system_instruction: {
-            parts: [{
-                text: `Você é a Max, assistente virtual inteligente do Salão Maicon Maksuel. 
-Você ajuda a equipe com:
-- 💡 Ideias criativas de posts para Instagram/WhatsApp/TikTok
-- 📣 Sugestões de campanhas e promoções para o salão
-- 📅 Estratégias de marketing sazonal (Dia das Mães, Natal, Carnaval, etc)
-- 💬 Textos de WhatsApp para clientes (confirmação, lembrete, promoções)
-- ✅ Respostas a dúvidas sobre gestão de salão de beleza
-- 🎨 Sugestões de hashtags e legendas para redes sociais
+    // Conteúdos para a requisição
+    let contents = [
+        ...history.slice(-12),
+        { role: 'user', parts: [{ text: userMessage }] }
+    ];
 
-Responda sempre em português do Brasil, de forma amigável, objetiva e criativa.
-Quando sugerir posts ou textos, sempre forneça o texto pronto para copiar e colar.
-Use emojis com moderação para tornar a resposta mais visual.
-Seja concisa: respostas entre 150-400 palavras são ideais.`
-            }]
-        },
-        contents: [
-            ...history,
-            { role: 'user', parts: [{ text: userMessage }] }
-        ],
-        generationConfig: { temperature: 0.9, maxOutputTokens: 1024 }
-    };
+    const MAX_ITERATIONS = 5; // evita loops infinitos
 
-    const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-    );
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+        const body = {
+            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents,
+            tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+        };
 
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || `Erro ${res.status}`);
+        const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        );
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error((err as { error?: { message?: string } })?.error?.message || `Erro ${res.status}`);
+        }
+
+        const data = await res.json() as {
+            candidates?: Array<{
+                content?: {
+                    role?: string;
+                    parts?: Array<{
+                        text?: string;
+                        functionCall?: { name: string; args: Record<string, unknown> };
+                    }>;
+                };
+            }>;
+        };
+        const candidate = data.candidates?.[0];
+        const parts = candidate?.content?.parts || [];
+
+        // Verifica se tem function calls
+        const funcCalls = parts.filter(p => p.functionCall);
+
+        if (funcCalls.length === 0) {
+            // Resposta final de texto
+            const text = parts.find(p => p.text)?.text || "Não consegui gerar uma resposta.";
+            return { text, toolCalls: allToolCalls };
+        }
+
+        // Adiciona a resposta do modelo ao histórico
+        contents = [...contents, { role: 'model', parts }];
+
+        // Executa as ferramentas
+        const functionResponses = [];
+        for (const part of funcCalls) {
+            const { name, args } = part.functionCall!;
+            onToolCall?.(name, args);
+
+            const result = await executeTool(name, args);
+            const responseText = JSON.stringify(result.dados ?? {}) || result.mensagem;
+
+            allToolCalls.push({
+                name,
+                args,
+                result: result.mensagem
+            });
+
+            functionResponses.push({
+                functionResponse: {
+                    name,
+                    response: {
+                        result: result.mensagem,
+                        dados: result.dados,
+                        sucesso: result.sucesso
+                    }
+                }
+            });
+        }
+
+        // Adiciona respostas das ferramentas ao histórico
+        contents = [...contents, { role: 'user', parts: functionResponses }];
     }
 
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Não consegui gerar uma resposta.";
+    return { text: "Operação concluída.", toolCalls: allToolCalls };
 }
 
-// ── Sugestões rápidas ──
+// ── Sugestões rápidas por categoria ──
 const QUICK_PROMPTS = [
-    { emoji: "📸", label: "Ideia de post", msg: "Me dê 3 ideias criativas de posts para o Instagram do salão esta semana" },
-    { emoji: "📣", label: "Campanha", msg: "Crie uma campanha de promoção para atrair clientes novos este mês" },
-    { emoji: "💬", label: "Texto WhatsApp", msg: "Escreva uma mensagem de WhatsApp para lembrar clientes do agendamento" },
-    { emoji: "🏷️", label: "Hashtags", msg: "Quais as melhores hashtags para posts de salão de beleza no Instagram?" },
-    { emoji: "🎁", label: "Promoção", msg: "Crie uma promoção especial de fim de semana para o salão" },
-    { emoji: "⭐", label: "Fidelização", msg: "Como posso fidelizar mais clientes no salão? Me dê estratégias práticas" },
+    { emoji: "📅", label: "Resumo do dia", msg: "Me mostre o resumo do dia de hoje", color: "violet" },
+    { emoji: "👻", label: "Clientes sumidos", msg: "Quem não vem ao salão há mais de 30 dias?", color: "amber" },
+    { emoji: "📸", label: "Ideia de post", msg: "Me dê 3 ideias criativas de posts para o Instagram do salão hoje", color: "pink" },
+    { emoji: "📣", label: "Campanha", msg: "Crie uma campanha de WhatsApp para atrair clientes inativos", color: "blue" },
+    { emoji: "🗒️", label: "Lembrete", msg: "Cria um lembrete: comprar produtos de hidratação na próxima semana", color: "green" },
+    { emoji: "✂️", label: "Serviços", msg: "Quais serviços estão cadastrados no sistema?", color: "orange" },
 ];
 
-// ── Animação do Robô ──
-function RobotAvatar({ thinking = false }: { thinking?: boolean }) {
+// ── Robô animado ──
+function RobotAvatar({ thinking = false, size = 'sm' }: { thinking?: boolean; size?: 'sm' | 'lg' }) {
+    const dim = size === 'lg' ? 'w-16 h-16' : 'w-9 h-9';
+    const svgDim = size === 'lg' ? 'w-10 h-10' : 'w-6 h-6';
     return (
-        <div className={cn(
-            "relative w-9 h-9 flex-shrink-0",
-            thinking && "animate-pulse"
-        )}>
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shadow-md">
-                <svg viewBox="0 0 36 36" className="w-6 h-6" fill="none">
-                    {/* Cabeça */}
+        <div className={cn("relative flex-shrink-0", dim, thinking && "animate-pulse")}>
+            <div className={cn(dim, "rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shadow-md")}>
+                <svg viewBox="0 0 36 36" className={svgDim} fill="none">
                     <rect x="6" y="10" width="24" height="18" rx="4" fill="white" fillOpacity="0.2" />
-                    {/* Olhos */}
-                    <circle cx="13" cy="18" r="2.5" fill="white" className={cn(thinking && "animate-bounce")} />
-                    <circle cx="23" cy="18" r="2.5" fill="white" className={cn(thinking && "animate-bounce [animation-delay:0.15s]")} />
-                    {/* Boca */}
+                    <circle cx="13" cy="18" r="2.5" fill="white" style={{ animation: thinking ? 'bounce 0.6s infinite' : 'none' }} />
+                    <circle cx="23" cy="18" r="2.5" fill="white" style={{ animation: thinking ? 'bounce 0.6s 0.15s infinite' : 'none' }} />
                     <rect x="12" y="23" width="12" height="2" rx="1" fill="white" fillOpacity="0.7" />
-                    {/* Antena */}
                     <line x1="18" y1="10" x2="18" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                    <circle cx="18" cy="5" r="2" fill="#c4b5fd" className={cn(thinking && "animate-ping")} />
-                    {/* Orelhas */}
+                    <circle cx="18" cy="5" r="2" fill="#c4b5fd" style={{ animation: thinking ? 'ping 1s infinite' : 'none' }} />
                     <rect x="3" y="15" width="3" height="6" rx="1.5" fill="white" fillOpacity="0.5" />
                     <rect x="30" y="15" width="3" height="6" rx="1.5" fill="white" fillOpacity="0.5" />
                 </svg>
             </div>
-            {thinking && (
-                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
-            )}
+            {thinking && <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />}
         </div>
     );
 }
 
-// ── Bolha de digitação ──
-function TypingBubble() {
+// ── Indicador de ferramenta sendo executada ──
+function ToolBadge({ name, active = false }: { name: string; active?: boolean }) {
+    const labels: Record<string, string> = {
+        buscar_clientes: "🔍 Buscando clientes",
+        buscar_clientes_inativos: "👻 Verificando clientes inativos",
+        buscar_agendamentos: "📅 Consultando agenda",
+        buscar_profissionais: "👥 Listando profissionais",
+        buscar_servicos: "✂️ Consultando serviços",
+        criar_agendamento: "📅 Criando agendamento",
+        cancelar_agendamento: "❌ Cancelando agendamento",
+        enviar_whatsapp: "💬 Enviando WhatsApp",
+        criar_lembrete: "🗒️ Salvando lembrete",
+        ver_resumo_dia: "📊 Carregando resumo do dia",
+    };
+    return (
+        <span className={cn(
+            "inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full font-medium transition-all",
+            active
+                ? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 animate-pulse"
+                : "bg-slate-100 text-slate-500 dark:bg-muted dark:text-muted-foreground"
+        )}>
+            {active && <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-ping" />}
+            {labels[name] || name}
+        </span>
+    );
+}
+
+function TypingBubble({ activeTool }: { activeTool?: string }) {
     return (
         <div className="flex items-end gap-2">
             <RobotAvatar thinking />
-            <div className="bg-white dark:bg-muted border border-border rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                <div className="flex items-center gap-1.5 h-4">
-                    {[0, 1, 2].map(i => (
-                        <span
-                            key={i}
-                            className="w-2 h-2 bg-violet-400 rounded-full animate-bounce"
-                            style={{ animationDelay: `${i * 0.15}s` }}
-                        />
-                    ))}
-                </div>
+            <div className="bg-white dark:bg-muted border border-border rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm max-w-xs">
+                {activeTool ? (
+                    <div className="flex flex-col gap-1.5">
+                        <ToolBadge name={activeTool} active />
+                        <p className="text-[11px] text-muted-foreground">Aguarde...</p>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-1.5 h-4">
+                        {[0, 1, 2].map(i => (
+                            <span key={i} className="w-2 h-2 bg-violet-400 rounded-full animate-bounce"
+                                style={{ animationDelay: `${i * 0.15}s` }} />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
 }
 
-interface Message { id: string; role: 'user' | 'assistant'; text: string; time: string; }
-
-const STORAGE_KEY = 'agente_max_history';
-
+const STORAGE_KEY = 'agente_max_v2';
 function loadHistory(): Message[] {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
 }
-
 function saveHistory(msgs: Message[]) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs.slice(-30))); } catch { /* noop */ }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs.slice(-40))); } catch { /* noop */ }
 }
 
 export default function AgenteVirtual() {
     const [messages, setMessages] = useState<Message[]>(() => loadHistory());
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
+    const [activeTool, setActiveTool] = useState<string | undefined>();
     const [expanded, setExpanded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    // Scroll para o fim quando novas mensagens chegam
     useEffect(() => {
-        if (expanded) {
-            setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-        }
+        if (expanded) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     }, [messages, loading, expanded]);
 
-    // Salva histórico
     useEffect(() => { saveHistory(messages); }, [messages]);
 
     const sendMessage = useCallback(async (text: string) => {
@@ -186,17 +274,31 @@ export default function AgenteVirtual() {
         if (!expanded) setExpanded(true);
 
         try {
-            const history = messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text }));
-            const reply = await callGeminiText(history, trimmed);
+            // Monta histórico no formato Gemini
+            const history = messages.flatMap(m => {
+                const parts = [{ text: m.text }];
+                if (m.role === 'user') return [{ role: 'user', parts }];
+                return [{ role: 'model', parts }];
+            });
+
+            const { text: reply, toolCalls } = await callGeminiWithTools(
+                history,
+                trimmed,
+                (toolName) => setActiveTool(toolName)
+            );
+
+            setActiveTool(undefined);
 
             const assistantMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
                 text: reply,
-                time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                toolCalls: toolCalls.length > 0 ? toolCalls : undefined
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (e: unknown) {
+            setActiveTool(undefined);
             const msg = e instanceof Error ? e.message : 'Erro desconhecido';
             setError(msg);
         } finally {
@@ -206,10 +308,7 @@ export default function AgenteVirtual() {
     }, [loading, messages, expanded]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage(input);
-        }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
     };
 
     const clearChat = () => {
@@ -225,18 +324,22 @@ export default function AgenteVirtual() {
         )}>
             {/* Header */}
             <div
-                className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-600 to-purple-700 cursor-pointer"
+                className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-600 to-purple-700 cursor-pointer select-none"
                 onClick={() => setExpanded(v => !v)}
             >
                 <div className="flex items-center gap-3">
                     <RobotAvatar thinking={loading} />
                     <div>
-                        <h3 className="text-white font-bold text-sm leading-tight flex items-center gap-1.5">
-                            Max <span className="text-violet-200">— Assistente Virtual</span>
-                            <Sparkles className="h-3.5 w-3.5 text-yellow-300 animate-pulse" />
+                        <h3 className="text-white font-bold text-sm leading-tight flex items-center gap-2">
+                            Max
+                            <span className="text-violet-200 font-normal">— Agente Virtual IA</span>
+                            <span className="flex items-center gap-1 bg-violet-500/40 text-yellow-200 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                                <Zap className="h-2.5 w-2.5" /> Acesso ao sistema
+                            </span>
                         </h3>
                         <p className="text-violet-200 text-[11px]">
-                            {loading ? "Pensando..." : "Ideias de posts, campanhas, textos e mais ✨"}
+                            {loading ? (activeTool ? `🔧 ${activeTool.replace(/_/g, ' ')}...` : "Pensando...") :
+                                "Agenda, WhatsApp, clientes, lembretes e muito mais ✨"}
                         </p>
                     </div>
                 </div>
@@ -250,72 +353,60 @@ export default function AgenteVirtual() {
                             <Trash2 className="h-3.5 w-3.5" />
                         </button>
                     )}
-                    <button className="text-violet-200 hover:text-white p-1 transition-colors">
+                    <span className="text-violet-200">
                         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
+                    </span>
                 </div>
             </div>
 
-            {/* Sugestões rápidas (sempre visíveis) */}
+            {/* Sugestões rápidas compactas */}
             {!expanded && (
                 <div className="p-3 flex flex-wrap gap-2">
                     {QUICK_PROMPTS.slice(0, 3).map(q => (
-                        <button
-                            key={q.label}
-                            onClick={() => sendMessage(q.msg)}
-                            disabled={loading}
-                            className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-muted border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:border-violet-400 transition-all font-medium disabled:opacity-50"
-                        >
+                        <button key={q.label} onClick={() => sendMessage(q.msg)} disabled={loading}
+                            className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-muted border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:border-violet-400 transition-all font-medium disabled:opacity-50">
                             {q.emoji} {q.label}
                         </button>
                     ))}
-                    <button
-                        onClick={() => setExpanded(true)}
-                        className="text-xs px-3 py-1.5 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors font-medium"
-                    >
-                        + Ver tudo
+                    <button onClick={() => setExpanded(true)}
+                        className="text-xs px-3 py-1.5 rounded-full bg-violet-600 text-white hover:bg-violet-700 transition-colors font-medium">
+                        + Abrir chat
                     </button>
                 </div>
             )}
 
-            {/* Chat expandido */}
+            {/* Área expandida */}
             {expanded && (
                 <>
-                    {/* Sugestões rápidas todas */}
-                    <div className="px-3 pt-3 pb-1 flex flex-wrap gap-2">
+                    {/* Sugestões rápidas */}
+                    <div className="px-3 pt-2.5 pb-1 flex flex-wrap gap-1.5 border-b border-violet-100 dark:border-violet-900/30">
                         {QUICK_PROMPTS.map(q => (
-                            <button
-                                key={q.label}
-                                onClick={() => sendMessage(q.msg)}
-                                disabled={loading}
-                                className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-muted border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:border-violet-400 transition-all font-medium disabled:opacity-50 whitespace-nowrap"
-                            >
+                            <button key={q.label} onClick={() => sendMessage(q.msg)} disabled={loading}
+                                className="text-xs px-2.5 py-1 rounded-full bg-white dark:bg-muted border border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:border-violet-400 transition-all font-medium disabled:opacity-50 whitespace-nowrap">
                                 {q.emoji} {q.label}
                             </button>
                         ))}
                     </div>
 
                     {/* Mensagens */}
-                    <div className="h-72 overflow-y-auto px-4 py-3 space-y-4 scroll-smooth">
+                    <div className="h-80 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth">
                         {messages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-6">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shadow-lg">
-                                    <svg viewBox="0 0 36 36" className="w-10 h-10" fill="none">
-                                        <rect x="6" y="10" width="24" height="18" rx="4" fill="white" fillOpacity="0.25" />
-                                        <circle cx="13" cy="18" r="2.5" fill="white" />
-                                        <circle cx="23" cy="18" r="2.5" fill="white" />
-                                        <rect x="12" y="23" width="12" height="2" rx="1" fill="white" fillOpacity="0.7" />
-                                        <line x1="18" y1="10" x2="18" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                                        <circle cx="18" cy="5" r="2" fill="#c4b5fd" />
-                                        <rect x="3" y="15" width="3" height="6" rx="1.5" fill="white" fillOpacity="0.5" />
-                                        <rect x="30" y="15" width="3" height="6" rx="1.5" fill="white" fillOpacity="0.5" />
-                                    </svg>
-                                </div>
+                            <div className="flex flex-col items-center justify-center h-full text-center gap-4 py-4">
+                                <RobotAvatar size="lg" />
                                 <div>
-                                    <p className="font-semibold text-slate-700 dark:text-slate-200">Oi! Eu sou a Max 👋</p>
-                                    <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                                        Sua assistente virtual de marketing. Clique em uma sugestão ou me faça uma pergunta!
+                                    <p className="font-bold text-slate-700 dark:text-slate-200 text-lg">Oi! Eu sou a Max 🤖</p>
+                                    <p className="text-sm text-muted-foreground mt-1.5 max-w-sm leading-relaxed">
+                                        Posso <strong>agendar horários</strong>, consultar clientes, enviar
+                                        WhatsApp, criar lembretes e muito mais — tudo pelo chat!
                                     </p>
+                                    <div className="mt-3 flex flex-wrap gap-1.5 justify-center">
+                                        {["Agende amanhã às 14h para Maria Corte", "Quem não veio há 30 dias?", "Resumo do dia de hoje"].map(ex => (
+                                            <button key={ex} onClick={() => sendMessage(ex)}
+                                                className="text-xs px-2.5 py-1 rounded-full border border-violet-300 dark:border-violet-700 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors">
+                                                {ex}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -323,35 +414,44 @@ export default function AgenteVirtual() {
                         {messages.map(msg => (
                             <div key={msg.id} className={cn("flex gap-2", msg.role === 'user' ? "justify-end" : "justify-start items-end")}>
                                 {msg.role === 'assistant' && <RobotAvatar />}
-                                <div className={cn(
-                                    "max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm",
-                                    msg.role === 'user'
-                                        ? "bg-violet-600 text-white rounded-br-sm"
-                                        : "bg-white dark:bg-muted border border-border text-foreground rounded-bl-sm"
-                                )}>
-                                    <p className="whitespace-pre-wrap">{msg.text}</p>
-                                    <p className={cn("text-[10px] mt-1 text-right", msg.role === 'user' ? "text-violet-200" : "text-muted-foreground")}>
-                                        {msg.time}
-                                    </p>
+                                <div className="flex flex-col gap-1 max-w-[82%]">
+                                    {/* Badges das ferramentas usadas */}
+                                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mb-1">
+                                            {msg.toolCalls.map((tc, i) => (
+                                                <ToolBadge key={i} name={tc.name} />
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className={cn(
+                                        "px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm",
+                                        msg.role === 'user'
+                                            ? "bg-violet-600 text-white rounded-br-sm"
+                                            : "bg-white dark:bg-muted border border-border text-foreground rounded-bl-sm"
+                                    )}>
+                                        <p className="whitespace-pre-wrap">{msg.text}</p>
+                                        <p className={cn("text-[10px] mt-1 text-right", msg.role === 'user' ? "text-violet-200" : "text-muted-foreground")}>
+                                            {msg.time}
+                                        </p>
+                                    </div>
                                 </div>
                                 {msg.role === 'user' && (
-                                    <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                    <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                                         Eu
                                     </div>
                                 )}
                             </div>
                         ))}
 
-                        {loading && <TypingBubble />}
+                        {loading && <TypingBubble activeTool={activeTool} />}
 
                         {error && (
-                            <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2 text-sm text-destructive flex items-center gap-2">
+                            <div className="bg-destructive/10 border border-destructive/20 rounded-xl px-3 py-2.5 text-sm text-destructive flex items-center gap-2">
                                 <RefreshCw className="h-3.5 w-3.5 flex-shrink-0" />
-                                <span>{error}</span>
-                                <button onClick={() => setError(null)} className="ml-auto text-xs underline">Fechar</button>
+                                <span className="flex-1">{error}</span>
+                                <button onClick={() => setError(null)} className="text-xs underline shrink-0">Fechar</button>
                             </div>
                         )}
-
                         <div ref={bottomRef} />
                     </div>
 
@@ -363,16 +463,16 @@ export default function AgenteVirtual() {
                                 value={input}
                                 onChange={e => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
-                                placeholder="Peça uma ideia de post, campanha, texto... (Enter para enviar)"
+                                placeholder='Ex: "Agende amanhã às 10h para Ana Silva, corte" • "Quem não veio há 60 dias?" • "Lembre de comprar tinta"'
                                 aria-label="Mensagem para Max, assistente virtual"
                                 rows={1}
-                                className="flex-1 resize-none rounded-xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-muted px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all max-h-32 overflow-y-auto"
-                                style={{ minHeight: '40px' }}
                                 disabled={loading}
+                                className="flex-1 resize-none rounded-xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-muted px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all overflow-y-auto"
+                                style={{ minHeight: '40px', maxHeight: '96px' }}
                                 onInput={e => {
                                     const el = e.currentTarget;
                                     el.style.height = 'auto';
-                                    el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+                                    el.style.height = Math.min(el.scrollHeight, 96) + 'px';
                                 }}
                             />
                             <Button
@@ -381,14 +481,11 @@ export default function AgenteVirtual() {
                                 size="icon"
                                 className="w-10 h-10 rounded-xl bg-violet-600 hover:bg-violet-700 flex-shrink-0"
                             >
-                                {loading
-                                    ? <RefreshCw className="h-4 w-4 animate-spin" />
-                                    : <Send className="h-4 w-4" />
-                                }
+                                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                             </Button>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-                            Powered by Google Gemini · A conversa fica salva neste dispositivo
+                        <p className="text-[10px] text-muted-foreground mt-1.5 text-center flex items-center justify-center gap-1">
+                            <Sparkles className="h-2.5 w-2.5" /> Powered by Gemini 2.0 Flash · Conversa salva neste dispositivo
                         </p>
                     </div>
                 </>
