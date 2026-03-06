@@ -363,21 +363,51 @@ export function useSalaoAssets(categoriaSlug?: string) {
             // [COMPOSIÇÃO + SAFE ZONE]
             `COMPOSITION: ${COMPOSITION_MAP[composition] || COMPOSITION_MAP.rule_of_thirds}.`,
 
-            // [DIAGRAMAÇÃO DE ANÚNCIO — OBRIGATÓRIO]
-            // A imagem DEVE conter texto tipografado como num anúncio publicitário real.
-            // O texto deve estar renderizado diretamente sobre o negative space reservado.
-            `ADVERTISEMENT LAYOUT — MANDATORY TEXT IN IMAGE:
-- HEADLINE (título): Render the text "${tema}" as a large, bold, high-contrast headline placed in the negative space area. Use clean sans-serif or elegant serif typography. White or cream color for dark backgrounds, dark for light backgrounds. Letter-spacing tight. Size: prominent and readable.
-- SUBHEADLINE (subtítulo): Render a short supporting line describing the offer or message: "${detalhes || intencao || 'Exclusividade e excelência em beleza'}". Smaller than headline, same typographic family. Light weight or regular.
-- CTA ELEMENT: Place a minimal call-to-action element in the negative space below the subheadline — a single line of text or a simple outlined pill/button shape with text like "Saiba mais" or "Agende já". Subtle but present.
-- TYPOGRAPHY RULES: Text must be crisp, anti-aliased, legible. NO distortion. Perfect kerning. Shadow or subtle glow for readability over photographic content.
-- The text layout must feel like a high-end advertising campaign — not like a meme or amateur overlay. Think Vogue, Louis Vuitton, Lancôme level typography.`,
+            // [DIAGRAMAÇÃO EDITORIAL DE ANÚNCIO — OBRIGATÓRIO]
+            `PREMIUM ADVERTISING LAYOUT — MANDATORY. This image must contain sophisticated typographic composition integrated into the photograph, as seen in Harper's Bazaar, Vogue Brasil, Lancôme and L'Oréal Paris campaign ads. Apply the following layout precisely:
+
+TYPOGRAPHIC HIERARCHY (render all 3 levels):
+
+1. EYEBROW / CATEGORY TAG (smallest, uppermost):
+   — All-caps spaced label text, e.g. "BELEZA · EXCLUSIVIDADE" or the category type.
+   — Very small size, ~0.03× image height. Ultra-light weight (100 or 200). Tracked wide (letter-spacing: 0.25em).
+   — Color: pure white or warm gold (#D4AF37). Optional thin horizontal rule line to the left and right of text.
+   — Position: upper quadrant of the negative space area, flush or centered.
+
+2. MAIN HEADLINE — THE CAMPAIGN TITLE (dominant):
+   — Text verbatim: "${tema}"
+   — Large, commanding size (~0.09–0.12× image height). Font: high-contrast editorial serif (Didot, Playfair Display, or Bodoni-style) OR a weightless geometric sans (Futura Light). 
+   — Color: crisp white with subtle text-shadow or slight glow for depth. OR deep charcoal on light negative space.
+   — Layout: Left-aligned or centered depending on negative space side. Max 3 lines. NO hyphenation.
+   — Line-height tight (1.0–1.1). Optical kerning active.
+
+3. BODY / OFFER LINE (medium, supporting):
+   — Text: "${detalhes || intencao || 'Exclusividade e excelência em tratamentos premium'}"
+   — Size: ~0.035× image height. Weight: regular (400) or light (300). Same typeface family as headline.
+   — Color: 85% white or pale cream. Slightly translucent if over photo.
+   — Position: directly below headline, 0.015× image height vertical gap.
+
+4. CTA PILL / ACTION LINE (smallest, bottom of text block):
+   — A refined call-to-action. Text: "Agende seu horário" or "Conheça nossa coleção" — uppercase, tracked.
+   — Either: (a) minimal pill border outline in white with text inside, or (b) plain text with a thin underline rule.
+   — Size: ~0.025× image height. Weight: medium (500).
+   — Position: 0.025× image height below body text.
+
+LAYOUT RULES:
+— All text must live STRICTLY within the negative space reserved area. Never overlap the main subject.
+— Maintain a left margin of ~5% of image width as breathing room from the edge.
+— Text block should occupy ~80% of the negative space width, leaving 20% as air.
+— The total text column height should use no more than 60% of the negative space height — leave white air above and below.
+— NO drop shadows on the full block — only subtle per-character shadow where needed for legibility.
+— NO rectangular background boxes behind text. Text must breathe directly over the gradient/photo.
+— NO border frames around the entire layout.
+— NO generic clipart, symbols, or decorative elements unless a single thin horizontal rule is used.`,
 
             // [SOBRIETY / INTENSIDADE CRIATIVA]
             sobrietyNote,
 
             // [COMANDOS DE NEGAÇÃO — sem proibir texto, pois é obrigatório]
-            `AVOID: watermarks, stock photo clichés, generic clipart, blurry faces, distorted anatomy, oversaturated flat colors, amateur composition, illegible text, deformed letters. No salon-specific props unless they serve the narrative.`,
+            `AVOID: watermarks, logo overlays, stock clichés, generic clipart, blurry faces, distorted anatomy, amateur composition, ILLEGIBLE text, deformed letters, boxy text containers, drop-shadow boxes, 3D extruded text, glitter/neon effects unless style demands it. No salon-specific props unless they serve the narrative.`,
 
             // [ASPECT RATIO + PARÂMETROS FINAIS — linha 607 do JS]
             `${aspectRatio} --v 5 --style cinematic`,

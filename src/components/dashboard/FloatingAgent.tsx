@@ -1,63 +1,52 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Trash2, X, Minimize2, Sparkles, GripVertical } from "lucide-react";
+import { Send, Trash2, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TOOL_DECLARATIONS, executeTool } from "@/hooks/useAgenteVirtualTools";
 
 // ── Paleta Dourada ──
-const GOLD = {
-    primary: 'linear-gradient(135deg, #d4a017 0%, #8b6914 100%)',
-    button: 'linear-gradient(135deg, #e5b830 0%, #b8860b 50%, #8b6914 100%)',
-    buttonOpen: 'linear-gradient(135deg, #7a4f00 0%, #5c3800 100%)',
-    glow: 'rgba(212,160,23,0.55)',
-    pulse: 'rgba(212,160,23,0.45)',
+const G = {
+    btn: 'linear-gradient(135deg, #e5b830 0%, #b8860b 60%, #8b6914 100%)',
+    btnOpen: 'linear-gradient(135deg, #5c3800 0%, #3d2500 100%)',
+    glow: 'rgba(212,160,23,0.5)',
     accent: '#d4a017',
     light: '#f0c853',
-    muted: '#c8972f',
-    bgBase: 'linear-gradient(160deg, #0f0c06 0%, #1a1200 50%, #120d00 100%)',
-    chipBg: 'rgba(212,160,23,0.14)',
-    chipBorder: 'rgba(212,160,23,0.4)',
-    chipColor: '#f0c853',
-    userBubble: 'linear-gradient(135deg, #b8860b, #8b6914)',
-    toolBadge: 'rgba(212,160,23,0.18)',
-    toolColor: '#f0c853',
+    muted: '#b8972f',
+    chip: 'rgba(212,160,23,0.18)',
+    chipBd: 'rgba(212,160,23,0.35)',
+    user: 'linear-gradient(135deg, #b8860b, #7a5c00)',
+    glass: 'rgba(15,10,2,0.72)',
 };
 
-// ── API Key pool ──
-const KEYS_URL = 'https://nzngwbknezmfthbyfjmx.supabase.co';
-const KEYS_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bmd3YmtuZXptZnRoYnlmam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxODU5MDIsImV4cCI6MjA4NDc2MTkwMn0.S_2Hr2KEqrEj1nHIot1fBr2U1ihojl_f-owxDhf-iAk';
-let _cachedKey: string | null = null;
-async function getGeminiKey() {
-    if (_cachedKey) return _cachedKey;
+// ── API Key ──
+const SB_URL = 'https://nzngwbknezmfthbyfjmx.supabase.co';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bmd3YmtuZXptZnRoYnlmam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxODU5MDIsImV4cCI6MjA4NDc2MTkwMn0.S_2Hr2KEqrEj1nHIot1fBr2U1ihojl_f-owxDhf-iAk';
+let _key: string | null = null;
+async function getKey() {
+    if (_key) return _key;
     try {
-        const r = await fetch(`${KEYS_URL}/rest/v1/api_keys?service=eq.gemini&is_active=eq.true&select=api_key&limit=1`,
-            { headers: { apikey: KEYS_ANON, Authorization: `Bearer ${KEYS_ANON}` } });
+        const r = await fetch(`${SB_URL}/rest/v1/api_keys?service=eq.gemini&is_active=eq.true&select=api_key&limit=1`,
+            { headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}` } });
         const d: { api_key: string }[] = await r.json();
-        _cachedKey = d[0]?.api_key ?? null;
-    } catch { /* silent */ }
-    return _cachedKey;
+        _key = d[0]?.api_key ?? null;
+    } catch { /**/ }
+    return _key;
 }
 
-// ── System Prompt ──
-const SYSTEM = `Você é a Max, assistente virtual inteligente do Salão Maicon Maksuel.
-Você combina acesso real ao sistema com criatividade de marketing!
+const SYSTEM = `Você é a Max, assistente inteligente do Salão Maicon Maksuel.
+Acesso real ao sistema: agendamentos, clientes, WhatsApp, lembretes, resumos.
+Criatividade: posts, campanhas, hashtags, fidelização.
+Hoje: ${new Date().toLocaleDateString('pt-BR')}. Responda em português, de forma breve e direta.
+Textos de post/WhatsApp: sempre prontos para copiar.`;
 
-SISTEMA: agendamentos, clientes inativos, WhatsApp, lembretes, serviços, profissionais, resumo do dia.
-CRIATIVIDADE: posts Instagram/TikTok/WhatsApp, campanhas sazonais, hashtags, pesquisas de satisfação, calendário editorial.
-
-Hoje é: ${new Date().toLocaleDateString('pt-BR')}, ${new Date().toLocaleTimeString('pt-BR')}.
-Responda em português brasileiro, de forma amigável e concisa.
-Textos de post/WhatsApp: entregue SEMPRE prontos para copiar.`;
-
-// ── Gemini Loop ──
 async function runAgent(
     history: { role: string; parts: unknown[] }[],
-    userMsg: string,
+    msg: string,
     onTool: (n: string) => void
 ): Promise<{ text: string; tools: string[] }> {
-    const key = await getGeminiKey();
-    if (!key) throw new Error("Chave Gemini não encontrada. Configure em Configurações.");
+    const key = await getKey();
+    if (!key) throw new Error("Chave Gemini não configurada.");
     const tools: string[] = [];
-    let contents = [...history.slice(-14), { role: 'user', parts: [{ text: userMsg }] }];
+    let contents = [...history.slice(-12), { role: 'user', parts: [{ text: msg }] }];
     for (let i = 0; i < 5; i++) {
         const res = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
@@ -82,78 +71,55 @@ async function runAgent(
             const { name, args } = p.functionCall!;
             onTool(name); tools.push(name);
             const r = await executeTool(name, args);
-            responses.push({ functionResponse: { name, response: { result: r.mensagem, dados: r.dados, sucesso: r.sucesso } } });
+            responses.push({ functionResponse: { name, response: { result: r.mensagem, dados: r.dados } } });
         }
         contents = [...contents, { role: 'user', parts: responses }];
     }
     return { text: "Concluído!", tools };
 }
 
-interface Msg { id: string; role: 'user' | 'assistant'; text: string; time: string; tools?: string[] }
-const STORAGE = 'max_v4';
-const load = (): Msg[] => { try { return JSON.parse(localStorage.getItem(STORAGE) || "[]"); } catch { return []; } };
-const save = (m: Msg[]) => { try { localStorage.setItem(STORAGE, JSON.stringify(m.slice(-40))); } catch { /**/ } };
+interface Msg { id: string; role: 'user' | 'ai'; text: string; time: string; tools?: string[] }
+const KEY = 'max_v5';
+const load = (): Msg[] => { try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; } };
+const save = (m: Msg[]) => { try { localStorage.setItem(KEY, JSON.stringify(m.slice(-30))); } catch { /**/ } };
 
 const TIPS = [
-    { e: "📅", t: "Resumo do dia", m: "Resumo do dia de hoje" },
-    { e: "👻", t: "Clientes sumidos", m: "Quem não vem ao salão há mais de 30 dias?" },
-    { e: "📸", t: "Ideia de post", m: "3 ideias criativas de posts para o Instagram do salão hoje" },
-    { e: "📣", t: "Campanha", m: "Crie um texto de campanha WhatsApp para clientes inativos" },
-    { e: "🏷️", t: "Hashtags", m: "Melhores hashtags para o salão no Instagram" },
-    { e: "💬", t: "Texto WhatsApp", m: "Texto de WhatsApp lembrando o cliente do agendamento" },
+    { e: "📅", m: "Resumo do dia de hoje" },
+    { e: "👻", m: "Quem não vem há 30 dias?" },
+    { e: "📸", m: "3 ideias de posts para o Instagram" },
+    { e: "📣", m: "Campanha WhatsApp para inativos" },
 ];
-
 const TOOL_LABEL: Record<string, string> = {
-    buscar_clientes: "Buscando clientes", buscar_clientes_inativos: "Verificando inativos",
-    buscar_agendamentos: "Consultando agenda", buscar_profissionais: "Listando profissionais",
-    buscar_servicos: "Consultando serviços", criar_agendamento: "Criando agendamento",
-    cancelar_agendamento: "Cancelando", enviar_whatsapp: "Enviando WhatsApp",
-    criar_lembrete: "Salvando lembrete", ver_resumo_dia: "Carregando resumo",
+    buscar_clientes: "clientes", buscar_clientes_inativos: "inativos",
+    buscar_agendamentos: "agenda", buscar_profissionais: "profissionais",
+    buscar_servicos: "serviços", criar_agendamento: "agendamento",
+    cancelar_agendamento: "cancelar", enviar_whatsapp: "WhatsApp",
+    criar_lembrete: "lembrete", ver_resumo_dia: "resumo",
 };
 
-// ── Robô dourado animado ──
-function RobotIcon({ active = false, size = 28 }: { active?: boolean; size?: number }) {
+// ── Robô Dourado ──
+function Bot({ active = false, size = 28 }: { active?: boolean; size?: number }) {
     return (
         <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
-            {/* Antena */}
-            <line x1="32" y1="8" x2="32" y2="16" stroke="#f0c853" strokeWidth="2.5" strokeLinecap="round" />
-            <circle cx="32" cy="6" r="4" fill={active ? "#fff" : "#d4a017"}>
-                {active && <animate attributeName="r" values="4;6;4" dur="0.7s" repeatCount="indefinite" />}
-                {active && <animate attributeName="opacity" values="1;0.4;1" dur="0.7s" repeatCount="indefinite" />}
+            <line x1="32" y1="7" x2="32" y2="15" stroke="#f0c853" strokeWidth="2.5" strokeLinecap="round" />
+            <circle cx="32" cy="5" r="4" fill={active ? "#fff" : "#d4a017"}>
+                {active && <animate attributeName="r" values="4;6;4" dur=".7s" repeatCount="indefinite" />}
             </circle>
-
-            {/* Cabeça */}
-            <rect x="10" y="16" width="44" height="32" rx="10" fill="#1a1200" fillOpacity="0.7" />
-            <rect x="10" y="16" width="44" height="32" rx="10" stroke="#d4a017" strokeOpacity="0.7" strokeWidth="1.5" />
-            {/* brilho superior */}
-            <rect x="10" y="16" width="44" height="10" rx="10" fill="url(#goldShine)" fillOpacity="0.25" />
-
-            {/* Olhos */}
-            <circle cx="22" cy="31" r="5.5" fill="#d4a017" fillOpacity="0.25" />
-            <circle cx="22" cy="31" r="3.5" fill="#f0c853">
-                {active && <animate attributeName="r" values="3.5;2.5;3.5" dur="0.6s" repeatCount="indefinite" />}
+            <rect x="9" y="15" width="46" height="33" rx="11" fill="#1a1200" fillOpacity=".8" />
+            <rect x="9" y="15" width="46" height="33" rx="11" stroke="#d4a017" strokeOpacity=".6" strokeWidth="1.5" />
+            <circle cx="22" cy="31" r="5" fill="#d4a017" fillOpacity=".2" />
+            <circle cx="22" cy="31" r="3.2" fill="#f0c853">
+                {active && <animate attributeName="r" values="3.2;2;3.2" dur=".6s" repeatCount="indefinite" />}
             </circle>
-            <circle cx="23.5" cy="29.5" r="1.2" fill="white" fillOpacity="0.9" />
-
-            <circle cx="42" cy="31" r="5.5" fill="#d4a017" fillOpacity="0.25" />
-            <circle cx="42" cy="31" r="3.5" fill="#f0c853">
-                {active && <animate attributeName="r" values="3.5;2.5;3.5" dur="0.6s" begin="0.1s" repeatCount="indefinite" />}
+            <circle cx="23.5" cy="29.5" r="1" fill="white" fillOpacity=".9" />
+            <circle cx="42" cy="31" r="5" fill="#d4a017" fillOpacity=".2" />
+            <circle cx="42" cy="31" r="3.2" fill="#f0c853">
+                {active && <animate attributeName="r" values="3.2;2;3.2" dur=".6s" begin=".1s" repeatCount="indefinite" />}
             </circle>
-            <circle cx="43.5" cy="29.5" r="1.2" fill="white" fillOpacity="0.9" />
-
-            {/* Boca sorridente */}
-            <path d="M24 39 Q32 44 40 39" stroke="#d4a017" strokeWidth="2" strokeLinecap="round" fill="none" />
-
-            {/* Orelhas */}
-            <rect x="6" y="24" width="4" height="10" rx="2" fill="#d4a017" fillOpacity="0.5" />
-            <rect x="54" y="24" width="4" height="10" rx="2" fill="#d4a017" fillOpacity="0.5" />
-
-            <defs>
-                <linearGradient id="goldShine" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f0c853" />
-                    <stop offset="100%" stopColor="transparent" />
-                </linearGradient>
-            </defs>
+            <circle cx="43.5" cy="29.5" r="1" fill="white" fillOpacity=".9" />
+            <path d="M24 39 Q32 44.5 40 39" stroke="#d4a017" strokeWidth="2" strokeLinecap="round" fill="none" />
+            <rect x="5" y="23" width="4" height="10" rx="2" fill="#d4a017" fillOpacity=".45" />
+            <rect x="55" y="23" width="4" height="10" rx="2" fill="#d4a017" fillOpacity=".45" />
         </svg>
     );
 }
@@ -168,82 +134,50 @@ export default function FloatingAgent() {
     const [error, setError] = useState<string | null>(null);
     const [pulse, setPulse] = useState(true);
 
-    // ── Drag state ──
-    const [pos, setPos] = useState({ x: 20, y: -1 }); // x=left, y=-1 significa "usar bottom"
-    const isDragging = useRef(false);
-    const dragOffset = useRef({ x: 0, y: 0 });
+    // ── Posição drag — começa bottom-left ──
+    // Usamos top/left absoluto calculado a partir do bottom-left inicial
+    const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
     const btnRef = useRef<HTMLDivElement>(null);
-    const hasMoved = useRef(false);
+    const isDrag = useRef(false);
+    const moved = useRef(false);
+
+    // Calcula posição inicial após mount (bottom-left: x=20, y = altura - 90)
+    useEffect(() => {
+        setPos({ x: 20, y: window.innerHeight - 90 });
+    }, []);
 
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    // Posição inicial: bottom-left (longe do WhatsApp que fica bottom-right)
-    // x=20 (left), y será calculado como distância do BOTTOM
-    const [bottomOffset, setBottomOffset] = useState(20);
-
-    useEffect(() => {
-        const t = setTimeout(() => setPulse(false), 6000);
-        return () => clearTimeout(t);
-    }, []);
-
-    useEffect(() => {
-        if (open) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
-    }, [msgs, loading, open]);
-
+    useEffect(() => { const t = setTimeout(() => setPulse(false), 5000); return () => clearTimeout(t); }, []);
+    useEffect(() => { if (open) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 80); }, [msgs, loading, open]);
     useEffect(() => { save(msgs); }, [msgs]);
 
-    // ── Drag handlers ──
-    const onDragStart = useCallback((clientX: number, clientY: number) => {
-        if (!btnRef.current) return;
-        isDragging.current = true;
-        hasMoved.current = false;
-        const rect = btnRef.current.getBoundingClientRect();
-        dragOffset.current = { x: clientX - rect.left, y: clientY - rect.top };
-        document.body.style.userSelect = 'none';
+    // ── Drag via Pointer Events (setPointerCapture — mais confiável) ──
+    const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        isDrag.current = true;
+        moved.current = false;
+        (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     }, []);
 
-    const onDragMove = useCallback((clientX: number, clientY: number) => {
-        if (!isDragging.current) return;
-        hasMoved.current = true;
-        const newX = Math.max(8, Math.min(window.innerWidth - 64, clientX - dragOffset.current.x));
-        const newY = Math.max(8, Math.min(window.innerHeight - 64, clientY - dragOffset.current.y));
+    const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        if (!isDrag.current) return;
+        moved.current = true;
+        const btnW = 56, btnH = 68; // largura e altura aprox do grupo botao
+        const newX = Math.max(8, Math.min(window.innerWidth - btnW - 8, e.clientX - btnW / 2));
+        const newY = Math.max(8, Math.min(window.innerHeight - btnH - 8, e.clientY - btnH / 2));
         setPos({ x: newX, y: newY });
-        // Recalcula bottomOffset para o painel de chat
-        setBottomOffset(window.innerHeight - newY);
     }, []);
 
-    const onDragEnd = useCallback(() => {
-        isDragging.current = false;
-        document.body.style.userSelect = '';
+    const handlePointerUp = useCallback(() => {
+        isDrag.current = false;
     }, []);
 
-    useEffect(() => {
-        const mm = (e: MouseEvent) => onDragMove(e.clientX, e.clientY);
-        const mu = () => onDragEnd();
-        const tm = (e: TouchEvent) => { onDragMove(e.touches[0].clientX, e.touches[0].clientY); };
-        const tu = () => onDragEnd();
-        window.addEventListener('mousemove', mm);
-        window.addEventListener('mouseup', mu);
-        window.addEventListener('touchmove', tm, { passive: true });
-        window.addEventListener('touchend', tu);
-        return () => {
-            window.removeEventListener('mousemove', mm);
-            window.removeEventListener('mouseup', mu);
-            window.removeEventListener('touchmove', tm);
-            window.removeEventListener('touchend', tu);
-        };
-    }, [onDragMove, onDragEnd]);
-
-    // Posição do botão: se pos.y === -1 usa bottom-5 left-5, senão usa top/left absoluto
-    const btnStyle: React.CSSProperties = pos.y === -1
-        ? { position: 'fixed', bottom: 20, left: pos.x, zIndex: 9999 }
-        : { position: 'fixed', top: pos.y, left: pos.x, zIndex: 9999 };
-
-    // Painel: aparece acima do botão
-    const panelBottom = pos.y === -1
-        ? 96  // 20 (margin) + 56 (btn) + 20 (gap) = 96
-        : Math.max(8, window.innerHeight - pos.y + 8);
+    const handleClick = useCallback(() => {
+        if (!moved.current) setOpen(v => !v);
+        moved.current = false;
+    }, []);
 
     // ── Send ──
     const send = useCallback(async (text: string) => {
@@ -264,13 +198,13 @@ export default function FloatingAgent() {
             const { text: reply, tools } = await runAgent(history, t, n => setActiveTool(n));
             setActiveTool(null);
             setMsgs(prev => [...prev, {
-                id: (Date.now() + 1).toString(), role: 'assistant', text: reply,
+                id: (Date.now() + 1).toString(), role: 'ai', text: reply,
                 time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
                 tools: tools.length ? tools : undefined
             }]);
         } catch (e: unknown) {
             setActiveTool(null);
-            setError(e instanceof Error ? e.message : "Erro desconhecido");
+            setError(e instanceof Error ? e.message : "Erro");
         } finally {
             setLoading(false);
             setTimeout(() => inputRef.current?.focus(), 80);
@@ -281,92 +215,97 @@ export default function FloatingAgent() {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
     };
 
+    if (!pos) return null; // aguarda mount para calcular posição
+
+    // Painel: aparece acima do botão
+    const panelBottom = window.innerHeight - pos.y + 12;
+
     return (
         <>
             <style>{`
-                @keyframes maxFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-                @keyframes maxPulse { 0%{transform:scale(1);opacity:.65} 100%{transform:scale(1.9);opacity:0} }
-                @keyframes maxSlide { from{opacity:0;transform:translateY(12px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-                @keyframes maxDot   { 0%,80%,100%{transform:scale(.55);opacity:.35} 40%{transform:scale(1);opacity:1} }
-                .max-float  { animation: maxFloat 3s ease-in-out infinite; }
-                .max-slide  { animation: maxSlide .22s cubic-bezier(.22,1,.36,1) forwards; }
-                .max-dot    { animation: maxDot 1.2s ease-in-out infinite; }
-                .max-dot2   { animation-delay:.2s; }
-                .max-dot3   { animation-delay:.4s; }
-                .max-grab   { cursor: grab; }
-                .max-grab:active { cursor: grabbing; }
+                @keyframes maxFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+                @keyframes maxPulse { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(2);opacity:0} }
+                @keyframes maxSlide { from{opacity:0;transform:translateY(10px) scale(.96)} to{opacity:1;transform:none} }
+                @keyframes maxDot   { 0%,80%,100%{transform:scale(.5);opacity:.3} 40%{transform:scale(1);opacity:1} }
+                .mfloat { animation:maxFloat 3s ease-in-out infinite; }
+                .mslide { animation:maxSlide .2s cubic-bezier(.22,1,.36,1) forwards; }
+                .mdot   { animation:maxDot 1.2s ease-in-out infinite; }
+                .mdot2  { animation-delay:.2s; }
+                .mdot3  { animation-delay:.4s; }
             `}</style>
 
-            {/* ── Painel de Chat ── */}
+            {/* ── Painel Glass ── */}
             {open && (
-                <div className="max-slide fixed z-[9998] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col rounded-2xl overflow-hidden shadow-2xl border"
+                <div className="mslide fixed z-[9997] flex flex-col rounded-2xl overflow-hidden shadow-2xl"
                     style={{
-                        left: Math.min(pos.x, window.innerWidth - 376),
+                        left: Math.min(pos.x, window.innerWidth - 370),
                         bottom: panelBottom,
-                        background: GOLD.bgBase,
-                        borderColor: 'rgba(212,160,23,0.25)',
+                        width: 350,
+                        maxWidth: 'calc(100vw - 24px)',
+                        background: G.glass,
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
+                        border: '1px solid rgba(212,160,23,0.2)',
+                        boxShadow: `0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,160,23,0.1)`,
                     }}>
 
-                    {/* Header */}
-                    <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: 'rgba(212,160,23,0.15)', background: 'rgba(212,160,23,0.06)' }}>
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0" style={{ background: GOLD.primary }}>
-                            <RobotIcon active={loading} size={24} />
+                    {/* Header minimalista */}
+                    <div className="flex items-center gap-2.5 px-4 py-3">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ background: G.btn }}>
+                            <Bot active={loading} size={22} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                                <p className="text-white font-bold text-sm">Max</p>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: GOLD.chipBg, color: GOLD.light }}>
-                                    <Sparkles className="inline w-2.5 h-2.5 mr-0.5" />IA Gemini
+                            <p className="text-white font-semibold text-sm leading-none flex items-center gap-1.5">
+                                Max
+                                <span className="text-[10px] px-1.5 py-px rounded-full font-normal"
+                                    style={{ background: G.chip, color: G.light }}>
+                                    <Sparkles className="inline w-2.5 h-2.5 mr-0.5" />IA
                                 </span>
-                            </div>
-                            <p className="text-[11px] truncate" style={{ color: GOLD.muted }}>
-                                {loading ? (activeTool ? `🔧 ${TOOL_LABEL[activeTool] ?? activeTool}...` : "Pensando...") : "Assistente do Maicon Maksuel"}
                             </p>
+                            {loading && (
+                                <p className="text-[11px] mt-0.5" style={{ color: G.muted }}>
+                                    {activeTool ? `${TOOL_LABEL[activeTool] ?? activeTool}...` : "Pensando..."}
+                                </p>
+                            )}
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex gap-0.5">
                             {msgs.length > 0 && (
-                                <button onClick={() => { setMsgs([]); localStorage.removeItem(STORAGE); }}
-                                    className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                                    title="Limpar conversa" style={{ color: GOLD.muted }}>
+                                <button onClick={() => { setMsgs([]); localStorage.removeItem(KEY); }}
+                                    title="Limpar" className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                                    style={{ color: G.muted }}>
                                     <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                             )}
-                            <button onClick={() => setOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" style={{ color: GOLD.muted }}>
-                                <Minimize2 className="w-4 h-4" />
+                            <button onClick={() => setOpen(false)}
+                                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" style={{ color: G.muted }}>
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
 
-                    {/* Chips de sugestão */}
-                    <div className="px-3 py-2 flex gap-1.5 overflow-x-auto border-b" style={{ scrollbarWidth: 'none', borderColor: 'rgba(212,160,23,0.1)' }}>
-                        {TIPS.map(q => (
-                            <button key={q.t} onClick={() => send(q.m)} disabled={loading}
-                                className="whitespace-nowrap text-[11px] px-2.5 py-1 rounded-full border transition-all flex-shrink-0 font-medium hover:scale-105 active:scale-95"
-                                style={{ borderColor: GOLD.chipBorder, color: GOLD.chipColor, background: GOLD.chipBg }}>
-                                {q.e} {q.t}
-                            </button>
-                        ))}
-                    </div>
+                    {/* Linha divisória sutil */}
+                    <div style={{ height: 1, background: 'rgba(212,160,23,0.12)' }} />
 
                     {/* Mensagens */}
-                    <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 h-64">
+                    <div className="overflow-y-auto px-3.5 py-3 space-y-2.5" style={{ height: 260 }}>
                         {!msgs.length && (
                             <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl max-float" style={{ background: GOLD.primary }}>
-                                    <RobotIcon size={36} />
+                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mfloat"
+                                    style={{ background: G.btn, boxShadow: `0 6px 20px ${G.glow}` }}>
+                                    <Bot size={32} />
                                 </div>
-                                <div>
-                                    <p className="font-bold text-white/90 text-sm">Oi! Sou a Max 👋</p>
-                                    <p className="text-[11px] mt-1 leading-relaxed max-w-[200px]" style={{ color: GOLD.muted }}>
-                                        Tenho acesso ao sistema e sei de marketing. Me pergunte qualquer coisa!
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap gap-1.5 justify-center">
-                                    {["Resumo do dia", "Quem sumiu há 30 dias?", "Ideia de post"].map(ex => (
-                                        <button key={ex} onClick={() => send(ex)}
-                                            className="text-[11px] px-2.5 py-1 rounded-full border transition-colors"
-                                            style={{ borderColor: GOLD.chipBorder, color: GOLD.chipColor }}>
-                                            {ex}
+                                <p className="text-white/80 text-sm font-medium">Oi! Sou a Max 👋</p>
+                                <p className="text-[11px] max-w-[200px] leading-relaxed" style={{ color: G.muted }}>
+                                    Acesso ao sistema + marketing. Me pergunte qualquer coisa!
+                                </p>
+                                {/* Chips compactos */}
+                                <div className="flex flex-wrap gap-1.5 justify-center mt-1">
+                                    {TIPS.map(q => (
+                                        <button key={q.m} onClick={() => send(q.m)}
+                                            className="text-[11px] px-2.5 py-1 rounded-full border transition-all hover:scale-105"
+                                            style={{ borderColor: G.chipBd, color: G.light, background: G.chip }}>
+                                            {q.e}
                                         </button>
                                     ))}
                                 </div>
@@ -375,145 +314,126 @@ export default function FloatingAgent() {
 
                         {msgs.map(m => (
                             <div key={m.id} className={cn("flex gap-2", m.role === 'user' ? "justify-end" : "justify-start items-end")}>
-                                {m.role === 'assistant' && (
-                                    <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: GOLD.primary }}>
-                                        <RobotIcon size={16} />
+                                {m.role === 'ai' && (
+                                    <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center"
+                                        style={{ background: G.btn }}>
+                                        <Bot size={16} />
                                     </div>
                                 )}
-                                <div className="flex flex-col gap-1 max-w-[82%]">
+                                <div className="max-w-[82%]">
+                                    {/* tool badges só se tiver ferramentas */}
                                     {m.tools && m.tools.length > 0 && (
-                                        <div className="flex flex-wrap gap-1">
-                                            {[...new Set(m.tools)].map((t, i) => (
-                                                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full"
-                                                    style={{ background: GOLD.toolBadge, color: GOLD.toolColor }}>
-                                                    {TOOL_LABEL[t] ?? t}
-                                                </span>
-                                            ))}
-                                        </div>
+                                        <p className="text-[9px] mb-1" style={{ color: G.muted }}>
+                                            🔧 {[...new Set(m.tools)].map(t => TOOL_LABEL[t] ?? t).join(', ')}
+                                        </p>
                                     )}
                                     <div className={cn("px-3 py-2 rounded-2xl text-sm leading-relaxed",
                                         m.role === 'user' ? "text-white rounded-br-sm" : "rounded-bl-sm"
                                     )} style={m.role === 'user'
-                                        ? { background: GOLD.userBubble }
-                                        : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.88)', border: '1px solid rgba(212,160,23,0.15)' }
+                                        ? { background: G.user }
+                                        : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.9)' }
                                     }>
-                                        <p className="whitespace-pre-wrap">{m.text}</p>
-                                        <p className="text-[10px] mt-1 text-right opacity-40">{m.time}</p>
+                                        <p className="whitespace-pre-wrap text-[13px]">{m.text}</p>
+                                        <p className="text-[9px] mt-1 text-right opacity-35">{m.time}</p>
                                     </div>
                                 </div>
-                                {m.role === 'user' && (
-                                    <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[9px] font-bold"
-                                        style={{ background: GOLD.primary }}>EU</div>
-                                )}
                             </div>
                         ))}
 
                         {loading && (
                             <div className="flex items-end gap-2">
-                                <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: GOLD.primary }}>
-                                    <RobotIcon active size={16} />
+                                <div className="w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: G.btn }}>
+                                    <Bot active size={16} />
                                 </div>
-                                <div className="px-3 py-2.5 rounded-2xl rounded-bl-sm" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(212,160,23,0.15)' }}>
-                                    {activeTool
-                                        ? <p className="text-[11px]" style={{ color: GOLD.light }}>🔧 {TOOL_LABEL[activeTool] ?? activeTool}...</p>
-                                        : <div className="flex gap-1 items-center h-4">{[0, 1, 2].map(i => (
-                                            <span key={i} className={cn("w-2 h-2 rounded-full max-dot", i === 1 && "max-dot2", i === 2 && "max-dot3")}
-                                                style={{ background: GOLD.accent }} />
-                                        ))}</div>
-                                    }
+                                <div className="px-3 py-2.5 rounded-2xl rounded-bl-sm"
+                                    style={{ background: 'rgba(255,255,255,0.07)' }}>
+                                    <div className="flex gap-1 items-center h-3.5">
+                                        {[0, 1, 2].map(i => (
+                                            <span key={i} className={cn("w-1.5 h-1.5 rounded-full mdot", i === 1 && "mdot2", i === 2 && "mdot3")}
+                                                style={{ background: G.accent }} />
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {error && (
-                            <div className="rounded-xl px-3 py-2 text-xs flex items-center gap-2"
-                                style={{ background: 'rgba(239,68,68,0.14)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.2)' }}>
+                            <div className="rounded-xl px-3 py-2 text-[12px] flex items-center gap-2"
+                                style={{ background: 'rgba(239,68,68,0.12)', color: '#fca5a5' }}>
                                 <span className="flex-1">{error}</span>
-                                <button onClick={() => setError(null)} className="underline shrink-0">Fechar</button>
+                                <button onClick={() => setError(null)} className="underline shrink-0 text-[11px]">✕</button>
                             </div>
                         )}
                         <div ref={bottomRef} />
                     </div>
 
                     {/* Input */}
-                    <div className="px-3 py-2.5 border-t" style={{ background: 'rgba(212,160,23,0.04)', borderColor: 'rgba(212,160,23,0.12)' }}>
-                        <div className="flex gap-2 items-end">
-                            <textarea
-                                ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
-                                onKeyDown={onKey} disabled={loading} rows={1}
-                                placeholder="Pergunte ou peça algo... (Enter envia)"
-                                aria-label="Mensagem para Max"
-                                className="flex-1 resize-none text-sm rounded-xl px-3 py-2 focus:outline-none transition-all"
-                                style={{
-                                    background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.9)',
-                                    border: `1px solid rgba(212,160,23,0.25)`, minHeight: '38px', maxHeight: '88px',
-                                    scrollbarWidth: 'none',
-                                }}
-                                onFocus={e => { e.currentTarget.style.borderColor = 'rgba(212,160,23,0.75)'; }}
-                                onBlur={e => { e.currentTarget.style.borderColor = 'rgba(212,160,23,0.25)'; }}
-                                onInput={e => {
-                                    const el = e.currentTarget; el.style.height = 'auto';
-                                    el.style.height = Math.min(el.scrollHeight, 88) + 'px';
-                                }}
-                            />
-                            <button onClick={() => send(input)} disabled={loading || !input.trim()}
-                                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                                style={{ background: GOLD.button }}>
-                                <Send className="w-3.5 h-3.5 text-white" />
-                            </button>
-                        </div>
+                    <div style={{ height: 1, background: 'rgba(212,160,23,0.1)' }} />
+                    <div className="flex gap-2 items-end px-3 py-2.5">
+                        <textarea
+                            ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+                            onKeyDown={onKey} disabled={loading} rows={1}
+                            placeholder="Pergunte ou peça algo…"
+                            aria-label="Mensagem para Max"
+                            className="flex-1 resize-none text-[13px] rounded-xl px-3 py-2 focus:outline-none bg-transparent"
+                            style={{
+                                color: 'rgba(255,255,255,0.88)',
+                                border: '1px solid rgba(212,160,23,0.2)',
+                                minHeight: 36, maxHeight: 80,
+                                scrollbarWidth: 'none',
+                                background: 'rgba(255,255,255,0.05)',
+                            }}
+                            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(212,160,23,0.65)'; }}
+                            onBlur={e => { e.currentTarget.style.borderColor = 'rgba(212,160,23,0.2)'; }}
+                            onInput={e => {
+                                const el = e.currentTarget; el.style.height = 'auto';
+                                el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+                            }}
+                        />
+                        <button onClick={() => send(input)} disabled={loading || !input.trim()}
+                            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95 disabled:opacity-35"
+                            style={{ background: G.btn }}>
+                            <Send className="w-3.5 h-3.5 text-white" />
+                        </button>
                     </div>
                 </div>
             )}
 
-            {/* ── Botão Flutuante Arrastável ── */}
-            <div ref={btnRef} style={{ ...btnStyle, touchAction: 'none' }}>
-                {/* Ring de pulso inicial */}
+            {/* ── Botão Flutuante — drag completo via pointer events ── */}
+            <div
+                ref={btnRef}
+                style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 9999, touchAction: 'none', userSelect: 'none' }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onClick={handleClick}
+            >
+                {/* Ring de pulso */}
                 {pulse && !open && (
                     <div className="absolute inset-0 rounded-2xl pointer-events-none"
-                        style={{ animation: 'maxPulse 1.8s ease-out infinite', background: GOLD.pulse }} />
+                        style={{ animation: 'maxPulse 1.8s ease-out infinite', background: G.glow }} />
                 )}
 
-                <div className="flex flex-col items-center gap-1 select-none">
-                    {/* Alça de drag */}
+                <div className="flex flex-col items-center gap-1">
                     <div
-                        className="max-grab w-14 flex justify-center py-0.5 cursor-grab rounded-t-xl"
-                        style={{ background: 'rgba(212,160,23,0.12)' }}
-                        onMouseDown={e => { e.preventDefault(); onDragStart(e.clientX, e.clientY); }}
-                        onTouchStart={e => { onDragStart(e.touches[0].clientX, e.touches[0].clientY); }}
-                        title="Arrastar"
-                    >
-                        <GripVertical className="w-3.5 h-3.5" style={{ color: GOLD.muted }} />
-                    </div>
-
-                    {/* Botão principal */}
-                    <button
-                        onClick={() => { if (!hasMoved.current) setOpen(v => !v); hasMoved.current = false; }}
-                        title={open ? "Fechar Max" : "Abrir Max — Assistente IA"}
-                        className={cn(
-                            "w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-200 relative overflow-hidden",
-                            !open && "max-float hover:scale-110 active:scale-95"
-                        )}
+                        className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl relative overflow-hidden cursor-pointer transition-all duration-200", !open && "mfloat")}
                         style={{
-                            background: open ? GOLD.buttonOpen : GOLD.button,
-                            boxShadow: `0 8px 28px ${GOLD.glow}, 0 2px 8px rgba(0,0,0,0.5)`,
+                            background: open ? G.btnOpen : G.btn,
+                            boxShadow: `0 8px 28px ${G.glow}, 0 2px 8px rgba(0,0,0,0.5)`,
                         }}>
-                        {/* Brilho interno */}
                         <div className="absolute inset-0 pointer-events-none"
-                            style={{ background: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.28) 0%, transparent 60%)' }} />
+                            style={{ background: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.25) 0%, transparent 55%)' }} />
                         {open
-                            ? <X className="w-6 h-6 text-white relative z-10" />
-                            : <RobotIcon active={loading} size={32} />
+                            ? <X className="w-6 h-6 text-white z-10 relative" />
+                            : <Bot active={loading} size={32} />
                         }
                         {loading && (
                             <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white animate-pulse" />
                         )}
-                    </button>
-
-                    {/* Label */}
+                    </div>
                     {!open && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: GOLD.chipBg, color: GOLD.accent }}>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none"
+                            style={{ background: 'rgba(212,160,23,0.18)', color: G.accent }}>
                             Max IA
                         </span>
                     )}
