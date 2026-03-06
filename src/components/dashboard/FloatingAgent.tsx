@@ -21,13 +21,15 @@ const G = {
 const SB_URL = 'https://nzngwbknezmfthbyfjmx.supabase.co';
 const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bmd3YmtuZXptZnRoYnlmam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxODU5MDIsImV4cCI6MjA4NDc2MTkwMn0.S_2Hr2KEqrEj1nHIot1fBr2U1ihojl_f-owxDhf-iAk';
 let _key: string | null = null;
+let _keyTs = 0;
 async function getKey() {
-    if (_key) return _key;
+    // Re-fetch a cada 60s para pegar chave atualizada (ex: após troca no Configurações)
+    if (_key && Date.now() - _keyTs < 60_000) return _key;
     try {
         const r = await fetch(`${SB_URL}/rest/v1/api_keys?service=eq.gemini&is_active=eq.true&select=api_key&limit=1`,
             { headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}` } });
         const d: { api_key: string }[] = await r.json();
-        _key = d[0]?.api_key ?? null;
+        if (d[0]?.api_key) { _key = d[0].api_key; _keyTs = Date.now(); }
     } catch { /**/ }
     return _key;
 }
@@ -48,17 +50,26 @@ async function runAgent(
     const tools: string[] = [];
     let contents = [...history.slice(-12), { role: 'user', parts: [{ text: msg }] }];
     for (let i = 0; i < 5; i++) {
-        const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-            {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-                    system_instruction: { parts: [{ text: SYSTEM }] }, contents,
-                    tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
-                    generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
-                })
-            }
-        );
-        if (!res.ok) throw new Error(`Gemini ${res.status}`);
+        // Tenta gemini-2.0-flash, fallback para gemini-1.5-flash se 404
+        const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+        let res: Response | null = null;
+        for (const model of models) {
+            res = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+                {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+                        system_instruction: { parts: [{ text: SYSTEM }] }, contents,
+                        tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
+                        generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
+                    })
+                }
+            );
+            if (res.ok || res.status !== 404) break;
+        }
+        if (!res || !res.ok) {
+            const errText = await res?.text() ?? 'sem resposta';
+            throw new Error(`Gemini ${res?.status}: ${errText.slice(0, 200)}`);
+        }
         const data = await res.json() as {
             candidates?: Array<{ content?: { parts?: Array<{ text?: string; functionCall?: { name: string; args: Record<string, unknown> } }> } }>;
         };
