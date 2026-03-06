@@ -1,7 +1,7 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "maicon-maksuel-gestao",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -101,9 +101,11 @@
   },
   "build": {
     "appId": "com.maiconmaksuel.gestao",
-    "productName": "MAICON MAKSUEL GESTAO",
+    "productName": "Maicon Maksuel Gestão",
+    "copyright": "Copyright © 2025 Maicon Maksuel",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "public"
     },
     "files": [
       "electron/**/*",
@@ -118,8 +120,15 @@
     "win": {
       "target": "nsis",
       "icon": "public/icon.ico",
-      "artifactName": "MAICON-MAKSUEL-GESTAO-Setup-${version}.exe",
-      "executableName": "MAICON-MAKSUEL-GESTAO"
+      "artifactName": "MaiconMaksuel-Gestao-Setup-${version}.exe",
+      "executableName": "MaiconMaksuelGestao"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Maicon Maksuel Gestão"
     }
   }
 }
