@@ -8,11 +8,11 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { 
-  Settings, 
-  Moon, 
-  MessageSquare, 
-  User, 
+import {
+  Settings,
+  Moon,
+  MessageSquare,
+  User,
   Shield,
   CreditCard,
   QrCode,
@@ -46,6 +46,8 @@ interface ConfigWhatsApp {
   sessao_ativa?: boolean;
   qrcode_conectado?: boolean;
   instance_name?: string | null;
+  instance_id?: string | null;
+  client_token?: string | null;
 }
 
 interface Props {
@@ -59,15 +61,15 @@ interface Props {
   saving: boolean;
 }
 
-export function ComunicacaoConfigAvancadas({ 
-  config, 
+export function ComunicacaoConfigAvancadas({
+  config,
   creditos,
   configWhatsApp,
-  onUpdateConfig, 
+  onUpdateConfig,
   onUpdateCreditos,
   onSaveWhatsApp,
   onConfigWhatsAppChange,
-  saving 
+  saving
 }: Props) {
   const [generatingQR, setGeneratingQR] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
@@ -85,36 +87,56 @@ export function ComunicacaoConfigAvancadas({
     );
   }
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL || "https://dqcvdgugqqvdjxjflwaq.supabase.co"}/functions/v1/whatsapp-webhook`;
+  const webhookUrl = `https://hhzvjsrsoyhjzeiuxpep.supabase.co/functions/v1/zapi-webhook`;
+  const isZApi = configWhatsApp?.api_provider === 'z_api';
 
   const handleVerificarConexao = async () => {
-    if (!configWhatsApp?.api_url || !configWhatsApp?.api_token || !configWhatsApp?.instance_name) {
-      toast.error("Preencha URL da API, Token e Nome da Instância primeiro");
-      return;
-    }
     setVerificandoConexao(true);
     setConnectionStatus(null);
     try {
-      const url = `${configWhatsApp.api_url}/instance/connectionState/${configWhatsApp.instance_name}`;
-      const res = await fetch(url, {
-        headers: { apikey: configWhatsApp.api_token },
-      });
-      const data = await res.json();
-      const state = data?.instance?.state || data?.state || "unknown";
-      setConnectionStatus(state);
-      
-      if (state === "open") {
-        toast.success("✅ WhatsApp conectado!");
-        // Update sessao_ativa
-        onConfigWhatsAppChange({ sessao_ativa: true, qrcode_conectado: true });
+      if (isZApi) {
+        // Z-API: checa status da instância
+        const instanceId = (configWhatsApp as any)?.instance_id || '3EFBBECF9076D192D3C91E78C95369C2';
+        const token = configWhatsApp?.api_token || '4B0D7C7DF8E790BBD1B6122B';
+        const clientToken = (configWhatsApp as any)?.client_token || 'Fafa7e4b75c2f4916b191413209fe9d08S';
+        const res = await fetch(
+          `https://api.z-api.io/instances/${instanceId}/token/${token}/status`,
+          { headers: { 'Client-Token': clientToken } }
+        );
+        const data = await res.json();
+        const connected = data?.connected === true || data?.status === 'connected';
+        if (connected) {
+          setConnectionStatus('open');
+          toast.success('✅ Z-API conectada e funcionando!');
+          onConfigWhatsAppChange({ sessao_ativa: true, qrcode_conectado: true });
+        } else {
+          setConnectionStatus('close');
+          toast.warning(`Status Z-API: ${JSON.stringify(data)}`);
+          onConfigWhatsAppChange({ sessao_ativa: false });
+        }
       } else {
-        toast.warning(`Status: ${state}. Escaneie o QR Code para conectar.`);
-        onConfigWhatsAppChange({ sessao_ativa: false, qrcode_conectado: false });
+        // Evolution API
+        if (!configWhatsApp?.api_url || !configWhatsApp?.api_token || !configWhatsApp?.instance_name) {
+          toast.error('Preencha URL da API, Token e Nome da Instância primeiro');
+          return;
+        }
+        const url = `${configWhatsApp.api_url}/instance/connectionState/${configWhatsApp.instance_name}`;
+        const res = await fetch(url, { headers: { apikey: configWhatsApp.api_token } });
+        const data = await res.json();
+        const state = data?.instance?.state || data?.state || 'unknown';
+        setConnectionStatus(state);
+        if (state === 'open') {
+          toast.success('✅ WhatsApp conectado!');
+          onConfigWhatsAppChange({ sessao_ativa: true, qrcode_conectado: true });
+        } else {
+          toast.warning(`Status: ${state}`);
+          onConfigWhatsAppChange({ sessao_ativa: false, qrcode_conectado: false });
+        }
       }
     } catch (err: any) {
-      console.error("[WHATSAPP] connection check fail", err);
+      console.error('[WHATSAPP] connection check fail', err);
       toast.error(`Erro ao verificar: ${err.message}`);
-      setConnectionStatus("error");
+      setConnectionStatus('error');
     } finally {
       setVerificandoConexao(false);
     }
@@ -133,7 +155,7 @@ export function ComunicacaoConfigAvancadas({
         headers: { apikey: configWhatsApp.api_token },
       });
       const data = await res.json();
-      
+
       // Evolution API returns base64 QR or pairingCode
       const qrBase64 = data?.base64 || data?.qrcode?.base64 || data?.code;
       if (qrBase64) {
@@ -155,27 +177,43 @@ export function ComunicacaoConfigAvancadas({
 
   const handleTestarEnvio = async () => {
     if (!telefoneTeste.trim()) {
-      toast.error("Informe um número de telefone para teste");
+      toast.error('Informe um número de telefone para teste');
       return;
     }
     setTestEnvio(true);
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-send", {
-        body: {
-          telefone: telefoneTeste,
-          mensagem: "✅ Teste de envio do sistema Maicon Maksuel. Se recebeu, a integração está funcionando!",
-          cliente_nome: "Teste",
-        },
-      });
-      if (error) throw error;
-      if (data?.success) {
-        toast.success("Mensagem de teste enviada com sucesso!");
+      if (isZApi) {
+        // Z-API: chama diretamente
+        const instanceId = (configWhatsApp as any)?.instance_id || '3EFBBECF9076D192D3C91E78C95369C2';
+        const token = configWhatsApp?.api_token || '4B0D7C7DF8E790BBD1B6122B';
+        const clientToken = (configWhatsApp as any)?.client_token || 'Fafa7e4b75c2f4916b191413209fe9d08S';
+        const phone = telefoneTeste.replace(/\D/g, '');
+        const res = await fetch(
+          `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Client-Token': clientToken },
+            body: JSON.stringify({ phone, message: '✅ Teste do sistema Maicon Maksuel. Integração Z-API funcionando!' })
+          }
+        );
+        const data = await res.json();
+        if (data?.zaapId || data?.messageId || data?.id) {
+          toast.success('✅ Mensagem enviada com sucesso!');
+        } else {
+          toast.error(`Z-API retornou: ${JSON.stringify(data)}`);
+        }
       } else {
-        toast.error(data?.error || "Falha ao enviar mensagem de teste");
+        // Evolution API via Edge Function
+        const { data, error } = await supabase.functions.invoke('whatsapp-send', {
+          body: { telefone: telefoneTeste, mensagem: '✅ Teste do sistema Maicon Maksuel!', cliente_nome: 'Teste' }
+        });
+        if (error) throw error;
+        if (data?.success) toast.success('Mensagem enviada!');
+        else toast.error(data?.error || 'Falha ao enviar');
       }
     } catch (err: any) {
-      console.error("[WHATSAPP] test_send_fail", err);
-      toast.error(`Erro: ${err.message || "Falha ao chamar a função"}`);
+      console.error('[WHATSAPP] test_send_fail', err);
+      toast.error(`Erro: ${err.message || 'Falha ao enviar'}`);
     } finally {
       setTestEnvio(false);
     }
@@ -284,7 +322,8 @@ export function ComunicacaoConfigAvancadas({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="evolution_api">Evolution API (Recomendado - Gratuito)</SelectItem>
+                  <SelectItem value="z_api">Z-API ✅ (Conectado)</SelectItem>
+                  <SelectItem value="evolution_api">Evolution API (Auto-hospedado)</SelectItem>
                   <SelectItem value="wppconnect">WPPConnect (Gratuito)</SelectItem>
                   <SelectItem value="baileys">Baileys (Gratuito)</SelectItem>
                   <SelectItem value="oficial">WhatsApp Business API (Pago)</SelectItem>
@@ -311,14 +350,36 @@ export function ComunicacaoConfigAvancadas({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Nome da Instância</Label>
-              <Input
-                placeholder="meu-salao"
-                value={(configWhatsApp as any)?.instance_name || ""}
-                onChange={(e) => onConfigWhatsAppChange({ instance_name: e.target.value } as any)}
-              />
-            </div>
+            {isZApi ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Instance ID (Z-API)</Label>
+                  <Input
+                    placeholder="3EFBBECF9076D..."
+                    value={(configWhatsApp as any)?.instance_id || ""}
+                    onChange={(e) => onConfigWhatsAppChange({ instance_id: e.target.value } as any)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Client Token (Z-API)</Label>
+                  <Input
+                    type="password"
+                    placeholder="Fafa7e4b75c2f..."
+                    value={(configWhatsApp as any)?.client_token || ""}
+                    onChange={(e) => onConfigWhatsAppChange({ client_token: e.target.value } as any)}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label>Nome da Instância</Label>
+                <Input
+                  placeholder="meu-salao"
+                  value={(configWhatsApp as any)?.instance_name || ""}
+                  onChange={(e) => onConfigWhatsAppChange({ instance_name: e.target.value } as any)}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Número do WhatsApp</Label>
@@ -415,7 +476,9 @@ export function ComunicacaoConfigAvancadas({
             Configuração do Webhook
           </CardTitle>
           <CardDescription>
-            Configure este webhook no painel da Evolution API para receber mensagens automaticamente
+            {isZApi
+              ? 'Webhook configurado automaticamente na Z-API — recebe respostas SIM/NÃO dos clientes'
+              : 'Configure este webhook no painel da Evolution API para receber mensagens automaticamente'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -535,8 +598,8 @@ export function ComunicacaoConfigAvancadas({
             <Input
               type="number"
               value={config.limite_diario_mensagens}
-              onChange={(e) => onUpdateConfig({ 
-                limite_diario_mensagens: parseInt(e.target.value) || 500 
+              onChange={(e) => onUpdateConfig({
+                limite_diario_mensagens: parseInt(e.target.value) || 500
               })}
             />
             <p className="text-xs text-muted-foreground">
@@ -646,8 +709,8 @@ export function ComunicacaoConfigAvancadas({
                 <Input
                   type="number"
                   value={creditos.alerta_creditos_minimo}
-                  onChange={(e) => onUpdateCreditos({ 
-                    alerta_creditos_minimo: parseInt(e.target.value) || 50 
+                  onChange={(e) => onUpdateCreditos({
+                    alerta_creditos_minimo: parseInt(e.target.value) || 50
                   })}
                 />
               </div>
@@ -657,8 +720,8 @@ export function ComunicacaoConfigAvancadas({
                   type="number"
                   step="0.01"
                   value={creditos.custo_por_mensagem}
-                  onChange={(e) => onUpdateCreditos({ 
-                    custo_por_mensagem: parseFloat(e.target.value) || 0.05 
+                  onChange={(e) => onUpdateCreditos({
+                    custo_por_mensagem: parseFloat(e.target.value) || 0.05
                   })}
                 />
               </div>
@@ -672,7 +735,7 @@ export function ComunicacaoConfigAvancadas({
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Custo estimado por mês: R$ {(creditos.custo_por_mensagem * 500).toFixed(2)} 
+                Custo estimado por mês: R$ {(creditos.custo_por_mensagem * 500).toFixed(2)}
                 (considerando 500 mensagens)
               </p>
             </div>

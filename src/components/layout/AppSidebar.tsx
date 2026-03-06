@@ -24,8 +24,6 @@ import {
   Percent,
   Boxes,
   Ticket,
-  ClipboardCheck,
-  StarHalf,
   Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,14 +51,12 @@ const allMenuItems: MenuItem[] = [
   { title: "Notas Fiscais", icon: FileText, path: "/notas-fiscais" },
   { title: "Comissões", icon: Percent, path: "/comissoes" },
   { title: "Estoque", icon: Boxes, path: "/estoque" },
-  { title: "Vouchers", icon: Ticket, path: "/vouchers" },
   { title: "Planos", icon: Package, path: "/planos" },
-  { title: "Avaliações", icon: ClipboardCheck, path: "/ficha-avaliacao" },
-  { title: "NPS", icon: StarHalf, path: "/nps" },
   { title: "Gerador Artes", icon: Palette, path: "/gerador-artes" },
   { title: "Financeiro", icon: TrendingUp, path: "/financeiro" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
   { title: "WhatsApp", icon: MessageSquare, path: "/whatsapp" },
+  { title: "Vouchers", icon: Ticket, path: "/vouchers" },
   { title: "Gestão RH", icon: Briefcase, path: "/gestao-rh" },
   { title: "Ponto", icon: Clock, path: "/ponto" },
   { title: "Vales", icon: DollarSign, path: "/vales" },
@@ -68,6 +64,7 @@ const allMenuItems: MenuItem[] = [
   { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
   { title: "Configurações", icon: Settings, path: "/configuracoes" },
 ];
+
 
 
 export function AppSidebar() {

@@ -4,12 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { 
-  BarChart3, 
-  Clock, 
-  Bot, 
-  Megaphone, 
-  Settings, 
+import {
+  BarChart3,
+  Clock,
+  Bot,
+  Megaphone,
+  Settings,
   ArrowLeft,
   MessageSquareHeart,
   RefreshCw
@@ -31,6 +31,8 @@ interface ConfigWhatsApp {
   qrcode_conectado: boolean;
   sessao_ativa: boolean;
   instance_name: string | null;
+  instance_id?: string | null;
+  client_token?: string | null;
 }
 
 export default function ConfiguracoesWhatsApp() {
@@ -38,7 +40,7 @@ export default function ConfiguracoesWhatsApp() {
   const [configWhatsApp, setConfigWhatsApp] = useState<ConfigWhatsApp | null>(null);
   const [saving, setSaving] = useState(false);
   const [testando, setTestando] = useState(false);
-  
+
   const {
     creditos,
     lembretes,
@@ -91,7 +93,9 @@ export default function ConfiguracoesWhatsApp() {
           api_url: configWhatsApp.api_url,
           api_token: configWhatsApp.api_token,
           numero_whatsapp: configWhatsApp.numero_whatsapp,
-          instance_name: (configWhatsApp as any).instance_name,
+          instance_name: configWhatsApp.instance_name,
+          instance_id: configWhatsApp.instance_id,
+          client_token: configWhatsApp.client_token,
         })
         .eq("id", configWhatsApp.id);
 
@@ -246,7 +250,7 @@ export default function ConfiguracoesWhatsApp() {
             onUpdateConfig={updateConfigAvancadas}
             onUpdateCreditos={updateCreditos}
             onSaveWhatsApp={handleSaveWhatsApp}
-            onConfigWhatsAppChange={(updates) => 
+            onConfigWhatsAppChange={(updates) =>
               setConfigWhatsApp(prev => prev ? { ...prev, ...updates } : null)
             }
             saving={saving}

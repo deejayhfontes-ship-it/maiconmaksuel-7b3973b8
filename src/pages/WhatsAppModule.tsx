@@ -4,15 +4,16 @@
  */
 
 import { useState } from "react";
-import { 
-  MessageSquare, 
-  CheckCircle2, 
-  Bell, 
-  Star, 
+import {
+  MessageSquare,
+  CheckCircle2,
+  Bell,
+  Star,
   Megaphone,
   Settings,
   Wifi,
   WifiOff,
+  BarChart3,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import { ComunicacaoLembretes } from "@/components/comunicacao/ComunicacaoLembre
 import { ComunicacaoCampanhas } from "@/components/comunicacao/ComunicacaoCampanhas";
 import { ComunicacaoPosAtendimento } from "@/components/comunicacao/ComunicacaoPosAtendimento";
 import { ComunicacaoAvaliacaoConfig } from "@/components/comunicacao/ComunicacaoAvaliacaoConfig";
+import NpsPesquisa from "@/pages/NpsPesquisa";
 import { useComunicacao } from "@/hooks/useComunicacao";
 
 const tabs = [
@@ -30,6 +32,7 @@ const tabs = [
   { id: 'lembretes', label: 'Lembretes', icon: Bell },
   { id: 'pos-atendimento', label: 'Pós-atendimento', icon: Star },
   { id: 'avaliacao', label: 'Avaliação', icon: Star },
+  { id: 'nps', label: 'NPS', icon: BarChart3 },
   { id: 'campanhas', label: 'Campanhas', icon: Megaphone },
 ];
 
@@ -37,13 +40,13 @@ export default function WhatsAppModule() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'confirmacoes';
   const [whatsappConectado, setWhatsappConectado] = useState(false);
-  
-  const { 
-    lembretes, 
-    campanhas, 
-    updateLembrete, 
+
+  const {
+    lembretes,
+    campanhas,
+    updateLembrete,
     updateCampanha,
-    loading 
+    loading
   } = useComunicacao();
 
   const handleTabChange = (tab: string) => {
@@ -63,13 +66,13 @@ export default function WhatsAppModule() {
             Gerencie todas as comunicações automáticas via WhatsApp
           </p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           {/* Connection Status */}
-          <Badge 
+          <Badge
             variant={whatsappConectado ? "default" : "secondary"}
-            className={whatsappConectado 
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0" 
+            className={whatsappConectado
+              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0"
               : ""
             }
           >
@@ -85,7 +88,7 @@ export default function WhatsAppModule() {
               </>
             )}
           </Badge>
-          
+
           <Button variant="outline" size="sm" asChild>
             <Link to="/configuracoes/whatsapp">
               <Settings className="h-4 w-4 mr-2" />
@@ -99,8 +102,8 @@ export default function WhatsAppModule() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap bg-muted/50 p-1 h-auto">
           {tabs.map((tab) => (
-            <TabsTrigger 
-              key={tab.id} 
+            <TabsTrigger
+              key={tab.id}
               value={tab.id}
               className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm whitespace-nowrap"
             >
@@ -116,10 +119,10 @@ export default function WhatsAppModule() {
         </TabsContent>
 
         <TabsContent value="lembretes" className="mt-6">
-          <ComunicacaoLembretes 
-            lembretes={lembretes} 
+          <ComunicacaoLembretes
+            lembretes={lembretes}
             onUpdateLembrete={updateLembrete}
-            onTestarMensagem={() => {}}
+            onTestarMensagem={() => { }}
             saving={loading}
             testando={false}
           />
@@ -133,8 +136,12 @@ export default function WhatsAppModule() {
           <ComunicacaoAvaliacaoConfig avaliacoes={[]} />
         </TabsContent>
 
+        <TabsContent value="nps" className="mt-6">
+          <NpsPesquisa />
+        </TabsContent>
+
         <TabsContent value="campanhas" className="mt-6">
-          <ComunicacaoCampanhas 
+          <ComunicacaoCampanhas
             campanhas={campanhas}
             onUpdateCampanha={updateCampanha}
             saving={loading}

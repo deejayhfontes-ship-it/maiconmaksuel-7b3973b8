@@ -52,7 +52,7 @@
         },
         {
             "parameters": {
-                "jsCode": "const body = $input.first().json.body;\n\nconst cliente = body.cliente_nome || 'Cliente';\nconst data = body.data || '';\nconst hora = body.hora || '';\nconst servico = body.servico || 'Serviço';\nconst profissional = body.profissional || '';\nconst telefone = body.telefone || '';\n\n// Formata a mensagem\nconst msg = `Olá ${cliente}! 👋\n\nLembrando do seu agendamento:\n📅 *${data}* às *${hora}*\n✂️ Serviço: *${servico}*${profissional ? `\\n👤 Profissional: *${profissional}*` : ''}\n\nSalão Maicon Maksuel 💇‍♀️\n\nPor favor, confirme seu comparecimento respondendo *SIM* ou *NÃO*.\n\nQualquer dúvida, estamos à disposição! 😊`;\n\nreturn [{\n  json: {\n    telefone: telefone.replace(/\\D/g, ''),\n    mensagem: msg,\n    agendamento_id: body.agendamento_id || null\n  }\n}];"
+                "jsCode": "const body = $input.first().json.body;\n\nconst cliente = body.cliente_nome || 'Cliente';\nconst data = body.data || '';\nconst hora = body.hora || '';\nconst servico = body.servico || 'Serviço';\nconst profissional = body.profissional || '';\nconst telefone = body.telefone || '';\n\nconst msg = `Olá ${cliente}! 👋\n\nLembrando do seu agendamento:\n📅 *${data}* às *${hora}*\n✂️ Serviço: *${servico}*${profissional ? `\\n👤 Profissional: *${profissional}*` : ''}\n\nSalão Maicon Maksuel 💇‍♀️\n\nConfirme seu comparecimento respondendo *SIM* ou *NÃO*. 😊`;\n\nreturn [{\n  json: {\n    phone: telefone.replace(/\\D/g, ''),\n    message: msg,\n    agendamento_id: body.agendamento_id || null\n  }\n}];"
             },
             "id": "a1b2c3d4-0003-0003-0003-000000000003",
             "name": "Monta Mensagem",
@@ -66,23 +66,23 @@
         {
             "parameters": {
                 "method": "POST",
-                "url": "=https://api.z-api.io/instances/{{ $vars.ZAPI_INSTANCE_ID }}/token/{{ $vars.ZAPI_TOKEN }}/send-text",
+                "url": "https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text",
                 "sendHeaders": true,
                 "headerParameters": {
                     "parameters": [
                         {
-                            "name": "Client-Token",
-                            "value": "={{ $vars.ZAPI_CLIENT_TOKEN }}"
-                        },
-                        {
                             "name": "Content-Type",
                             "value": "application/json"
+                        },
+                        {
+                            "name": "Client-Token",
+                            "value": "Fafa7e4b75c2f4916b191413209fe9d08S"
                         }
                     ]
                 },
                 "sendBody": true,
                 "specifyBody": "json",
-                "jsonBody": "={\n  \"phone\": \"{{ $json.telefone }}\",\n  \"message\": \"{{ $json.mensagem }}\"\n}",
+                "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
                 "options": {}
             },
             "id": "a1b2c3d4-0004-0004-0004-000000000004",
@@ -97,7 +97,7 @@
         {
             "parameters": {
                 "respondWith": "json",
-                "responseBody": "={ \"status\": \"ok\", \"message\": \"Lembrete enviado para {{ $('Monta Mensagem').first().json.telefone }}\" }"
+                "responseBody": "= JSON.stringify({ status: 'ok', phone: $('Monta Mensagem').first().json.phone })"
             },
             "id": "a1b2c3d4-0005-0005-0005-000000000005",
             "name": "Respond OK",
@@ -112,7 +112,7 @@
             "parameters": {
                 "respondWith": "json",
                 "responseCode": 403,
-                "responseBody": "{ \"status\": \"error\", \"message\": \"Não autorizado\" }"
+                "responseBody": "{ \"status\": \"error\", \"message\": \"Nao autorizado\" }"
             },
             "id": "a1b2c3d4-0006-0006-0006-000000000006",
             "name": "Respond 403",

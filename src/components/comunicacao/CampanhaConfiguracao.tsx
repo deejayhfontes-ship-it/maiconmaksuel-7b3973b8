@@ -4,11 +4,11 @@
  */
 
 import { useState, useEffect } from "react";
-import { 
-  Settings, 
-  Users, 
-  MessageSquare, 
-  Clock, 
+import {
+  Settings,
+  Users,
+  MessageSquare,
+  Clock,
   Shield,
   Save,
   Play,
@@ -64,7 +64,7 @@ interface CampanhaConfiguracaoProps {
   saving?: boolean;
 }
 
-interface CampanhaFormData {
+export interface CampanhaFormData {
   nome: string;
   tipo_segmentacao: string;
   ativo: boolean;
@@ -134,11 +134,11 @@ const variaveisDisponiveis = [
 
 const emojis = ['😊', '👋', '💇', '💅', '✨', '🎉', '💜', '🌟', '❤️', '👏', '🙏', '💪'];
 
-export function CampanhaConfiguracao({ 
-  campanha, 
-  onSave, 
-  onClose, 
-  saving = false 
+export function CampanhaConfiguracao({
+  campanha,
+  onSave,
+  onClose,
+  saving = false
 }: CampanhaConfiguracaoProps) {
   const isEditing = !!campanha;
 
@@ -180,7 +180,7 @@ export function CampanhaConfiguracao({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const updateField = <K extends keyof CampanhaFormData>(
-    field: K, 
+    field: K,
     value: CampanhaFormData[K]
   ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -219,7 +219,7 @@ export function CampanhaConfiguracao({
           <ChevronRight className="h-4 w-4" />
           <span className="text-foreground font-medium">Configurações</span>
         </div>
-        
+
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
             {isEditing ? 'Editar Campanha' : 'Nova Campanha'}
@@ -250,11 +250,11 @@ export function CampanhaConfiguracao({
                 onChange={(e) => updateField('nome', e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label>Tipo de Campanha</Label>
-              <Select 
-                value={formData.tipo_segmentacao} 
+              <Select
+                value={formData.tipo_segmentacao}
                 onValueChange={(v) => updateField('tipo_segmentacao', v)}
               >
                 <SelectTrigger>
@@ -277,8 +277,8 @@ export function CampanhaConfiguracao({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Prioridade</Label>
-              <Select 
-                value={formData.prioridade} 
+              <Select
+                value={formData.prioridade}
                 onValueChange={(v) => updateField('prioridade', v)}
               >
                 <SelectTrigger>
@@ -527,7 +527,7 @@ export function CampanhaConfiguracao({
                     onCheckedChange={(v) => updateField('usar_cta', v)}
                   />
                 </div>
-                
+
                 {formData.usar_cta && (
                   <div className="grid gap-3 pt-2">
                     <div className="space-y-2">
@@ -600,8 +600,8 @@ export function CampanhaConfiguracao({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Frequência de Envio</Label>
-              <Select 
-                value={formData.frequencia} 
+              <Select
+                value={formData.frequencia}
                 onValueChange={(v) => updateField('frequencia', v)}
               >
                 <SelectTrigger>
@@ -755,8 +755,8 @@ export function CampanhaConfiguracao({
 
       {/* Actions Footer */}
       <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => handleSave(true)}
           disabled={saving}
           className="sm:flex-1"
@@ -764,8 +764,8 @@ export function CampanhaConfiguracao({
           <Save className="h-4 w-4 mr-2" />
           Salvar Rascunho
         </Button>
-        
-        <Button 
+
+        <Button
           onClick={() => {
             updateField('ativo', true);
             handleSave(false);
@@ -778,7 +778,7 @@ export function CampanhaConfiguracao({
         </Button>
 
         {isEditing && formData.ativo && (
-          <Button 
+          <Button
             variant="secondary"
             onClick={() => {
               updateField('ativo', false);

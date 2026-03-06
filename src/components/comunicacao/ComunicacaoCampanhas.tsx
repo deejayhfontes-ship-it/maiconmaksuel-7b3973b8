@@ -1,41 +1,42 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Megaphone, 
-  Users, 
-  Gift, 
-  Calendar, 
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Megaphone,
+  Users,
+  Gift,
+  Calendar,
   TrendingUp,
-  Play,
   Pause,
   Eye,
   Send,
   Settings,
   Plus,
   Edit,
-  Target
+  Target,
+  Loader2
 } from "lucide-react";
 import { ComunicacaoCampanha } from "@/hooks/useComunicacao";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
   SheetTitle,
-  SheetTrigger 
+  SheetTrigger
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CampanhaConfiguracao } from "./CampanhaConfiguracao";
+import { CampanhaConfiguracao, CampanhaFormData } from "./CampanhaConfiguracao";
 
 interface Props {
   campanhas: ComunicacaoCampanha[];
@@ -67,6 +68,11 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
   const [selectedCampanha, setSelectedCampanha] = useState<ComunicacaoCampanha | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [isNewCampanha, setIsNewCampanha] = useState(false);
+  const [enviando, setEnviando] = useState<string | null>(null); // id da campanha sendo enviada
+
+  const ZAPI_INSTANCE = '3EFBBECF9076D192D3C91E78C95369C2';
+  const ZAPI_TOKEN = '4B0D7C7DF8E790BBD1B6122B';
+  const ZAPI_CLIENT_TOKEN = 'Fafa7e4b75c2f4916b191413209fe9d08S';
 
   const getPreviewMessage = (template: string) => {
     return template
@@ -76,6 +82,101 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
       .replace(/{link_agendamento}/g, "https://salao.app/agendar")
       .replace(/{nome_salao}/g, "Maicon Maksuel")
       .replace(/{{empresa}}/g, "Maicon Maksuel");
+  };
+
+  const handleDispararCampanha = async (campanha: ComunicacaoCampanha) => {
+    setEnviando(campanha.id);
+    try {
+      // 1. Busca clientes segmentados
+      let query = supabase.from('clientes').select('id, nome, celular, telefone');
+
+      if (campanha.tipo_segmentacao === 'inativos' || campanha.tipo_segmentacao === 'reativacao') {
+        const diasAtras = new Date();
+        diasAtras.setDate(diasAtras.getDate() - (campanha.criterio_dias_inativo || 60));
+        // Clientes sem agendamento recente
+        const { data: ativosIds } = await supabase
+          .from('agendamentos')
+          .select('cliente_id')
+          .gte('created_at', diasAtras.toISOString());
+        const idsAtivos = (ativosIds || []).map((a) => a.cliente_id);
+        if (idsAtivos.length > 0) {
+          query = query.not('id', 'in', `(${idsAtivos.join(',')})`);
+        }
+      } else if (campanha.tipo_segmentacao === 'aniversariantes') {
+        const mesAtual = new Date().getMonth() + 1;
+        query = query.eq('mes_aniversario' as never, mesAtual);
+      } else if (campanha.tipo_segmentacao === 'vip') {
+        // Clientes com 5+ agendamentos
+        const { data: vipIds } = await supabase.rpc('get_clientes_vip' as never) as { data: string[] | null };
+        if (vipIds && vipIds.length > 0) {
+          query = query.in('id', vipIds);
+        }
+      }
+
+      const { data: clientes, error } = await query.limit(100);
+      if (error) throw error;
+
+      const clientesComTelefone = (clientes || []).filter(
+        (c) => c.celular || c.telefone
+      );
+
+      if (clientesComTelefone.length === 0) {
+        toast.info('Nenhum cliente encontrado para esta campanha');
+        return;
+      }
+
+      toast.info(`Enviando para ${clientesComTelefone.length} clientes...`);
+
+      let enviados = 0;
+      let erros = 0;
+
+      for (const cliente of clientesComTelefone) {
+        const telefone = (cliente.celular || cliente.telefone || '').replace(/\D/g, '');
+        if (!telefone) continue;
+
+        const mensagem = campanha.template_mensagem
+          .replace(/{nome_cliente}/g, cliente.nome || 'Cliente')
+          .replace(/{{nome}}/g, cliente.nome || 'Cliente')
+          .replace(/{{primeiro_nome}}/g, (cliente.nome || 'Cliente').split(' ')[0])
+          .replace(/{nome_salao}/g, 'Maicon Maksuel')
+          .replace(/{{empresa}}/g, 'Maicon Maksuel')
+          .replace(/{link_agendamento}/g, 'https://salao.maiconmaksuel.com.br/agendar');
+
+        try {
+          const res = await fetch(
+            `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}/send-text`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Client-Token': ZAPI_CLIENT_TOKEN },
+              body: JSON.stringify({ phone: telefone, message: mensagem }),
+            }
+          );
+          const data = await res.json();
+          if (data?.zaapId || data?.messageId || data?.id) {
+            enviados++;
+          } else {
+            erros++;
+          }
+        } catch {
+          erros++;
+        }
+
+        // Delay de 1.5s entre mensagens para evitar bloqueio do WhatsApp
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+
+      // Atualiza contador da campanha
+      await onUpdateCampanha(campanha.id, {
+        total_enviados: (campanha.total_enviados || 0) + enviados,
+      });
+
+      toast.success(`✅ Campanha enviada! ${enviados} enviados${erros > 0 ? `, ${erros} erros` : ''}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast.error(`Erro ao disparar campanha: ${msg}`);
+    } finally {
+      setEnviando(null);
+    }
   };
 
   const handleOpenConfig = (campanha?: ComunicacaoCampanha) => {
@@ -95,20 +196,21 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
     setIsNewCampanha(false);
   };
 
-  const handleSaveCampanha = async (data: any) => {
+  const handleSaveCampanha = async (data: CampanhaFormData) => {
     if (selectedCampanha) {
       await onUpdateCampanha(selectedCampanha.id, {
         nome: data.nome,
         descricao: data.descricao,
         tipo_segmentacao: data.tipo_segmentacao,
         template_mensagem: data.template_mensagem,
-        desconto_oferecido: data.desconto_oferecido,
+        desconto_oferecido: data.desconto_oferecido ?? undefined,
         ativo: data.ativo,
         criterio_dias_inativo: data.dias_inativo,
       });
     }
     handleCloseConfig();
   };
+
 
   return (
     <div className="space-y-6">
@@ -122,7 +224,7 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
             Envie mensagens personalizadas para grupos específicos de clientes
           </p>
         </div>
-        
+
         <div className="flex gap-2">
           <Sheet open={showConfig} onOpenChange={setShowConfig}>
             <SheetTrigger asChild>
@@ -144,7 +246,7 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
               </ScrollArea>
             </SheetContent>
           </Sheet>
-          
+
           <Button size="sm" onClick={() => handleOpenConfig()}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Campanha
@@ -154,16 +256,15 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
 
       <div className="grid gap-4 md:grid-cols-2">
         {campanhas.map((campanha) => (
-          <Card 
-            key={campanha.id} 
+          <Card
+            key={campanha.id}
             className={`relative group cursor-pointer transition-all hover:shadow-md ${!campanha.ativo ? "opacity-70" : ""}`}
             onClick={() => handleOpenConfig(campanha)}
           >
             {/* Status Indicator */}
-            <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${
-              campanha.ativo ? 'bg-green-500' : 'bg-muted-foreground/30'
-            }`} />
-            
+            <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${campanha.ativo ? 'bg-green-500' : 'bg-muted-foreground/30'
+              }`} />
+
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between pr-6">
                 <div className="flex items-center gap-3">
@@ -191,7 +292,7 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
                     Inativa
                   </Badge>
                 )}
-                
+
                 {campanha.desconto_oferecido && (
                   <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0">
                     🎁 {campanha.desconto_oferecido}% OFF
@@ -210,11 +311,11 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
                   <span>Enviados: {campanha.total_enviados}</span>
                   <span>Responderam: {campanha.total_respondidos}</span>
                 </div>
-                <Progress 
-                  value={campanha.total_enviados > 0 
-                    ? (campanha.total_respondidos / campanha.total_enviados) * 100 
+                <Progress
+                  value={campanha.total_enviados > 0
+                    ? (campanha.total_respondidos / campanha.total_enviados) * 100
                     : 0
-                  } 
+                  }
                   className="h-1.5"
                 />
               </div>
@@ -243,7 +344,7 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
                   </DialogContent>
                 </Dialog>
 
-                <Button 
+                <Button
                   variant="outline"
                   size="sm"
                   className="flex-1"
@@ -253,14 +354,19 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
                   Editar
                 </Button>
 
-                <Button 
-                  variant={campanha.ativo ? "default" : "secondary"} 
-                  size="sm" 
+                <Button
+                  variant={campanha.ativo ? "default" : "secondary"}
+                  size="sm"
                   className="flex-1"
-                  disabled={saving || !campanha.ativo}
-                  onClick={() => {/* Enviar campanha */}}
+                  disabled={saving || !campanha.ativo || enviando === campanha.id}
+                  onClick={() => handleDispararCampanha(campanha)}
                 >
-                  {campanha.ativo ? (
+                  {enviando === campanha.id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : campanha.ativo ? (
                     <>
                       <Send className="h-4 w-4 mr-1" />
                       Enviar

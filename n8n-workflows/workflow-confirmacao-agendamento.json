@@ -1,5 +1,5 @@
 {
-    "name": "Salao - Confirmacao/Cancelamento de Agendamento",
+    "name": "Salao - Confirmacao de Agendamento",
     "nodes": [
         {
             "parameters": {
@@ -46,7 +46,7 @@
         },
         {
             "parameters": {
-                "jsCode": "const body = $input.first().json.body;\n\nconst cliente = body.cliente_nome || 'Cliente';\nconst resposta = (body.resposta || '').toUpperCase().trim();\nconst agendamento_id = body.agendamento_id;\nconst telefone = (body.telefone || '').replace(/\\D/g, '');\n\nconst confirmado = ['SIM', 'S', 'CONFIRMO', 'CONFIRMADO', '1', 'YES'].includes(resposta);\nconst cancelado = ['NAO', 'NÃO', 'N', 'CANCELA', 'CANCELAR', 'CANCELADO', '0', 'NO'].includes(resposta);\n\nlet mensagem = '';\nlet status = 'pendente';\n\nif (confirmado) {\n  status = 'confirmado';\n  mensagem = `✅ Perfeito, ${cliente}! Agendamento *CONFIRMADO*!\\n\\nTe esperamos! Salão Maicon Maksuel 💇‍♀️`;\n} else if (cancelado) {\n  status = 'cancelado';\n  mensagem = `❌ Entendemos, ${cliente}. Agendamento *CANCELADO*.\\n\\nQuando quiser remarcar, estamos aqui! 📅`;\n} else {\n  status = 'pendente';\n  mensagem = `Olá ${cliente}! Por favor responda *SIM* para confirmar ou *NÃO* para cancelar seu agendamento.`;\n}\n\nreturn [{\n  json: { telefone, mensagem, status, agendamento_id, confirmado, cancelado }\n}];"
+                "jsCode": "const body = $input.first().json.body;\n\nconst cliente = body.cliente_nome || 'Cliente';\nconst resposta = (body.resposta || '').toUpperCase().trim();\nconst agendamento_id = body.agendamento_id;\nconst telefone = (body.telefone || '').replace(/\\D/g, '');\n\nconst confirmado = ['SIM', 'S', 'CONFIRMO', 'CONFIRMADO', '1', 'YES'].includes(resposta);\nconst cancelado = ['NAO', 'NÃO', 'N', 'CANCELA', 'CANCELAR', 'CANCELADO', '0', 'NO'].includes(resposta);\n\nlet mensagem = '';\nlet status = 'pendente';\n\nif (confirmado) {\n  status = 'confirmado';\n  mensagem = `✅ Perfeito, ${cliente}! Agendamento *CONFIRMADO*!\\n\\nTe esperamos! Salão Maicon Maksuel 💇‍♀️`;\n} else if (cancelado) {\n  status = 'cancelado';\n  mensagem = `❌ Entendemos, ${cliente}. Agendamento *CANCELADO*.\\n\\nQuando quiser remarcar, estamos aqui! 📅`;\n} else {\n  status = 'pendente';\n  mensagem = `Olá ${cliente}! Por favor responda *SIM* para confirmar ou *NÃO* para cancelar seu agendamento.`;\n}\n\nreturn [{\n  json: { phone: telefone, message: mensagem, status, agendamento_id, confirmado, cancelado }\n}];"
             },
             "id": "b1c2d3e4-0003-0003-0003-000000000013",
             "name": "Processa Resposta",
@@ -60,23 +60,23 @@
         {
             "parameters": {
                 "method": "POST",
-                "url": "=https://api.z-api.io/instances/{{ $vars.ZAPI_INSTANCE_ID }}/token/{{ $vars.ZAPI_TOKEN }}/send-text",
+                "url": "https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text",
                 "sendHeaders": true,
                 "headerParameters": {
                     "parameters": [
                         {
-                            "name": "Client-Token",
-                            "value": "={{ $vars.ZAPI_CLIENT_TOKEN }}"
-                        },
-                        {
                             "name": "Content-Type",
                             "value": "application/json"
+                        },
+                        {
+                            "name": "Client-Token",
+                            "value": "Fafa7e4b75c2f4916b191413209fe9d08S"
                         }
                     ]
                 },
                 "sendBody": true,
                 "specifyBody": "json",
-                "jsonBody": "={\n  \"phone\": \"{{ $json.telefone }}\",\n  \"message\": \"{{ $json.mensagem }}\"\n}",
+                "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
                 "options": {}
             },
             "id": "b1c2d3e4-0004-0004-0004-000000000014",
@@ -107,7 +107,7 @@
                 },
                 "sendBody": true,
                 "specifyBody": "json",
-                "jsonBody": "={\n  \"agendamento_id\": \"{{ $('Processa Resposta').first().json.agendamento_id }}\",\n  \"status\": \"{{ $('Processa Resposta').first().json.status }}\"\n}",
+                "jsonBody": "={{ JSON.stringify({ agendamento_id: $('Processa Resposta').first().json.agendamento_id, status: $('Processa Resposta').first().json.status }) }}",
                 "options": {}
             },
             "id": "b1c2d3e4-0005-0005-0005-000000000015",
@@ -116,13 +116,13 @@
             "typeVersion": 4.2,
             "position": [
                 900,
-                280
+                300
             ]
         },
         {
             "parameters": {
                 "respondWith": "json",
-                "responseBody": "={ \"status\": \"ok\", \"resposta\": \"{{ $('Processa Resposta').first().json.status }}\" }"
+                "responseBody": "= JSON.stringify({ status: 'ok', resultado: $('Processa Resposta').first().json.status })"
             },
             "id": "b1c2d3e4-0006-0006-0006-000000000016",
             "name": "Respond OK",
@@ -137,7 +137,7 @@
             "parameters": {
                 "respondWith": "json",
                 "responseCode": 403,
-                "responseBody": "{ \"status\": \"error\", \"message\": \"Não autorizado\" }"
+                "responseBody": "{ \"status\": \"error\", \"message\": \"Nao autorizado\" }"
             },
             "id": "b1c2d3e4-0007-0007-0007-000000000017",
             "name": "Respond 403",
