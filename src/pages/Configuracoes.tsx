@@ -85,6 +85,7 @@ import NotificacoesSettings from "@/components/configuracoes/geral/NotificacoesS
 // RH Settings
 import RHSettings from "@/components/configuracoes/RHSettings";
 import AppErrorsDiagnostic from "@/components/configuracoes/AppErrorsDiagnostic";
+import GeminiApiSettings from "@/components/configuracoes/GeminiApiSettings";
 type SubItem = {
   id: string;
   label: string;
@@ -231,6 +232,7 @@ const menuSections: MenuSection[] = [
       { id: "sms", label: "SMS", icon: Phone, route: "/configuracoes/integracoes" },
       { id: "google-calendar", label: "Google Calendar", icon: Calendar, route: "/configuracoes/integracoes" },
       { id: "redes-sociais", label: "Redes Sociais", icon: Globe, route: "/configuracoes/integracoes" },
+      { id: "apis-ia", label: "APIs de IA (Gemini)", icon: Sparkles },
     ],
   },
   {
@@ -445,6 +447,8 @@ export default function Configuracoes() {
       case "jornada-ponto":
       case "comissoes-rh":
         return <RHSettings />;
+      case "apis-ia":
+        return <GeminiApiSettings />;
       case "email-automatico":
         return <EmailAutomaticoContent />;
       case "formatos-padrao":
