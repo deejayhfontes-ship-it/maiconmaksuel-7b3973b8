@@ -2,34 +2,28 @@ import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
 
 // ============================================================
-// API KEY — Busca dinâmica do Supabase (tabela api_keys)
+// API KEY — Busca do Supabase "fontesapp" (tabela api_keys)
+// Projeto separado para armazenar chaves de forma segura
 // ============================================================
+const KEYS_SUPABASE_URL = 'https://nzngwbknezmfthbyfjmx.supabase.co';
+const KEYS_SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bmd3YmtuZXptZnRoYnlmam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxODU5MDIsImV4cCI6MjA4NDc2MTkwMn0.S_2Hr2KEqrEj1nHIot1fBr2U1ihojl_f-owxDhf-iAk';
+
 let _cachedApiKeys: string[] | null = null;
 let _cacheTimestamp = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 async function fetchApiKeysFromSupabase(): Promise<string[]> {
-    // Se o cache ainda é válido, retorna
     if (_cachedApiKeys && Date.now() - _cacheTimestamp < CACHE_TTL) {
         return _cachedApiKeys;
     }
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-        console.warn('[GeminiHook] Supabase não configurado, sem API keys disponíveis.');
-        return [];
-    }
-
     try {
         const response = await fetch(
-            `${supabaseUrl}/rest/v1/api_keys?service=eq.gemini&is_active=eq.true&select=api_key`,
+            `${KEYS_SUPABASE_URL}/rest/v1/api_keys?service=eq.gemini&is_active=eq.true&select=api_key`,
             {
                 headers: {
-                    'apikey': supabaseKey,
-                    'Authorization': `Bearer ${supabaseKey}`,
-                    'Content-Type': 'application/json',
+                    'apikey': KEYS_SUPABASE_ANON,
+                    'Authorization': `Bearer ${KEYS_SUPABASE_ANON}`,
                 },
             }
         );
@@ -39,10 +33,10 @@ async function fetchApiKeysFromSupabase(): Promise<string[]> {
             return _cachedApiKeys || [];
         }
 
-        const data = await response.json();
+        const data: Array<{ api_key: string }> = await response.json();
         const keys = data
-            .map((row: { api_key: string }) => row.api_key)
-            .filter((k: string) => k && k.trim().length > 0);
+            .map((row) => row.api_key)
+            .filter((k) => k && k.trim().length > 0);
 
         if (keys.length > 0) {
             _cachedApiKeys = keys;
@@ -51,7 +45,7 @@ async function fetchApiKeysFromSupabase(): Promise<string[]> {
 
         return keys;
     } catch (err) {
-        console.warn('[GeminiHook] Falha ao buscar API keys do Supabase:', err);
+        console.warn('[GeminiHook] Falha ao buscar API keys:', err);
         return _cachedApiKeys || [];
     }
 }
