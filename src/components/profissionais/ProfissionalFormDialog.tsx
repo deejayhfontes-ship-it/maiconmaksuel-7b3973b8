@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, X, Loader2, DollarSign, Target, Scissors, ShoppingCart, Camera } from "lucide-react";
+import { Upload, X, Loader2, DollarSign, Target, Scissors, ShoppingCart, Camera, Key } from "lucide-react";
 import { WebcamCapture } from "@/components/clientes/WebcamCapture";
 
 // iOS Official Colors for Agenda
@@ -59,6 +59,9 @@ const profissionalSchema = z.object({
   pode_vender_produtos: z.boolean(),
   meta_servicos_mes: z.number().min(0),
   meta_produtos_mes: z.number().min(0),
+  pin_ponto: z.string().optional(),
+  confirmar_pin: z.string().optional(),
+  criar_pin: z.boolean(),
 });
 
 type ProfissionalFormData = z.infer<typeof profissionalSchema>;
@@ -112,6 +115,7 @@ export default function ProfissionalFormDialog({
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [activeTab, setActiveTab] = useState("dados");
   const [webcamOpen, setWebcamOpen] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfissionalFormData>({
@@ -134,6 +138,9 @@ export default function ProfissionalFormDialog({
       pode_vender_produtos: true,
       meta_servicos_mes: 0,
       meta_produtos_mes: 0,
+      pin_ponto: "",
+      confirmar_pin: "",
+      criar_pin: true,
     },
   });
 
@@ -178,8 +185,12 @@ export default function ProfissionalFormDialog({
         pode_vender_produtos: true,
         meta_servicos_mes: 0,
         meta_produtos_mes: 0,
+        pin_ponto: "",
+        confirmar_pin: "",
+        criar_pin: true,
       });
       setFotoPreview(null);
+      setPinError(null);
     }
     setFotoFile(null);
     setActiveTab("dados");
@@ -244,6 +255,41 @@ export default function ProfissionalFormDialog({
 
   const onSubmit = async (data: ProfissionalFormData) => {
     setLoading(true);
+    setPinError(null);
+
+    // Validar PIN se criar_pin está habilitado (novo cadastro)
+    if (!isEditing && data.criar_pin) {
+      if (!data.pin_ponto || data.pin_ponto.length !== 4) {
+        setPinError("PIN deve ter 4 dígitos");
+        setActiveTab("dados");
+        setLoading(false);
+        return;
+      }
+      if (!/^\d{4}$/.test(data.pin_ponto)) {
+        setPinError("PIN deve conter apenas números");
+        setActiveTab("dados");
+        setLoading(false);
+        return;
+      }
+      if (data.pin_ponto !== data.confirmar_pin) {
+        setPinError("Os PINs não coincidem");
+        setActiveTab("dados");
+        setLoading(false);
+        return;
+      }
+      // Verificar se PIN já existe
+      const { data: existingPin } = await supabase
+        .from("pinos_acesso")
+        .select("id")
+        .eq("pin", data.pin_ponto)
+        .maybeSingle();
+      if (existingPin) {
+        setPinError("Este PIN já está em uso por outro colaborador");
+        setActiveTab("dados");
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const payload = {
@@ -268,7 +314,7 @@ export default function ProfissionalFormDialog({
 
       if (isEditing && profissional) {
         const fotoUrl = await uploadFoto(profissional.id);
-        
+
         const { error } = await supabase
           .from("profissionais")
           .update({ ...payload, foto_url: fotoUrl })
@@ -291,7 +337,34 @@ export default function ProfissionalFormDialog({
           await supabase.from("profissionais").update({ foto_url: fotoUrl }).eq("id", newProfissional.id);
         }
 
-        toast({ title: "Profissional cadastrado!", description: "Novo profissional adicionado com sucesso." });
+        // Criar PIN de ponto automaticamente
+        if (data.criar_pin && data.pin_ponto && data.pin_ponto.length === 4) {
+          const { error: pinError } = await supabase
+            .from("pinos_acesso")
+            .insert([{
+              nome: data.nome,
+              pin: data.pin_ponto,
+              role: 'colaborador_agenda',
+              descricao: `PIN de ponto - ${data.funcao || 'Colaborador'}`,
+              ativo: true,
+            }]);
+
+          if (pinError) {
+            console.error("Erro ao criar PIN:", pinError);
+            toast({
+              title: "Profissional cadastrado!",
+              description: "Cadastro OK, mas houve erro ao criar o PIN de ponto. Crie manualmente em Configurações.",
+              variant: "destructive"
+            });
+          } else {
+            toast({
+              title: "Profissional cadastrado com PIN!",
+              description: `${data.nome} cadastrado. PIN de ponto: ${data.pin_ponto}`
+            });
+          }
+        } else {
+          toast({ title: "Profissional cadastrado!", description: "Novo profissional adicionado com sucesso." });
+        }
       }
 
       onClose(true);
@@ -463,6 +536,92 @@ export default function ProfissionalFormDialog({
                   />
                 </div>
 
+                {/* PIN de Ponto (só para novos profissionais) */}
+                {!isEditing && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Key className="h-5 w-5 text-primary" />
+                      <p className="text-sm font-medium">PIN de Ponto Eletrônico</p>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="criar_pin"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between rounded-lg border p-3 mb-4">
+                          <div>
+                            <FormLabel>Criar PIN de acesso</FormLabel>
+                            <p className="text-xs text-muted-foreground">
+                              PIN para bater ponto e acessar a agenda
+                            </p>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    {form.watch("criar_pin") && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="pin_ponto"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>PIN (4 dígitos) *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  inputMode="numeric"
+                                  maxLength={4}
+                                  placeholder="0000"
+                                  value={field.value || ""}
+                                  onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                  className={pinError ? "border-destructive" : ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="confirmar_pin"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirmar PIN *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="text"
+                                  inputMode="numeric"
+                                  maxLength={4}
+                                  placeholder="0000"
+                                  value={field.value || ""}
+                                  onChange={(e) => {
+                                    field.onChange(e.target.value.replace(/\D/g, "").slice(0, 4));
+                                    setPinError(null);
+                                  }}
+                                  className={pinError ? "border-destructive" : ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        {pinError && (
+                          <p className="text-sm text-destructive col-span-2">{pinError}</p>
+                        )}
+                        <div className="col-span-2 bg-muted/50 rounded-lg p-3 text-sm">
+                          <p className="text-muted-foreground">
+                            🔑 Este PIN será usado para bater ponto e acessar a agenda.
+                            O perfil será <strong>Agenda Colaboradores</strong> (visualização).
+                            O admin pode alterar em Configurações → Usuários e Acesso.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Endereço */}
                 <div className="pt-4 border-t">
                   <p className="text-sm font-medium mb-4">Endereço</p>
@@ -555,9 +714,8 @@ export default function ProfissionalFormDialog({
                               key={cor.valor}
                               type="button"
                               onClick={() => field.onChange(cor.valor)}
-                              className={`w-10 h-10 rounded-full transition-all ${
-                                field.value === cor.valor ? "ring-2 ring-offset-2 ring-primary scale-110" : "hover:scale-105"
-                              }`}
+                              className={`w-10 h-10 rounded-full transition-all ${field.value === cor.valor ? "ring-2 ring-offset-2 ring-primary scale-110" : "hover:scale-105"
+                                }`}
                               style={{ backgroundColor: cor.valor }}
                               title={cor.nome}
                             />
