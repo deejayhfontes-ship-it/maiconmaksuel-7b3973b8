@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut, ArrowLeft, Wifi, WifiOff, RefreshCw, User, AlertTriangle, Coffee, UtensilsCrossed } from 'lucide-react';
+import { Clock, LogIn, LogOut, ArrowLeft, Wifi, WifiOff, RefreshCw, User, AlertTriangle, Coffee, UtensilsCrossed, Key, Delete } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -9,10 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { usePinAuth } from '@/contexts/PinAuthContext';
 import { usePonto, Pessoa, TipoEvento, TIPO_EVENTO_LABELS } from '@/hooks/usePonto';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import logoMaiconMaksuel from '@/assets/logo-maicon-maksuel.png';
 
-type Step = 'select-employee' | 'select-action' | 'confirm' | 'success';
+type Step = 'select-employee' | 'verify-pin' | 'select-action' | 'confirm' | 'success';
 
 const ACTION_CONFIG: Record<TipoEvento, { icon: typeof LogIn; color: string; bgColor: string; borderColor: string }> = {
   entrada: { icon: LogIn, color: 'text-green-600', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30' },
@@ -30,6 +31,9 @@ const PontoEletronico = () => {
   const [observacao, setObservacao] = useState('');
   const [registering, setRegistering] = useState(false);
   const [lastResult, setLastResult] = useState<{ offline: boolean } | null>(null);
+  const [pinDigits, setPinDigits] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [verifyingPin, setVerifyingPin] = useState(false);
 
   const { session } = usePinAuth();
   const {
@@ -57,13 +61,59 @@ const PontoEletronico = () => {
     setTipoRegistro(null);
     setObservacao('');
     setLastResult(null);
+    setPinDigits('');
+    setPinError(null);
   };
 
   const handleSelectEmployee = (pessoa: Pessoa) => {
     setPessoaSelecionada(pessoa);
-    const nextAction = getProximaAcao(pessoa.id);
-    setTipoRegistro(nextAction);
-    setStep('select-action');
+    setPinDigits('');
+    setPinError(null);
+    setStep('verify-pin');
+  };
+
+  const handlePinDigit = (digit: string) => {
+    if (pinDigits.length >= 4) return;
+    const newPin = pinDigits + digit;
+    setPinDigits(newPin);
+    setPinError(null);
+    if (newPin.length === 4) {
+      verifyPin(newPin);
+    }
+  };
+
+  const handlePinDelete = () => {
+    setPinDigits(prev => prev.slice(0, -1));
+    setPinError(null);
+  };
+
+  const verifyPin = async (pin: string) => {
+    if (!pessoaSelecionada) return;
+    setVerifyingPin(true);
+    try {
+      const { data, error } = await supabase
+        .from('pinos_acesso')
+        .select('id, nome, role')
+        .eq('pin', pin)
+        .eq('ativo', true)
+        .maybeSingle();
+
+      if (error || !data) {
+        setPinError('PIN inv\u00e1lido');
+        setPinDigits('');
+        setVerifyingPin(false);
+        return;
+      }
+
+      // PIN v\u00e1lido - avan\u00e7ar
+      const nextAction = getProximaAcao(pessoaSelecionada.id);
+      setTipoRegistro(nextAction);
+      setStep('select-action');
+    } catch (err) {
+      setPinError('Erro ao verificar PIN');
+      setPinDigits('');
+    }
+    setVerifyingPin(false);
   };
 
   const handleSelectAction = (tipo: TipoEvento) => {
@@ -212,6 +262,87 @@ const PontoEletronico = () => {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Step 1.5: Verify PIN */}
+        {step === 'verify-pin' && pessoaSelecionada && (
+          <div className="bg-card rounded-2xl p-6 shadow-lg max-w-md mx-auto">
+            <button onClick={resetFlow} className="text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1">
+              <ArrowLeft className="w-4 h-4" /> Voltar
+            </button>
+
+            <div className="text-center mb-6">
+              <Avatar className="w-20 h-20 mx-auto mb-3">
+                {pessoaSelecionada.foto_url && <AvatarImage src={pessoaSelecionada.foto_url} alt={pessoaSelecionada.nome} />}
+                <AvatarFallback className="text-xl bg-primary/10 text-primary">
+                  {getInitials(pessoaSelecionada.nome)}
+                </AvatarFallback>
+              </Avatar>
+              <h2 className="text-xl font-bold text-foreground">{pessoaSelecionada.nome}</h2>
+              <p className="text-muted-foreground mt-1">Digite seu PIN para continuar</p>
+            </div>
+
+            {/* PIN Display */}
+            <div className="flex justify-center gap-3 mb-6">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'w-14 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all',
+                    pinDigits.length > i
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-muted/50 text-muted-foreground',
+                    pinError && 'border-destructive bg-destructive/10'
+                  )}
+                >
+                  {pinDigits.length > i ? '•' : ''}
+                </div>
+              ))}
+            </div>
+
+            {pinError && (
+              <p className="text-center text-destructive text-sm mb-4 font-medium">{pinError}</p>
+            )}
+
+            {verifyingPin && (
+              <div className="text-center mb-4">
+                <RefreshCw className="w-5 h-5 animate-spin text-primary mx-auto" />
+              </div>
+            )}
+
+            {/* Number Pad */}
+            <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                <button
+                  key={digit}
+                  onClick={() => handlePinDigit(digit)}
+                  disabled={verifyingPin}
+                  className="h-16 rounded-xl bg-muted/50 hover:bg-primary/10 active:scale-95 text-2xl font-bold text-foreground transition-all border border-border hover:border-primary/50"
+                >
+                  {digit}
+                </button>
+              ))}
+              <div />
+              <button
+                onClick={() => handlePinDigit('0')}
+                disabled={verifyingPin}
+                className="h-16 rounded-xl bg-muted/50 hover:bg-primary/10 active:scale-95 text-2xl font-bold text-foreground transition-all border border-border hover:border-primary/50"
+              >
+                0
+              </button>
+              <button
+                onClick={handlePinDelete}
+                disabled={verifyingPin}
+                className="h-16 rounded-xl bg-muted/50 hover:bg-destructive/10 active:scale-95 text-foreground transition-all border border-border hover:border-destructive/50 flex items-center justify-center"
+              >
+                <Delete className="w-6 h-6" />
+              </button>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground mt-4">
+              🔑 Use o PIN cadastrado para este colaborador
+            </p>
           </div>
         )}
 
