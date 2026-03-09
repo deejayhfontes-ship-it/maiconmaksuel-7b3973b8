@@ -378,7 +378,7 @@ export default function SalaoArteGenerator() {
                 textOverlay: {
                     h1: titulo,
                     h2: detalhes || intencaoEn,
-                    cta: 'Agende seu horario',
+                    cta: '',
                     position: safeAreaSide === 'RIGHT'
                         ? 'right side negative space'
                         : safeAreaSide === 'LEFT'
