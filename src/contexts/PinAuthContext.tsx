@@ -273,6 +273,9 @@ export function PinAuthProvider({ children }: { children: ReactNode }) {
   const canAccessRoute = useCallback((route: string): boolean => {
     if (!session) return false;
 
+    // Admin has FULL access to ALL routes - never restrict admin
+    if (session.role === 'admin') return true;
+
     const allowedRoutes = ROUTE_PERMISSIONS[session.role];
 
     // Normalize route (remove trailing slash, query params)

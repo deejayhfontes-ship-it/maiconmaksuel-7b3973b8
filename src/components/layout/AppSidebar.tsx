@@ -56,12 +56,12 @@ const allMenuItems: MenuItem[] = [
   { title: "Financeiro", icon: TrendingUp, path: "/financeiro" },
   { title: "Relatórios", icon: BarChart3, path: "/relatorios" },
   { title: "WhatsApp", icon: MessageSquare, path: "/whatsapp" },
-  { title: "Vouchers", icon: Ticket, path: "/vouchers" },
+
   { title: "Gestão RH", icon: Briefcase, path: "/gestao-rh" },
   { title: "Ponto", icon: Clock, path: "/ponto" },
   { title: "Vales", icon: DollarSign, path: "/vales" },
   { title: "Metas", icon: Target, path: "/metas-salao" },
-  { title: "Usuários", icon: ShieldCheck, path: "/usuarios" },
+
   { title: "Configurações", icon: Settings, path: "/configuracoes" },
 ];
 
