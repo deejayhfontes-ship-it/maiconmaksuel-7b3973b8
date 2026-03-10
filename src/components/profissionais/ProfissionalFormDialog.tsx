@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { usePinAuth } from "@/contexts/PinAuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -116,6 +117,10 @@ export default function ProfissionalFormDialog({
   const [activeTab, setActiveTab] = useState("dados");
   const [webcamOpen, setWebcamOpen] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
+  const [existingPinId, setExistingPinId] = useState<string | null>(null);
+  const [existingPinValue, setExistingPinValue] = useState<string | null>(null);
+  const { session } = usePinAuth();
+  const isAdmin = session?.role === 'admin';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfissionalFormData>({
@@ -144,6 +149,23 @@ export default function ProfissionalFormDialog({
     },
   });
 
+  // Carregar PIN existente do profissional ao editar
+  const loadExistingPin = useCallback(async (nome: string) => {
+    const { data } = await supabase
+      .from('pinos_acesso')
+      .select('id, pin')
+      .ilike('nome', nome)
+      .eq('ativo', true)
+      .maybeSingle();
+    if (data) {
+      setExistingPinId(data.id);
+      setExistingPinValue(data.pin);
+    } else {
+      setExistingPinId(null);
+      setExistingPinValue(null);
+    }
+  }, []);
+
   useEffect(() => {
     if (profissional) {
       form.reset({
@@ -164,8 +186,12 @@ export default function ProfissionalFormDialog({
         pode_vender_produtos: profissional.pode_vender_produtos,
         meta_servicos_mes: Number(profissional.meta_servicos_mes),
         meta_produtos_mes: Number(profissional.meta_produtos_mes),
+        pin_ponto: "",
+        confirmar_pin: "",
+        criar_pin: false,
       });
       setFotoPreview(profissional.foto_url);
+      loadExistingPin(profissional.nome);
     } else {
       form.reset({
         nome: "",
@@ -194,7 +220,7 @@ export default function ProfissionalFormDialog({
     }
     setFotoFile(null);
     setActiveTab("dados");
-  }, [profissional, form, open]);
+  }, [profissional, form, open, loadExistingPin]);
 
   const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -257,9 +283,9 @@ export default function ProfissionalFormDialog({
     setLoading(true);
     setPinError(null);
 
-    // Validar PIN se criar_pin está habilitado (novo cadastro)
-    if (!isEditing && data.criar_pin) {
-      if (!data.pin_ponto || data.pin_ponto.length !== 4) {
+    // Validar PIN se criar_pin está habilitado
+    if (data.criar_pin && data.pin_ponto) {
+      if (data.pin_ponto.length !== 4) {
         setPinError("PIN deve ter 4 dígitos");
         setActiveTab("dados");
         setLoading(false);
@@ -277,13 +303,16 @@ export default function ProfissionalFormDialog({
         setLoading(false);
         return;
       }
-      // Verificar se PIN já existe
-      const { data: existingPin } = await supabase
+      // Verificar se PIN já existe (ignorar o PIN atual do profissional)
+      const query = supabase
         .from("pinos_acesso")
         .select("id")
-        .eq("pin", data.pin_ponto)
-        .maybeSingle();
-      if (existingPin) {
+        .eq("pin", data.pin_ponto);
+      if (existingPinId) {
+        query.neq("id", existingPinId);
+      }
+      const { data: duplicatePin } = await query.maybeSingle();
+      if (duplicatePin) {
         setPinError("Este PIN já está em uso por outro colaborador");
         setActiveTab("dados");
         setLoading(false);
@@ -322,7 +351,31 @@ export default function ProfissionalFormDialog({
 
         if (error) throw error;
 
-        toast({ title: "Profissional atualizado!", description: "Os dados foram salvos com sucesso." });
+        // Salvar/atualizar PIN ao editar
+        if (data.criar_pin && data.pin_ponto && data.pin_ponto.length === 4) {
+          if (existingPinId) {
+            // Atualizar PIN existente
+            await supabase
+              .from('pinos_acesso')
+              .update({ pin: data.pin_ponto, nome: data.nome, updated_at: new Date().toISOString() })
+              .eq('id', existingPinId);
+            toast({ title: "Profissional atualizado!", description: `PIN de ponto alterado para ${data.pin_ponto}` });
+          } else {
+            // Criar novo PIN
+            await supabase
+              .from('pinos_acesso')
+              .insert([{
+                nome: data.nome,
+                pin: data.pin_ponto,
+                role: 'colaborador_agenda',
+                descricao: `PIN de ponto - ${data.funcao || 'Colaborador'}`,
+                ativo: true,
+              }]);
+            toast({ title: "Profissional atualizado!", description: `PIN de ponto criado: ${data.pin_ponto}` });
+          }
+        } else {
+          toast({ title: "Profissional atualizado!", description: "Os dados foram salvos com sucesso." });
+        }
       } else {
         const { data: newProfissional, error } = await supabase
           .from("profissionais")
@@ -536,12 +589,15 @@ export default function ProfissionalFormDialog({
                   />
                 </div>
 
-                {/* PIN de Ponto (só para novos profissionais) */}
-                {!isEditing && (
+                {/* PIN de Ponto - visível para admin em cadastro e edição */}
+                {isAdmin && (
                   <div className="pt-4 border-t">
                     <div className="flex items-center gap-2 mb-4">
                       <Key className="h-5 w-5 text-primary" />
                       <p className="text-sm font-medium">PIN de Ponto Eletrônico</p>
+                      {isEditing && existingPinValue && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">PIN atual: {existingPinValue}</span>
+                      )}
                     </div>
                     <FormField
                       control={form.control}
@@ -549,9 +605,9 @@ export default function ProfissionalFormDialog({
                       render={({ field }) => (
                         <FormItem className="flex items-center justify-between rounded-lg border p-3 mb-4">
                           <div>
-                            <FormLabel>Criar PIN de acesso</FormLabel>
+                            <FormLabel>{isEditing ? (existingPinValue ? 'Alterar PIN' : 'Criar PIN') : 'Criar PIN de acesso'}</FormLabel>
                             <p className="text-xs text-muted-foreground">
-                              PIN para bater ponto e acessar a agenda
+                              {isEditing && existingPinValue ? 'Ative para alterar o PIN atual' : 'PIN para bater ponto e acessar a agenda'}
                             </p>
                           </div>
                           <FormControl>

@@ -51,13 +51,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Key, 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  Shield, 
-  Laptop, 
+import {
+  Key,
+  Plus,
+  Pencil,
+  Trash2,
+  Shield,
+  Laptop,
   Monitor,
   ShieldAlert,
   Eye,
@@ -79,7 +79,7 @@ const roleConfig: Record<PinRole, { label: string; icon: React.ReactNode; color:
   admin: {
     label: 'Administrador',
     icon: <Shield className="h-4 w-4" />,
-    color: 'bg-primary text-primary-foreground',
+    color: 'bg-red-600 text-white',
     description: 'Acesso total ao sistema',
   },
   notebook: {
@@ -107,14 +107,14 @@ export default function ControleAcesso() {
   const { pinos, loading, saving, createPino, updatePino, togglePinoAtivo, deletePino, validatePin } = usePinosAcesso();
   const { logs, loading: logsLoading, fetchLogs, clearOldLogs } = useLogsAcesso();
   const { permissoes, loading: permsLoading, saving: permsSaving, updatePermissao, getPermissoesByRole } = usePermissoesModulos();
-  
+
   const [activeTab, setActiveTab] = useState('pinos');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedPino, setSelectedPino] = useState<PinoAcesso | null>(null);
   const [showPin, setShowPin] = useState<Record<string, boolean>>({});
   const [selectedRole, setSelectedRole] = useState<PinRole>('admin');
-  
+
   // Form state
   const [formData, setFormData] = useState<CreatePinoData>({
     pin: '',
@@ -751,7 +751,7 @@ export default function ControleAcesso() {
                 onChange={(e) => handleInputChange('descricao', e.target.value)}
               />
             </div>
-            
+
             {/* Default PINs info */}
             <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
               <p className="font-medium text-xs uppercase text-muted-foreground">PINs Padrão do Sistema</p>
