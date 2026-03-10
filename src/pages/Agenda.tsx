@@ -96,6 +96,10 @@ const Agenda = () => {
   const [formInitialTime, setFormInitialTime] = useState<string | undefined>();
   const [formInitialProfissionalId, setFormInitialProfissionalId] = useState<string | undefined>();
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
+  const [colOrder, setColOrder] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('agenda_col_order') || '[]'); } catch { return []; }
+  });
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Use offline-first hook
@@ -114,9 +118,45 @@ const Agenda = () => {
   } = useAgendamentos({ date: selectedDate, profissionalId: profissionalFilter });
 
   const displayedProfissionais = useMemo(() => {
-    if (profissionalFilter === "todos") return profissionais;
-    return profissionais.filter(p => p.id === profissionalFilter);
-  }, [profissionais, profissionalFilter]);
+    const base = profissionalFilter === "todos" ? profissionais : profissionais.filter(p => p.id === profissionalFilter);
+    if (colOrder.length === 0) return base;
+    const sorted = [...base].sort((a, b) => {
+      const ia = colOrder.indexOf(a.id);
+      const ib = colOrder.indexOf(b.id);
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+    return sorted;
+  }, [profissionais, profissionalFilter, colOrder]);
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('profId', id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverId(id);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    setDragOverId(null);
+    const sourceId = e.dataTransfer.getData('profId');
+    if (!sourceId || sourceId === targetId) return;
+    const currentIds = displayedProfissionais.map(p => p.id);
+    const fromIndex = currentIds.indexOf(sourceId);
+    const toIndex = currentIds.indexOf(targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const newOrder = [...currentIds];
+    newOrder.splice(fromIndex, 1);
+    newOrder.splice(toIndex, 0, sourceId);
+    setColOrder(newOrder);
+    localStorage.setItem('agenda_col_order', JSON.stringify(newOrder));
+  };
 
   // Estatísticas do dia
   const stats = useMemo(() => {
@@ -891,14 +931,25 @@ const Agenda = () => {
                   {displayedProfissionais.map((prof) => (
                     <div
                       key={prof.id}
-                      className="flex-1 min-w-[180px] px-3 py-3 text-center font-semibold border-r truncate"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, prof.id)}
+                      onDragOver={(e) => handleDragOver(e, prof.id)}
+                      onDrop={(e) => handleDrop(e, prof.id)}
+                      onDragLeave={() => setDragOverId(null)}
+                      className={cn(
+                        "flex-1 min-w-[180px] px-3 py-3 text-center font-semibold border-r truncate select-none cursor-grab active:cursor-grabbing transition-all",
+                        dragOverId === prof.id && "ring-2 ring-primary ring-inset opacity-80"
+                      )}
                       style={{ 
                         backgroundColor: `${prof.cor_agenda}30`,
                         borderBottom: `3px solid ${prof.cor_agenda}`
                       }}
-                      title={prof.nome}
+                      title={`${prof.nome} — arraste para reordenar`}
                     >
-                      {prof.nome}
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-muted-foreground text-xs opacity-50">⠿</span>
+                        {prof.nome}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -921,7 +972,15 @@ const Agenda = () => {
               {displayedProfissionais.map((prof) => (
                 <div
                   key={prof.id}
-                  className="flex-1 min-w-[120px] px-2 py-2 text-center font-semibold border-r text-xs truncate"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, prof.id)}
+                  onDragOver={(e) => handleDragOver(e, prof.id)}
+                  onDrop={(e) => handleDrop(e, prof.id)}
+                  onDragLeave={() => setDragOverId(null)}
+                  className={cn(
+                    "flex-1 min-w-[120px] px-2 py-2 text-center font-semibold border-r text-xs truncate select-none cursor-grab active:cursor-grabbing transition-all",
+                    dragOverId === prof.id && "ring-2 ring-primary ring-inset opacity-80"
+                  )}
                   style={{ 
                     backgroundColor: `${prof.cor_agenda}30`,
                     borderBottom: `3px solid ${prof.cor_agenda}`
