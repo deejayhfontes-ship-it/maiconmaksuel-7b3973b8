@@ -197,8 +197,10 @@ export function ComunicacaoConfigAvancadas({
           }
         );
         const data = await res.json();
-        if (data?.zaapId || data?.messageId || data?.id) {
+        if (res.ok && (data?.zaapId || data?.messageId || data?.id || data?.sent)) {
           toast.success('✅ Mensagem enviada com sucesso!');
+        } else if (data?.error) {
+          toast.error(`Z-API erro: ${data.error}`);
         } else {
           toast.error(`Z-API retornou: ${JSON.stringify(data)}`);
         }
