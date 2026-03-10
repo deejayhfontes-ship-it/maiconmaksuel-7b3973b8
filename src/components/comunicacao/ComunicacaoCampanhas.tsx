@@ -38,10 +38,17 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CampanhaConfiguracao, CampanhaFormData } from "./CampanhaConfiguracao";
 
+interface ZapiConfig {
+  instancia: string;
+  token: string;
+  clientToken: string;
+}
+
 interface Props {
   campanhas: ComunicacaoCampanha[];
   onUpdateCampanha: (id: string, updates: Partial<ComunicacaoCampanha>) => Promise<void>;
   saving: boolean;
+  zapiConfig?: ZapiConfig;
 }
 
 const iconesPorTipo: Record<string, React.ReactNode> = {
@@ -64,15 +71,16 @@ const coresPorTipo: Record<string, string> = {
   personalizada: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
 };
 
-export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Props) {
+export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving, zapiConfig }: Props) {
   const [selectedCampanha, setSelectedCampanha] = useState<ComunicacaoCampanha | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [isNewCampanha, setIsNewCampanha] = useState(false);
   const [enviando, setEnviando] = useState<string | null>(null); // id da campanha sendo enviada
 
-  const ZAPI_INSTANCE = '3EFBBECF9076D192D3C91E78C95369C2';
-  const ZAPI_TOKEN = '4B0D7C7DF8E790BBD1B6122B';
-  const ZAPI_CLIENT_TOKEN = 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S';
+  // Credenciais – prefere as do banco (via prop), cai no fallback se não tiver
+  const ZAPI_INSTANCE = zapiConfig?.instancia || '3EFBBECF9076D192D3C91E78C95369C2';
+  const ZAPI_TOKEN = zapiConfig?.token || '4B0D7C7DF8E790BBD1B6122B';
+  const ZAPI_CLIENT_TOKEN = zapiConfig?.clientToken || 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S';
 
   const getPreviewMessage = (template: string) => {
     return template

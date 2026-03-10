@@ -133,13 +133,53 @@ export default function ConfiguracoesWhatsApp() {
     }
   };
 
-  const handleTestarMensagem = async (lembrete: { nome: string }) => {
+  const handleTestarMensagem = async (lembrete: { nome: string; template_mensagem: string }) => {
+    if (!configWhatsApp?.instance_id || !configWhatsApp?.api_token) {
+      toast.error("Configure as credenciais Z-API antes de testar (aba Configurações)");
+      return;
+    }
+    if (!configWhatsApp?.numero_whatsapp) {
+      toast.error("Configure o número WhatsApp do salão na aba Configurações");
+      return;
+    }
     setTestando(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      toast.success(`Mensagem de teste "${lembrete.nome}" enviada!`);
-    } catch {
-      toast.error("Erro ao enviar mensagem de teste");
+      const instancia = configWhatsApp.instance_id;
+      const token = configWhatsApp.api_token;
+      const clientToken = configWhatsApp.client_token || 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S';
+      const telefone = configWhatsApp.numero_whatsapp.replace(/\D/g, '');
+      const mensagem = `[TESTE - ${lembrete.nome}]\n\n` + lembrete.template_mensagem
+        .replace(/{nome_cliente}/g, 'Cliente Teste')
+        .replace(/{nome}/g, 'Teste')
+        .replace(/{data}/g, new Date().toLocaleDateString('pt-BR'))
+        .replace(/{hora}/g, '14:30')
+        .replace(/{servico}/g, 'Corte')
+        .replace(/{profissional}/g, 'Profissional')
+        .replace(/{nome_salao}/g, 'Maicon Maksuel')
+        .replace(/{link_confirmar}/g, 'https://salao.maiconmaksuel.com.br/confirmar/teste')
+        .replace(/{link_cancelar}/g, 'https://salao.maiconmaksuel.com.br/cancelar/teste')
+        .replace(/{link_avaliacao}/g, 'https://salao.maiconmaksuel.com.br/avaliar/teste')
+        .replace(/{endereco_salao}/g, 'Rua das Flores, 123 - Centro')
+        .replace(/{telefone_salao}/g, configWhatsApp.numero_whatsapp);
+
+      const res = await fetch(
+        `https://api.z-api.io/instances/${instancia}/token/${token}/send-text`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Client-Token': clientToken },
+          body: JSON.stringify({ phone: telefone, message: mensagem }),
+        }
+      );
+      const data = await res.json();
+      console.log('[Z-API] testar lembrete:', data);
+      if (data?.zaapId || data?.messageId || data?.id || data?.value) {
+        toast.success(`✅ Mensagem de teste "${lembrete.nome}" enviada para ${configWhatsApp.numero_whatsapp}!`);
+      } else {
+        toast.error(`Z-API: ${data?.error || JSON.stringify(data)}`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao enviar mensagem de teste via Z-API");
     } finally {
       setTestando(false);
     }
@@ -232,6 +272,11 @@ export default function ConfiguracoesWhatsApp() {
             campanhas={campanhas}
             onUpdateCampanha={updateCampanha}
             saving={saving}
+            zapiConfig={configWhatsApp?.instance_id && configWhatsApp?.api_token ? {
+              instancia: configWhatsApp.instance_id,
+              token: configWhatsApp.api_token,
+              clientToken: configWhatsApp.client_token || 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S',
+            } : undefined}
           />
         </TabsContent>
 
