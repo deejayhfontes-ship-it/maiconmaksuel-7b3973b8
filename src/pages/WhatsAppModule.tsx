@@ -13,7 +13,7 @@ import {
   Settings,
   Wifi,
   WifiOff,
-  BarChart3,
+  ClipboardCheck,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -23,16 +23,14 @@ import { ComunicacaoConfirmacoes } from "@/components/comunicacao/ComunicacaoCon
 import { ComunicacaoLembretes } from "@/components/comunicacao/ComunicacaoLembretes";
 import { ComunicacaoCampanhas } from "@/components/comunicacao/ComunicacaoCampanhas";
 import { ComunicacaoPosAtendimento } from "@/components/comunicacao/ComunicacaoPosAtendimento";
-import { ComunicacaoAvaliacaoConfig } from "@/components/comunicacao/ComunicacaoAvaliacaoConfig";
-import NpsPesquisa from "@/pages/NpsPesquisa";
+import { SatisfacaoUnificada } from "@/components/comunicacao/SatisfacaoUnificada";
 import { useComunicacao } from "@/hooks/useComunicacao";
 
 const tabs = [
   { id: 'confirmacoes', label: 'Confirmações', icon: CheckCircle2 },
   { id: 'lembretes', label: 'Lembretes', icon: Bell },
-  { id: 'pos-atendimento', label: 'Pós-atendimento', icon: Star },
-  { id: 'avaliacao', label: 'Avaliação', icon: Star },
-  { id: 'nps', label: 'NPS', icon: BarChart3 },
+  { id: 'pos-atendimento', label: 'Pós-atendimento', icon: ClipboardCheck },
+  { id: 'satisfacao', label: 'Pesquisa de Satisfação', icon: Star },
   { id: 'campanhas', label: 'Campanhas', icon: Megaphone },
 ];
 
@@ -132,12 +130,8 @@ export default function WhatsAppModule() {
           <ComunicacaoPosAtendimento />
         </TabsContent>
 
-        <TabsContent value="avaliacao" className="mt-6">
-          <ComunicacaoAvaliacaoConfig avaliacoes={[]} />
-        </TabsContent>
-
-        <TabsContent value="nps" className="mt-6">
-          <NpsPesquisa />
+        <TabsContent value="satisfacao" className="mt-6">
+          <SatisfacaoUnificada />
         </TabsContent>
 
         <TabsContent value="campanhas" className="mt-6">
