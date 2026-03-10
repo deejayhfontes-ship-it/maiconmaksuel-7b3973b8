@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  localPut, 
-  localGetAll, 
-  localDelete, 
-  addToSyncQueue 
+import {
+  localPut,
+  localGetAll,
+  localDelete,
+  addToSyncQueue
 } from '@/lib/offlineDb';
 import { useRealtimeCallback } from '@/hooks/useRealtimeSubscription';
 
@@ -66,7 +66,7 @@ export function useServicos() {
         // Merge remote with local - remote wins for conflicts
         const mergedData = await mergeWithLocal(remoteData, localData);
         setServicos(mergedData.sort((a, b) => a.nome.localeCompare(b.nome)));
-        
+
         // Update local storage with merged data
         for (const servico of mergedData) {
           await localPut('servicos', servico);
@@ -102,17 +102,11 @@ export function useServicos() {
       }
     }
 
-    // Add local-only items (created offline)
-    for (const [id, localItem] of localMap) {
+    // Remove local-only items that were deleted remotely
+    for (const [id] of localMap) {
       if (!remoteMap.has(id)) {
-        merged.push(localItem);
-        // Queue for sync
-        await addToSyncQueue({
-          entity: 'servicos',
-          operation: 'create',
-          data: localItem as unknown as Record<string, unknown>,
-          timestamp: new Date().toISOString(),
-        });
+        // Item was deleted on remote — remove from local cache too
+        await localDelete('servicos', id);
       }
     }
 
@@ -195,7 +189,7 @@ export function useServicos() {
   ): Promise<Servico | null> => {
     // Try to find in local state first, then fetch from DB if not found
     let existing = servicos.find((s) => s.id === id);
-    
+
     if (!existing) {
       // Fetch from Supabase if not in local state
       const { data: fetchedData } = await supabase
@@ -203,12 +197,12 @@ export function useServicos() {
         .select('*')
         .eq('id', id)
         .single();
-      
+
       if (fetchedData) {
         existing = fetchedData as Servico;
       }
     }
-    
+
     if (!existing) {
       console.error('Serviço não encontrado:', id);
       toast({
