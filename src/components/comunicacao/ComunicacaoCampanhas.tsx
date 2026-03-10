@@ -72,7 +72,7 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving }: Pr
 
   const ZAPI_INSTANCE = '3EFBBECF9076D192D3C91E78C95369C2';
   const ZAPI_TOKEN = '4B0D7C7DF8E790BBD1B6122B';
-  const ZAPI_CLIENT_TOKEN = 'Fafa7e4b75c2f4916b191413209fe9d08S';
+  const ZAPI_CLIENT_TOKEN = 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S';
 
   const getPreviewMessage = (template: string) => {
     return template

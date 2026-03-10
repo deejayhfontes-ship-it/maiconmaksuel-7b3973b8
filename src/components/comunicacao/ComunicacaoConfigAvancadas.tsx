@@ -98,7 +98,7 @@ export function ComunicacaoConfigAvancadas({
         // Z-API: checa status da instância
         const instanceId = (configWhatsApp as any)?.instance_id || '3EFBBECF9076D192D3C91E78C95369C2';
         const token = configWhatsApp?.api_token || '4B0D7C7DF8E790BBD1B6122B';
-        const clientToken = (configWhatsApp as any)?.client_token || 'Fafa7e4b75c2f4916b191413209fe9d08S';
+        const clientToken = (configWhatsApp as any)?.client_token || 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S';
         const res = await fetch(
           `https://api.z-api.io/instances/${instanceId}/token/${token}/status`,
           { headers: { 'Client-Token': clientToken } }
@@ -186,7 +186,7 @@ export function ComunicacaoConfigAvancadas({
         // Z-API: chama diretamente
         const instanceId = (configWhatsApp as any)?.instance_id || '3EFBBECF9076D192D3C91E78C95369C2';
         const token = configWhatsApp?.api_token || '4B0D7C7DF8E790BBD1B6122B';
-        const clientToken = (configWhatsApp as any)?.client_token || 'Fafa7e4b75c2f4916b191413209fe9d08S';
+        const clientToken = (configWhatsApp as any)?.client_token || 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S';
         const phone = telefoneTeste.replace(/\D/g, '');
         const res = await fetch(
           `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`,
