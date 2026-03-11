@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -79,6 +79,10 @@ export default function ServicoFormDialog({
   const isEditing = !!servico;
   const [loading, setLoading] = useState(false);
 
+  // Ref para sinalizar que estamos resetando o form (abertura/edição)
+  // Assim o useEffect do tipoServico não sobrescreve os valores salvos
+  const isResettingRef = useRef(false);
+
   // Estado de imagem
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoUrlExternal, setFotoUrlExternal] = useState<string | null>(null);
@@ -107,6 +111,7 @@ export default function ServicoFormDialog({
   const isCortesia = tipoServico === "cortesia";
 
   useEffect(() => {
+    isResettingRef.current = true;
     if (servico) {
       form.reset({
         nome: servico.nome,
@@ -142,10 +147,14 @@ export default function ServicoFormDialog({
     setFotoFile(null);
     setFotoUrlExternal(null);
     setFotoRemoved(false);
+    // Aguarda um tick para que o watch do tipoServico não interfira
+    setTimeout(() => { isResettingRef.current = false; }, 0);
   }, [servico, form, open]);
 
   // Atualiza campos automaticamente baseado no tipo de serviço
+  // Mas IGNORA quando o form esta sendo resetado (abertura de edicao)
   useEffect(() => {
+    if (isResettingRef.current) return;
     if (tipoServico === "controle_interno") {
       form.setValue("apenas_agenda", true);
       form.setValue("gera_receita", false);
