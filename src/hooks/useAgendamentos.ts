@@ -29,6 +29,7 @@ export interface Profissional {
   nome: string;
   cor_agenda: string;
   ativo: boolean;
+  atende_clientes: boolean;
 }
 
 export interface Servico {
@@ -84,7 +85,7 @@ interface UseAgendamentosReturn {
 
 export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgendamentosReturn {
   const { date, profissionalId } = options;
-  
+
   const [agendamentos, setAgendamentos] = useState<AgendamentoCompleto[]>([]);
   const [allAgendamentos, setAllAgendamentos] = useState<Agendamento[]>([]);
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
@@ -94,7 +95,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
   const [isOnline, setIsOnline] = useState(getOnlineStatus());
   const [pendingSync, setPendingSync] = useState(0);
   const { toast } = useToast();
-  
+
   // Mutation lock: skip realtime refetches during local mutations to avoid race conditions
   const mutationLockRef = useRef(false);
   const lockMutation = useCallback(() => {
@@ -119,14 +120,21 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
 
       // Set from local
       setClientes(new Map(localClientes.map(c => [c.id, c])));
-      setProfissionais(localProfissionais.filter(p => p.ativo));
+      // Filtrar apenas profissionais ativos que atendem clientes (têm agenda)
+      setProfissionais(localProfissionais.filter(p => p.ativo && p.atende_clientes !== false));
       setServicos(new Map(localServicos.map(s => [s.id, s])));
 
       // Sync from server if online
       if (isOnline) {
         const [serverClientes, serverProfissionais, serverServicos] = await Promise.all([
           supabase.from('clientes').select('id, nome, celular, telefone, data_nascimento').eq('ativo', true),
-          supabase.from('profissionais').select('id, nome, cor_agenda, ativo').eq('ativo', true).order('nome'),
+          // Buscar apenas profissionais que atendem clientes (têm agenda de atendimento)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase.from('profissionais') as any)
+            .select('id, nome, cor_agenda, ativo, atende_clientes')
+            .eq('ativo', true)
+            .eq('atende_clientes', true)
+            .order('nome'),
           supabase.from('servicos').select('id, nome, preco, duracao_minutos').eq('ativo', true),
         ]);
 
@@ -136,7 +144,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
         }
         if (serverProfissionais.data) {
           await localBulkPut('profissionais', serverProfissionais.data as unknown as (Profissional & { id: string })[]);
-          setProfissionais(serverProfissionais.data);
+          setProfissionais(serverProfissionais.data as unknown as Profissional[]);
         }
         if (serverServicos.data) {
           await localBulkPut('servicos', serverServicos.data as unknown as (Servico & { id: string })[]);
@@ -151,9 +159,9 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
   // Fetch agendamentos for a specific date
   const fetchAgendamentos = useCallback(async () => {
     if (!date) return;
-    
+
     setLoading(true);
-    
+
     try {
       const startDate = startOfDay(date);
       const endDate = endOfDay(date);
@@ -180,7 +188,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
           const typedData = serverData as Agendamento[];
           setAllAgendamentos(typedData);
           // Update local storage in background
-          localBulkPut('agendamentos', typedData).catch(() => {});
+          localBulkPut('agendamentos', typedData).catch(() => { });
         }
       } else {
         // Offline: load from local
@@ -256,13 +264,13 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
       lockMutation();
       // Save locally first
       await localPut('agendamentos', newAgendamento, false);
-      
+
       // Update state
       setAllAgendamentos(prev => [...prev, newAgendamento]);
 
       if (isOnline) {
         const { error } = await supabase.from('agendamentos').insert(newAgendamento);
-        
+
         if (error) {
           console.error('[useAgendamentos] Create sync error:', error);
           await addToSyncQueue({
@@ -295,7 +303,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
   // Update agendamento
   const update = useCallback(async (id: string, data: Partial<Agendamento>): Promise<void> => {
     const now = new Date().toISOString();
-    
+
     try {
       lockMutation();
       const current = await localGet<Agendamento>('agendamentos', id);
@@ -312,7 +320,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
 
       if (isOnline) {
         const { error } = await supabase.from('agendamentos').update(updated).eq('id', id);
-        
+
         if (error) {
           console.error('[useAgendamentos] Update sync error:', error);
           await addToSyncQueue({
@@ -345,7 +353,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
     try {
       lockMutation();
       const current = await localGet<Agendamento>('agendamentos', id);
-      
+
       // Remove from local
       const { localDelete } = await import('@/lib/offlineDb');
       await localDelete('agendamentos', id);
@@ -353,7 +361,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
 
       if (isOnline) {
         const { error } = await supabase.from('agendamentos').delete().eq('id', id);
-        
+
         if (error && error.code !== 'PGRST116') {
           console.error('[useAgendamentos] Delete sync error:', error);
           if (current) {
@@ -411,7 +419,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
   const getAgendamentosForDate = useCallback((targetDate: Date, filterProfId?: string): AgendamentoCompleto[] => {
     const start = startOfDay(targetDate);
     const end = endOfDay(targetDate);
-    
+
     return agendamentos.filter(ag => {
       const agDate = new Date(ag.data_hora);
       const dateMatch = agDate >= start && agDate <= end;
@@ -439,7 +447,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
       refetch();
     }
   }, [refetch]);
-  
+
   useRealtimeCallback('agendamentos', safeRealtimeRefetch, { throttleMs: 3000 });
 
   return {

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,10 +30,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useServicos, Servico } from "@/hooks/useServicos";
 import { Loader2, AlertCircle, ClipboardList } from "lucide-react";
-import { useState } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import ImageUploadField from "@/components/common/ImageUploadField";
 
 const categorias = [
   "Cabelo",
@@ -77,6 +78,11 @@ export default function ServicoFormDialog({
   const { toast } = useToast();
   const isEditing = !!servico;
   const [loading, setLoading] = useState(false);
+
+  // Estado de imagem
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [fotoUrlExternal, setFotoUrlExternal] = useState<string | null>(null);
+  const [fotoRemoved, setFotoRemoved] = useState(false);
 
   const form = useForm<ServicoFormData>({
     resolver: zodResolver(servicoSchema),
@@ -132,6 +138,10 @@ export default function ServicoFormDialog({
         aparece_pdv: true,
       });
     }
+    // Reset estado de foto ao abrir
+    setFotoFile(null);
+    setFotoUrlExternal(null);
+    setFotoRemoved(false);
   }, [servico, form, open]);
 
   // Atualiza campos automaticamente baseado no tipo de serviço
@@ -154,14 +164,31 @@ export default function ServicoFormDialog({
     }
   }, [tipoServico, form]);
 
+  /** Upload do arquivo de foto para o bucket */
+  const uploadFotoServico = async (servicoId: string, file: File): Promise<string | null> => {
+    const fileName = `servicos/${servicoId}.webp`;
+    const { error } = await supabase.storage
+      .from("clientes-fotos")
+      .upload(fileName, file, { upsert: true, contentType: "image/webp" });
+    if (error) { console.error("Erro upload serviço foto:", error); return null; }
+    const { data } = supabase.storage.from("clientes-fotos").getPublicUrl(fileName);
+    return `${data.publicUrl}?t=${Date.now()}`;
+  };
+
+  /** Resolve foto_url final */
+  const resolveFotoUrl = async (servicoId: string): Promise<string | null> => {
+    if (fotoRemoved) return null;
+    if (fotoFile) return await uploadFotoServico(servicoId, fotoFile);
+    if (fotoUrlExternal) return fotoUrlExternal;
+    return servico?.foto_url ?? null;
+  };
+
   const { createServico, updateServico } = useServicos();
 
   const onSubmit = async (data: ServicoFormData) => {
-    console.log('ServicoFormDialog onSubmit called with data:', data);
     setLoading(true);
-
     try {
-      const payload = {
+      const basePayload = {
         nome: data.nome,
         descricao: data.descricao || null,
         categoria: data.categoria || null,
@@ -174,58 +201,38 @@ export default function ServicoFormDialog({
         gera_receita: data.gera_receita,
         gera_comissao: data.gera_comissao,
         aparece_pdv: data.aparece_pdv,
+        foto_url: null as string | null,
       };
 
-      console.log('Payload to save:', payload);
-      console.log('isEditing:', isEditing, 'servico:', servico);
-
       if (isEditing && servico) {
-        const result = await updateServico(servico.id, payload);
-        console.log('updateServico result:', result);
+        basePayload.foto_url = await resolveFotoUrl(servico.id);
+        const result = await updateServico(servico.id, basePayload);
         if (result) {
-          toast({
-            title: "Serviço atualizado!",
-            description: "Os dados foram salvos com sucesso.",
-          });
+          toast({ title: "Serviço atualizado!", description: "Os dados foram salvos com sucesso." });
           onClose(true);
         } else {
-          toast({
-            title: "Erro ao atualizar",
-            description: "Não foi possível salvar as alterações.",
-            variant: "destructive",
-          });
+          toast({ title: "Erro ao atualizar", description: "Não foi possível salvar as alterações.", variant: "destructive" });
         }
       } else {
-        const result = await createServico(payload);
-        console.log('createServico result:', result);
+        const tempId = crypto.randomUUID();
+        basePayload.foto_url = await resolveFotoUrl(tempId);
+        const result = await createServico(basePayload);
         if (result) {
-          toast({
-            title: "Serviço cadastrado!",
-            description: "Novo serviço adicionado com sucesso.",
-          });
+          toast({ title: "Serviço cadastrado!", description: "Novo serviço adicionado com sucesso." });
           onClose(true);
         } else {
-          toast({
-            title: "Erro ao criar",
-            description: "Não foi possível cadastrar o serviço.",
-            variant: "destructive",
-          });
+          toast({ title: "Erro ao criar", description: "Não foi possível cadastrar o serviço.", variant: "destructive" });
         }
       }
-    } catch (error: any) {
-      console.error('Error in onSubmit:', error);
-      toast({
-        title: "Erro ao salvar",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Erro desconhecido.';
+      toast({ title: "Erro ao salvar", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  // Log validation errors
-  const onError = (errors: any) => {
+  const onError = (errors: unknown) => {
     console.log('Form validation errors:', errors);
   };
 
@@ -240,6 +247,23 @@ export default function ServicoFormDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-4">
+            {/* ── Foto do Serviço ── */}
+            <ImageUploadField
+              currentUrl={servico?.foto_url}
+              fallbackIcon="scissors"
+              label="Foto do serviço"
+              onFileReady={(file) => {
+                setFotoFile(file);
+                setFotoUrlExternal(null);
+                setFotoRemoved(false);
+              }}
+              onRemove={() => {
+                setFotoFile(null);
+                setFotoUrlExternal(null);
+                setFotoRemoved(true);
+              }}
+            />
+
             <FormField
               control={form.control}
               name="nome"
@@ -462,7 +486,7 @@ export default function ServicoFormDialog({
               {!isControleInterno && !isCortesia && (
                 <div className="space-y-3 pt-2">
                   <p className="text-xs text-muted-foreground">Opções avançadas:</p>
-                  
+
                   <FormField
                     control={form.control}
                     name="gera_receita"

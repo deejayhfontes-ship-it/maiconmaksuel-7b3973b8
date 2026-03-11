@@ -27,11 +27,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useProdutos, Produto } from "@/hooks/useProdutos";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, X, Loader2, Package } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import ImageUploadField from "@/components/common/ImageUploadField";
 
 const categorias = [
   "Shampoo",
@@ -42,6 +42,8 @@ const categorias = [
   "Creme",
   "Óleo",
   "Finalizador",
+  "Bomboniere",
+  "Conveniência",
   "Outros",
 ];
 
@@ -73,9 +75,11 @@ export default function ProdutoFormDialog({
   const { toast } = useToast();
   const isEditing = !!produto;
   const [loading, setLoading] = useState(false);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+
+  // Estado de imagem — gerenciado pelo ImageUploadField
   const [fotoFile, setFotoFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);   // URL externa (fallback CORS)
+  const [fotoRemoved, setFotoRemoved] = useState(false);
 
   const form = useForm<ProdutoFormData>({
     resolver: zodResolver(produtoSchema),
@@ -93,99 +97,68 @@ export default function ProdutoFormDialog({
   });
 
   useEffect(() => {
-    if (produto) {
-      form.reset({
-        nome: produto.nome,
-        codigo_barras: produto.codigo_barras || "",
-        categoria: produto.categoria || "",
-        descricao: produto.descricao || "",
-        preco_custo: Number(produto.preco_custo) || 0,
-        preco_venda: Number(produto.preco_venda),
-        estoque_atual: produto.estoque_atual,
-        estoque_minimo: produto.estoque_minimo,
-        ativo: produto.ativo,
-      });
-      setFotoPreview(produto.foto_url);
-    } else {
-      form.reset({
-        nome: "",
-        codigo_barras: "",
-        categoria: "",
-        descricao: "",
-        preco_custo: 0,
-        preco_venda: 0,
-        estoque_atual: 0,
-        estoque_minimo: 5,
-        ativo: true,
-      });
-      setFotoPreview(null);
+    if (open) {
+      if (produto) {
+        form.reset({
+          nome: produto.nome,
+          codigo_barras: produto.codigo_barras || "",
+          categoria: produto.categoria || "",
+          descricao: produto.descricao || "",
+          preco_custo: Number(produto.preco_custo) || 0,
+          preco_venda: Number(produto.preco_venda),
+          estoque_atual: produto.estoque_atual,
+          estoque_minimo: produto.estoque_minimo,
+          ativo: produto.ativo,
+        });
+      } else {
+        form.reset({
+          nome: "",
+          codigo_barras: "",
+          categoria: "",
+          descricao: "",
+          preco_custo: 0,
+          preco_venda: 0,
+          estoque_atual: 0,
+          estoque_minimo: 5,
+          ativo: true,
+        });
+      }
+      // Reset estado de imagem ao abrir
+      setFotoFile(null);
+      setFotoUrl(null);
+      setFotoRemoved(false);
     }
-    setFotoFile(null);
   }, [produto, form, open]);
 
-  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Arquivo inválido",
-        description: "Selecione uma imagem.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Arquivo muito grande",
-        description: "A imagem deve ter no máximo 5MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setFotoFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setFotoPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const removeFoto = () => {
-    setFotoFile(null);
-    setFotoPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const uploadFoto = async (produtoId: string): Promise<string | null> => {
-    if (!fotoFile) return produto?.foto_url || null;
-
-    const fileExt = fotoFile.name.split(".").pop();
-    const fileName = `produtos/${produtoId}.${fileExt}`;
-
+  /** Faz upload do File comprimido para o Supabase Storage */
+  const uploadFotoFile = async (produtoId: string, file: File): Promise<string | null> => {
+    const fileName = `produtos/${produtoId}.webp`;
     const { error } = await supabase.storage
       .from("clientes-fotos")
-      .upload(fileName, fotoFile, { upsert: true });
+      .upload(fileName, file, { upsert: true, contentType: "image/webp" });
 
     if (error) {
-      console.error("Erro upload:", error);
-      return produto?.foto_url || null;
+      console.error("Erro upload produto foto:", error);
+      return null;
     }
 
-    const { data: urlData } = supabase.storage
-      .from("clientes-fotos")
-      .getPublicUrl(fileName);
+    const { data } = supabase.storage.from("clientes-fotos").getPublicUrl(fileName);
+    // Adiciona cache-buster para forçar recarregamento após troca
+    return `${data.publicUrl}?t=${Date.now()}`;
+  };
 
-    return urlData.publicUrl;
+  /** Resolve a foto_url final a ser salva no banco */
+  const resolveFotoUrl = async (produtoId: string): Promise<string | null> => {
+    if (fotoRemoved) return null;
+    if (fotoFile) return await uploadFotoFile(produtoId, fotoFile);
+    if (fotoUrl) return fotoUrl;                       // URL externa (CORS fallback)
+    return produto?.foto_url ?? null;                  // mantém a atual
   };
 
   const { createProduto, updateProduto } = useProdutos();
 
   const onSubmit = async (data: ProdutoFormData) => {
     setLoading(true);
-
     try {
       const payload = {
         nome: data.nome,
@@ -201,41 +174,24 @@ export default function ProdutoFormDialog({
       };
 
       if (isEditing && produto) {
-        const fotoUrl = await uploadFoto(produto.id);
-        payload.foto_url = fotoUrl;
-        
+        payload.foto_url = await resolveFotoUrl(produto.id);
         const result = await updateProduto(produto.id, payload);
         if (result) {
-          toast({
-            title: "Produto atualizado!",
-            description: "Os dados foram salvos com sucesso.",
-          });
+          toast({ title: "Produto atualizado!", description: "Dados salvos com sucesso." });
           onClose(true);
         }
       } else {
-        // Create product first to get ID for photo upload
         const tempId = crypto.randomUUID();
-        
-        if (fotoFile) {
-          const fotoUrl = await uploadFoto(tempId);
-          payload.foto_url = fotoUrl;
-        }
-        
+        payload.foto_url = await resolveFotoUrl(tempId);
         const result = await createProduto(payload);
         if (result) {
-          toast({
-            title: "Produto cadastrado!",
-            description: "Novo produto adicionado com sucesso.",
-          });
+          toast({ title: "Produto cadastrado!", description: "Novo produto adicionado." });
           onClose(true);
         }
       }
-    } catch (error: any) {
-      toast({
-        title: "Erro ao salvar",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Erro desconhecido.';
+      toast({ title: "Erro ao salvar", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -252,50 +208,24 @@ export default function ProdutoFormDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Foto */}
-            <div className="flex items-center gap-6 pb-4 border-b">
-              <div className="relative">
-                <Avatar className="h-20 w-20 rounded-lg">
-                  <AvatarImage src={fotoPreview || undefined} className="object-cover" />
-                  <AvatarFallback className="bg-muted rounded-lg">
-                    <Package className="h-8 w-8 text-muted-foreground" />
-                  </AvatarFallback>
-                </Avatar>
-                {fotoPreview && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                    onClick={removeFoto}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-              <div className="space-y-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFotoChange}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {fotoPreview ? "Alterar foto" : "Adicionar foto"}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  JPG, PNG até 5MB
-                </p>
-              </div>
-            </div>
+            {/* ── Foto ── */}
+            <ImageUploadField
+              currentUrl={produto?.foto_url}
+              fallbackIcon="package"
+              label="Foto do produto"
+              onFileReady={(file) => {
+                setFotoFile(file);
+                setFotoUrl(null);
+                setFotoRemoved(false);
+              }}
+              onRemove={() => {
+                setFotoFile(null);
+                setFotoUrl(null);
+                setFotoRemoved(true);
+              }}
+            />
 
-            {/* Campos */}
+            {/* ── Campos ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -452,7 +382,7 @@ export default function ProdutoFormDialog({
               />
             </div>
 
-            {/* Status */}
+            {/* ── Status ── */}
             <FormField
               control={form.control}
               name="ativo"
@@ -465,16 +395,13 @@ export default function ProdutoFormDialog({
                     </p>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                 </FormItem>
               )}
             />
 
-            {/* Botões */}
+            {/* ── Botões ── */}
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => onClose()}>
                 Cancelar

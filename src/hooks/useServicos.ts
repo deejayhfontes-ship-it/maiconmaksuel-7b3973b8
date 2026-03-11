@@ -23,6 +23,7 @@ export interface Servico {
   gera_receita: boolean;
   gera_comissao: boolean;
   aparece_pdv: boolean;
+  foto_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -81,11 +82,16 @@ export function useServicos() {
   }, [toast]);
 
   // Merge remote and local data, resolving conflicts by updated_at
+  const normalizeServico = (s: Record<string, unknown>): Servico => ({
+    ...s,
+    foto_url: (s.foto_url as string | null) ?? null,
+  } as Servico);
+
   const mergeWithLocal = async (
-    remote: Servico[],
+    remote: Record<string, unknown>[],
     local: Servico[]
   ): Promise<Servico[]> => {
-    const remoteMap = new Map(remote.map((s) => [s.id, s]));
+    const remoteMap = new Map(remote.map((s) => [s.id as string, normalizeServico(s)]));
     const localMap = new Map(local.map((s) => [s.id, s]));
     const merged: Servico[] = [];
 
@@ -145,6 +151,7 @@ export function useServicos() {
           gera_receita: newServico.gera_receita,
           gera_comissao: newServico.gera_comissao,
           aparece_pdv: newServico.aparece_pdv,
+          foto_url: newServico.foto_url ?? null,
         }])
         .select()
         .single();
@@ -164,9 +171,10 @@ export function useServicos() {
         });
       } else if (remoteData) {
         // Update local with server data
-        await localPut('servicos', remoteData);
+        const norm = normalizeServico(remoteData as unknown as Record<string, unknown>);
+        await localPut('servicos', norm);
         setServicos((prev) =>
-          prev.map((s) => (s.id === remoteData.id ? remoteData : s))
+          prev.map((s) => (s.id === norm.id ? norm : s))
         );
       }
 
@@ -242,6 +250,7 @@ export function useServicos() {
           gera_receita: updated.gera_receita,
           gera_comissao: updated.gera_comissao,
           aparece_pdv: updated.aparece_pdv,
+          foto_url: updated.foto_url ?? null,
           updated_at: updated.updated_at,
         })
         .eq('id', id)
@@ -261,9 +270,10 @@ export function useServicos() {
           description: 'Será sincronizado quando houver conexão.',
         });
       } else if (remoteData) {
-        await localPut('servicos', remoteData);
+        const norm = normalizeServico(remoteData as unknown as Record<string, unknown>);
+        await localPut('servicos', norm);
         setServicos((prev) =>
-          prev.map((s) => (s.id === id ? remoteData : s))
+          prev.map((s) => (s.id === id ? norm : s))
         );
       }
 

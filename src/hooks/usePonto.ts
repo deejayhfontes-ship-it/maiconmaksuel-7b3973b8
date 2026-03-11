@@ -41,7 +41,7 @@ const TIPO_TO_COLUMN: Record<TipoEvento, string> = {
 
 export interface PontoRegistroLocal {
   id: string;
-  tipo_pessoa: 'profissional' | 'funcionario';
+  tipo_pessoa: 'funcionario';
   pessoa_id: string;
   tipo_evento: TipoEvento;
   hora: string; // HH:mm:ss
@@ -56,7 +56,7 @@ export interface Pessoa {
   id: string;
   nome: string;
   cargo_especialidade: string;
-  tipo: 'profissional' | 'funcionario';
+  tipo: 'funcionario';
   foto_url?: string;
   ativo: boolean;
 }
@@ -101,29 +101,30 @@ export function usePonto() {
     };
   }, []);
 
-  // --- Load people ---
+  // --- Load people (apenas funcionários batem ponto) ---
   const loadPessoas = useCallback(async () => {
     try {
       if (isOnline) {
-        const [funcRes, profRes] = await Promise.all([
-          supabase.from('funcionarios').select('id, nome, cargo, foto_url, ativo').eq('ativo', true),
-          supabase.from('profissionais').select('id, nome, especialidade, foto_url, ativo').eq('ativo', true),
-        ]);
+        const funcRes = await supabase
+          .from('funcionarios')
+          .select('id, nome, cargo, foto_url, ativo')
+          .eq('ativo', true)
+          .order('nome');
 
         const funcionarios: Pessoa[] = (funcRes.data || []).map((f) => ({
-          id: f.id, nome: f.nome, cargo_especialidade: f.cargo || 'Funcionário',
-          tipo: 'funcionario' as const, foto_url: f.foto_url, ativo: f.ativo ?? true,
+          id: f.id,
+          nome: f.nome,
+          cargo_especialidade: f.cargo || 'Funcionário',
+          tipo: 'funcionario' as const,
+          foto_url: f.foto_url,
+          ativo: f.ativo ?? true,
         }));
 
-        const profissionais: Pessoa[] = (profRes.data || []).map((p) => ({
-          id: p.id, nome: p.nome, cargo_especialidade: p.especialidade || 'Profissional',
-          tipo: 'profissional' as const, foto_url: p.foto_url, ativo: p.ativo ?? true,
-        }));
-
-        setPessoas([...funcionarios, ...profissionais].sort((a, b) => a.nome.localeCompare(b.nome)));
+        setPessoas(funcionarios);
       } else {
         const cached = await localGetAll<Pessoa>('profissionais');
-        setPessoas(cached.filter(p => p.ativo));
+        // Filtra para garantir que só retorna funcionários do cache
+        setPessoas(cached.filter(p => p.ativo && p.tipo === 'funcionario'));
       }
     } catch (error) {
       console.error('[PONTO] load_pessoas_error', error);
@@ -164,7 +165,7 @@ export function usePonto() {
             if (val) {
               dbRegistros.push({
                 id: `${row.id}-${t.evento}`,
-                tipo_pessoa: row.tipo_pessoa as 'profissional' | 'funcionario',
+                tipo_pessoa: 'funcionario' as const,
                 pessoa_id: row.pessoa_id,
                 tipo_evento: t.evento,
                 hora: val,
@@ -353,24 +354,24 @@ export function usePonto() {
     [getRegistrosPessoa]
   );
 
-  // --- Main: register point ---
+  // --- Main: register point (apenas funcionários) ---
   const registrarPonto = useCallback(
     async (
       pessoaId: string,
-      tipoPessoa: 'profissional' | 'funcionario',
       tipoEvento: TipoEvento,
       observacao?: string
     ): Promise<{ success: boolean; offline: boolean; error?: string }> => {
 
+      const tipoPessoa = 'funcionario' as const;
       const now = new Date();
       const tsLocal = now.toISOString();
       const tsUtc = now.toISOString(); // JS Date.toISOString() is always UTC
 
-      // B) Validate profissional_id
+      // B) Validate funcionario_id
       if (!pessoaId) {
-        console.error('[PONTO] blocked_missing_profissional_id', { tipoPessoa, tipoEvento });
-        toast.error('Erro: ID do profissional ausente. Não é possível registrar o ponto.');
-        return { success: false, offline: false, error: 'profissional_id ausente' };
+        console.error('[PONTO] blocked_missing_funcionario_id', { tipoEvento });
+        toast.error('Erro: ID do funcionário ausente. Não é possível registrar o ponto.');
+        return { success: false, offline: false, error: 'funcionario_id ausente' };
       }
 
       // A) Log submit_start

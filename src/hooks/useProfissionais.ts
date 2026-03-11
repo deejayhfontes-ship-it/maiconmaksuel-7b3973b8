@@ -25,6 +25,7 @@ export interface Profissional {
   meta_servicos_mes: number;
   meta_produtos_mes: number;
   ativo: boolean;
+  atende_clientes: boolean;
   pin_acesso: string | null;
   created_at: string;
   updated_at: string;
@@ -141,7 +142,7 @@ export function useProfissionais() {
 
   const fetchProfissionais = useCallback(async (forceRemote: boolean = false) => {
     setLoading(true);
-    
+
     try {
       const localData = await localGetAll<Profissional>(STORE_NAME);
 
@@ -180,7 +181,7 @@ export function useProfissionais() {
           await localClear(STORE_NAME);
           for (const prof of remoteData) await localPut(STORE_NAME, prof, true);
         } catch { /* ignore */ }
-        const profissionaisComMetas = await calculateMetrics(remoteData);
+        const profissionaisComMetas = await calculateMetrics(remoteData as unknown as Profissional[]);
         setProfissionais(profissionaisComMetas);
       } else if (remoteData && remoteData.length === 0 && localData.length > 0 && !forceRemote) {
         console.warn('[PROFISSIONAIS] remote_empty_local_has_data → using local');
@@ -240,13 +241,13 @@ export function useProfissionais() {
     data: Partial<Profissional> & { nome: string }, id?: string
   ): Promise<{ success: boolean; id?: string; error?: string }> => {
     setSyncing(true);
-    
+
     try {
       const now = new Date().toISOString();
-      
+
       if (id) {
         const updateData = { ...data, updated_at: now };
-        
+
         if (getOnlineStatus()) {
           const { error } = await supabase.from('profissionais').update(updateData).eq('id', id);
           if (error) {
@@ -294,7 +295,7 @@ export function useProfissionais() {
   const deleteProfissional = useCallback(async (id: string): Promise<boolean> => {
     console.log('[PROFISSIONAIS] delete_start', { id });
     setSyncing(true);
-    
+
     try {
       if (getOnlineStatus()) {
         const { error } = await supabase.from('profissionais').delete().eq('id', id);
@@ -326,7 +327,7 @@ export function useProfissionais() {
   const searchProfissionais = useCallback((term: string): ProfissionalComMetas[] => {
     if (!term) return profissionais;
     const searchLower = term.toLowerCase();
-    return profissionais.filter(p => 
+    return profissionais.filter(p =>
       p.nome.toLowerCase().includes(searchLower) || p.telefone?.includes(term) || p.cpf?.includes(term) || p.funcao?.toLowerCase().includes(searchLower)
     );
   }, [profissionais]);

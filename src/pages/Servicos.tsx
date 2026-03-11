@@ -3,6 +3,7 @@ import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift, Refre
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -324,11 +325,18 @@ const Servicos = () => {
                           {getTipoBadge(servico)}
                         </div>
                       </div>
-                      {!servico.ativo && (
-                        <Badge variant="secondary" className="shrink-0">
-                          Inativo
-                        </Badge>
-                      )}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {/* Foto do serviço */}
+                        <Avatar className="h-12 w-12 rounded-lg border border-border/40">
+                          <AvatarImage src={servico.foto_url ?? undefined} className="object-cover" />
+                          <AvatarFallback className="bg-muted rounded-lg">
+                            <Scissors className="h-5 w-5 text-muted-foreground" />
+                          </AvatarFallback>
+                        </Avatar>
+                        {!servico.ativo && (
+                          <Badge variant="secondary" className="text-[10px]">Inativo</Badge>
+                        )}
+                      </div>
                     </div>
 
                     {/* Descrição */}

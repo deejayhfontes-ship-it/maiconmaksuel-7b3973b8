@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Users, 
-  DollarSign, 
-  CheckCircle, 
+import {
+  Users,
+  DollarSign,
+  CheckCircle,
   Calendar,
   Plus,
   Search,
@@ -101,13 +101,13 @@ const GestaoRH = () => {
   const [loading, setLoading] = useState(true);
   const [funcionarioDialogOpen, setFuncionarioDialogOpen] = useState(false);
   const [selectedFuncionario, setSelectedFuncionario] = useState<Funcionario | null>(null);
-  
+
   // Estados do relógio de ponto
   const [horaAtual, setHoraAtual] = useState(new Date());
   const [pessoaSelecionada, setPessoaSelecionada] = useState<string>('');
   const [pontoAtual, setPontoAtual] = useState<PontoRegistro | null>(null);
   const [registrandoPonto, setRegistrandoPonto] = useState(false);
-  
+
   // Check role access
   const isAdmin = session?.role === 'admin';
   const canEdit = isAdmin; // Only admin can edit
@@ -143,7 +143,7 @@ const GestaoRH = () => {
         .from('funcionarios')
         .select('*')
         .order('nome');
-      
+
       if (funcError) {
         console.error('[FUNCIONARIO_WEB] fetch_fail', { error: funcError, projectRef });
       } else {
@@ -156,11 +156,11 @@ const GestaoRH = () => {
         .from('profissionais')
         .select('id, nome, especialidade, ativo')
         .order('nome');
-      
+
       if (profData) setProfissionais(profData);
 
-      // Buscar pontos de hoje (nova tabela unificada)
-      await carregarPontosHoje(funcData || [], profData || []);
+      // Buscar pontos de hoje (somente funcionários)
+      await carregarPontosHoje(funcData || []);
 
       // Buscar folhas de pagamento
       const { data: folhasData } = await supabase
@@ -168,7 +168,7 @@ const GestaoRH = () => {
         .select('*')
         .order('mes_referencia', { ascending: false })
         .limit(5);
-      
+
       if (folhasData) setFolhas(folhasData);
 
       // Buscar férias
@@ -176,7 +176,7 @@ const GestaoRH = () => {
         .from('ferias_funcionarios')
         .select('*')
         .order('periodo_aquisitivo_fim');
-      
+
       if (feriasData) setFerias(feriasData);
 
     } catch (error) {
@@ -187,23 +187,19 @@ const GestaoRH = () => {
     }
   };
 
-  const carregarPontosHoje = async (funcs: Funcionario[], profs: Profissional[]) => {
+  const carregarPontosHoje = async (funcs: Funcionario[]) => {
     const hoje = format(new Date(), 'yyyy-MM-dd');
-    
+
     const { data: pontosData } = await supabase
       .from('ponto_registros')
       .select('*')
-      .eq('data', hoje);
+      .eq('data', hoje)
+      .eq('tipo_pessoa', 'funcionario');
 
     if (pontosData) {
       const pontosFormatados = pontosData.map(p => {
-        if (p.tipo_pessoa === 'funcionario') {
-          const func = funcs.find(f => f.id === p.pessoa_id);
-          return { ...p, nome: func?.nome || 'Funcionário', cargo_especialidade: func?.cargo || '' };
-        } else {
-          const prof = profs.find(pr => pr.id === p.pessoa_id);
-          return { ...p, nome: prof?.nome || 'Profissional', cargo_especialidade: prof?.especialidade || '' };
-        }
+        const func = funcs.find(f => f.id === p.pessoa_id);
+        return { ...p, nome: func?.nome || 'Funcionário', cargo_especialidade: func?.cargo || '' };
       });
       setPontosHoje(pontosFormatados);
     }
@@ -265,7 +261,11 @@ const GestaoRH = () => {
     }
 
     setRegistrandoPonto(true);
-    const [tipo, id] = pessoaSelecionada.split('-');
+    // Ponto sempre é de funcionário — extrair apenas o id
+    const id = pessoaSelecionada.includes('-')
+      ? pessoaSelecionada.split('-').slice(1).join('-')
+      : pessoaSelecionada;
+    const tipo = 'funcionario';
     const agora = horaAtual.toTimeString().slice(0, 5);
     const hoje = format(new Date(), 'yyyy-MM-dd');
 
@@ -280,7 +280,7 @@ const GestaoRH = () => {
 
       if (registroExistente) {
         const updateData: Record<string, unknown> = { [proximoPonto.tipo]: agora };
-        
+
         if (proximoPonto.tipo === 'saida') {
           const newPonto = { ...pontoAtual, saida: agora };
           updateData.horas_trabalhadas = calcularHorasTrabalhadas(newPonto);
@@ -303,7 +303,7 @@ const GestaoRH = () => {
 
       toast.success(`✅ ${proximoPonto.label} registrada às ${agora}`);
       await carregarPontoAtual();
-      await carregarPontosHoje(funcionarios, profissionais);
+      await carregarPontosHoje(funcionarios);
     } catch (error) {
       console.error('Erro ao bater ponto:', error);
       toast.error('Erro ao registrar ponto');
@@ -314,7 +314,7 @@ const GestaoRH = () => {
 
   const funcionariosAtivos = funcionarios.filter(f => f.ativo);
   const profissionaisAtivos = profissionais.filter(p => p.ativo);
-  const funcionariosFiltrados = funcionariosAtivos.filter(f => 
+  const funcionariosFiltrados = funcionariosAtivos.filter(f =>
     f.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -323,12 +323,12 @@ const GestaoRH = () => {
   };
 
   const calcularPresencaHoje = () => {
-    const totalPessoas = funcionariosAtivos.length + profissionaisAtivos.length;
+    const totalFuncionarios = funcionariosAtivos.length;
     const presentes = pontosHoje.filter(p => p.entrada_manha).length;
     return {
-      percentual: totalPessoas > 0 ? Math.round((presentes / totalPessoas) * 100) : 0,
+      percentual: totalFuncionarios > 0 ? Math.round((presentes / totalFuncionarios) * 100) : 0,
       presentes,
-      total: totalPessoas
+      total: totalFuncionarios
     };
   };
 
@@ -336,7 +336,7 @@ const GestaoRH = () => {
     const hoje = new Date();
     const em60dias = new Date();
     em60dias.setDate(em60dias.getDate() + 60);
-    
+
     return ferias.filter(f => {
       const fimPeriodo = new Date(f.periodo_aquisitivo_fim);
       return fimPeriodo >= hoje && fimPeriodo <= em60dias && f.status !== 'gozadas';
@@ -428,413 +428,397 @@ const GestaoRH = () => {
         {/* Tab: Resumo */}
         <TabsContent value="resumo" className="space-y-6 mt-6">
 
-      {/* Cards de Métricas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="relative">
-          <CardContent className="p-6">
-            <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Users className="w-6 h-6 text-primary" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">Funcionários</p>
-            <p className="text-3xl font-bold text-foreground mt-2">{funcionariosAtivos.length}</p>
-            <p className="text-sm text-muted-foreground mt-2">+ {profissionaisAtivos.length} profissionais</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative">
-          <CardContent className="p-6">
-            <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-green-600" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">Folha Mensal</p>
-            <p className="text-3xl font-bold text-foreground mt-2">{formatCurrency(calcularFolhaMensal())}</p>
-            <p className="text-sm text-muted-foreground mt-2">Salários base</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative">
-          <CardContent className="p-6">
-            <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">Presença Hoje</p>
-            <p className="text-3xl font-bold text-foreground mt-2">{presencaHoje.percentual}%</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              {presencaHoje.presentes} de {presencaHoje.total} presentes
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative">
-          <CardContent className="p-6">
-            <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-orange-500" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">Férias Vencendo</p>
-            <p className="text-3xl font-bold text-foreground mt-2">{feriasVencendo.length}</p>
-            <p className="text-sm text-orange-500 mt-2">
-              {feriasVencendo.length > 0 ? '⚠️ Próximos 60 dias' : 'Nenhuma pendente'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Seção Relógio de Ponto Unificado */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Relógio de Ponto
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </p>
-            </div>
-            <div className="text-4xl font-bold font-mono text-primary">
-              {horaAtual.toTimeString().slice(0, 5)}
-            </div>
-          </div>
-
-          {/* Seletor e Botão */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <select
-              value={pessoaSelecionada}
-              onChange={(e) => setPessoaSelecionada(e.target.value)}
-              className="flex-1 h-12 px-4 border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-            >
-              <option value="">Selecione quem vai bater o ponto...</option>
-              
-              {funcionariosAtivos.length > 0 && (
-                <optgroup label="👔 FUNCIONÁRIOS RH">
-                  {funcionariosAtivos.map(f => (
-                    <option key={`funcionario-${f.id}`} value={`funcionario-${f.id}`}>
-                      {f.nome} - {f.cargo || 'Funcionário'}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              
-              {profissionaisAtivos.length > 0 && (
-                <optgroup label="💇 PROFISSIONAIS">
-                  {profissionaisAtivos.map(p => (
-                    <option key={`profissional-${p.id}`} value={`profissional-${p.id}`}>
-                      {p.nome} - {p.especialidade || 'Profissional'}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-
-            <Button 
-              onClick={baterPonto}
-              disabled={!pessoaSelecionada || proximoPonto.tipo === 'completo' || registrandoPonto}
-              className="h-12 px-6 gap-2"
-              style={{
-                background: proximoPonto.tipo === 'completo' ? undefined : 'linear-gradient(135deg, hsl(142.1, 76.2%, 36.3%) 0%, hsl(142.1, 76.2%, 30%) 100%)'
-              }}
-            >
-              {registrandoPonto ? 'Registrando...' : proximoPonto.tipo === 'completo' ? '✅ Completo' : `🟢 Registrar ${proximoPonto.label}`}
-            </Button>
-          </div>
-
-          {/* Status do ponto selecionado */}
-          {pessoaSelecionada && pontoAtual && (
-            <div className="grid grid-cols-4 gap-3 mb-6 p-4 bg-muted/30 rounded-xl">
-              <div className="text-center">
-                <div className={`text-lg font-semibold ${pontoAtual.entrada_manha ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  {formatTime(pontoAtual.entrada_manha)}
+          {/* Cards de Métricas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="relative">
+              <CardContent className="p-6">
+                <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-primary" />
                 </div>
-                <div className="text-xs text-muted-foreground">Entrada</div>
-              </div>
-              <div className="text-center">
-                <div className={`text-lg font-semibold ${pontoAtual.saida_almoco ? 'text-orange-600' : 'text-muted-foreground'}`}>
-                  {formatTime(pontoAtual.saida_almoco)}
+                <p className="text-sm font-medium text-muted-foreground">Funcionários</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{funcionariosAtivos.length}</p>
+                <p className="text-sm text-muted-foreground mt-2">+ {profissionaisAtivos.length} profissionais</p>
+              </CardContent>
+            </Card>
+
+            <Card className="relative">
+              <CardContent className="p-6">
+                <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-green-600" />
                 </div>
-                <div className="text-xs text-muted-foreground">Almoço</div>
-              </div>
-              <div className="text-center">
-                <div className={`text-lg font-semibold ${pontoAtual.entrada_tarde ? 'text-blue-600' : 'text-muted-foreground'}`}>
-                  {formatTime(pontoAtual.entrada_tarde)}
+                <p className="text-sm font-medium text-muted-foreground">Folha Mensal</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{formatCurrency(calcularFolhaMensal())}</p>
+                <p className="text-sm text-muted-foreground mt-2">Salários base</p>
+              </CardContent>
+            </Card>
+
+            <Card className="relative">
+              <CardContent className="p-6">
+                <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
                 </div>
-                <div className="text-xs text-muted-foreground">Retorno</div>
-              </div>
-              <div className="text-center">
-                <div className={`text-lg font-semibold ${pontoAtual.saida ? 'text-purple-600' : 'text-muted-foreground'}`}>
-                  {formatTime(pontoAtual.saida)}
-                </div>
-                <div className="text-xs text-muted-foreground">Saída</div>
-              </div>
-            </div>
-          )}
-
-          {/* Tabela de pontos do dia */}
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-center">Entrada</TableHead>
-                  <TableHead className="text-center">Almoço</TableHead>
-                  <TableHead className="text-center">Retorno</TableHead>
-                  <TableHead className="text-center">Saída</TableHead>
-                  <TableHead className="text-center">Horas</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pontosHoje.length > 0 ? (
-                  pontosHoje.map((ponto) => (
-                    <TableRow key={`${ponto.tipo_pessoa}-${ponto.pessoa_id}`}>
-                      <TableCell className="font-medium">{ponto.nome}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant="secondary"
-                          className={ponto.tipo_pessoa === 'profissional' 
-                            ? 'bg-primary/10 text-primary' 
-                            : 'bg-green-500/10 text-green-600'
-                          }
-                        >
-                          {ponto.tipo_pessoa === 'profissional' ? '💇 Profissional' : '👔 Funcionário'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">{formatTime(ponto.entrada_manha)}</TableCell>
-                      <TableCell className="text-center">{formatTime(ponto.saida_almoco)}</TableCell>
-                      <TableCell className="text-center">{formatTime(ponto.entrada_tarde)}</TableCell>
-                      <TableCell className="text-center">{formatTime(ponto.saida)}</TableCell>
-                      <TableCell className="text-center font-semibold text-primary">
-                        {ponto.horas_trabalhadas ? `${ponto.horas_trabalhadas}h` : '--'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {ponto.saida ? (
-                          <Badge className="bg-green-600">✅ Completo</Badge>
-                        ) : ponto.entrada_manha ? (
-                          <Badge variant="secondary" className="bg-orange-500/10 text-orange-600">🟡 Em andamento</Badge>
-                        ) : (
-                          <Badge variant="destructive">❌ Ausente</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      Nenhum ponto registrado hoje
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Seção Funcionários */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h2 className="text-xl font-semibold text-foreground">Funcionários</h2>
-            <Button onClick={handleNewFuncionario} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Novo Funcionário
-            </Button>
-          </div>
-
-          {/* Filtros */}
-          <div className="flex gap-4 mb-6">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar funcionário..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          {/* Grid de Funcionários */}
-          {funcionariosFiltrados.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {funcionariosFiltrados.slice(0, 8).map((func) => (
-                <div key={func.id} className="border rounded-xl p-4 text-center hover:shadow-md transition-shadow">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary/80 mx-auto mb-3 flex items-center justify-center text-2xl font-bold text-primary-foreground">
-                    {func.foto_url ? (
-                      <img src={func.foto_url} alt={func.nome} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      getInitials(func.nome)
-                    )}
-                  </div>
-                  <p className="font-semibold text-foreground truncate">{func.nome}</p>
-                  <p className="text-sm text-muted-foreground mb-2">{func.cargo || 'Não definido'}</p>
-                  <p className="font-semibold text-foreground mb-2">{formatCurrency(Number(func.salario_base))}</p>
-                  <Badge variant={func.ativo ? 'default' : 'secondary'} className="mb-3">
-                    {func.ativo ? '● Ativo' : '● Inativo'}
-                  </Badge>
-                  <div className="flex flex-col gap-2">
-                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => handleEditFuncionario(func)}>
-                      <Edit className="w-3 h-3" />
-                      Editar
-                    </Button>
-                    <Button variant="outline" size="sm" className="w-full gap-2">
-                      <Plane className="w-3 h-3" />
-                      Férias
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              {loading ? 'Carregando...' : 'Nenhum funcionário encontrado'}
-            </div>
-          )}
-
-          {funcionariosFiltrados.length > 8 && (
-            <Button variant="outline" className="w-full mt-4">
-              Ver Todos Funcionários ({funcionariosFiltrados.length})
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Seção Folha de Pagamento */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h2 className="text-xl font-semibold text-foreground">Folha de Pagamento</h2>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Processar Nova Folha
-            </Button>
-          </div>
-
-          {folhas.length > 0 ? (
-            <div className="space-y-3">
-              {folhas.map((folha) => (
-                <div key={folha.id} className="border rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <p className="font-semibold text-foreground">
-                      {format(new Date(folha.mes_referencia), 'MMMM/yyyy', { locale: ptBR }).toUpperCase()}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatCurrency(Number(folha.valor_total_liquido || folha.valor_total_bruto || 0))}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={
-                      folha.status === 'paga' ? 'default' :
-                      folha.status === 'aprovada' ? 'secondary' :
-                      'outline'
-                    } className={folha.status === 'paga' ? 'bg-green-600' : ''}>
-                      {folha.status === 'paga' ? '✅ Paga' :
-                       folha.status === 'aprovada' ? '📋 Aprovada' :
-                       '📝 Rascunho'}
-                    </Badge>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="gap-1">
-                        <Eye className="w-4 h-4" />
-                        Detalhes
-                      </Button>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        <Download className="w-4 h-4" />
-                        PDF
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhuma folha processada
-            </div>
-          )}
-
-          <Button variant="outline" className="w-full mt-4">
-            Ver Histórico Completo
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Seção Férias */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h2 className="text-xl font-semibold text-foreground">Gestão de Férias</h2>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Programar Férias
-            </Button>
-          </div>
-
-          {feriasVencendo.length > 0 && (
-            <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 mb-6 flex items-center gap-3">
-              <AlertTriangle className="w-6 h-6 text-orange-500" />
-              <div>
-                <p className="font-semibold text-orange-600">ATENÇÃO</p>
-                <p className="text-sm text-muted-foreground">
-                  {feriasVencendo.length} funcionário(s) com férias vencendo nos próximos 60 dias
+                <p className="text-sm font-medium text-muted-foreground">Presença Hoje</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{presencaHoje.percentual}%</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {presencaHoje.presentes} de {presencaHoje.total} presentes
                 </p>
-              </div>
-            </div>
-          )}
+              </CardContent>
+            </Card>
 
-          {ferias.length > 0 ? (
-            <div className="space-y-3">
-              {ferias.map((f) => {
-                const funcionario = funcionarios.find(func => func.id === f.funcionario_id);
-                const diasRestantes = Math.ceil(
-                  (new Date(f.periodo_aquisitivo_fim).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-                );
-                
-                return (
-                  <div key={f.id} className="border rounded-xl p-4">
-                    <div className="flex justify-between items-start mb-3">
+            <Card className="relative">
+              <CardContent className="p-6">
+                <div className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-orange-500" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">Férias Vencendo</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{feriasVencendo.length}</p>
+                <p className="text-sm text-orange-500 mt-2">
+                  {feriasVencendo.length > 0 ? '⚠️ Próximos 60 dias' : 'Nenhuma pendente'}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Seção Relógio de Ponto Unificado */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Relógio de Ponto
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                  </p>
+                </div>
+                <div className="text-4xl font-bold font-mono text-primary">
+                  {horaAtual.toTimeString().slice(0, 5)}
+                </div>
+              </div>
+
+              {/* Seletor e Botão */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <select
+                  aria-label="Selecionar funcionário para bater ponto"
+                  value={pessoaSelecionada}
+                  onChange={(e) => setPessoaSelecionada(e.target.value)}
+                  className="flex-1 h-12 px-4 border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                >
+                  <option value="">Selecione o funcionário...</option>
+                  {funcionariosAtivos.length > 0 ? (
+                    funcionariosAtivos.map(f => (
+                      <option key={`funcionario-${f.id}`} value={`funcionario-${f.id}`}>
+                        {f.nome} — {f.cargo || 'Funcionário'}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Nenhum funcionário ativo cadastrado</option>
+                  )}
+                </select>
+
+                <Button
+                  onClick={baterPonto}
+                  disabled={!pessoaSelecionada || proximoPonto.tipo === 'completo' || registrandoPonto}
+                  className="h-12 px-6 gap-2"
+                  style={{
+                    background: proximoPonto.tipo === 'completo' ? undefined : 'linear-gradient(135deg, hsl(142.1, 76.2%, 36.3%) 0%, hsl(142.1, 76.2%, 30%) 100%)'
+                  }}
+                >
+                  {registrandoPonto ? 'Registrando...' : proximoPonto.tipo === 'completo' ? '✅ Completo' : `🟢 Registrar ${proximoPonto.label}`}
+                </Button>
+              </div>
+
+              {/* Status do ponto selecionado */}
+              {pessoaSelecionada && pontoAtual && (
+                <div className="grid grid-cols-4 gap-3 mb-6 p-4 bg-muted/30 rounded-xl">
+                  <div className="text-center">
+                    <div className={`text-lg font-semibold ${pontoAtual.entrada_manha ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {formatTime(pontoAtual.entrada_manha)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Entrada</div>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-lg font-semibold ${pontoAtual.saida_almoco ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                      {formatTime(pontoAtual.saida_almoco)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Almoço</div>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-lg font-semibold ${pontoAtual.entrada_tarde ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                      {formatTime(pontoAtual.entrada_tarde)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Retorno</div>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-lg font-semibold ${pontoAtual.saida ? 'text-purple-600' : 'text-muted-foreground'}`}>
+                      {formatTime(pontoAtual.saida)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Saída</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tabela de pontos do dia */}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-center">Entrada</TableHead>
+                      <TableHead className="text-center">Almoço</TableHead>
+                      <TableHead className="text-center">Retorno</TableHead>
+                      <TableHead className="text-center">Saída</TableHead>
+                      <TableHead className="text-center">Horas</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pontosHoje.length > 0 ? (
+                      pontosHoje.map((ponto) => (
+                        <TableRow key={`${ponto.tipo_pessoa}-${ponto.pessoa_id}`}>
+                          <TableCell className="font-medium">{ponto.nome}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="bg-green-500/10 text-green-600">
+                              👔 Funcionário
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">{formatTime(ponto.entrada_manha)}</TableCell>
+                          <TableCell className="text-center">{formatTime(ponto.saida_almoco)}</TableCell>
+                          <TableCell className="text-center">{formatTime(ponto.entrada_tarde)}</TableCell>
+                          <TableCell className="text-center">{formatTime(ponto.saida)}</TableCell>
+                          <TableCell className="text-center font-semibold text-primary">
+                            {ponto.horas_trabalhadas ? `${ponto.horas_trabalhadas}h` : '--'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {ponto.saida ? (
+                              <Badge className="bg-green-600">✅ Completo</Badge>
+                            ) : ponto.entrada_manha ? (
+                              <Badge variant="secondary" className="bg-orange-500/10 text-orange-600">🟡 Em andamento</Badge>
+                            ) : (
+                              <Badge variant="destructive">❌ Ausente</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          Nenhum ponto registrado hoje
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seção Funcionários */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h2 className="text-xl font-semibold text-foreground">Funcionários</h2>
+                <Button onClick={handleNewFuncionario} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Novo Funcionário
+                </Button>
+              </div>
+
+              {/* Filtros */}
+              <div className="flex gap-4 mb-6">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar funcionário..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* Grid de Funcionários */}
+              {funcionariosFiltrados.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {funcionariosFiltrados.slice(0, 8).map((func) => (
+                    <div key={func.id} className="border rounded-xl p-4 text-center hover:shadow-md transition-shadow">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary/80 mx-auto mb-3 flex items-center justify-center text-2xl font-bold text-primary-foreground">
+                        {func.foto_url ? (
+                          <img src={func.foto_url} alt={func.nome} className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                          getInitials(func.nome)
+                        )}
+                      </div>
+                      <p className="font-semibold text-foreground truncate">{func.nome}</p>
+                      <p className="text-sm text-muted-foreground mb-2">{func.cargo || 'Não definido'}</p>
+                      <p className="font-semibold text-foreground mb-2">{formatCurrency(Number(func.salario_base))}</p>
+                      <Badge variant={func.ativo ? 'default' : 'secondary'} className="mb-3">
+                        {func.ativo ? '● Ativo' : '● Inativo'}
+                      </Badge>
+                      <div className="flex flex-col gap-2">
+                        <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => handleEditFuncionario(func)}>
+                          <Edit className="w-3 h-3" />
+                          Editar
+                        </Button>
+                        <Button variant="outline" size="sm" className="w-full gap-2">
+                          <Plane className="w-3 h-3" />
+                          Férias
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  {loading ? 'Carregando...' : 'Nenhum funcionário encontrado'}
+                </div>
+              )}
+
+              {funcionariosFiltrados.length > 8 && (
+                <Button variant="outline" className="w-full mt-4">
+                  Ver Todos Funcionários ({funcionariosFiltrados.length})
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Seção Folha de Pagamento */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h2 className="text-xl font-semibold text-foreground">Folha de Pagamento</h2>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Processar Nova Folha
+                </Button>
+              </div>
+
+              {folhas.length > 0 ? (
+                <div className="space-y-3">
+                  {folhas.map((folha) => (
+                    <div key={folha.id} className="border rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div>
-                        <p className="font-semibold text-foreground">{funcionario?.nome || 'Funcionário'}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Período: {format(new Date(f.periodo_aquisitivo_inicio), 'dd/MM/yyyy')} - {format(new Date(f.periodo_aquisitivo_fim), 'dd/MM/yyyy')}
+                        <p className="font-semibold text-foreground">
+                          {format(new Date(folha.mes_referencia), 'MMMM/yyyy', { locale: ptBR }).toUpperCase()}
                         </p>
-                        <p className="text-sm text-foreground mt-1">
-                          Direito: {f.dias_direito} dias | Gozados: {f.dias_gozados} dias
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(Number(folha.valor_total_liquido || folha.valor_total_bruto || 0))}
                         </p>
                       </div>
-                      <Badge variant={
-                        f.status === 'gozadas' ? 'default' :
-                        diasRestantes <= 60 ? 'destructive' :
-                        'secondary'
-                      } className={f.status === 'gozadas' ? 'bg-green-600' : ''}>
-                        {f.status === 'gozadas' ? '✅ Gozadas' :
-                         f.status === 'programadas' ? '📅 Programadas' :
-                         diasRestantes <= 60 ? `⚠️ Vence em ${diasRestantes} dias` :
-                         '🕐 Pendente'}
-                      </Badge>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={
+                          folha.status === 'paga' ? 'default' :
+                            folha.status === 'aprovada' ? 'secondary' :
+                              'outline'
+                        } className={folha.status === 'paga' ? 'bg-green-600' : ''}>
+                          {folha.status === 'paga' ? '✅ Paga' :
+                            folha.status === 'aprovada' ? '📋 Aprovada' :
+                              '📝 Rascunho'}
+                        </Badge>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="gap-1">
+                            <Eye className="w-4 h-4" />
+                            Detalhes
+                          </Button>
+                          <Button variant="outline" size="sm" className="gap-1">
+                            <Download className="w-4 h-4" />
+                            PDF
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                    <Button 
-                      variant={f.status === 'gozadas' ? 'outline' : 'default'} 
-                      className="w-full"
-                    >
-                      {f.status === 'gozadas' ? 'Ver Detalhes' : 'Programar Agora'}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhuma programação de férias
-            </div>
-          )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhuma folha processada
+                </div>
+              )}
 
-          <Button variant="outline" className="w-full mt-4">
-            Ver Calendário Anual
-          </Button>
-        </CardContent>
-      </Card>
-      </TabsContent>
+              <Button variant="outline" className="w-full mt-4">
+                Ver Histórico Completo
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Seção Férias */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h2 className="text-xl font-semibold text-foreground">Gestão de Férias</h2>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Programar Férias
+                </Button>
+              </div>
+
+              {feriasVencendo.length > 0 && (
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 mb-6 flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-orange-500" />
+                  <div>
+                    <p className="font-semibold text-orange-600">ATENÇÃO</p>
+                    <p className="text-sm text-muted-foreground">
+                      {feriasVencendo.length} funcionário(s) com férias vencendo nos próximos 60 dias
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {ferias.length > 0 ? (
+                <div className="space-y-3">
+                  {ferias.map((f) => {
+                    const funcionario = funcionarios.find(func => func.id === f.funcionario_id);
+                    const diasRestantes = Math.ceil(
+                      (new Date(f.periodo_aquisitivo_fim).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                    );
+
+                    return (
+                      <div key={f.id} className="border rounded-xl p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <p className="font-semibold text-foreground">{funcionario?.nome || 'Funcionário'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Período: {format(new Date(f.periodo_aquisitivo_inicio), 'dd/MM/yyyy')} - {format(new Date(f.periodo_aquisitivo_fim), 'dd/MM/yyyy')}
+                            </p>
+                            <p className="text-sm text-foreground mt-1">
+                              Direito: {f.dias_direito} dias | Gozados: {f.dias_gozados} dias
+                            </p>
+                          </div>
+                          <Badge variant={
+                            f.status === 'gozadas' ? 'default' :
+                              diasRestantes <= 60 ? 'destructive' :
+                                'secondary'
+                          } className={f.status === 'gozadas' ? 'bg-green-600' : ''}>
+                            {f.status === 'gozadas' ? '✅ Gozadas' :
+                              f.status === 'programadas' ? '📅 Programadas' :
+                                diasRestantes <= 60 ? `⚠️ Vence em ${diasRestantes} dias` :
+                                  '🕐 Pendente'}
+                          </Badge>
+                        </div>
+                        <Button
+                          variant={f.status === 'gozadas' ? 'outline' : 'default'}
+                          className="w-full"
+                        >
+                          {f.status === 'gozadas' ? 'Ver Detalhes' : 'Programar Agora'}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhuma programação de férias
+                </div>
+              )}
+
+              <Button variant="outline" className="w-full mt-4">
+                Ver Calendário Anual
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Tab: Ponto Hoje */}
         <TabsContent value="ponto" className="mt-6">
@@ -858,34 +842,24 @@ const GestaoRH = () => {
               {/* Seletor e Botão de Ponto */}
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <select
+                  aria-label="Selecionar funcionário para folha de ponto"
                   value={pessoaSelecionada}
                   onChange={(e) => setPessoaSelecionada(e.target.value)}
                   className="flex-1 h-12 px-4 border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 >
-                  <option value="">Selecione quem vai bater o ponto...</option>
-                  
-                  {funcionariosAtivos.length > 0 && (
-                    <optgroup label="👔 FUNCIONÁRIOS RH">
-                      {funcionariosAtivos.map(f => (
-                        <option key={`funcionario-${f.id}`} value={`funcionario-${f.id}`}>
-                          {f.nome} - {f.cargo || 'Funcionário'}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  
-                  {profissionaisAtivos.length > 0 && (
-                    <optgroup label="💇 PROFISSIONAIS">
-                      {profissionaisAtivos.map(p => (
-                        <option key={`profissional-${p.id}`} value={`profissional-${p.id}`}>
-                          {p.nome} - {p.especialidade || 'Profissional'}
-                        </option>
-                      ))}
-                    </optgroup>
+                  <option value="">Selecione o funcionário...</option>
+                  {funcionariosAtivos.length > 0 ? (
+                    funcionariosAtivos.map(f => (
+                      <option key={`funcionario-${f.id}`} value={`funcionario-${f.id}`}>
+                        {f.nome} - {f.cargo || 'Funcionário'}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Nenhum funcionário ativo cadastrado</option>
                   )}
                 </select>
 
-                <Button 
+                <Button
                   onClick={baterPonto}
                   disabled={!pessoaSelecionada || proximoPonto.tipo === 'completo' || registrandoPonto}
                   className="h-12 px-6 gap-2 bg-primary hover:bg-primary/90"

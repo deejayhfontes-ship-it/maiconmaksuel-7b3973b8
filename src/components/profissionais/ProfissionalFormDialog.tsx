@@ -63,6 +63,7 @@ const profissionalSchema = z.object({
   pin_ponto: z.string().optional(),
   confirmar_pin: z.string().optional(),
   criar_pin: z.boolean(),
+  atende_clientes: z.boolean(),
 });
 
 type ProfissionalFormData = z.infer<typeof profissionalSchema>;
@@ -87,6 +88,7 @@ interface Profissional {
   meta_servicos_mes: number;
   meta_produtos_mes: number;
   ativo: boolean;
+  atende_clientes: boolean;
 }
 
 interface ProfissionalFormDialogProps {
@@ -138,6 +140,7 @@ export default function ProfissionalFormDialog({
       cep: "",
       cor_agenda: "#007AFF",
       ativo: true,
+      atende_clientes: true,
       comissao_servicos: 30,
       comissao_produtos: 10,
       pode_vender_produtos: true,
@@ -181,6 +184,7 @@ export default function ProfissionalFormDialog({
         cep: profissional.cep || "",
         cor_agenda: profissional.cor_agenda,
         ativo: profissional.ativo,
+        atende_clientes: profissional.atende_clientes ?? true,
         comissao_servicos: Number(profissional.comissao_servicos),
         comissao_produtos: Number(profissional.comissao_produtos),
         pode_vender_produtos: profissional.pode_vender_produtos,
@@ -206,6 +210,7 @@ export default function ProfissionalFormDialog({
         cep: "",
         cor_agenda: "#007AFF",
         ativo: true,
+        atende_clientes: true,
         comissao_servicos: 30,
         comissao_produtos: 10,
         pode_vender_produtos: true,
@@ -334,6 +339,7 @@ export default function ProfissionalFormDialog({
         cep: data.cep || null,
         cor_agenda: data.cor_agenda,
         ativo: data.ativo,
+        atende_clientes: data.atende_clientes,
         comissao_servicos: data.comissao_servicos,
         comissao_produtos: data.comissao_produtos,
         pode_vender_produtos: data.pode_vender_produtos,
@@ -580,6 +586,26 @@ export default function ProfissionalFormDialog({
                         <div>
                           <FormLabel>Status</FormLabel>
                           <p className="text-xs text-muted-foreground">{field.value ? "Ativo" : "Inativo"}</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="atende_clientes"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-3 bg-blue-50 dark:bg-blue-950/20">
+                        <div>
+                          <FormLabel className="text-blue-700 dark:text-blue-300">📅 Tem Agenda de Atendimento</FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            {field.value
+                              ? "Aparece na agenda • Atende clientes diretamente"
+                              : "Não aparece na agenda • Administrativo / Suporte"}
+                          </p>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />

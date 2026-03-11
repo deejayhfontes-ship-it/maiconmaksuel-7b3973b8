@@ -155,7 +155,8 @@ export function useAtendimentos(): UseAtendimentosReturn {
       setClientes(localClientes.filter(c => (c as any).ativo !== false));
       setServicos(localServicos.filter(s => (s as any).ativo !== false));
       setProdutos(localProdutos.filter(p => (p as any).ativo !== false));
-      setProfissionais(localProfissionais.filter(p => (p as any).ativo !== false));
+      // Filtrar apenas profissionais que atendem clientes (têm agenda de atendimento)
+      setProfissionais(localProfissionais.filter(p => (p as any).ativo !== false && (p as any).atende_clientes !== false));
 
       // Sync from server if online
       if (isOnline) {
@@ -163,7 +164,9 @@ export function useAtendimentos(): UseAtendimentosReturn {
           supabase.from('clientes').select('id, nome, elegivel_crediario, limite_crediario, dia_vencimento_crediario').eq('ativo', true).order('nome'),
           supabase.from('servicos').select('id, nome, preco, comissao_padrao').eq('ativo', true).order('nome'),
           supabase.from('produtos').select('id, nome, preco_venda, estoque_atual').eq('ativo', true).order('nome'),
-          supabase.from('profissionais').select('id, nome, cor_agenda').eq('ativo', true).order('nome'),
+          // Buscar apenas profissionais com agenda de atendimento (não administrativos)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase.from('profissionais') as any).select('id, nome, cor_agenda').eq('ativo', true).eq('atende_clientes', true).order('nome'),
         ]);
 
         if (serverClientes.data) {
@@ -191,19 +194,19 @@ export function useAtendimentos(): UseAtendimentosReturn {
   // Fetch open comandas
   const fetchAtendimentos = useCallback(async () => {
     setLoading(true);
-    
+
     try {
       // Load from local first
       const localData = await localGetAll<Atendimento>('atendimentos');
       const openLocal = localData.filter(a => a.status === 'aberto');
-      
+
       // Enrich with client names from local storage
       const clientesMap = new Map(clientes.map(c => [c.id, c]));
       const enriched = openLocal.map(a => ({
         ...a,
         cliente: a.cliente_id ? { nome: clientesMap.get(a.cliente_id)?.nome || 'Cliente' } : null,
       }));
-      
+
       setAtendimentos(enriched.sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()));
 
       // Sync from server if online
@@ -241,11 +244,11 @@ export function useAtendimentos(): UseAtendimentosReturn {
   // Create new comanda
   const createComanda = useCallback(async (): Promise<Atendimento> => {
     const now = new Date().toISOString();
-    
+
     // Generate comanda number (simple increment for offline, server will handle sequence)
     const existingNumbers = atendimentos.map(a => a.numero_comanda);
     const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-    
+
     const newAtendimento: Atendimento = {
       id: crypto.randomUUID(),
       numero_comanda: nextNumber,
@@ -320,8 +323,8 @@ export function useAtendimentos(): UseAtendimentosReturn {
 
       const updated = { ...current, cliente_id: clienteId, updated_at: now };
       await localPut('atendimentos', updated, false);
-      setAtendimentos(prev => prev.map(a => 
-        a.id === atendimentoId 
+      setAtendimentos(prev => prev.map(a =>
+        a.id === atendimentoId
           ? { ...a, cliente_id: clienteId, cliente: cliente ? { nome: cliente.nome } : null }
           : a
       ));
@@ -544,9 +547,9 @@ export function useAtendimentos(): UseAtendimentosReturn {
 
       const valorFinal = Math.max(0, current.subtotal - desconto);
       const updated = { ...current, desconto, valor_final: valorFinal, updated_at: now };
-      
+
       await localPut('atendimentos', updated, false);
-      setAtendimentos(prev => prev.map(a => 
+      setAtendimentos(prev => prev.map(a =>
         a.id === atendimentoId ? { ...a, desconto, valor_final: valorFinal } : a
       ));
 
@@ -585,7 +588,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
       if (current) {
         const updated = { ...current, subtotal, valor_final: valorFinal, updated_at: new Date().toISOString() };
         await localPut('atendimentos', updated, false);
-        setAtendimentos(prev => prev.map(a => 
+        setAtendimentos(prev => prev.map(a =>
           a.id === atendimentoId ? { ...a, subtotal, valor_final: valorFinal } : a
         ));
 
@@ -625,7 +628,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
       // Enrich with names from local
       const servicosMap = new Map(servicos.map(s => [s.id, s]));
       const profissionaisMap = new Map(profissionais.map(p => [p.id, p]));
-      
+
       return filtered.map(item => ({
         ...item,
         servico: { nome: servicosMap.get(item.servico_id)?.nome || 'Serviço' },
@@ -796,7 +799,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
         const produto = produtos.find(p => p.id === item.produto_id);
         if (produto) {
           const newStock = Math.max(0, produto.estoque_atual - item.quantidade);
-          
+
           if (isOnline) {
             await supabase.from('produtos').update({
               estoque_atual: newStock,
@@ -804,7 +807,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
 
             // Low stock alert
             if (newStock < (produto as any).estoque_minimo) {
-              toast({ 
+              toast({
                 title: `⚠️ Estoque baixo: ${produto.nome}`,
                 description: `Apenas ${newStock} unidade(s) restantes.`,
               });
@@ -880,7 +883,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
           desconto: current.desconto,
           valor_final: current.valor_final,
         }).eq('id', atendimentoId);
-        
+
         await localPut('atendimentos', closed, true);
       } else {
         await addToSyncQueue({

@@ -126,7 +126,6 @@ const PontoEletronico = () => {
     setRegistering(true);
     const result = await registrarPonto(
       pessoaSelecionada.id,
-      pessoaSelecionada.tipo,
       tipoRegistro,
       observacao || undefined
     );
