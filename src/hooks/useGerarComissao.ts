@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
  * Hook para gerar automaticamente registros de comissão
  * ao fechar uma comanda/atendimento.
  *
- * Lógica de prioridade do percentual:
- * 1. comissao_padrao do SERVIÇO (específico para aquele serviço)
- * 2. comissao_servicos do PROFISSIONAL (percentual geral do profissional)
- * 3. Fallback: 0%
+ * Hierarquia de prioridade do percentual:
+ * 1. servico_comissao_profissional.percentual  (% individual do profissional naquele serviço)
+ * 2. servicos.comissao_padrao                  (% global do serviço)
+ * 3. profissionais.comissao_servicos           (% padrão do profissional para serviços)
+ * 4. 0% fallback
  */
 // Usamos supabase como any para tabelas que ainda não estão
-// nos tipos gerados automaticamente (ex: comissoes_registro)
+// nos tipos gerados automaticamente (ex: comissoes_registro, servico_comissao_profissional)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 
@@ -33,7 +34,7 @@ export function useGerarComissao() {
       if (!profissionalId || itens.length === 0) return;
 
       try {
-        // 1. Buscar dados do profissional (comissao_servicos = % padrão do profissional)
+        // 1. Buscar dados do profissional (fallback de % padrão)
         const { data: profData } = await supabase
           .from("profissionais")
           .select("id, comissao_servicos, comissao_padrao")
@@ -44,7 +45,7 @@ export function useGerarComissao() {
         const comissaoProfissional =
           Number(profRow?.comissao_servicos ?? profRow?.comissao_padrao ?? 0);
 
-        // 2. Para cada item que gera comissão, buscar % do serviço (se houver)
+        // 2. Para cada item que gera comissão, resolver % pela hierarquia
         const registros: Array<{
           profissional_id: string;
           atendimento_id: string;
@@ -62,10 +63,11 @@ export function useGerarComissao() {
           if (item.gera_comissao === false) continue;
           if (item.valor <= 0) continue;
 
+          // Começa com o % padrão do profissional (prioridade 3)
           let percentual = comissaoProfissional;
 
-          // Tenta pegar a % específica do serviço (comissao_padrao do serviço)
           if (item.servico_id) {
+            // Busca dados do serviço (prioridade 2 e verificação de flag)
             const { data: servicoData } = await supabase
               .from("servicos")
               .select("comissao_padrao, gera_comissao")
@@ -77,13 +79,26 @@ export function useGerarComissao() {
             if (servicoRow) {
               // Respeita flag gera_comissao do serviço
               if (servicoRow.gera_comissao === false) continue;
-              // Usa % do serviço se definido (>= 0)
+
+              // Prioridade 2: % global do serviço
               if (
                 servicoRow.comissao_padrao !== null &&
                 servicoRow.comissao_padrao !== undefined
               ) {
                 percentual = Number(servicoRow.comissao_padrao);
               }
+            }
+
+            // Prioridade 1: % individual do profissional naquele serviço específico
+            const { data: scpData } = await db
+              .from("servico_comissao_profissional")
+              .select("percentual")
+              .eq("servico_id", item.servico_id)
+              .eq("profissional_id", profissionalId)
+              .maybeSingle();
+
+            if (scpData && scpData.percentual !== null && scpData.percentual !== undefined) {
+              percentual = Number(scpData.percentual);
             }
           }
 

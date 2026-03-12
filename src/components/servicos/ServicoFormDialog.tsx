@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useServicos, Servico } from "@/hooks/useServicos";
-import { Loader2, AlertCircle, ClipboardList } from "lucide-react";
+import { Loader2, AlertCircle, ClipboardList, Users, Percent } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -88,6 +88,62 @@ export default function ServicoFormDialog({
   const [fotoUrlExternal, setFotoUrlExternal] = useState<string | null>(null);
   const [fotoRemoved, setFotoRemoved] = useState(false);
 
+  // Comissão individual por profissional
+  interface ProfissionalLite { id: string; nome: string; }
+  const [profissionais, setProfissionais] = useState<ProfissionalLite[]>([]);
+  const [comissoesProfissionais, setComissoesProfissionais] = useState<Record<string, string>>({});
+  const [loadingComissoes, setLoadingComissoes] = useState(false);
+
+  // Carrega profissionais ativos
+  const carregarProfissionais = useCallback(async () => {
+    const { data } = await supabase
+      .from("profissionais")
+      .select("id, nome")
+      .eq("ativo", true)
+      .order("nome");
+    if (data) setProfissionais(data as ProfissionalLite[]);
+  }, []);
+
+  // Carrega comissões individuais salvas para o serviço
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const carregarComissoesProfissionais = useCallback(async (servicoId: string) => {
+    setLoadingComissoes(true);
+    try {
+      const { data } = await db
+        .from("servico_comissao_profissional")
+        .select("profissional_id, percentual")
+        .eq("servico_id", servicoId);
+      if (data) {
+        const mapa: Record<string, string> = {};
+        (data as { profissional_id: string; percentual: number }[]).forEach((r) => {
+          mapa[r.profissional_id] = String(r.percentual);
+        });
+        setComissoesProfissionais(mapa);
+      }
+    } finally {
+      setLoadingComissoes(false);
+    }
+  }, [db]);
+
+  // Salva comissões individuais para o serviço
+  const salvarComissoesProfissionais = useCallback(async (servicoId: string) => {
+    const registros = Object.entries(comissoesProfissionais)
+      .filter(([, pct]) => pct !== "" && !isNaN(Number(pct)))
+      .map(([profissionalId, pct]) => ({
+        servico_id: servicoId,
+        profissional_id: profissionalId,
+        percentual: Number(pct),
+      }));
+
+    if (registros.length === 0) return;
+
+    // Upsert: insere ou atualiza
+    await db
+      .from("servico_comissao_profissional")
+      .upsert(registros, { onConflict: "servico_id,profissional_id" });
+  }, [comissoesProfissionais, db]);
+
   const form = useForm<ServicoFormData>({
     resolver: zodResolver(servicoSchema),
     defaultValues: {
@@ -127,6 +183,8 @@ export default function ServicoFormDialog({
         gera_comissao: servico.gera_comissao ?? true,
         aparece_pdv: servico.aparece_pdv ?? true,
       });
+      // Carregar comissões individuais salvas
+      carregarComissoesProfissionais(servico.id);
     } else {
       form.reset({
         nome: "",
@@ -142,6 +200,7 @@ export default function ServicoFormDialog({
         gera_comissao: true,
         aparece_pdv: true,
       });
+      setComissoesProfissionais({});
     }
     // Reset estado de foto ao abrir
     setFotoFile(null);
@@ -149,7 +208,12 @@ export default function ServicoFormDialog({
     setFotoRemoved(false);
     // Aguarda um tick para que o watch do tipoServico não interfira
     setTimeout(() => { isResettingRef.current = false; }, 0);
-  }, [servico, form, open]);
+  }, [servico, form, open, carregarComissoesProfissionais]);
+
+  // Carrega profissionais ao abrir o dialog
+  useEffect(() => {
+    if (open) carregarProfissionais();
+  }, [open, carregarProfissionais]);
 
   // Atualiza campos automaticamente baseado no tipo de serviço
   // Mas IGNORA quando o form esta sendo resetado (abertura de edicao)
@@ -217,6 +281,8 @@ export default function ServicoFormDialog({
         basePayload.foto_url = await resolveFotoUrl(servico.id);
         const result = await updateServico(servico.id, basePayload);
         if (result) {
+          // Salvar comissões individuais por profissional
+          await salvarComissoesProfissionais(servico.id);
           toast({ title: "Serviço atualizado!", description: "Os dados foram salvos com sucesso." });
           onClose(true);
         } else {
@@ -227,6 +293,8 @@ export default function ServicoFormDialog({
         basePayload.foto_url = await resolveFotoUrl(tempId);
         const result = await createServico(basePayload);
         if (result) {
+          // Salvar comissões individuais por profissional
+          await salvarComissoesProfissionais(result.id);
           toast({ title: "Serviço cadastrado!", description: "Novo serviço adicionado com sucesso." });
           onClose(true);
         } else {
@@ -380,7 +448,7 @@ export default function ServicoFormDialog({
               name="comissao_padrao"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Comissão Padrão (%)</FormLabel>
+                  <FormLabel>Comissão Padrão (%) — aplicada quando não há % individual</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -395,6 +463,51 @@ export default function ServicoFormDialog({
                 </FormItem>
               )}
             />
+
+            {/* Comissão Individual por Profissional */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-4 w-4 text-primary" />
+                <h4 className="font-semibold text-sm">Comissão por Profissional</h4>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Defina % individuais para cada profissional. Se deixado em branco, usa a comissão padrão acima.
+              </p>
+              {loadingComissoes ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando profissionais...
+                </div>
+              ) : profissionais.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum profissional ativo cadastrado.</p>
+              ) : (
+                <div className="space-y-2">
+                  {profissionais.map((prof) => (
+                    <div key={prof.id} className="flex items-center gap-3">
+                      <span className="text-sm flex-1 truncate">{prof.nome}</span>
+                      <div className="flex items-center gap-1 w-28">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.5}
+                          placeholder="—"
+                          className="h-8 text-sm"
+                          value={comissoesProfissionais[prof.id] ?? ""}
+                          onChange={(e) =>
+                            setComissoesProfissionais((prev) => ({
+                              ...prev,
+                              [prof.id]: e.target.value,
+                            }))
+                          }
+                        />
+                        <Percent className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <Separator className="my-4" />
 
