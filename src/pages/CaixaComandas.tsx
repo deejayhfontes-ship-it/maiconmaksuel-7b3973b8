@@ -39,6 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useGerarComissao } from "@/hooks/useGerarComissao";
 
 interface Comanda {
   id: string;
@@ -72,6 +73,7 @@ const formatDuration = (minutes: number) => {
 export default function CaixaComandas() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { gerarComissoesDaComanda } = useGerarComissao();
   
   const [loading, setLoading] = useState(true);
   const [comandas, setComandas] = useState<Comanda[]>([]);
@@ -226,7 +228,7 @@ export default function CaixaComandas() {
       }
     }
 
-    // Se fiado, criar dívida
+    // Si fiado, criar dívida
     if (formaPagamento === "fiado" && selectedComanda.cliente_id) {
       const vencimento = new Date();
       vencimento.setDate(vencimento.getDate() + 30); // 30 dias padrão
@@ -238,6 +240,33 @@ export default function CaixaComandas() {
         saldo: total,
         data_vencimento: vencimento.toISOString().split("T")[0],
       }]);
+    }
+
+    // ✅ GERAR COMISSÕES AUTOMATICAMENTE por profissional
+    // Agrupa serviços por profissional e gera registros em comissoes_registro
+    const periodoRef = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+    const profissionaisMap = new Map<string, typeof selectedComanda.servicos>();
+
+    for (const s of selectedComanda.servicos) {
+      if (!s.profissional_id) continue;
+      if (!profissionaisMap.has(s.profissional_id)) {
+        profissionaisMap.set(s.profissional_id, []);
+      }
+      profissionaisMap.get(s.profissional_id)!.push(s);
+    }
+
+    for (const [profId, servicos] of profissionaisMap.entries()) {
+      await gerarComissoesDaComanda({
+        comandaId: selectedComanda.id,
+        profissionalId: profId,
+        itens: servicos.map((s) => ({
+          servico_id: s.servico_id ?? null,
+          nome_servico: s.servico?.nome ?? undefined,
+          valor: Number(s.subtotal ?? s.valor_unitario ?? 0),
+          gera_comissao: s.gera_comissao !== false, // assume true se não definido
+        })),
+        periodoRef,
+      });
     }
 
     toast({
