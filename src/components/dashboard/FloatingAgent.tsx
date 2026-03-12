@@ -36,8 +36,9 @@ async function getKey() {
 }
 
 const SYSTEM = `Você é a Max, assistente inteligente do Salão Maicon Maksuel.
-Acesso real ao sistema: agendamentos, clientes, WhatsApp, lembretes, resumos.
-Criatividade: posts, campanhas, hashtags, fidelização.
+Acesso real ao sistema: agendamentos, clientes, estoque de produtos, contas a receber, lembretes, resumos.
+Capacidades: criar agendamento, cancelar agendamento, ver estoque de produtos (alerta de baixo estoque), listar maiores devedores, identificar clientes que precisam de atenção (inativos + inadimplentes), criar posts e campanhas.
+Sempre confirme antes de criar ou cancelar agendamentos.
 Hoje: ${new Date().toLocaleDateString('pt-BR')}. Responda em português, de forma breve e direta.
 Textos de post/WhatsApp: sempre prontos para copiar.`;
 
@@ -136,9 +137,10 @@ const save = (m: Msg[]) => { try { localStorage.setItem(KEY, JSON.stringify(m.sl
 
 const TIPS = [
     { e: "📅", m: "Resumo do dia de hoje" },
+    { e: "📦", m: "Produtos com estoque baixo" },
+    { e: "🔴", m: "Quem está devendo mais?" },
+    { e: "⚠️", m: "Clientes que precisam de atenção" },
     { e: "👻", m: "Quem não vem há 30 dias?" },
-    { e: "📸", m: "3 ideias de posts para o Instagram" },
-    { e: "📣", m: "Campanha WhatsApp para inativos" },
 ];
 const TOOL_LABEL: Record<string, string> = {
     buscar_clientes: "clientes", buscar_clientes_inativos: "inativos",
@@ -146,6 +148,8 @@ const TOOL_LABEL: Record<string, string> = {
     buscar_servicos: "serviços", criar_agendamento: "agendamento",
     cancelar_agendamento: "cancelar", enviar_whatsapp: "WhatsApp",
     criar_lembrete: "lembrete", ver_resumo_dia: "resumo",
+    ver_estoque_produtos: "estoque", clientes_que_precisam_atencao: "atenção",
+    maiores_devedores: "devedores",
 };
 
 // ── Robô Dourado ──

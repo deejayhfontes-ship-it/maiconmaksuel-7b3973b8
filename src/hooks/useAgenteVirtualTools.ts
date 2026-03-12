@@ -143,6 +143,39 @@ export const TOOL_DECLARATIONS = [
         name: "ver_resumo_dia",
         description: "Mostra o resumo do dia atual: agendamentos, clientes aguardando, faturamento.",
         parameters: { type: "object", properties: {} }
+    },
+    {
+        name: "ver_estoque_produtos",
+        description: "Mostra o estoque atual de produtos. Pode filtrar por produtos com estoque baixo (abaixo do mínimo) ou listar todos. Útil para saber o que precisa ser reposto.",
+        parameters: {
+            type: "object",
+            properties: {
+                apenas_baixo: { type: "boolean", description: "Se true, mostra apenas produtos com estoque abaixo do mínimo" },
+                categoria: { type: "string", description: "Filtrar por categoria (opcional)" }
+            }
+        }
+    },
+    {
+        name: "clientes_que_precisam_atencao",
+        description: "Lista clientes que precisam de atenção: estão com contas em aberto/vencidas, ou sem visitar há muito tempo. Use para priorizar ações de cobrança ou recuperação.",
+        parameters: {
+            type: "object",
+            properties: {
+                dias_sem_visita: { type: "number", description: "Dias sem visita para considerar inativo (padrão 45)" },
+                incluir_inadimplentes: { type: "boolean", description: "Incluir clientes com contas vencidas (padrão true)" }
+            }
+        }
+    },
+    {
+        name: "maiores_devedores",
+        description: "Lista os clientes com maior valor em aberto em contas a receber. Mostra o ranking de quem deve mais ao salão.",
+        parameters: {
+            type: "object",
+            properties: {
+                limite: { type: "number", description: "Quantidade de devedores a listar (padrão 10)" },
+                apenas_vencidos: { type: "boolean", description: "Se true, mostra apenas contas vencidas (padrão false = todas em aberto)" }
+            }
+        }
     }
 ];
 
@@ -325,9 +358,11 @@ async function criarAgendamento(args: {
             servico_id: args.servico_id,
             profissional_id: args.profissional_id,
             data_hora: args.data_hora,
+            duracao_minutos: duracao,
             status: "agendado",
             observacoes: args.observacoes || null,
-        })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any)
         .select()
         .single();
 
@@ -447,6 +482,150 @@ async function verResumoDia(): Promise<ToolResult> {
     };
 }
 
+async function verEstoqueProdutos(args: { apenas_baixo?: boolean; categoria?: string }): Promise<ToolResult> {
+    let query = supabase
+        .from("produtos")
+        .select("id, nome, categoria, estoque_atual, estoque_minimo, preco_venda, ativo")
+        .eq("ativo", true)
+        .order("nome")
+        .limit(50);
+
+    if (args.categoria) {
+        query = query.ilike("categoria", `%${args.categoria}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) return { sucesso: false, mensagem: `Erro: ${error.message}` };
+    if (!data?.length) return { sucesso: true, mensagem: "Nenhum produto cadastrado.", dados: [] };
+
+    const produtos = data.map(p => ({
+        ...p,
+        status_estoque: (p.estoque_atual ?? 0) <= (p.estoque_minimo ?? 0) ? "⚠️ ESTOQUE BAIXO" : "✅ OK",
+        preco_venda_fmt: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(p.preco_venda ?? 0)
+    }));
+
+    const resultado = args.apenas_baixo
+        ? produtos.filter(p => (p.estoque_atual ?? 0) <= (p.estoque_minimo ?? 0))
+        : produtos;
+
+    const baixo = produtos.filter(p => (p.estoque_atual ?? 0) <= (p.estoque_minimo ?? 0)).length;
+
+    return {
+        sucesso: true,
+        mensagem: `${resultado.length} produto(s) listado(s). ${baixo} com estoque baixo.`,
+        dados: resultado
+    };
+}
+
+async function clientesQuePrecisamAtencao(args: { dias_sem_visita?: number; incluir_inadimplentes?: boolean }): Promise<ToolResult> {
+    const dias = args.dias_sem_visita ?? 45;
+    const incluirInad = args.incluir_inadimplentes !== false;
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - dias);
+    const hoje = new Date().toISOString().split("T")[0];
+
+    const resultados: Record<string, unknown>[] = [];
+
+    // Clientes inativos (sem visita)
+    const { data: inativos } = await supabase
+        .from("clientes")
+        .select("id, nome, celular, ultima_visita")
+        .eq("ativo", true)
+        .or(`ultima_visita.lt.${dataLimite.toISOString()},ultima_visita.is.null`)
+        .order("ultima_visita", { ascending: true })
+        .limit(15);
+
+    (inativos || []).forEach(c => {
+        resultados.push({
+            nome: c.nome,
+            celular: c.celular,
+            motivo: `Sem visitar há ${c.ultima_visita ? Math.floor((Date.now() - new Date(c.ultima_visita).getTime()) / 86400000) : "mais de 90"} dias`,
+            prioridade: "🟡 INATIVO"
+        });
+    });
+
+    // Inadimplentes
+    if (incluirInad) {
+        const { data: contas } = await supabase
+            .from("contas_receber")
+            .select("valor, data_vencimento, cliente:clientes(id, nome, celular)")
+            .eq("status", "pendente")
+            .lt("data_vencimento", hoje)
+            .order("data_vencimento", { ascending: true })
+            .limit(15);
+
+        (contas || []).forEach(c => {
+            const cli = c.cliente as { nome?: string; celular?: string } | null;
+            if (cli?.nome) {
+                resultados.push({
+                    nome: cli.nome,
+                    celular: cli.celular,
+                    motivo: `Conta vencida em ${new Date(c.data_vencimento).toLocaleDateString("pt-BR")} — R$ ${Number(c.valor).toFixed(2)}`,
+                    prioridade: "🔴 INADIMPLENTE"
+                });
+            }
+        });
+    }
+
+    if (!resultados.length) return { sucesso: true, mensagem: "Nenhum cliente precisando de atenção no momento! 🎉", dados: [] };
+
+    return {
+        sucesso: true,
+        mensagem: `${resultados.length} cliente(s) precisam de atenção.`,
+        dados: resultados
+    };
+}
+
+async function maioresDevedores(args: { limite?: number; apenas_vencidos?: boolean }): Promise<ToolResult> {
+    const limite = args.limite ?? 10;
+    const hoje = new Date().toISOString().split("T")[0];
+
+    let query = supabase
+        .from("contas_receber")
+        .select("cliente_id, valor, data_vencimento, cliente:clientes(nome, celular)")
+        .eq("status", "pendente");
+
+    if (args.apenas_vencidos) {
+        query = query.lt("data_vencimento", hoje);
+    }
+
+    const { data, error } = await query;
+    if (error) return { sucesso: false, mensagem: `Erro: ${error.message}` };
+    if (!data?.length) return { sucesso: true, mensagem: "Nenhuma conta a receber em aberto.", dados: [] };
+
+    // Agrupa por cliente e soma dívidas
+    const porCliente = new Map<string, { nome: string; celular: string; total: number; qtd_contas: number }>();
+    data.forEach(c => {
+        const cli = c.cliente as { nome?: string; celular?: string } | null;
+        const nome = cli?.nome || "Desconhecido";
+        const celular = cli?.celular || "";
+        const chave = c.cliente_id || nome;
+        const atual = porCliente.get(chave) || { nome, celular, total: 0, qtd_contas: 0 };
+        atual.total += Number(c.valor) || 0;
+        atual.qtd_contas += 1;
+        porCliente.set(chave, atual);
+    });
+
+    const ranking = Array.from(porCliente.values())
+        .sort((a, b) => b.total - a.total)
+        .slice(0, limite)
+        .map((d, i) => ({
+            posicao: `${i + 1}º`,
+            nome: d.nome,
+            celular: d.celular,
+            total_devido: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(d.total),
+            qtd_contas: d.qtd_contas
+        }));
+
+    const totalGeral = Array.from(porCliente.values()).reduce((s, d) => s + d.total, 0);
+
+    return {
+        sucesso: true,
+        mensagem: `Top ${ranking.length} devedores. Total em aberto: ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalGeral)}.`,
+        dados: ranking
+    };
+}
+
 // ══════════════════════════════════════════════════════════
 // DISPATCHER — executa a ferramenta pelo nome
 // ══════════════════════════════════════════════════════════
@@ -463,6 +642,9 @@ export async function executeTool(name: string, args: Record<string, unknown>): 
             case "enviar_whatsapp": return await enviarWhatsApp(args as { celular: string; mensagem: string; nome_cliente?: string });
             case "criar_lembrete": return await criarLembrete(args as { texto: string; tipo?: string });
             case "ver_resumo_dia": return await verResumoDia();
+            case "ver_estoque_produtos": return await verEstoqueProdutos(args as { apenas_baixo?: boolean; categoria?: string });
+            case "clientes_que_precisam_atencao": return await clientesQuePrecisamAtencao(args as { dias_sem_visita?: number; incluir_inadimplentes?: boolean });
+            case "maiores_devedores": return await maioresDevedores(args as { limite?: number; apenas_vencidos?: boolean });
             default: return { sucesso: false, mensagem: `Ferramenta desconhecida: ${name}` };
         }
     } catch (e: unknown) {
