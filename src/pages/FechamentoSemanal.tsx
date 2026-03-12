@@ -91,11 +91,11 @@ interface Profissional {
   funcao: string | null;
 }
 
-interface FechamentoProfissionalUI extends FechamentoProfissionalRow {
+interface FechamentoProfissionalUI extends Omit<FechamentoProfissionalRow, 'total_vales' | 'valor_liquido'> {
   profissional: Profissional;
   // dados calculados em tempo real (antes do fechamento)
-  total_vales?: number;
-  valor_liquido?: number;
+  total_vales: number;
+  valor_liquido: number;
   vales_detalhados?: { descricao: string; valor: number }[];
 }
 
@@ -206,7 +206,7 @@ const FechamentoSemanal = () => {
 
     // Atendimentos fechados — usa comissoes_registro como fonte de verdade
     const { data: comissoes } = await dbExtras("comissoes_registro")
-      .select("profissional_id, valor_comissao, valor_servico, servico_nome, created_at")
+      .select("profissional_id, valor_comissao, valor_servico, created_at")
       .eq("status", "pendente")
       .gte("created_at", `${inicioSemana}T00:00:00`)
       .lte("created_at", `${fimSemana}T23:59:59`);
@@ -877,7 +877,7 @@ const FechamentoSemanal = () => {
               <Checkbox
                 checked={formFechamento.confirmo_revisao}
                 onCheckedChange={(c) =>
-                  setFormFechamento({ ...formFechamento, confirmo_revisao: !!c })
+                  setFormFechamento({ ...formFechamento, confirmo_revisao: c === true })
                 }
               />
               <span className="text-sm font-medium">
