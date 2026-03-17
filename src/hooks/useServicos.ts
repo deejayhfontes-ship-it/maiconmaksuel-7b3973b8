@@ -64,13 +64,19 @@ export function useServicos() {
           });
         }
       } else if (remoteData) {
-        // Merge remote with local - remote wins for conflicts
-        const mergedData = await mergeWithLocal(remoteData, localData);
-        setServicos(mergedData.sort((a, b) => a.nome.localeCompare(b.nome)));
+        // Remote é a fonte de verdade — normalizar e usar direto
+        const normalizedRemote = remoteData.map((s) => normalizeServico(s as unknown as Record<string, unknown>));
+        setServicos(normalizedRemote.sort((a, b) => a.nome.localeCompare(b.nome)));
 
-        // Update local storage with merged data
-        for (const servico of mergedData) {
+        // Atualizar IndexedDB com dados do Supabase
+        for (const servico of normalizedRemote) {
           await localPut('servicos', servico);
+        }
+        // Limpar itens locais que não existem no remoto
+        for (const localItem of localData) {
+          if (!normalizedRemote.some((r) => r.id === localItem.id)) {
+            await localDelete('servicos', localItem.id);
+          }
         }
       }
     } catch (error) {
@@ -84,6 +90,7 @@ export function useServicos() {
   // Merge remote and local data, resolving conflicts by updated_at
   const normalizeServico = (s: Record<string, unknown>): Servico => ({
     ...s,
+    ativo: s.ativo === false ? false : true,
     foto_url: (s.foto_url as string | null) ?? null,
   } as Servico);
 
