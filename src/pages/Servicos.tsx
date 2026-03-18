@@ -341,17 +341,21 @@ const Servicos = () => {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        {/* Foto do serviço */}
-                        <Avatar className="h-12 w-12 rounded-lg border border-border/40">
-                          <AvatarImage src={servico.foto_url ?? undefined} className="object-cover" />
-                          <AvatarFallback className="bg-muted rounded-lg flex items-center justify-center">
+                        {/* Foto ou ícone do serviço */}
+                        {servico.foto_url ? (
+                          <Avatar className="h-12 w-12 rounded-lg border border-border/40">
+                            <AvatarImage src={servico.foto_url} className="object-cover" />
+                            <AvatarFallback className="bg-muted rounded-lg" />
+                          </Avatar>
+                        ) : (
+                          <div className="h-12 w-12 rounded-lg border border-border/40 bg-muted flex items-center justify-center">
                             <img
                               src={categoriaIconUrl[servico.categoria || "Outros"] || "/icons/outros.svg"}
                               alt={servico.categoria || "Serviço"}
-                              className="h-6 w-6 opacity-50"
+                              className="h-7 w-7 opacity-60"
                             />
-                          </AvatarFallback>
-                        </Avatar>
+                          </div>
+                        )}
                         {!servico.ativo && (
                           <Badge variant="secondary" className="text-[10px]">Inativo</Badge>
                         )}
