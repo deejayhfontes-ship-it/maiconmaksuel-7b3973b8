@@ -2,14 +2,14 @@ import { useState, useMemo, useEffect } from "react";
 import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift, RefreshCw, Layers } from "lucide-react";
 
 const categoriaIconUrl: Record<string, string> = {
-  Cabelo: "/icons/cabelo.svg",
-  Barba: "/icons/barba.svg",
-  Manicure: "/icons/manicure.svg",
-  Pedicure: "/icons/pedicure.svg",
-  Estética: "/icons/estetica.svg",
-  "Depilação": "/icons/depilacao.svg",
-  Massagem: "/icons/massagem.svg",
-  Outros: "/icons/outros.svg",
+  Cabelo: "./icons/cabelo.svg",
+  Barba: "./icons/barba.svg",
+  Manicure: "./icons/manicure.svg",
+  Pedicure: "./icons/pedicure.svg",
+  Estética: "./icons/estetica.svg",
+  "Depilação": "./icons/depilacao.svg",
+  Massagem: "./icons/massagem.svg",
+  Outros: "./icons/outros.svg",
 };
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
