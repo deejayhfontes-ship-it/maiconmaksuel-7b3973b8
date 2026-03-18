@@ -1,16 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift, RefreshCw, Layers } from "lucide-react";
 
-const categoriaIconUrl: Record<string, string> = {
-  Cabelo: "./icons/cabelo.svg",
-  Barba: "./icons/barba.svg",
-  Manicure: "./icons/manicure.svg",
-  Pedicure: "./icons/pedicure.svg",
-  Estética: "./icons/estetica.svg",
-  "Depilação": "./icons/depilacao.svg",
-  Massagem: "./icons/massagem.svg",
-  Outros: "./icons/outros.svg",
-};
+import { categoriaIconMap, IconOutros } from "@/components/icons/SalonIcons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -349,11 +340,10 @@ const Servicos = () => {
                           </Avatar>
                         ) : (
                           <div className="h-12 w-12 rounded-lg border border-border/40 bg-muted flex items-center justify-center">
-                            <img
-                              src={categoriaIconUrl[servico.categoria || "Outros"] || "/icons/outros.svg"}
-                              alt={servico.categoria || "Serviço"}
-                              className="h-7 w-7 opacity-60"
-                            />
+                            {(() => {
+                              const IconComp = categoriaIconMap[servico.categoria || "Outros"] || IconOutros;
+                              return <IconComp className="h-7 w-7 text-muted-foreground" />;
+                            })()}
                           </div>
                         )}
                         {!servico.ativo && (
