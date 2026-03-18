@@ -1,5 +1,16 @@
 import { useState, useMemo, useEffect } from "react";
-import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift, RefreshCw } from "lucide-react";
+import { Scissors, Plus, Search, Edit, Trash2, Clock, ClipboardList, Gift, RefreshCw, Layers } from "lucide-react";
+
+const categoriaIconUrl: Record<string, string> = {
+  Cabelo: "/icons/cabelo.svg",
+  Barba: "/icons/barba.svg",
+  Manicure: "/icons/manicure.svg",
+  Pedicure: "/icons/pedicure.svg",
+  Estética: "/icons/estetica.svg",
+  "Depilação": "/icons/depilacao.svg",
+  Massagem: "/icons/massagem.svg",
+  Outros: "/icons/outros.svg",
+};
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -294,7 +305,7 @@ const Servicos = () => {
               <Card
                 key={servico.id}
                 className={`relative overflow-hidden transition-all hover:shadow-lg ${!servico.ativo ? "opacity-60" : ""
-                  } ${isControleInterno ? "border-dashed border-warning/40" : ""}`}
+                  } ${isControleInterno ? "border-dashed border-warning/40 bg-amber-50/60 dark:bg-amber-950/20" : ""}`}
               >
                 <CardContent className="p-5">
                   <div className="space-y-4">
@@ -302,6 +313,10 @@ const Servicos = () => {
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`inline-block w-2 h-2 rounded-full shrink-0 ${servico.ativo ? "bg-green-500" : "bg-red-500"}`}
+                            title={servico.ativo ? "Ativo" : "Inativo"}
+                          />
                           <h3 className={`font-bold text-lg leading-tight ${isControleInterno ? "text-muted-foreground" : ""}`}>
                             {isControleInterno && <ClipboardList className="h-4 w-4 inline mr-1 text-warning" />}
                             {servico.nome}
@@ -329,8 +344,12 @@ const Servicos = () => {
                         {/* Foto do serviço */}
                         <Avatar className="h-12 w-12 rounded-lg border border-border/40">
                           <AvatarImage src={servico.foto_url ?? undefined} className="object-cover" />
-                          <AvatarFallback className="bg-muted rounded-lg">
-                            <Scissors className="h-5 w-5 text-muted-foreground" />
+                          <AvatarFallback className="bg-muted rounded-lg flex items-center justify-center">
+                            <img
+                              src={categoriaIconUrl[servico.categoria || "Outros"] || "/icons/outros.svg"}
+                              alt={servico.categoria || "Serviço"}
+                              className="h-6 w-6 opacity-50"
+                            />
                           </AvatarFallback>
                         </Avatar>
                         {!servico.ativo && (
