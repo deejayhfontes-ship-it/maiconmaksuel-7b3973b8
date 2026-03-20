@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Mail, MapPin, Calendar, FileText, MessageCircle, BarChart3, Star, ClipboardCheck, Plus, Trash2 } from "lucide-react";
+import { Phone, Mail, MapPin, Calendar, FileText, MessageCircle, BarChart3, Star, ClipboardCheck, Plus, Trash2, Scissors, NotebookPen, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,12 +39,15 @@ interface Cliente {
   updated_at: string;
 }
 
-interface FichaAvaliacao {
+interface TimelineItem {
   id: string;
-  tipo_avaliacao: string;
-  observacoes: string | null;
-  nota: number | null;
-  created_at: string;
+  type: 'manual' | 'atendimento';
+  date: string;
+  title: string;
+  description: string;
+  value?: number;
+  services?: string[];
+  professionals?: string[];
 }
 
 const cleanPhoneForWhatsApp = (phone: string | null | undefined) => {
@@ -119,52 +122,109 @@ export default function ClienteViewDialog({
   cliente,
 }: ClienteViewDialogProps) {
   const { toast } = useToast();
-  const [fichas, setFichas] = useState<FichaAvaliacao[]>([]);
-  const [loadingFichas, setLoadingFichas] = useState(false);
-  const [novaFicha, setNovaFicha] = useState({ tipo: "", obs: "", nota: 5 });
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [novaAnotacao, setNovaAnotacao] = useState({ tipo: "", obs: "" });
   const [criando, setCriando] = useState(false);
 
   useEffect(() => {
     if (open && cliente?.id) {
-      loadFichas();
+      loadTimeline();
     }
   }, [open, cliente?.id]);
 
-  const loadFichas = async () => {
+  const loadTimeline = async () => {
     if (!cliente) return;
-    setLoadingFichas(true);
-    const { data } = await supabase
-      .from("fichas_avaliacao")
-      .select("id, tipo_avaliacao, observacoes, nota, created_at")
+    setLoadingTimeline(true);
+    
+    // 1. Fetch manual entries
+    const { data: manualData } = await supabase
+      .from("cliente_historico_manual")
+      .select("*")
       .eq("cliente_id", cliente.id)
       .order("created_at", { ascending: false });
-    setFichas((data as FichaAvaliacao[]) || []);
-    setLoadingFichas(false);
+      
+    // 2. Fetch atendimentos
+    const { data: atendData } = await supabase
+      .from("atendimentos")
+      .select(`
+        id,
+        numero_comanda,
+        valor_final,
+        created_at,
+        atendimento_servicos (
+          servicos ( nome ),
+          profissionais ( nome )
+        )
+      `)
+      .eq("cliente_id", cliente.id)
+      .order("created_at", { ascending: false });
+
+    // Combine and sort
+    const combined: TimelineItem[] = [];
+    
+    if (manualData) {
+      manualData.forEach(m => {
+        combined.push({
+          id: m.id,
+          type: 'manual',
+          date: m.created_at,
+          title: m.tipo_registro,
+          description: m.observacoes || "",
+        });
+      });
+    }
+    
+    if (atendData) {
+      atendData.forEach((a) => {
+        const atendimentoServicos = (a.atendimento_servicos as unknown as Record<string, unknown>[]) || [];
+        const services = atendimentoServicos.map(s => (s.servicos as Record<string, unknown>)?.nome).filter(Boolean) as string[];
+        const profissionais = [...new Set(atendimentoServicos.map(s => (s.profissionais as Record<string, unknown>)?.nome).filter(Boolean))] as string[];
+        
+        combined.push({
+          id: a.id,
+          type: 'atendimento',
+          date: a.created_at,
+          title: `Comanda ${a.numero_comanda ? '#' + a.numero_comanda : ''}`,
+          description: "Atendimento concluído",
+          value: a.valor_final,
+          services,
+          professionals
+        });
+      });
+    }
+    
+    // sort descending by date
+    combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    setTimeline(combined);
+    setLoadingTimeline(false);
   };
 
-  const handleCriarFicha = async () => {
-    if (!cliente || !novaFicha.tipo) return;
+  const handleCriarAnotacao = async () => {
+    if (!cliente || !novaAnotacao.tipo) return;
     setCriando(true);
-    const { error } = await supabase.from("fichas_avaliacao").insert({
+    const { error } = await supabase.from("cliente_historico_manual").insert({
       cliente_id: cliente.id,
-      tipo_avaliacao: novaFicha.tipo,
-      observacoes: novaFicha.obs || null,
-      nota: novaFicha.nota,
+      tipo_registro: novaAnotacao.tipo,
+      observacoes: novaAnotacao.obs || null,
     });
+    
     if (error) {
-      toast({ title: "Erro ao salvar ficha", variant: "destructive" });
+      toast({ title: "Erro ao salvar anotação", variant: "destructive" });
     } else {
-      toast({ title: "Ficha criada com sucesso!" });
-      setNovaFicha({ tipo: "", obs: "", nota: 5 });
-      loadFichas();
+      toast({ title: "Anotação salva com sucesso!" });
+      setNovaAnotacao({ tipo: "", obs: "" });
+      loadTimeline();
     }
     setCriando(false);
   };
 
-  const handleDeletarFicha = async (id: string) => {
-    await supabase.from("fichas_avaliacao").delete().eq("id", id);
-    setFichas((prev) => prev.filter((f) => f.id !== id));
-    toast({ title: "Ficha removida" });
+  const handleDeletarAnotacao = async (id: string, type: string) => {
+    if (type !== 'manual') return; // Only allow deleting manual notes
+    await supabase.from("cliente_historico_manual").delete().eq("id", id);
+    setTimeline((prev) => prev.filter((t) => t.id !== id));
+    toast({ title: "Anotação removida" });
   };
 
   if (!cliente) return null;
@@ -235,9 +295,9 @@ export default function ClienteViewDialog({
             <TabsTrigger value="dados" className="flex-1">
               <FileText className="h-4 w-4 mr-2" /> Dados
             </TabsTrigger>
-            <TabsTrigger value="fichas" className="flex-1">
-              <ClipboardCheck className="h-4 w-4 mr-2" />
-              Fichas de Avaliação {fichas.length > 0 && `(${fichas.length})`}
+            <TabsTrigger value="historico" className="flex-1">
+              <History className="h-4 w-4 mr-2" />
+              Histórico {timeline.length > 0 && `(${timeline.length})`}
             </TabsTrigger>
           </TabsList>
 
@@ -329,71 +389,102 @@ export default function ClienteViewDialog({
             </div>
           </TabsContent>
 
-          {/* ABA FICHAS DE AVALIAÇÃO */}
-          <TabsContent value="fichas" className="space-y-4 pt-4">
-            {/* Formulário nova ficha */}
+          {/* ABA HISTÓRICO / TIMELINE */}
+          <TabsContent value="historico" className="space-y-4 pt-4">
+            {/* Formulário nova anotação */}
             <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
               <h4 className="font-medium text-sm flex items-center gap-2">
-                <Plus className="h-4 w-4" /> Nova Ficha
+                <Plus className="h-4 w-4" /> Nova Anotação / Observação
               </h4>
               <input
                 className="w-full border rounded px-3 py-2 text-sm bg-background"
-                placeholder="Tipo de avaliação (ex: Coloração, Corte, Hidratação...)"
-                value={novaFicha.tipo}
-                onChange={(e) => setNovaFicha((p) => ({ ...p, tipo: e.target.value }))}
+                placeholder="Ex do que registrar: Preferências, alergias, cor da coloração..."
+                value={novaAnotacao.tipo}
+                onChange={(e) => setNovaAnotacao((p) => ({ ...p, tipo: e.target.value }))}
               />
               <textarea
                 className="w-full border rounded px-3 py-2 text-sm bg-background resize-none"
                 rows={2}
-                placeholder="Observações (opcional)"
-                value={novaFicha.obs}
-                onChange={(e) => setNovaFicha((p) => ({ ...p, obs: e.target.value }))}
+                placeholder="Detalhes (opcional)"
+                value={novaAnotacao.obs}
+                onChange={(e) => setNovaAnotacao((p) => ({ ...p, obs: e.target.value }))}
               />
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Nota:</span>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <button key={s} onClick={() => setNovaFicha((p) => ({ ...p, nota: s }))}>
-                      <Star className={`h-5 w-5 ${s <= novaFicha.nota ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Button size="sm" onClick={handleCriarFicha} disabled={criando || !novaFicha.tipo}>
-                {criando ? "Salvando..." : "Salvar Ficha"}
+              <Button size="sm" onClick={handleCriarAnotacao} disabled={criando || !novaAnotacao.tipo}>
+                {criando ? "Salvando..." : "Salvar no Histórico"}
               </Button>
             </div>
 
-            {/* Lista de fichas */}
-            {loadingFichas ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Carregando fichas...</p>
-            ) : fichas.length === 0 ? (
+            {/* Timeline List */}
+            {loadingTimeline ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Carregando histórico...</p>
+            ) : timeline.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhuma ficha de avaliação ainda.
+                Histórico vazio para este cliente.
               </p>
             ) : (
-              <div className="space-y-3">
-                {fichas.map((f) => (
-                  <div key={f.id} className="border rounded-lg p-3 space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-sm">{f.tipo_avaliacao}</p>
-                        {f.observacoes && (
-                          <p className="text-sm text-muted-foreground">{f.observacoes}</p>
+              <div className="relative border-l-2 border-muted ml-3 space-y-6 pt-2 pb-4">
+                {timeline.map((item) => (
+                  <div key={item.id} className="relative pl-6">
+                    {/* Icon na linha do tempo */}
+                    <div className={`absolute -left-3.5 top-0 h-7 w-7 rounded-full flex items-center justify-center border-2 border-background shadow-sm ${item.type === 'atendimento' ? 'bg-primary text-white' : 'bg-orange-100 text-orange-600'}`}>
+                      {item.type === 'atendimento' ? <Scissors className="h-3.5 w-3.5" /> : <NotebookPen className="h-3.5 w-3.5" />}
+                    </div>
+
+                    {/* Conteúdo do item */}
+                    <div className="border rounded-lg bg-card p-3 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {format(new Date(item.date), "dd MMM yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                          <h4 className="font-semibold text-base flex items-center gap-2 mt-0.5">
+                            {item.title}
+                            {item.type === 'atendimento' && item.value !== undefined && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)}
+                              </Badge>
+                            )}
+                          </h4>
+                        </div>
+
+                        {/* Botão deletar só para manual */}
+                        {item.type === 'manual' && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeletarAnotacao(item.id, item.type)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         )}
-                        <div className="mt-1">{renderStars(f.nota)}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(f.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </p>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeletarFicha(f.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+
+                      {item.description && <p className="text-sm text-foreground/90">{item.description}</p>}
+
+                      {/* Detalhes específicos de atendimentos */}
+                      {item.type === 'atendimento' && (item.services?.length || item.professionals?.length) ? (
+                        <div className="mt-3 grid gap-2 md:grid-cols-2 text-sm bg-muted/40 p-2.5 rounded-md">
+                          {item.services && item.services.length > 0 && (
+                            <div>
+                              <span className="font-medium text-xs text-muted-foreground uppercase">Serviços executados:</span>
+                              <ul className="list-disc list-inside mt-0.5 ml-1 text-foreground/80">
+                                {item.services.map((s, i) => <li key={i} className="truncate">{s}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          {item.professionals && item.professionals.length > 0 && (
+                            <div>
+                              <span className="font-medium text-xs text-muted-foreground uppercase">Profissionais:</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {item.professionals.map((p, i) => (
+                                  <Badge key={i} variant="secondary" className="font-normal text-xs">{p}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ))}
