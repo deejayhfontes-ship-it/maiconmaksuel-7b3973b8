@@ -99,6 +99,7 @@ export function ClienteSelector({
   const [novoClienteCpf, setNovoClienteCpf] = useState("");
   const [novoClienteEmail, setNovoClienteEmail] = useState("");
   const [saving, setSaving] = useState(false);
+  const [clienteAtualFromServer, setClienteAtualFromServer] = useState<Cliente | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -119,6 +120,30 @@ export function ClienteSelector({
     };
     fetchRecent();
   }, []);
+
+  // Buscar cliente selecionado direto no servidor se não estiver nas listas
+  useEffect(() => {
+    if (!selectedClienteId || selectedClienteId === "anonimo") {
+      setClienteAtualFromServer(null);
+      return;
+    }
+    const jaTemLocal =
+      recentClientes.find((c) => c.id === selectedClienteId) ||
+      searchResults.find((c) => c.id === selectedClienteId);
+    if (jaTemLocal) {
+      setClienteAtualFromServer(null);
+      return;
+    }
+    // Buscar no servidor
+    supabase
+      .from("clientes")
+      .select("id, nome, celular, cpf, foto_url, ultima_visita")
+      .eq("id", selectedClienteId)
+      .single()
+      .then(({ data }) => {
+        if (data) setClienteAtualFromServer(data);
+      });
+  }, [selectedClienteId, recentClientes, searchResults]);
 
   // Busca em tempo real
   useEffect(() => {
@@ -212,9 +237,13 @@ export function ClienteSelector({
   // Cliente selecionado atual
   const clienteAtual = useMemo(() => {
     if (!selectedClienteId || selectedClienteId === "anonimo") return null;
-    return recentClientes.find((c) => c.id === selectedClienteId) ||
-      searchResults.find((c) => c.id === selectedClienteId);
-  }, [selectedClienteId, recentClientes, searchResults]);
+    return (
+      recentClientes.find((c) => c.id === selectedClienteId) ||
+      searchResults.find((c) => c.id === selectedClienteId) ||
+      clienteAtualFromServer
+    );
+  }, [selectedClienteId, recentClientes, searchResults, clienteAtualFromServer]);
+
 
   // Se já tem cliente selecionado, mostrar card do cliente
   if (selectedClienteId && selectedClienteId !== "anonimo") {
