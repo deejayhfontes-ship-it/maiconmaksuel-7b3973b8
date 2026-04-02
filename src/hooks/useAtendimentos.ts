@@ -245,32 +245,9 @@ export function useAtendimentos(): UseAtendimentosReturn {
   const createComanda = useCallback(async (): Promise<Atendimento> => {
     const now = new Date().toISOString();
 
-    // Generate comanda number (simple increment for offline, server will handle sequence)
-    const existingNumbers = atendimentos.map(a => a.numero_comanda);
-    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-
-    const newAtendimento: Atendimento = {
-      id: crypto.randomUUID(),
-      numero_comanda: nextNumber,
-      cliente_id: null,
-      data_hora: now,
-      subtotal: 0,
-      desconto: 0,
-      valor_final: 0,
-      status: 'aberto',
-      observacoes: null,
-      nota_fiscal_id: null,
-      nota_fiscal_solicitada: false,
-      created_at: now,
-      updated_at: now,
-    };
-
     try {
-      // Save locally first
-      await localPut('atendimentos', newAtendimento, false);
-      setAtendimentos(prev => [newAtendimento, ...prev]);
-
       if (isOnline) {
+        // Deixa o banco gerar o numero_comanda via sequence (DEFAULT)
         const { data, error } = await supabase
           .from('atendimentos')
           .insert([{
@@ -282,6 +259,25 @@ export function useAtendimentos(): UseAtendimentosReturn {
 
         if (error) {
           console.error('[useAtendimentos] Create sync error:', error);
+          // Fallback offline: usa timestamp como número temporário único
+          const tempNumber = Date.now() % 99999;
+          const newAtendimento: Atendimento = {
+            id: crypto.randomUUID(),
+            numero_comanda: tempNumber,
+            cliente_id: null,
+            data_hora: now,
+            subtotal: 0,
+            desconto: 0,
+            valor_final: 0,
+            status: 'aberto',
+            observacoes: null,
+            nota_fiscal_id: null,
+            nota_fiscal_solicitada: false,
+            created_at: now,
+            updated_at: now,
+          };
+          await localPut('atendimentos', newAtendimento, false);
+          setAtendimentos(prev => [newAtendimento, ...prev]);
           await addToSyncQueue({
             entity: 'atendimentos',
             operation: 'create',
@@ -289,13 +285,34 @@ export function useAtendimentos(): UseAtendimentosReturn {
             timestamp: now,
           });
           setPendingSync(prev => prev + 1);
-        } else {
-          // Update with server-generated data
-          await localPut('atendimentos', { ...data, cliente: undefined }, true);
-          setAtendimentos(prev => prev.map(a => a.id === newAtendimento.id ? (data as Atendimento) : a));
-          return data as Atendimento;
+          return newAtendimento;
         }
+
+        // Sucesso: usa dados reais do banco
+        await localPut('atendimentos', { ...data, cliente: undefined }, true);
+        setAtendimentos(prev => [data as Atendimento, ...prev]);
+        return data as Atendimento;
+
       } else {
+        // Offline: número temporário baseado em timestamp
+        const tempNumber = Date.now() % 99999;
+        const newAtendimento: Atendimento = {
+          id: crypto.randomUUID(),
+          numero_comanda: tempNumber,
+          cliente_id: null,
+          data_hora: now,
+          subtotal: 0,
+          desconto: 0,
+          valor_final: 0,
+          status: 'aberto',
+          observacoes: null,
+          nota_fiscal_id: null,
+          nota_fiscal_solicitada: false,
+          created_at: now,
+          updated_at: now,
+        };
+        await localPut('atendimentos', newAtendimento, false);
+        setAtendimentos(prev => [newAtendimento, ...prev]);
         await addToSyncQueue({
           entity: 'atendimentos',
           operation: 'create',
@@ -303,14 +320,14 @@ export function useAtendimentos(): UseAtendimentosReturn {
           timestamp: now,
         });
         setPendingSync(prev => prev + 1);
+        return newAtendimento;
       }
-
-      return newAtendimento;
     } catch (err) {
       console.error('[useAtendimentos] Create error:', err);
       throw err;
     }
-  }, [isOnline, atendimentos]);
+  }, [isOnline]);
+
 
   // Update cliente
   const updateCliente = useCallback(async (atendimentoId: string, clienteId: string | null): Promise<void> => {

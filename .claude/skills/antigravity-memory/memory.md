@@ -8,6 +8,15 @@
 
 ---
 
+## 2026-04-02 — Feature: Sistema de Auditoria de Comandas Fechadas
+
+**O que foi feito:** Sistema completo para reabrir/cancelar comandas fechadas com auditoria obrigatória.
+**Arquivos criados:** `useComandaAuditoria.ts`, `ComandaAuditoriaModal.tsx`, `AuditoriaComandas.tsx`, SQL migration.
+**Rotas:** `/auditoria-comandas` | Menu lateral: item "Auditoria" (ícone Shield).
+**⚠️ PENDENTE:** Rodar `supabase/migrations/create_auditoria_comandas.sql` no painel Supabase SQL Editor.
+
+
+
 ## Módulos conhecidos
 - [ ] Agendamentos
 - [ ] Clientes (`ClienteViewDialog.tsx` — aba Histórico implementada)
