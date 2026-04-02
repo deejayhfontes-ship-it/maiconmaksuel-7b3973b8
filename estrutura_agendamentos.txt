@@ -1,0 +1,12 @@
+﻿{
+    "id":  "64db6442-d169-4d20-85de-45ce3f0e323e",
+    "cliente_id":  "34c78bc5-6d1b-43a4-bc9b-9365f4693709",
+    "profissional_id":  "82409f2f-09e3-4712-b81e-59ed64f6826d",
+    "servico_id":  "ed19cb03-b3e3-4088-9e1f-46a1e7ca359a",
+    "data_hora":  "2026-03-28T18:30:00+00:00",
+    "duracao_minutos":  30,
+    "status":  "agendado",
+    "observacoes":  "+ CORTE",
+    "created_at":  "2026-03-27T16:48:45.551287+00:00",
+    "updated_at":  "2026-03-27T16:48:45.551287+00:00"
+}

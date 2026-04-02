@@ -1,0 +1,20 @@
+﻿============================================================
+🔧 CORRIGINDO WORKFLOWS N8N - SUPABASE INCORRETO
+============================================================
+
+📋 Listando workflows...
+   Total: 3 workflows
+
+─── 'Lembretes Automaticos de Agendamento - Maicon Maksuel' (ID: RZLEew5BlAhhFmlg) | Ativo: True
+   ✅ Já usa Supabase correto, pulando.
+
+─── 'Avaliacao Pos-Atendimento - Maicon Maksuel' (ID: lFY3NsyE1dWzmvq6) | Ativo: True
+   ✅ Já usa Supabase correto, pulando.
+
+─── '?? Chatbot Confirmacao de Agendamento - Maicon Maksuel' (ID: tcb575OhvvXqagsQ) | Ativo: True
+   ✅ Já usa Supabase correto, pulando.
+
+============================================================
+ℹ️  Nenhum workflow precisou de correção.
+   Supabase ativo: https://hhzvjsrsoyhjzeiuxpep.supabase.co
+============================================================

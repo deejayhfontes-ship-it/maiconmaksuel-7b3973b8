@@ -1,0 +1,33 @@
+﻿============================================================
+CORRIGINDO WORKFLOWS N8N - data_hora
+============================================================
+Total: 3 workflows
+
+--- Lembretes Automaticos de Agendamento - Maicon Maksuel (ID: RZLEew5BlAhhFmlg)
+      Atualizando select para: id,data_hora,status,clientes(nome,celular,telefone),servicos(nome),profissionais(nome)
+      Removendo query param antigo: data=={{ $today.plus({days:1}).toFormat('yyyy-MM-dd') }}
+      Adicionando filtros data_hora (amanha inicio/fim)
+      Corrigindo codigo JavaScript (data/hora -> data_hora)...
+      Codigo atualizado!
+   Desativando...
+   Salvando...
+   Salvo (payload simplificado)!
+   Reativando...
+   Ativo!
+
+--- Avaliacao Pos-Atendimento - Maicon Maksuel (ID: lFY3NsyE1dWzmvq6)
+      Atualizando select para: id,data_hora,status,clientes(nome,celular)
+      Removendo query param antigo: data=={{ $today.minus({days:1}).toFormat('yyyy-MM-dd') }}
+      Adicionando filtros data_hora (ontem inicio/fim)
+   Desativando...
+   Salvando...
+   Salvo (payload simplificado)!
+   Reativando...
+   Ativo!
+
+--- ?? Chatbot Confirmacao de Agendamento - Maicon Maksuel (ID: tcb575OhvvXqagsQ)
+   Sem alteracoes necessarias.
+
+============================================================
+CONCLUIDO! Workflows atualizados para usar data_hora.
+============================================================

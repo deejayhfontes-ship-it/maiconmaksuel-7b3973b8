@@ -14,6 +14,7 @@ import {
   ChevronRight,
   X,
   ShieldCheck,
+  Shield,
   FileText,
   Settings,
   Smartphone,
@@ -63,6 +64,7 @@ const allMenuItems: MenuItem[] = [
   { title: "Metas", icon: Target, path: "/metas-salao" },
 
   { title: "Configurações", icon: Settings, path: "/configuracoes" },
+  { title: "Auditoria", icon: Shield, path: "/auditoria-comandas" },
 ];
 
 

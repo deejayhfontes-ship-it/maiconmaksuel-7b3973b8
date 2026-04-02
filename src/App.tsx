@@ -73,6 +73,7 @@ import FichaAvaliacao from "./pages/FichaAvaliacao";
 import NpsPesquisa from "./pages/NpsPesquisa";
 import ConfiguracoesFiscais from "./pages/ConfiguracoesFiscais";
 import GeradorArtes from "./pages/GeradorArtes";
+import AuditoriaComandas from "./pages/AuditoriaComandas";
 import FloatingAgent from "@/components/dashboard/FloatingAgent";
 
 const queryClient = new QueryClient();
@@ -163,6 +164,7 @@ const App = () => (
                         <Route path="/nps" element={<NpsPesquisa />} />
                         <Route path="/gerador-artes" element={<GeradorArtes />} />
                         <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscais />} />
+                        <Route path="/auditoria-comandas" element={<AuditoriaComandas />} />
                       </Route>
 
                       {/* Kiosk routes - Minimal client-facing display */}

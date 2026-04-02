@@ -1,0 +1,76 @@
+﻿
+============================================================
+WORKFLOW: Lembretes Automaticos de Agendamento - Maicon Maksuel
+ID: RZLEew5BlAhhFmlg | Ativo: True
+============================================================
+
+  [TRIGGER] Agendador Diario 18h
+    Regra: {"interval": [{"field": "hours", "triggerAtHour": 18}]}
+
+  [NODE] Buscar Agendamentos Amanha (n8n-nodes-base.httpRequest)
+    URL: https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos
+    Header apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ...
+    Header Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV...
+    Header Content-Type: application/json
+    Query select: id,data,hora,servico,status,clientes(nome,celular,telefone)
+    Query data: ={{ $today.plus({days:1}).toFormat('yyyy-MM-dd') }}
+    Query status: neq.cancelado
+
+  [NODE] Enviar Lembrete WhatsApp (n8n-nodes-base.httpRequest)
+    URL: https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text
+    Header Client-Token: Fbab85f2da2684d40ac0ff07d9ddcf0e8S
+    Header Content-Type: application/json
+
+============================================================
+WORKFLOW: Avaliacao Pos-Atendimento - Maicon Maksuel
+ID: lFY3NsyE1dWzmvq6 | Ativo: True
+============================================================
+
+  [TRIGGER] Agendador 10h Diario
+    Regra: {"interval": [{"field": "hours", "triggerAtHour": 10}]}
+
+  [NODE] Buscar Agendamentos Ontem (n8n-nodes-base.httpRequest)
+    URL: https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos
+    Header apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ...
+    Header Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV...
+    Query select: id,data,hora,status,clientes(nome,celular)
+    Query data: ={{ $today.minus({days:1}).toFormat('yyyy-MM-dd') }}
+    Query status: eq.confirmado
+
+  [NODE] Enviar WhatsApp Avaliacao (n8n-nodes-base.httpRequest)
+    URL: https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text
+    Header Client-Token: Fbab85f2da2684d40ac0ff07d9ddcf0e8S
+    Header Content-Type: application/json
+
+============================================================
+WORKFLOW: ?? Chatbot Confirmacao de Agendamento - Maicon Maksuel
+ID: tcb575OhvvXqagsQ | Ativo: True
+============================================================
+
+  [NODE] Responder Confirmacao (n8n-nodes-base.httpRequest)
+    URL: https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text
+    Header Content-Type: application/json
+    Header Client-Token: Fbab85f2da2684d40ac0ff07d9ddcf0e8S
+
+  [NODE] Buscar Agendamento pelo Telefone (n8n-nodes-base.httpRequest)
+    URL: https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos
+    Header apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ...
+    Header Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV...
+    Query select: id,data_hora,status,clientes!inner(nome,celular)
+    Query clientes.celular: ={{ 'eq.' + $json.phone.replace(/^55/, '') }}
+    Query status: eq.confirmado
+    Query data_hora: ={{ 'gte.' + $now.toISO() }}
+    Query order: data_hora.asc
+    Query limit: 1
+
+  [NODE] Cancelar Agendamento no Banco (n8n-nodes-base.httpRequest)
+    URL: ={{ 'https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.' + $json[0].id }}
+    Header apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ...
+    Header Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV...
+    Header Content-Type: application/json
+    Header Prefer: return=minimal
+
+  [NODE] Perguntar se Deseja Reagendar (n8n-nodes-base.httpRequest)
+    URL: https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text
+    Header Content-Type: application/json
+    Header Client-Token: Fbab85f2da2684d40ac0ff07d9ddcf0e8S
