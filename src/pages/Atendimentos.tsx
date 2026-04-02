@@ -475,7 +475,7 @@ const Atendimentos = () => {
           caixa_id: caixaAberto.id,
           tipo: "entrada",
           categoria: "atendimento",
-          descricao: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} - ${pag.forma}`,
+          descricao: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} - ${selectedAtendimento.cliente?.nome || "Cliente avulso"} - ${pag.forma}`,
           valor: pag.valor,
           forma_pagamento: pag.forma,
           atendimento_id: selectedAtendimento.id,

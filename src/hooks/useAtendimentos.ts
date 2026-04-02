@@ -743,7 +743,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
               caixa_id: caixaId,
               tipo: 'entrada',
               categoria: 'atendimento',
-              descricao: `Comanda #${current.numero_comanda.toString().padStart(3, '0')} - ${pag.forma}`,
+              descricao: `Comanda #${current.numero_comanda.toString().padStart(3, '0')} - ${clientes.find(c => c.id === current.cliente_id)?.nome || 'Cliente avulso'} - ${pag.forma}`,
               valor: pag.valor,
               forma_pagamento: pag.forma,
               atendimento_id: atendimentoId,
