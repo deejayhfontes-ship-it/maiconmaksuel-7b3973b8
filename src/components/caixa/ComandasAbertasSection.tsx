@@ -144,9 +144,20 @@ export const ComandasAbertasSection = ({ onComandaFinalizada }: ComandasAbertasS
       return;
     }
 
+    // Busca o próximo numero_comanda direto do banco para evitar duplicatas
+    const { data: maxData } = await supabase
+      .from("atendimentos")
+      .select("numero_comanda")
+      .order("numero_comanda", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextNumero = (maxData?.numero_comanda ?? 0) + 1;
+
     const { error } = await supabase.from("atendimentos").insert([{
       cliente_id: selectedCliente,
       status: "aberto",
+      numero_comanda: nextNumero,
     }]);
 
     if (error) {

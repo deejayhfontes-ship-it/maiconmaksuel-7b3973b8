@@ -247,12 +247,22 @@ export function useAtendimentos(): UseAtendimentosReturn {
 
     try {
       if (isOnline) {
-        // Deixa o banco gerar o numero_comanda via sequence (DEFAULT)
+        // Busca o próximo numero_comanda do banco para evitar duplicatas
+        const { data: maxData } = await supabase
+          .from('atendimentos')
+          .select('numero_comanda')
+          .order('numero_comanda', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const nextNumero = (maxData?.numero_comanda ?? 0) + 1;
+
         const { data, error } = await supabase
           .from('atendimentos')
           .insert([{
             cliente_id: null,
             status: 'aberto',
+            numero_comanda: nextNumero,
           }])
           .select('*, cliente:clientes(nome)')
           .single();
