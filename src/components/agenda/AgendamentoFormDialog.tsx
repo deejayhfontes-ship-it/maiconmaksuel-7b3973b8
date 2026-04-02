@@ -17,6 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -136,6 +137,12 @@ export default function AgendamentoFormDialog({
   const [selectedServico, setSelectedServico] = useState<Servico | null>(null);
   const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
   const [enviarSMS, setEnviarSMS] = useState(false);
+
+  // Estados do modal de novo cliente
+  const [isNovoClienteOpen, setIsNovoClienteOpen] = useState(false);
+  const [novoClienteNome, setNovoClienteNome] = useState("");
+  const [novoClienteCelular, setNovoClienteCelular] = useState("");
+  const [savingCliente, setSavingCliente] = useState(false);
 
   const form = useForm<AgendamentoFormData>({
     resolver: zodResolver(agendamentoSchema),
@@ -263,6 +270,30 @@ export default function AgendamentoFormDialog({
     }
   };
 
+  const handleNovoClienteSubmit = async () => {
+    if (!novoClienteNome.trim() || !novoClienteCelular.trim()) {
+      toast({ title: "Preencha nome e telefone", variant: "destructive" });
+      return;
+    }
+    setSavingCliente(true);
+    const { data, error } = await supabase
+      .from("clientes")
+      .insert([{ nome: novoClienteNome.trim(), celular: novoClienteCelular.trim() }])
+      .select("id, nome, celular")
+      .single();
+    if (error) {
+      toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
+    } else {
+      setClientes(prev => [...prev, data]);
+      form.setValue("cliente_id", data.id);
+      setIsNovoClienteOpen(false);
+      setNovoClienteNome("");
+      setNovoClienteCelular("");
+      toast({ title: "Cliente cadastrado e selecionado!" });
+    }
+    setSavingCliente(false);
+  };
+
   const validateConflito = (data: AgendamentoFormData): string | null => {
     if (!data.data || !data.hora || !data.profissional_id) return null;
 
@@ -378,6 +409,7 @@ export default function AgendamentoFormDialog({
   const selectedProfissional = profissionais.find(p => p.id === form.watch("profissional_id"));
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -444,7 +476,13 @@ export default function AgendamentoFormDialog({
                         </Command>
                       </PopoverContent>
                     </Popover>
-                    <Button type="button" variant="outline" size="icon" title="Novo Cliente">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      title="Cadastrar Novo Cliente"
+                      onClick={() => setIsNovoClienteOpen(true)}
+                    >
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
@@ -724,5 +762,51 @@ export default function AgendamentoFormDialog({
         </Form>
       </DialogContent>
     </Dialog>
+
+    {/* Modal: Cadastrar Novo Cliente */}
+    <Dialog open={isNovoClienteOpen} onOpenChange={setIsNovoClienteOpen}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Cadastrar Novo Cliente
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="novo-nome">Nome completo *</Label>
+            <Input
+              id="novo-nome"
+              value={novoClienteNome}
+              onChange={(e) => setNovoClienteNome(e.target.value)}
+              placeholder="Nome do cliente"
+            />
+          </div>
+          <div>
+            <Label htmlFor="novo-celular">Telefone *</Label>
+            <Input
+              id="novo-celular"
+              value={novoClienteCelular}
+              onChange={(e) => setNovoClienteCelular(e.target.value)}
+              placeholder="(35) 99999-9999"
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" onClick={() => setIsNovoClienteOpen(false)} className="flex-1">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleNovoClienteSubmit}
+              disabled={savingCliente}
+              className="flex-1 bg-success hover:bg-success/90"
+            >
+              {savingCliente && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar e Selecionar
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
