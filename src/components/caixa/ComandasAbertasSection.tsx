@@ -97,7 +97,7 @@ export const ComandasAbertasSection = ({ onComandaFinalizada }: ComandasAbertasS
         valor_final,
         data_hora,
         status,
-        clientes:cliente_id (nome)
+        clientes (nome)
       `)
       .eq("status", "aberto")
       .order("data_hora", { ascending: false });
