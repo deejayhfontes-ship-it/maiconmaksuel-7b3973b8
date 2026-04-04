@@ -1720,6 +1720,212 @@ const Relatorios = () => {
           </div>
         );
 
+      case "historico": {
+        const atendimentosFechados = atendimentos
+          .filter(a => a.status === 'fechado')
+          .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
+
+        const historicoPorComanda = atendimentosFechados.map(at => {
+          const servs = atendimentoServicos.filter(s => s.atendimento_id === at.id);
+          const prods = atendimentoProdutos.filter(p => p.atendimento_id === at.id);
+          const pags = pagamentos.filter(p => p.atendimento_id === at.id);
+          const formasPgto = [...new Set(pags.map(p => p.forma_pagamento).filter(Boolean))].join(', ') || '—';
+          return { at, servs, prods, formasPgto };
+        });
+
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Comandas Fechadas</p><p className="text-2xl font-bold">{atendimentosFechados.length}</p></div><DollarSign className="h-8 w-8 text-blue-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Faturamento Total</p><p className="text-2xl font-bold">{formatCurrency(atendimentosFechados.reduce((s,a) => s + (a.valor_final||0), 0))}</p></div><DollarSign className="h-8 w-8 text-green-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Ticket Médio</p><p className="text-2xl font-bold">{formatCurrency(atendimentosFechados.length > 0 ? atendimentosFechados.reduce((s,a)=>s+(a.valor_final||0),0)/atendimentosFechados.length : 0)}</p></div><TrendingUp className="h-8 w-8 text-purple-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Serviços Realizados</p><p className="text-2xl font-bold">{atendimentoServicos.length}</p></div><Activity className="h-8 w-8 text-amber-500" /></div></CardContent></Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Histórico Detalhado de Vendas</CardTitle>
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(
+                    historicoPorComanda.map(({ at, formasPgto }) => ({
+                      Comanda: `#${String(at.numero_comanda).padStart(3,'0')}`,
+                      Cliente: at.cliente?.nome || 'Avulso',
+                      'Data/Hora': format(new Date(at.data_hora), 'dd/MM/yyyy HH:mm'),
+                      'Forma Pgto': formasPgto,
+                      Desconto: at.desconto || 0,
+                      Total: at.valor_final || 0,
+                    })), "historico-vendas")}>
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => exportToPDF(
+                    "Histórico de Vendas",
+                    ["Comanda", "Cliente", "Data/Hora", "Pgto", "Desconto", "Total"],
+                    historicoPorComanda.map(({ at, formasPgto }) => [
+                      `#${String(at.numero_comanda).padStart(3,'0')}`,
+                      at.cliente?.nome || 'Avulso',
+                      format(new Date(at.data_hora), 'dd/MM/yyyy HH:mm'),
+                      formasPgto,
+                      formatCurrency(at.desconto || 0),
+                      formatCurrency(at.valor_final || 0),
+                    ]), "historico-vendas")}>
+                    <FileText className="h-4 w-4 mr-1" /> PDF
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Comanda</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Data/Hora</TableHead>
+                        <TableHead>Serviços / Profissional</TableHead>
+                        <TableHead>Pagamento</TableHead>
+                        <TableHead className="text-right">Desconto</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {historicoPorComanda.length === 0 ? (
+                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma venda no período selecionado</TableCell></TableRow>
+                      ) : historicoPorComanda.map(({ at, servs, prods, formasPgto }) => (
+                        <TableRow key={at.id}>
+                          <TableCell className="font-bold whitespace-nowrap">#{String(at.numero_comanda).padStart(3,'0')}</TableCell>
+                          <TableCell className="font-medium">{at.cliente?.nome || <span className="text-muted-foreground italic">Avulso</span>}</TableCell>
+                          <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{format(new Date(at.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
+                          <TableCell>
+                            <div className="space-y-0.5">
+                              {servs.map((s, i) => (
+                                <p key={i} className="text-xs">
+                                  <span className="font-medium">{s.servico?.nome || '—'}</span>
+                                  {s.profissional?.nome && <span className="text-muted-foreground"> · {s.profissional.nome}</span>}
+                                </p>
+                              ))}
+                              {prods.map((p, i) => (
+                                <p key={i} className="text-xs text-muted-foreground">📦 {p.produto?.nome || '—'} ×{p.quantidade}</p>
+                              ))}
+                              {servs.length === 0 && prods.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm capitalize">{formasPgto}</TableCell>
+                          <TableCell className="text-right text-red-500">{at.desconto > 0 ? `−${formatCurrency(at.desconto)}` : '—'}</TableCell>
+                          <TableCell className="text-right font-bold text-success">{formatCurrency(at.valor_final || 0)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
+      case "itens_vendidos": {
+        const todosServicosVendidos = atendimentoServicos.map(s => ({
+          tipo: 'servico' as const,
+          data: s.created_at,
+          atendimento: atendimentos.find(a => a.id === s.atendimento_id),
+          nome: s.servico?.nome || '—',
+          profissional: s.profissional?.nome || '—',
+          quantidade: s.quantidade || 1,
+          preco_unitario: s.preco_unitario || 0,
+          subtotal: s.subtotal || 0,
+        }));
+
+        const todosProdutosVendidos = atendimentoProdutos.map(p => ({
+          tipo: 'produto' as const,
+          data: p.created_at,
+          atendimento: atendimentos.find(a => a.id === p.atendimento_id),
+          nome: p.produto?.nome || '—',
+          profissional: '—',
+          quantidade: p.quantidade || 1,
+          preco_unitario: p.preco_unitario || 0,
+          subtotal: p.subtotal || 0,
+        }));
+
+        const todosItens = [...todosServicosVendidos, ...todosProdutosVendidos]
+          .sort((a, b) => new Date(b.data || 0).getTime() - new Date(a.data || 0).getTime());
+
+        const totalItens = todosItens.reduce((s, i) => s + i.subtotal, 0);
+        const totalQtd = todosItens.reduce((s, i) => s + i.quantidade, 0);
+
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Total de Itens</p><p className="text-2xl font-bold">{todosItens.length}</p></div><ShoppingBag className="h-8 w-8 text-blue-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Quantidade Total</p><p className="text-2xl font-bold">{totalQtd}</p></div><Activity className="h-8 w-8 text-purple-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Receita Total</p><p className="text-2xl font-bold">{formatCurrency(totalItens)}</p></div><DollarSign className="h-8 w-8 text-green-500" /></div></CardContent></Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Itens Vendidos no Período</CardTitle>
+                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(
+                  todosItens.map(i => ({
+                    Tipo: i.tipo === 'servico' ? 'Serviço' : 'Produto',
+                    Data: i.data ? format(new Date(i.data), 'dd/MM/yyyy HH:mm') : '—',
+                    Cliente: i.atendimento?.cliente?.nome || 'Avulso',
+                    Comanda: i.atendimento ? `#${String(i.atendimento.numero_comanda).padStart(3,'0')}` : '—',
+                    'Serviço/Produto': i.nome,
+                    Profissional: i.profissional,
+                    Qtd: i.quantidade,
+                    'Valor Unit.': i.preco_unitario,
+                    Subtotal: i.subtotal,
+                  })), "itens-vendidos")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Comanda</TableHead>
+                        <TableHead>Serviço / Produto</TableHead>
+                        <TableHead>Profissional</TableHead>
+                        <TableHead className="text-center">Qtd</TableHead>
+                        <TableHead className="text-right">Valor Unit.</TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {todosItens.length === 0 ? (
+                        <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum item vendido no período</TableCell></TableRow>
+                      ) : todosItens.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>
+                            <Badge variant="outline" className={item.tipo === 'servico' ? 'text-blue-700 bg-blue-50' : 'text-amber-700 bg-amber-50'}>
+                              {item.tipo === 'servico' ? '✂ Serviço' : '📦 Produto'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {item.data ? format(new Date(item.data), 'dd/MM/yyyy HH:mm') : '—'}
+                          </TableCell>
+                          <TableCell className="font-medium">{item.atendimento?.cliente?.nome || <span className="text-muted-foreground italic">Avulso</span>}</TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {item.atendimento ? `#${String(item.atendimento.numero_comanda).padStart(3,'0')}` : '—'}
+                          </TableCell>
+                          <TableCell className="font-medium">{item.nome}</TableCell>
+                          <TableCell className="text-muted-foreground">{item.profissional}</TableCell>
+                          <TableCell className="text-center">{item.quantidade}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.preco_unitario)}</TableCell>
+                          <TableCell className="text-right font-medium text-success">{formatCurrency(item.subtotal)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
       default:
         return null;
     }

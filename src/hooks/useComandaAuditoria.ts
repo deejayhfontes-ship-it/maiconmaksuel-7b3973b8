@@ -12,6 +12,22 @@ export interface AuditoriaRecord {
   created_at: string;
 }
 
+export interface ComandaFechadaServico {
+  id: string;
+  quantidade: number;
+  preco_unitario: number;
+  subtotal: number;
+  servico?: { nome: string } | null;
+  profissional?: { nome: string } | null;
+}
+
+export interface ComandaFechadaPagamento {
+  id: string;
+  forma_pagamento: string;
+  valor: number;
+  parcelas?: number;
+}
+
 export interface ComandaFechada {
   id: string;
   numero_comanda: number;
@@ -23,7 +39,7 @@ export interface ComandaFechada {
   cliente_id: string | null;
   observacoes: string | null;
   cliente?: { nome: string } | null;
-  servicos?: { servico?: { nome: string }; profissional?: { nome: string }; subtotal: number }[];
+  servicos?: ComandaFechadaServico[];
   pagamentos?: { forma_pagamento: string; valor: number }[];
 }
 
@@ -130,18 +146,28 @@ export function useComandaAuditoria() {
       .from('atendimentos')
       .select(`
         *,
-        cliente:clientes(nome)
+        cliente:clientes(nome),
+        servicos:atendimento_servicos(
+          id,
+          quantidade,
+          preco_unitario,
+          subtotal,
+          servico:servicos(nome),
+          profissional:profissionais(nome)
+        ),
+        pagamentos(id, forma_pagamento, valor, parcelas)
       `)
       .in('status', ['fechado', 'finalizado', 'cancelado'])
       .gte('data_hora', desde.toISOString())
       .order('data_hora', { ascending: false })
-      .limit(100);
+      .limit(200);
 
     if (error) {
       console.error('[Auditoria] Erro ao buscar fechadas:', error);
       return [];
     }
-    return (data || []) as ComandaFechada[];
+    return (data || []) as unknown as ComandaFechada[];
+
   }, []);
 
   // --------------- Buscar auditoria ---------------

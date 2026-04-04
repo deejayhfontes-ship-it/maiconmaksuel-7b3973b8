@@ -338,7 +338,7 @@ export default function AuditoriaComandas() {
             <CardHeader>
               <CardTitle>Comandas Fechadas</CardTitle>
               <CardDescription>
-                Gerencie comandas já finalizadas — toda ação é auditada
+                Gerencie comandas já finalizadas — toda ação é auditada. Inclui serviços, profissional e pagamento.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -351,77 +351,107 @@ export default function AuditoriaComandas() {
                   <p>Nenhuma comanda encontrada</p>
                 </div>
               ) : (
-                <div className="rounded-md border overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Comanda</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {comandasFiltradas.map(c => {
-                        const statusInfo = statusComandaBadge[c.status] || { cor: 'bg-gray-100 text-gray-800', label: c.status };
-                        const podeReabrir = c.status !== 'aberto';
-                        return (
-                          <TableRow key={c.id}>
-                            <TableCell className="font-bold">
-                              #{String(c.numero_comanda).padStart(3, '0')}
-                            </TableCell>
-                            <TableCell>
-                              {c.cliente?.nome || <span className="text-muted-foreground italic">Cliente avulso</span>}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                              {format(parseISO(c.data_hora), "dd/MM/yy HH:mm", { locale: ptBR })}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {formatPrice(c.valor_final)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={cn('text-xs', statusInfo.cor)}>
-                                {statusInfo.label}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                {podeReabrir && c.status !== 'cancelado' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-amber-600 border-amber-200 hover:bg-amber-50"
-                                    onClick={() => abrirAcao(c, 'reaberta')}
-                                  >
-                                    <Unlock className="h-3.5 w-3.5 mr-1" />
-                                    Reabrir
-                                  </Button>
-                                )}
-                                {c.status !== 'cancelado' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 border-red-200 hover:bg-red-50"
-                                    onClick={() => abrirAcao(c, 'cancelada')}
-                                  >
-                                    <XCircle className="h-3.5 w-3.5 mr-1" />
-                                    Cancelar
-                                  </Button>
-                                )}
+                <div className="space-y-3">
+                  {comandasFiltradas.map(c => {
+                    const statusInfo = statusComandaBadge[c.status] || { cor: 'bg-gray-100 text-gray-800', label: c.status };
+                    const podeReabrir = c.status !== 'aberto';
+                    const formasPgto = (c.pagamentos || []).map(p => p.forma_pagamento).filter(Boolean).join(', ') || '—';
+                    return (
+                      <Card key={c.id} className="border overflow-hidden">
+                        {/* Linha principal */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex-shrink-0">
+                              <span className="text-base font-bold">
+                                #{String(c.numero_comanda).padStart(3, '0')}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate flex items-center gap-1">
+                                <User className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                                {c.cliente?.nome || <span className="text-muted-foreground italic">Cliente avulso</span>}
+                              </p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Clock className="h-3 w-3" />
+                                {format(parseISO(c.data_hora), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Pagamento</p>
+                              <p className="text-xs font-medium capitalize">{formasPgto}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Valor Total</p>
+                              <p className="font-bold text-success">{formatPrice(c.valor_final)}</p>
+                            </div>
+                            <Badge variant="outline" className={cn('text-xs whitespace-nowrap', statusInfo.cor)}>
+                              {statusInfo.label}
+                            </Badge>
+                            <div className="flex gap-1">
+                              {podeReabrir && c.status !== 'cancelado' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                                  onClick={() => abrirAcao(c, 'reaberta')}
+                                >
+                                  <Unlock className="h-3.5 w-3.5 mr-1" />
+                                  Reabrir
+                                </Button>
+                              )}
+                              {c.status !== 'cancelado' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                  onClick={() => abrirAcao(c, 'cancelada')}
+                                >
+                                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                                  Cancelar
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Serviços realizados */}
+                        {(c.servicos || []).length > 0 && (
+                          <div className="border-t bg-muted/30 px-4 py-2">
+                            <p className="text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wide">Serviços realizados</p>
+                            <div className="space-y-1">
+                              {(c.servicos || []).map((s, idx) => (
+                                <div key={s.id || idx} className="flex items-center justify-between text-xs">
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="text-muted-foreground">{s.quantidade ?? 1}×</span>
+                                    <span className="font-medium">{s.servico?.nome || '—'}</span>
+                                    {s.profissional?.nome && (
+                                      <span className="text-muted-foreground">· {s.profissional.nome}</span>
+                                    )}
+                                  </span>
+                                  <span className="font-medium">{formatPrice(s.subtotal || s.preco_unitario * (s.quantidade ?? 1))}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {c.desconto > 0 && (
+                              <div className="flex justify-between text-xs text-muted-foreground mt-1 pt-1 border-t border-dashed">
+                                <span>Desconto</span>
+                                <span className="text-red-500">−{formatPrice(c.desconto)}</span>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                            )}
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
+
       </Tabs>
 
       {/* Modal de Ação Auditada */}
