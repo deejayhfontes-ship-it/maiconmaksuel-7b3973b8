@@ -11,6 +11,8 @@ import {
   X,
   Check,
   Search,
+  RotateCcw,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +42,9 @@ import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useGerarComissao } from "@/hooks/useGerarComissao";
+import { useComandaAuditoria, MotivoCategoriaAuditoria } from "@/hooks/useComandaAuditoria";
+import { ComandaAuditoriaModal } from "@/components/atendimentos/ComandaAuditoriaModal";
+import { startOfDay, endOfDay } from "date-fns";
 
 interface Comanda {
   id: string;
@@ -74,12 +79,18 @@ export default function CaixaComandas() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { gerarComissoesDaComanda } = useGerarComissao();
+  const { reabrirComanda } = useComandaAuditoria();
   
   const [loading, setLoading] = useState(true);
   const [comandas, setComandas] = useState<Comanda[]>([]);
+  const [comandasFechadas, setComandasFechadas] = useState<Comanda[]>([]);
   const [search, setSearch] = useState("");
   const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null);
   const [isFinalizarOpen, setIsFinalizarOpen] = useState(false);
+  
+  // Reabrir comanda
+  const [reabrirTarget, setReabrirTarget] = useState<Comanda | null>(null);
+  const [isReabrirModalOpen, setIsReabrirModalOpen] = useState(false);
   
   // Form state para finalização
   const [desconto, setDesconto] = useState(0);
@@ -140,9 +151,67 @@ export default function CaixaComandas() {
     setLoading(false);
   }, [toast]);
 
+  const fetchFechadas = useCallback(async () => {
+    const hoje = new Date();
+    const { data } = await supabase
+      .from("atendimentos")
+      .select(`*, cliente:cliente_id (nome, celular)`)
+      .in("status", ["finalizado", "fechado"])
+      .gte("data_hora", startOfDay(hoje).toISOString())
+      .lte("data_hora", endOfDay(hoje).toISOString())
+      .order("data_hora", { ascending: false });
+
+    const fechadas = await Promise.all(
+      (data || []).map(async (at) => {
+        const { data: servicos } = await supabase
+          .from("atendimento_servicos")
+          .select(`*, servico:servico_id (nome), profissional:profissional_id (nome)`)
+          .eq("atendimento_id", at.id);
+        const { data: produtos } = await supabase
+          .from("atendimento_produtos")
+          .select(`*, produto:produto_id (nome)`)
+          .eq("atendimento_id", at.id);
+        return { ...at, servicos: servicos || [], produtos: produtos || [] };
+      })
+    );
+    setComandasFechadas(fechadas);
+  }, []);
+
   useEffect(() => {
     fetchComandas();
-  }, [fetchComandas]);
+    fetchFechadas();
+  }, [fetchComandas, fetchFechadas]);
+
+  const handleReabrir = (comanda: Comanda) => {
+    setReabrirTarget(comanda);
+    setIsReabrirModalOpen(true);
+  };
+
+  const confirmarReabertura = async (motivo: string, categoria: MotivoCategoriaAuditoria) => {
+    if (!reabrirTarget) return;
+    const result = await reabrirComanda(
+      {
+        id: reabrirTarget.id,
+        numero_comanda: reabrirTarget.numero_comanda,
+        status: reabrirTarget.status,
+        subtotal: reabrirTarget.subtotal,
+        desconto: reabrirTarget.desconto,
+        valor_final: reabrirTarget.valor_final,
+      },
+      motivo,
+      categoria
+    );
+    if (result.success) {
+      toast({
+        title: `✅ Comanda #${String(reabrirTarget.numero_comanda).padStart(3, '0')} reaberta!`,
+        description: 'A comanda voltou para a lista de abertas.',
+      });
+      fetchComandas();
+      fetchFechadas();
+    } else {
+      toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+    }
+  };
 
   const handleFinalizar = (comanda: Comanda) => {
     setSelectedComanda(comanda);
@@ -432,6 +501,73 @@ export default function CaixaComandas() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Fechadas Hoje */}
+      {comandasFechadas.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Fechadas Hoje</h2>
+            <Badge variant="outline" className="ml-auto">{comandasFechadas.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {comandasFechadas.map((c) => (
+              <Card key={c.id} className="opacity-80 hover:opacity-100 transition-opacity">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold">Comanda #{c.numero_comanda}</p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {c.cliente?.nome || 'Avulso'}
+                      </p>
+                      <div className="mt-1 space-y-0.5">
+                        {c.servicos.slice(0, 3).map((s, i) => (
+                          <p key={i} className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Scissors className="h-2.5 w-2.5" />
+                            {s.servico?.nome}
+                          </p>
+                        ))}
+                        {c.servicos.length > 3 && (
+                          <p className="text-xs text-muted-foreground">+{c.servicos.length - 3} itens</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-lg">{formatPrice(c.valor_final || c.subtotal)}</p>
+                      <Badge className="bg-green-100 text-green-800 text-[10px]">Fechada</Badge>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-amber-600 border-amber-200 hover:bg-amber-50"
+                      onClick={() => handleReabrir(c)}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                      Reabrir Comanda
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Reabrir */}
+      {reabrirTarget && (
+        <ComandaAuditoriaModal
+          open={isReabrirModalOpen}
+          onOpenChange={setIsReabrirModalOpen}
+          acao="reaberta"
+          numeroComanda={reabrirTarget.numero_comanda}
+          clienteNome={reabrirTarget.cliente?.nome}
+          valorComanda={reabrirTarget.valor_final || reabrirTarget.subtotal}
+          onConfirmar={confirmarReabertura}
+        />
       )}
 
       {/* Modal Finalizar */}
