@@ -117,6 +117,53 @@ export function useWhatsAppLogs(filtros: WhatsAppLogFiltros = {}) {
 
       let resultados = (data || []) as WhatsAppLog[];
 
+      // Injeta logs virtuais para agendamentos futuros não registrados na nova tabela
+      const { data: agendamentos, error: agErr } = await supabase
+        .from('agendamentos')
+        .select(`
+          id, data_hora, cliente_id, clientes ( nome, celular ), profissionais ( nome ), servicos ( nome )
+        `)
+        .neq('status', 'cancelado')
+        .gte('data_hora', new Date().toISOString())
+        .limit(200);
+
+      if (!agErr && agendamentos) {
+        agendamentos.forEach((ag: any) => {
+          const temLogConfirmacao = resultados.some(
+            l => l.agendamento_id === ag.id && l.tipo_mensagem === 'confirmacao'
+          );
+          
+          const statusOk = !filtros.statusEnvio || filtros.statusEnvio === 'todos' || filtros.statusEnvio === 'pendente';
+          const tipoOk = !filtros.tipoMensagem || filtros.tipoMensagem === 'todos' || filtros.tipoMensagem === 'confirmacao';
+
+          if (!temLogConfirmacao && statusOk && tipoOk) {
+            resultados.push({
+              id: `virtual-conf-${ag.id}`,
+              agendamento_id: ag.id,
+              cliente_id: ag.cliente_id,
+              telefone: ag.clientes?.celular || '',
+              tipo_mensagem: 'confirmacao',
+              status_envio: 'pendente',
+              status_interacao: 'sem_interacao',
+              mensagem_texto: null,
+              provider: 'z-api',
+              provider_message_id: null,
+              tentativa_numero: 0,
+              erro_detalhado: 'Mensagem não disparada',
+              payload_retorno: null,
+              enviado_em: null,
+              enviado_por_manual: false,
+              origem_fluxo: 'automatico',
+              usuario_reenvio_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              agendamento: ag,
+            } as WhatsAppLog);
+          }
+        });
+        resultados.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+
       // Filtro client-side por busca (nome/telefone)
       if (filtros.busca && filtros.busca.trim()) {
         const termo = filtros.busca.toLowerCase().trim();
@@ -158,17 +205,30 @@ export function useWhatsAppLogs(filtros: WhatsAppLogFiltros = {}) {
 
   // ── Reenvio manual via Z-API ─────────────────────────────────────────────────
   const reenviarManual = useCallback(async (log: WhatsAppLog) => {
-    if (!log.mensagem_texto || !log.telefone) {
-      toast.error('Log sem mensagem ou telefone para reenvio');
+    let telefoneReal = log.telefone;
+    if (!telefoneReal && log.agendamento?.clientes?.celular) {
+      telefoneReal = log.agendamento.clientes.celular;
+    }
+
+    if (!telefoneReal) {
+      toast.error('Sem número de telefone para reenvio');
       return;
     }
 
     setEnviando(log.id);
     try {
-      const telefone = formatarTelefone(log.telefone);
+      const telefone = formatarTelefone(telefoneReal);
 
-      // Buscar o agendamento original para montar a mensagem atualizada
       let mensagem = log.mensagem_texto;
+      if (!mensagem && log.tipo_mensagem === 'confirmacao') {
+        mensagem = 'Olá {{nome_cliente}}! Seu agendamento está confirmado para {{data_agendamento}} às {{hora_agendamento}}. Serviço: {{nome_servico}}. Com: {{nome_profissional}}. Responda SIM para confirmar. Maicon Maksuel Concept.';
+      }
+      
+      if (!mensagem) {
+         toast.error('Erro ao recriar template de mensagem vazia');
+         setEnviando(null); return;
+      }
+
       if (log.agendamento) {
         const ag = log.agendamento;
         const dataHora = new Date(ag.data_hora);
