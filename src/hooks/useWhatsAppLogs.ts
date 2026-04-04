@@ -155,13 +155,28 @@ export function useWhatsAppLogs(filtros: WhatsAppLogFiltros = {}) {
               enviado_por_manual: false,
               origem_fluxo: 'automatico',
               usuario_reenvio_id: null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
+              created_at: ag.data_hora,
+              updated_at: ag.data_hora,
               agendamento: ag,
             } as WhatsAppLog);
           }
         });
-        resultados.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        // Ordenação inteligente:
+        // 1. Logs Virtuais (Pendentes) ficam fixos no topo, ordenados pela data MAIS PRÓXIMA (ascendente).
+        // 2. Logs Reais (Enviados/Falhas) ficam abaixo, retornando os envios mais recentes primeiro (descendente).
+        resultados.sort((a, b) => {
+          const isVirtualA = a.id.startsWith('virtual-');
+          const isVirtualB = b.id.startsWith('virtual-');
+          
+          if (isVirtualA && isVirtualB) {
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          }
+          if (isVirtualA) return -1;
+          if (isVirtualB) return 1;
+          
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
       }
 
       // Filtro client-side por busca (nome/telefone)
