@@ -130,7 +130,7 @@ export function useWhatsAppLogs(filtros: WhatsAppLogFiltros = {}) {
       if (!agErr && agendamentos) {
         agendamentos.forEach((ag: any) => {
           const temLogConfirmacao = resultados.some(
-            l => l.agendamento_id === ag.id && l.tipo_mensagem === 'confirmacao'
+            l => l.agendamento_id === ag.id && (l.tipo_mensagem === 'confirmacao' || l.tipo_mensagem === 'reenvio')
           );
           
           const statusOk = !filtros.statusEnvio || filtros.statusEnvio === 'todos' || filtros.statusEnvio === 'pendente';
