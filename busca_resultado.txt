@@ -1,0 +1,9 @@
+﻿Total de arquivos encontrados: 8
+1. C:\Users\djhen\.gemini\antigravity\brain\fb4521dd-8f89-4bff-b8fe-324b107461ab\.system_generated\steps\19165\output.txt
+2. C:\Users\djhen\.gemini\antigravity\brain\fb4521dd-8f89-4bff-b8fe-324b107461ab\.system_generated\steps\3225\output.txt
+3. C:\Users\djhen\.gemini\antigravity\brain\fb4521dd-8f89-4bff-b8fe-324b107461ab\.system_generated\steps\3323\output.txt
+4. C:\Users\djhen\.gemini\antigravity\brain\fb4521dd-8f89-4bff-b8fe-324b107461ab\.system_generated\steps\3899\output.txt
+5. C:\Users\djhen\.gemini\antigravity\brain\fb4521dd-8f89-4bff-b8fe-324b107461ab\.system_generated\steps\6054\output.txt
+6. C:\Users\djhen\.gemini\antigravity\brain\fb4521dd-8f89-4bff-b8fe-324b107461ab\.system_generated\steps\6109\output.txt
+7. C:\Users\djhen\.gemini\antigravity\brain\fb4521dd-8f89-4bff-b8fe-324b107461ab\.system_generated\steps\7292\output.txt
+8. C:\Users\djhen\.gemini\antigravity\brain\fb4521dd-8f89-4bff-b8fe-324b107461ab\.system_generated\steps\8426\output.txt

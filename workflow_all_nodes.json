@@ -1,0 +1,118 @@
+[
+  {
+    "id": "lem-1",
+    "name": "Agendador Diario 18h",
+    "type": "n8n-nodes-base.scheduleTrigger",
+    "typeVersion": 1.2,
+    "position": [
+      240,
+      300
+    ],
+    "parameters": {
+      "rule": {
+        "interval": [
+          {
+            "field": "hours",
+            "triggerAtHour": 18
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "lem-2",
+    "name": "Buscar Agendamentos Amanha",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      460,
+      300
+    ],
+    "parameters": {
+      "method": "GET",
+      "url": "https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos",
+      "sendQuery": true,
+      "queryParameters": {
+        "parameters": [
+          {
+            "name": "select",
+            "value": "id,data_hora,status,clientes(nome,celular,telefone),servicos(nome),profissionais(nome)"
+          },
+          {
+            "name": "status",
+            "value": "neq.cancelado"
+          },
+          {
+            "name": "data_hora",
+            "value": "=gte.{{ $today.plus({days:1}).startOf('day').toISO() }}"
+          },
+          {
+            "name": "data_hora",
+            "value": "=lte.{{ $today.plus({days:1}).endOf('day').toISO() }}"
+          }
+        ]
+      },
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "apikey",
+            "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+          },
+          {
+            "name": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+          },
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "lem-3",
+    "name": "Formatar Lembrete",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      680,
+      300
+    ],
+    "parameters": {
+      "language": "javaScript",
+      "jsCode": "const items = [];\nfor (const item of $input.all()) {\n  const ag = item.json;\n  const nome = (ag.clientes && ag.clientes.nome) ? ag.clientes.nome : 'Cliente';\n  let celular = null;\n  if (ag.clientes) {\n    celular = ag.clientes.celular || ag.clientes.telefone || null;\n  }\n  if (!celular) continue;\n  let phone = celular.replace(/\\D/g, '');\n  if (!phone.startsWith('55')) phone = '55' + phone;\n\n  // Formatar data_hora\n  const dtRaw = ag.data_hora || '';\n  let dataFormatada = '';\n  let horaFormatada = '';\n  if (dtRaw) {\n    const dt = new Date(dtRaw);\n    const dia = String(dt.getDate()).padStart(2, '0');\n    const mes = String(dt.getMonth() + 1).padStart(2, '0');\n    const ano = dt.getFullYear();\n    dataFormatada = `${dia}/${mes}/${ano}`;\n    const hh = String(dt.getHours()).padStart(2, '0');\n    const mm = String(dt.getMinutes()).padStart(2, '0');\n    horaFormatada = `${hh}:${mm}`;\n  }\n\n  const servico = (ag.servicos && ag.servicos.nome) ? ag.servicos.nome : 'servico';\n  const profissional = (ag.profissionais && ag.profissionais.nome) ? `com ${ag.profissionais.nome}` : '';\n\n  const mensagem = `Ola ${nome}! \ud83d\ude0a\\n\\nLembrando que voce tem um agendamento amanha:\\n\\n\ud83d\udcc5 Data: ${dataFormatada}\\n\ud83d\udd50 Horario: ${horaFormatada}\\n\u2702\ufe0f Servico: ${servico} ${profissional}\\n\\nSalao Maicon Maksuel \ud83d\udc9c\\nNos vemos amanha! Te esperamos!`;\n\n  items.push({ json: { phone, mensagem } });\n}\nreturn items;"
+    }
+  },
+  {
+    "id": "lem-4",
+    "name": "Enviar Lembrete WhatsApp",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      900,
+      300
+    ],
+    "parameters": {
+      "method": "POST",
+      "url": "https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Client-Token",
+            "value": "Fbab85f2da2684d40ac0ff07d9ddcf0e8S"
+          },
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "{\"phone\": \"={{ $json.phone }}\", \"message\": \"={{ $json.mensagem }}\"}"
+    }
+  }
+]

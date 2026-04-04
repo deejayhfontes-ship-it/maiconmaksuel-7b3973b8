@@ -1,0 +1,15 @@
+{
+  "id": "963",
+  "finished": false,
+  "mode": "trigger",
+  "retryOf": null,
+  "retrySuccessId": null,
+  "status": "error",
+  "createdAt": "2026-03-30T19:00:25.012Z",
+  "startedAt": "2026-03-30T19:00:25.030Z",
+  "stoppedAt": "2026-03-30T19:00:25.467Z",
+  "deletedAt": null,
+  "workflowId": "RZLEew5BlAhhFmlg",
+  "waitTill": null,
+  "storedAt": "db"
+}

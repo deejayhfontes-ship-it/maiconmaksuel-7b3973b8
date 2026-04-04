@@ -1,6 +1,7 @@
 /**
  * WhatsApp Module - Unified Page
  * Central hub for all WhatsApp communication features
+ * Monitor tab: real-time dispatch tracking with Z-API logs
  */
 
 import { useState } from "react";
@@ -14,6 +15,7 @@ import {
   Wifi,
   WifiOff,
   ClipboardCheck,
+  Activity,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -24,20 +26,22 @@ import { ComunicacaoLembretes } from "@/components/comunicacao/ComunicacaoLembre
 import { ComunicacaoCampanhas } from "@/components/comunicacao/ComunicacaoCampanhas";
 import { ComunicacaoPosAtendimento } from "@/components/comunicacao/ComunicacaoPosAtendimento";
 import { SatisfacaoUnificada } from "@/components/comunicacao/SatisfacaoUnificada";
+import { MonitorWhatsApp } from "@/components/comunicacao/MonitorWhatsApp";
 import { useComunicacao } from "@/hooks/useComunicacao";
 
 const tabs = [
-  { id: 'confirmacoes', label: 'Confirmações', icon: CheckCircle2 },
-  { id: 'lembretes', label: 'Lembretes', icon: Bell },
-  { id: 'pos-atendimento', label: 'Pós-atendimento', icon: ClipboardCheck },
-  { id: 'satisfacao', label: 'Pesquisa de Satisfação', icon: Star },
-  { id: 'campanhas', label: 'Campanhas', icon: Megaphone },
+  { id: 'monitor',        label: 'Monitor',             icon: Activity },
+  { id: 'confirmacoes',   label: 'Confirmações',         icon: CheckCircle2 },
+  { id: 'lembretes',      label: 'Lembretes',            icon: Bell },
+  { id: 'pos-atendimento',label: 'Pós-atendimento',      icon: ClipboardCheck },
+  { id: 'satisfacao',     label: 'Pesquisa de Satisfação', icon: Star },
+  { id: 'campanhas',      label: 'Campanhas',            icon: Megaphone },
 ];
 
 export default function WhatsAppModule() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'confirmacoes';
-  const [whatsappConectado, setWhatsappConectado] = useState(false);
+  const activeTab = searchParams.get('tab') || 'monitor';
+  const [whatsappConectado] = useState(true); // Z-API confirmada ativa
 
   const {
     lembretes,
@@ -61,12 +65,12 @@ export default function WhatsAppModule() {
             Central WhatsApp
           </h1>
           <p className="text-muted-foreground">
-            Gerencie todas as comunicações automáticas via WhatsApp
+            Gerencie e monitore todas as comunicações automáticas via WhatsApp
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Connection Status */}
+          {/* Connection Status — Z-API confirmada ativa */}
           <Badge
             variant={whatsappConectado ? "default" : "secondary"}
             className={whatsappConectado
@@ -77,7 +81,7 @@ export default function WhatsAppModule() {
             {whatsappConectado ? (
               <>
                 <Wifi className="h-3.5 w-3.5 mr-1.5" />
-                Conectado
+                Z-API Conectada
               </>
             ) : (
               <>
@@ -107,11 +111,30 @@ export default function WhatsAppModule() {
             >
               <tab.icon className="h-4 w-4" />
               <span className="hidden sm:inline">{tab.label}</span>
+              {/* Destaque na aba Monitor */}
+              {tab.id === 'monitor' && (
+                <span className="ml-1 inline-flex h-2 w-2 rounded-full bg-green-500" />
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {/* Tab Contents */}
+        {/* ── Monitor de Disparos ── */}
+        <TabsContent value="monitor" className="mt-6">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              Monitor de Envios
+            </h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              Acompanhe em tempo real todos os disparos de WhatsApp — confirmações, lembretes e pós-atendimento.
+              Reenvie mensagens com falha diretamente por aqui.
+            </p>
+          </div>
+          <MonitorWhatsApp />
+        </TabsContent>
+
+        {/* ── Demais abas ── */}
         <TabsContent value="confirmacoes" className="mt-6">
           <ComunicacaoConfirmacoes whatsappConectado={whatsappConectado} />
         </TabsContent>

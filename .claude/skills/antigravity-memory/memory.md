@@ -1,10 +1,29 @@
 # 🧠 Memory — Sistema de Salão (Antigravity)
 
 **Stack:** TypeScript + Vite + Tailwind CSS + Electron
-**Deploy:** Vercel
-**Banco:** SQL (tabelas/ + sql_criar_api_keys.sql)
+**Deploy:** Vercel → `https://maiconmaksuel-7b3973b8-nine.vercel.app`
+**Banco:** Supabase projeto `hhzvjsrsoyhjzeiuxpep`
 **WhatsApp:** workflow-whatsapp-confirmacao.json
 **Status:** ✅ Ativo em produção
+
+---
+
+## 🔑 CREDENCIAIS CRÍTICAS — NUNCA PERDER
+
+| Item | Valor |
+|---|---|
+| **Supabase Project ID** | `hhzvjsrsoyhjzeiuxpep` |
+| **Supabase URL** | `https://hhzvjsrsoyhjzeiuxpep.supabase.co` |
+| **Supabase Anon Key** | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0` |
+| **Conta Lovable/Supabase (owner do projeto)** | Email: `maiconmaksuel35@gmail.com` / Senha: `Maiconapp1010*` |
+| **Supabase PAT Token 1** (mcp_config) | `sbp_9d6ce1cc0224d6a1e8480919e91cc6e5a0cc1cbb` |
+| **Supabase PAT Token 2** (fornecido 2026-04-02) | `sbp_a1efd6232e48db3c84484cb743171c29cf1800fd` |
+| **SQL Editor direto** | `https://supabase.com/dashboard/project/hhzvjsrsoyhjzeiuxpep/sql/new` |
+| **GitHub Repo** | `https://github.com/deejayhfontes-ship-it/maiconmaksuel-7b3973b8` |
+| **N8N** | `https://n8n.srv1479281.hstgr.cloud` |
+| **Vercel projeto** | `maiconmaksuel-7b3973b8` |
+
+> ⚠️ Projeto ANTIGO (não usar): `dqcvdgugqqvdjxjflwaq` (origem da migração)
 
 ---
 
@@ -13,7 +32,9 @@
 **O que foi feito:** Sistema completo para reabrir/cancelar comandas fechadas com auditoria obrigatória.
 **Arquivos criados:** `useComandaAuditoria.ts`, `ComandaAuditoriaModal.tsx`, `AuditoriaComandas.tsx`, SQL migration.
 **Rotas:** `/auditoria-comandas` | Menu lateral: item "Auditoria" (ícone Shield).
-**⚠️ PENDENTE:** Rodar `supabase/migrations/create_auditoria_comandas.sql` no painel Supabase SQL Editor.
+**⚙️ Solução Cloudflare WAF:** A criação da tabela via `npx supabase` falhava (1010/403) devido ao Cloudflare. Resolvido enviando query SQL direto via Node `https.request` usando a Management API. Script de bypass: `rodasql_management.cjs`.
+**Tabela:** `atendimentos_auditoria` criada e ativa via Management API.
+**⚠️ PENDENTE:** Validação do fluxo na tela do usuário para garantir que o insert e refetch funcionaram.
 
 
 

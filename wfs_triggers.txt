@@ -1,0 +1,3 @@
+- Lembretes Automaticos de Agendamento - Maicon Maksuel: ['Agendador Diario 18h']
+- Avaliacao Pos-Atendimento - Maicon Maksuel: ['Agendador 10h Diario']
+- ?? Chatbot Confirmacao de Agendamento - Maicon Maksuel: ['Receber Resposta do Cliente']
