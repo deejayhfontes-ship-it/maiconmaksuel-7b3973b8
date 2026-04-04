@@ -1,0 +1,1 @@
+=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?agendamento_id=eq.={{ $('Receber Agendamento').item.json.record.id }}&tipo_mensagem=eq.confirmacao&status_envio=eq.enviado&enviado_por_manual=eq.false&select=id

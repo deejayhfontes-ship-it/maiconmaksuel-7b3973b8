@@ -1,0 +1,10 @@
+WF Achado: Confirmacao Imediata - Maicon Maksuel ID: Foumgcf5oWyxGJX6
+
+--- ULTIMAS 5 EXECUCOES ---
+1. ID: 1216 | Status: error | Inicio: 2026-04-04T16:31:32.025Z
+2. ID: 1215 | Status: error | Inicio: 2026-04-04T16:27:00.447Z
+3. ID: 1214 | Status: error | Inicio: 2026-04-04T16:24:07.221Z
+4. ID: 1211 | Status: error | Inicio: 2026-04-04T15:24:17.741Z
+5. ID: 1210 | Status: error | Inicio: 2026-04-04T15:23:53.499Z
+
+--- BUSCANDO DETALHES DO Z-API NA EXECUCAO 1216 ---

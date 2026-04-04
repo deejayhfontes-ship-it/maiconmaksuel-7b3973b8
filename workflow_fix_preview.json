@@ -1,0 +1,891 @@
+{
+  "updatedAt": "2026-04-04T15:01:14.091Z",
+  "createdAt": "2026-04-04T14:17:12.387Z",
+  "id": "Foumgcf5oWyxGJX6",
+  "name": "Confirmacao Imediata - Maicon Maksuel",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "name": "Receber Agendamento",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "confirmacao-imediata",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "f16549b7-d2c1-4696-9842-ef376111576f",
+      "webhookId": "confirmacao-imediata-webhook"
+    },
+    {
+      "name": "Buscar Agendamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.={{ $json.record.id }}&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f7ff2419-7b83-4885-bf5f-7414b0f5d1cd"
+    },
+    {
+      "name": "Checar Duplicidade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?agendamento_id=eq.={{ $('Receber Agendamento').item.json.record.id }}&tipo_mensagem=eq.confirmacao&status_envio=eq.enviado&enviado_por_manual=eq.false&select=id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            }
+          ]
+        },
+        "options": {
+          "alwaysOutputData": true
+        }
+      },
+      "id": "300cffde-c4b2-43b1-a343-015749c1d0ac"
+    },
+    {
+      "name": "Deve Enviar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $('Checar Duplicidade').item.json.id ? 1 : 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $('Buscar Agendamento').item.json[0]?.clientes?.celular || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "1f76de07-7c52-4823-a41b-f76e0d171d8b"
+    },
+    {
+      "name": "Preparar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        180
+      ],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "ag_id",
+              "value": "={{ $('Receber Agendamento').item.json.record.id }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "cli_id",
+              "value": "={{ $('Buscar Agendamento').item.json[0].cliente_id }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "nome",
+              "value": "={{ $('Buscar Agendamento').item.json[0].clientes.nome }}",
+              "type": "string"
+            },
+            {
+              "id": "s4",
+              "name": "cel_raw",
+              "value": "={{ $('Buscar Agendamento').item.json[0].clientes.celular }}",
+              "type": "string"
+            },
+            {
+              "id": "s5",
+              "name": "tel",
+              "value": "={{ (() => { const t = ($('Buscar Agendamento').item.json[0].clientes.celular || '').replace(/\\\\D/g,''); return t.startsWith('55') ? t : '55'+t; })() }}",
+              "type": "string"
+            },
+            {
+              "id": "s6",
+              "name": "srv",
+              "value": "={{ $('Buscar Agendamento').item.json[0].servicos?.nome || 'Servico' }}",
+              "type": "string"
+            },
+            {
+              "id": "s7",
+              "name": "prof",
+              "value": "={{ $('Buscar Agendamento').item.json[0].profissionais?.nome || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "s8",
+              "name": "dthr",
+              "value": "={{ new Date($('Buscar Agendamento').item.json[0].data_hora).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "53ccf959-f730-4946-b7ce-67cf8fd3a8bd"
+    },
+    {
+      "name": "Criar Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1640,
+        180
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({agendamento_id:$json.ag_id,cliente_id:$json.cli_id,telefone:$json.cel_raw,tipo_mensagem:'confirmacao',status_envio:'processando',origem_fluxo:'n8n',provider:'z-api',mensagem_texto:'Confirmacao para '+$json.nome}) }}",
+        "options": {}
+      },
+      "id": "02d1e9a1-f2aa-42ee-907b-4f6b9f26e2ad"
+    },
+    {
+      "name": "Enviar Z-API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        180
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "Fbab85f2da2684d40ac0ff07d9ddcf0e8S"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({phone:$('Preparar').item.json.tel,message:'Ola '+$('Preparar').item.json.nome+'! Seu agendamento esta confirmado para '+$('Preparar').item.json.dthr+'. Servico: '+$('Preparar').item.json.srv+'. Com: '+$('Preparar').item.json.prof+'. Responda SIM para confirmar. Maicon Maksuel Concept.'}) }}",
+        "options": {}
+      },
+      "id": "446da239-de08-4c93-9f68-318ffc4a709e"
+    },
+    {
+      "name": "Log OK",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        100
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?id=eq.={{ $('Criar Log').item.json[0].id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({status_envio:'enviado',provider_message_id:$json.messageId||$json.zaapId||'',payload_retorno:$json,enviado_em:new Date().toISOString()}) }}",
+        "options": {}
+      },
+      "id": "95adac7b-12aa-4db2-8b90-297b6c619dfa"
+    },
+    {
+      "name": "Log Falha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        300
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?id=eq.={{ $('Criar Log').item.json[0].id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({status_envio:'falha',erro_detalhado:JSON.stringify($json),payload_retorno:$json,enviado_em:new Date().toISOString()}) }}",
+        "options": {}
+      },
+      "id": "525cb9c1-1f6b-4ec5-ab8f-e14fdc835fec"
+    }
+  ],
+  "connections": {
+    "Receber Agendamento": {
+      "main": [
+        [
+          {
+            "node": "Buscar Agendamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Agendamento": {
+      "main": [
+        [
+          {
+            "node": "Checar Duplicidade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checar Duplicidade": {
+      "main": [
+        [
+          {
+            "node": "Deve Enviar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deve Enviar": {
+      "main": [
+        [
+          {
+            "node": "Preparar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Preparar": {
+      "main": [
+        [
+          {
+            "node": "Criar Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Log": {
+      "main": [
+        [
+          {
+            "node": "Enviar Z-API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Z-API": {
+      "main": [
+        [
+          {
+            "node": "Log OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "420989e2-ff0d-4d31-9799-cb6668b12c98",
+  "activeVersionId": "420989e2-ff0d-4d31-9799-cb6668b12c98",
+  "versionCounter": 13,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-04T14:17:12.389Z",
+      "createdAt": "2026-04-04T14:17:12.389Z",
+      "role": "workflow:owner",
+      "workflowId": "Foumgcf5oWyxGJX6",
+      "projectId": "REeUKGirDz19pIph",
+      "project": {
+        "updatedAt": "2026-03-10T17:01:29.780Z",
+        "createdAt": "2026-03-10T16:54:57.251Z",
+        "id": "REeUKGirDz19pIph",
+        "name": "Marllon Henrique Vieira <contato@fontesgraphicsdesign.com.br>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "6f234d8a-4f12-47d5-b4ee-cce8a30e2f64"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-04-04T15:01:14.092Z",
+    "createdAt": "2026-04-04T15:01:14.092Z",
+    "versionId": "420989e2-ff0d-4d31-9799-cb6668b12c98",
+    "workflowId": "Foumgcf5oWyxGJX6",
+    "nodes": [
+      {
+        "name": "Receber Agendamento",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "confirmacao-imediata",
+          "responseMode": "onReceived",
+          "options": {}
+        },
+        "id": "f16549b7-d2c1-4696-9842-ef376111576f",
+        "webhookId": "confirmacao-imediata-webhook"
+      },
+      {
+        "name": "Buscar Agendamento",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          520,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.={{ $json.record.id }}&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "f7ff2419-7b83-4885-bf5f-7414b0f5d1cd"
+      },
+      {
+        "name": "Checar Duplicidade",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          800,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?agendamento_id=eq.={{ $('Receber Agendamento').item.json.record.id }}&tipo_mensagem=eq.confirmacao&status_envio=eq.enviado&enviado_por_manual=eq.false&select=id",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              }
+            ]
+          },
+          "options": {
+            "alwaysOutputData": true
+          }
+        },
+        "id": "300cffde-c4b2-43b1-a343-015749c1d0ac"
+      },
+      {
+        "name": "Deve Enviar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1080,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ $('Checar Duplicidade').item.json.id ? 1 : 0 }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "c2",
+                "leftValue": "={{ $('Buscar Agendamento').item.json[0]?.clientes?.celular || '' }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "id": "1f76de07-7c52-4823-a41b-f76e0d171d8b"
+      },
+      {
+        "name": "Preparar",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1360,
+          180
+        ],
+        "parameters": {
+          "mode": "manual",
+          "duplicateItem": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "s1",
+                "name": "ag_id",
+                "value": "={{ $('Receber Agendamento').item.json.record.id }}",
+                "type": "string"
+              },
+              {
+                "id": "s2",
+                "name": "cli_id",
+                "value": "={{ $('Buscar Agendamento').item.json[0].cliente_id }}",
+                "type": "string"
+              },
+              {
+                "id": "s3",
+                "name": "nome",
+                "value": "={{ $('Buscar Agendamento').item.json[0].clientes.nome }}",
+                "type": "string"
+              },
+              {
+                "id": "s4",
+                "name": "cel_raw",
+                "value": "={{ $('Buscar Agendamento').item.json[0].clientes.celular }}",
+                "type": "string"
+              },
+              {
+                "id": "s5",
+                "name": "tel",
+                "value": "={{ (() => { const t = ($('Buscar Agendamento').item.json[0].clientes.celular || '').replace(/\\\\D/g,''); return t.startsWith('55') ? t : '55'+t; })() }}",
+                "type": "string"
+              },
+              {
+                "id": "s6",
+                "name": "srv",
+                "value": "={{ $('Buscar Agendamento').item.json[0].servicos?.nome || 'Servico' }}",
+                "type": "string"
+              },
+              {
+                "id": "s7",
+                "name": "prof",
+                "value": "={{ $('Buscar Agendamento').item.json[0].profissionais?.nome || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "s8",
+                "name": "dthr",
+                "value": "={{ new Date($('Buscar Agendamento').item.json[0].data_hora).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "53ccf959-f730-4946-b7ce-67cf8fd3a8bd"
+      },
+      {
+        "name": "Criar Log",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1640,
+          180
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=representation"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "body": "={{ JSON.stringify({agendamento_id:$json.ag_id,cliente_id:$json.cli_id,telefone:$json.cel_raw,tipo_mensagem:'confirmacao',status_envio:'processando',origem_fluxo:'n8n',provider:'z-api',mensagem_texto:'Confirmacao para '+$json.nome}) }}",
+          "options": {}
+        },
+        "id": "02d1e9a1-f2aa-42ee-907b-4f6b9f26e2ad"
+      },
+      {
+        "name": "Enviar Z-API",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1920,
+          180
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Client-Token",
+                "value": "Fbab85f2da2684d40ac0ff07d9ddcf0e8S"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "body": "={{ JSON.stringify({phone:$('Preparar').item.json.tel,message:'Ola '+$('Preparar').item.json.nome+'! Seu agendamento esta confirmado para '+$('Preparar').item.json.dthr+'. Servico: '+$('Preparar').item.json.srv+'. Com: '+$('Preparar').item.json.prof+'. Responda SIM para confirmar. Maicon Maksuel Concept.'}) }}",
+          "options": {}
+        },
+        "id": "446da239-de08-4c93-9f68-318ffc4a709e"
+      },
+      {
+        "name": "Log OK",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2200,
+          100
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?id=eq.={{ $('Criar Log').item.json[0].id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "body": "={{ JSON.stringify({status_envio:'enviado',provider_message_id:$json.messageId||$json.zaapId||'',payload_retorno:$json,enviado_em:new Date().toISOString()}) }}",
+          "options": {}
+        },
+        "id": "95adac7b-12aa-4db2-8b90-297b6c619dfa"
+      },
+      {
+        "name": "Log Falha",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2200,
+          300
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?id=eq.={{ $('Criar Log').item.json[0].id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "body": "={{ JSON.stringify({status_envio:'falha',erro_detalhado:JSON.stringify($json),payload_retorno:$json,enviado_em:new Date().toISOString()}) }}",
+          "options": {}
+        },
+        "id": "525cb9c1-1f6b-4ec5-ab8f-e14fdc835fec"
+      }
+    ],
+    "connections": {
+      "Receber Agendamento": {
+        "main": [
+          [
+            {
+              "node": "Buscar Agendamento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar Agendamento": {
+        "main": [
+          [
+            {
+              "node": "Checar Duplicidade",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Checar Duplicidade": {
+        "main": [
+          [
+            {
+              "node": "Deve Enviar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Deve Enviar": {
+        "main": [
+          [
+            {
+              "node": "Preparar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Preparar": {
+        "main": [
+          [
+            {
+              "node": "Criar Log",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Criar Log": {
+        "main": [
+          [
+            {
+              "node": "Enviar Z-API",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar Z-API": {
+        "main": [
+          [
+            {
+              "node": "Log OK",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Log Falha",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Marllon Henrique Vieira",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-04-04T15:01:14.155Z",
+        "id": 19,
+        "workflowId": "Foumgcf5oWyxGJX6",
+        "versionId": "420989e2-ff0d-4d31-9799-cb6668b12c98",
+        "event": "activated",
+        "userId": "6f234d8a-4f12-47d5-b4ee-cce8a30e2f64"
+      },
+      {
+        "createdAt": "2026-04-04T15:01:14.133Z",
+        "id": 18,
+        "workflowId": "Foumgcf5oWyxGJX6",
+        "versionId": "420989e2-ff0d-4d31-9799-cb6668b12c98",
+        "event": "deactivated",
+        "userId": "6f234d8a-4f12-47d5-b4ee-cce8a30e2f64"
+      }
+    ]
+  }
+}

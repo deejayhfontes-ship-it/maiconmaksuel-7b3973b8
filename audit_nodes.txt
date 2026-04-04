@@ -1,0 +1,52 @@
+--- NODE: Receber Agendamento ---
+DATA: {
+  "main": [
+    [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.srv1479281.hstgr.cloud",
+            "user-agent": "pg_net/0.19.5",
+            "content-length": "516",
+            "accept": "*/*",
+            "content-type": "application/json",
+            "x-forwarded-for": "172.18.0.1",
+            "x-forwarded-host": "n8n.srv1479281.hstgr.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "2816b6ce0466",
+            "x-real-ip": "172.18.0.1",
+            "accept-encoding": "gzip"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "type": "INSERT",
+            "table": "agendamentos",
+            "record": {
+              "id": "ad2e80d7-19cf-40d1-ba58-4b0374f3b804",
+              "status": "agendado",
+              "data_hora": "2026-04-04T18:00:00+00:00",
+              "cliente_id": "5db315c0-a540-46ea-8d7b-75948eb18c11",
+              "created_at": "2026-04-04T16:31:31.653134+00:00",
+              "servico_id": "d163e9c0-77c6-4bad-85d6-90270440db13",
+              "updated_at": "2026-04-04T16:31:31.653134+00:00",
+              "observacoes": null,
+              "duracao_minutos": 30,
+              "profissional_id": "82409f2f-09e3-4712-b81e-59ed64f6826d"
+            },
+            "schema": "public",
+            "old_record": null
+          },
+          "webhookUrl": "https://n8n.srv1479281.hstgr.cloud/webhook/confirmacao-imediata",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  ]
+}
+--- NODE: Buscar Agendamento ---
+ERROR: {'level': 'warning', 'tags': {}, 'description': 'invalid input syntax for type uuid: "="', 'timestamp': 1775320292448, 'context': {'itemIndex': 0, 'request': {'headers': {'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0', 'authorization': '**hidden**', 'accept': 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7'}, 'method': 'GET', 'uri': 'https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.=&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)', 'gzip': True, 'rejectUnauthorized': True, 'followRedirect': True, 'resolveWithFullResponse': True, 'sendCredentialsOnCrossOriginRedirect': True, 'followAllRedirects': True, 'timeout': 300000, 'encoding': None, 'json': False, 'useStream': True}}, 'functionality': 'regular', 'name': 'NodeApiError', 'node': {'name': 'Buscar Agendamento', 'type': 'n8n-nodes-base.httpRequest', 'typeVersion': 4.2, 'position': [520, 300], 'parameters': {'curlImport': '', 'method': 'GET', 'url': '=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.={{ $json.record.id }}&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)', 'authentication': 'none', 'provideSslCertificates': False, 'sendQuery': False, 'sendHeaders': True, 'specifyHeaders': 'keypair', 'headerParameters': {'parameters': [{'name': 'apikey', 'value': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0'}, {'name': 'Authorization', 'value': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0'}]}, 'sendBody': False, 'options': {}, 'infoMessage': ''}, 'id': 'f7ff2419-7b83-4885-bf5f-7414b0f5d1cd'}, 'messages': ['400 - "{\\"code\\":\\"22P02\\",\\"details\\":null,\\"hint\\":null,\\"message\\":\\"invalid input syntax for type uuid: \\\\\\"=\\\\\\"\\"}"'], 'httpCode': '400', 'message': 'Bad request - please check your parameters', 'stack': 'NodeApiError: Bad request - please check your parameters\n    at ExecuteContext.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-nodes-base@file+packages+nodes-base_@aws-sdk+credential-providers@3.808.0_asn1.js@5_8da18263ca0574b0db58d4fefd8173ce/node_modules/n8n-nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts:864:16)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at WorkflowExecute.executeNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1043:8)\n    at WorkflowExecute.runNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1222:11)\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1668:27\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:2313:11'}

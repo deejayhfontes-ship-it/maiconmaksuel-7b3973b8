@@ -1,0 +1,844 @@
+{
+  "id": "1221",
+  "finished": false,
+  "mode": "webhook",
+  "retryOf": null,
+  "retrySuccessId": null,
+  "status": "error",
+  "createdAt": "2026-04-04T18:40:35.199Z",
+  "startedAt": "2026-04-04T18:40:35.212Z",
+  "stoppedAt": "2026-04-04T18:40:35.722Z",
+  "deletedAt": null,
+  "workflowId": "Foumgcf5oWyxGJX6",
+  "waitTill": null,
+  "storedAt": "db",
+  "data": {
+    "version": 1,
+    "startData": {},
+    "resultData": {
+      "error": {
+        "level": "warning",
+        "tags": {},
+        "description": "invalid input syntax for type uuid: \"=8524d55b-d1b6-4397-807a-813f40070d95\"",
+        "timestamp": 1775328035720,
+        "context": {
+          "itemIndex": 0,
+          "request": {
+            "headers": {
+              "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0",
+              "authorization": "**hidden**",
+              "accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+            },
+            "method": "GET",
+            "uri": "https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.=8524d55b-d1b6-4397-807a-813f40070d95&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)",
+            "gzip": true,
+            "rejectUnauthorized": true,
+            "followRedirect": true,
+            "resolveWithFullResponse": true,
+            "sendCredentialsOnCrossOriginRedirect": true,
+            "followAllRedirects": true,
+            "timeout": 300000,
+            "encoding": null,
+            "json": false,
+            "useStream": true
+          }
+        },
+        "functionality": "regular",
+        "name": "NodeApiError",
+        "node": {
+          "name": "Buscar Agendamento",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.2,
+          "position": [
+            520,
+            300
+          ],
+          "parameters": {
+            "curlImport": "",
+            "method": "GET",
+            "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.={{ $json.body.record.id }}&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)",
+            "authentication": "none",
+            "provideSslCertificates": false,
+            "sendQuery": false,
+            "sendHeaders": true,
+            "specifyHeaders": "keypair",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "apikey",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+                },
+                {
+                  "name": "Authorization",
+                  "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+                }
+              ]
+            },
+            "sendBody": false,
+            "options": {},
+            "infoMessage": ""
+          },
+          "id": "f7ff2419-7b83-4885-bf5f-7414b0f5d1cd"
+        },
+        "messages": [
+          "400 - \"{\\\"code\\\":\\\"22P02\\\",\\\"details\\\":null,\\\"hint\\\":null,\\\"message\\\":\\\"invalid input syntax for type uuid: \\\\\\\"=8524d55b-d1b6-4397-807a-813f40070d95\\\\\\\"\\\"}\""
+        ],
+        "httpCode": "400",
+        "message": "Bad request - please check your parameters",
+        "stack": "NodeApiError: Bad request - please check your parameters\n    at ExecuteContext.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-nodes-base@file+packages+nodes-base_@aws-sdk+credential-providers@3.808.0_asn1.js@5_8da18263ca0574b0db58d4fefd8173ce/node_modules/n8n-nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts:864:16)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at WorkflowExecute.executeNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1043:8)\n    at WorkflowExecute.runNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1222:11)\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1668:27\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:2313:11"
+      },
+      "runData": {
+        "Receber Agendamento": [
+          {
+            "startTime": 1775328035217,
+            "executionIndex": 0,
+            "source": [],
+            "hints": [],
+            "executionTime": 0,
+            "executionStatus": "success",
+            "data": {
+              "main": [
+                [
+                  {
+                    "json": {
+                      "headers": {
+                        "host": "n8n.srv1479281.hstgr.cloud",
+                        "user-agent": "Python-urllib/3.14",
+                        "content-length": "169",
+                        "accept-encoding": "identity",
+                        "content-type": "application/json",
+                        "x-forwarded-for": "187.108.78.236",
+                        "x-forwarded-host": "n8n.srv1479281.hstgr.cloud",
+                        "x-forwarded-port": "443",
+                        "x-forwarded-proto": "https",
+                        "x-forwarded-server": "2816b6ce0466",
+                        "x-real-ip": "187.108.78.236"
+                      },
+                      "params": {},
+                      "query": {},
+                      "body": {
+                        "type": "INSERT",
+                        "table": "agendamentos",
+                        "record": {
+                          "id": "8524d55b-d1b6-4397-807a-813f40070d95"
+                        },
+                        "body": {
+                          "record": {
+                            "id": "8524d55b-d1b6-4397-807a-813f40070d95"
+                          }
+                        }
+                      },
+                      "webhookUrl": "https://n8n.srv1479281.hstgr.cloud/webhook/confirmacao-imediata",
+                      "executionMode": "production"
+                    },
+                    "pairedItem": {
+                      "item": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "Buscar Agendamento": [
+          {
+            "startTime": 1775328035218,
+            "executionIndex": 1,
+            "source": [
+              {
+                "previousNode": "Receber Agendamento",
+                "previousNodeOutput": 0,
+                "previousNodeRun": 0
+              }
+            ],
+            "hints": [],
+            "executionTime": 503,
+            "executionStatus": "error",
+            "error": {
+              "level": "warning",
+              "tags": {},
+              "description": "invalid input syntax for type uuid: \"=8524d55b-d1b6-4397-807a-813f40070d95\"",
+              "timestamp": 1775328035720,
+              "context": {
+                "itemIndex": 0,
+                "request": {
+                  "headers": {
+                    "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0",
+                    "authorization": "**hidden**",
+                    "accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7"
+                  },
+                  "method": "GET",
+                  "uri": "https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.=8524d55b-d1b6-4397-807a-813f40070d95&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)",
+                  "gzip": true,
+                  "rejectUnauthorized": true,
+                  "followRedirect": true,
+                  "resolveWithFullResponse": true,
+                  "sendCredentialsOnCrossOriginRedirect": true,
+                  "followAllRedirects": true,
+                  "timeout": 300000,
+                  "encoding": null,
+                  "json": false,
+                  "useStream": true
+                }
+              },
+              "functionality": "regular",
+              "name": "NodeApiError",
+              "node": {
+                "name": "Buscar Agendamento",
+                "type": "n8n-nodes-base.httpRequest",
+                "typeVersion": 4.2,
+                "position": [
+                  520,
+                  300
+                ],
+                "parameters": {
+                  "curlImport": "",
+                  "method": "GET",
+                  "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.={{ $json.body.record.id }}&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)",
+                  "authentication": "none",
+                  "provideSslCertificates": false,
+                  "sendQuery": false,
+                  "sendHeaders": true,
+                  "specifyHeaders": "keypair",
+                  "headerParameters": {
+                    "parameters": [
+                      {
+                        "name": "apikey",
+                        "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+                      },
+                      {
+                        "name": "Authorization",
+                        "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+                      }
+                    ]
+                  },
+                  "sendBody": false,
+                  "options": {},
+                  "infoMessage": ""
+                },
+                "id": "f7ff2419-7b83-4885-bf5f-7414b0f5d1cd"
+              },
+              "messages": [
+                "400 - \"{\\\"code\\\":\\\"22P02\\\",\\\"details\\\":null,\\\"hint\\\":null,\\\"message\\\":\\\"invalid input syntax for type uuid: \\\\\\\"=8524d55b-d1b6-4397-807a-813f40070d95\\\\\\\"\\\"}\""
+              ],
+              "httpCode": "400",
+              "message": "Bad request - please check your parameters",
+              "stack": "NodeApiError: Bad request - please check your parameters\n    at ExecuteContext.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-nodes-base@file+packages+nodes-base_@aws-sdk+credential-providers@3.808.0_asn1.js@5_8da18263ca0574b0db58d4fefd8173ce/node_modules/n8n-nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts:864:16)\n    at processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at WorkflowExecute.executeNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1043:8)\n    at WorkflowExecute.runNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1222:11)\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:1668:27\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_@opentelemetry+api@1.9.0_@opentelemetry+exporter-trace-otlp_9f358c3eeaef0d2736f54ac9757ada43/node_modules/n8n-core/src/execution-engine/workflow-execute.ts:2313:11"
+            }
+          }
+        ]
+      },
+      "lastNodeExecuted": "Buscar Agendamento"
+    },
+    "executionData": {
+      "contextData": {},
+      "nodeExecutionStack": [
+        {
+          "node": {
+            "name": "Buscar Agendamento",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+              520,
+              300
+            ],
+            "parameters": {
+              "curlImport": "",
+              "method": "GET",
+              "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.={{ $json.body.record.id }}&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)",
+              "authentication": "none",
+              "provideSslCertificates": false,
+              "sendQuery": false,
+              "sendHeaders": true,
+              "specifyHeaders": "keypair",
+              "headerParameters": {
+                "parameters": [
+                  {
+                    "name": "apikey",
+                    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+                  },
+                  {
+                    "name": "Authorization",
+                    "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+                  }
+                ]
+              },
+              "sendBody": false,
+              "options": {},
+              "infoMessage": ""
+            },
+            "id": "f7ff2419-7b83-4885-bf5f-7414b0f5d1cd"
+          },
+          "data": {
+            "main": [
+              [
+                {
+                  "json": {
+                    "headers": {
+                      "host": "n8n.srv1479281.hstgr.cloud",
+                      "user-agent": "Python-urllib/3.14",
+                      "content-length": "169",
+                      "accept-encoding": "identity",
+                      "content-type": "application/json",
+                      "x-forwarded-for": "187.108.78.236",
+                      "x-forwarded-host": "n8n.srv1479281.hstgr.cloud",
+                      "x-forwarded-port": "443",
+                      "x-forwarded-proto": "https",
+                      "x-forwarded-server": "2816b6ce0466",
+                      "x-real-ip": "187.108.78.236"
+                    },
+                    "params": {},
+                    "query": {},
+                    "body": {
+                      "type": "INSERT",
+                      "table": "agendamentos",
+                      "record": {
+                        "id": "8524d55b-d1b6-4397-807a-813f40070d95"
+                      },
+                      "body": {
+                        "record": {
+                          "id": "8524d55b-d1b6-4397-807a-813f40070d95"
+                        }
+                      }
+                    },
+                    "webhookUrl": "https://n8n.srv1479281.hstgr.cloud/webhook/confirmacao-imediata",
+                    "executionMode": "production"
+                  },
+                  "pairedItem": {
+                    "item": 0
+                  }
+                }
+              ]
+            ]
+          },
+          "source": {
+            "main": [
+              {
+                "previousNode": "Receber Agendamento",
+                "previousNodeOutput": 0,
+                "previousNodeRun": 0
+              }
+            ]
+          }
+        }
+      ],
+      "metadata": {},
+      "waitingExecution": {},
+      "waitingExecutionSource": {},
+      "runtimeData": {
+        "version": 1,
+        "establishedAt": 1775328035215,
+        "source": "webhook",
+        "redaction": {
+          "version": 1,
+          "policy": "none"
+        },
+        "triggerNode": {
+          "name": "Receber Agendamento",
+          "type": "n8n-nodes-base.webhook"
+        }
+      }
+    }
+  },
+  "workflowData": {
+    "id": "Foumgcf5oWyxGJX6",
+    "name": "Confirmacao Imediata - Maicon Maksuel",
+    "active": true,
+    "activeVersionId": "55bce72f-6041-4da5-9183-efc1726b5885",
+    "isArchived": false,
+    "createdAt": "2026-04-04T14:17:12.387Z",
+    "updatedAt": "2026-04-04T18:14:05.324Z",
+    "nodes": [
+      {
+        "name": "Receber Agendamento",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "multipleMethods": false,
+          "httpMethod": "POST",
+          "path": "confirmacao-imediata",
+          "authentication": "none",
+          "responseMode": "onReceived",
+          "contentTypeNotice": "",
+          "options": {}
+        },
+        "id": "f16549b7-d2c1-4696-9842-ef376111576f",
+        "webhookId": "confirmacao-imediata-webhook"
+      },
+      {
+        "name": "Buscar Agendamento",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          520,
+          300
+        ],
+        "parameters": {
+          "curlImport": "",
+          "method": "GET",
+          "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.={{ $json.body.record.id }}&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)",
+          "authentication": "none",
+          "provideSslCertificates": false,
+          "sendQuery": false,
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              }
+            ]
+          },
+          "sendBody": false,
+          "options": {},
+          "infoMessage": ""
+        },
+        "id": "f7ff2419-7b83-4885-bf5f-7414b0f5d1cd"
+      },
+      {
+        "name": "Checar Duplicidade",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          800,
+          300
+        ],
+        "parameters": {
+          "curlImport": "",
+          "method": "GET",
+          "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?agendamento_id=eq.={{ $('Receber Agendamento').item.json.record.id }}&tipo_mensagem=eq.confirmacao&status_envio=eq.enviado&enviado_por_manual=eq.false&select=id",
+          "authentication": "none",
+          "provideSslCertificates": false,
+          "sendQuery": false,
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              }
+            ]
+          },
+          "sendBody": false,
+          "options": {},
+          "infoMessage": ""
+        },
+        "id": "300cffde-c4b2-43b1-a343-015749c1d0ac"
+      },
+      {
+        "name": "Deve Enviar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1080,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ $('Checar Duplicidade').item.json.id ? 1 : 0 }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "c2",
+                "leftValue": "={{ $('Buscar Agendamento').item.json[0]?.clientes?.celular || '' }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "1f76de07-7c52-4823-a41b-f76e0d171d8b"
+      },
+      {
+        "name": "Preparar",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1360,
+          180
+        ],
+        "parameters": {
+          "mode": "manual",
+          "duplicateItem": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "s1",
+                "name": "ag_id",
+                "value": "={{ $('Receber Agendamento').item.json.record.id }}",
+                "type": "string"
+              },
+              {
+                "id": "s2",
+                "name": "cli_id",
+                "value": "={{ $('Buscar Agendamento').item.json[0].cliente_id }}",
+                "type": "string"
+              },
+              {
+                "id": "s3",
+                "name": "nome",
+                "value": "={{ $('Buscar Agendamento').item.json[0].clientes.nome }}",
+                "type": "string"
+              },
+              {
+                "id": "s4",
+                "name": "cel_raw",
+                "value": "={{ $('Buscar Agendamento').item.json[0].clientes.celular }}",
+                "type": "string"
+              },
+              {
+                "id": "s5",
+                "name": "tel",
+                "value": "={{ (() => { const t = ($('Buscar Agendamento').item.json[0].clientes.celular || '').replace(/\\\\D/g,''); return t.startsWith('55') ? t : '55'+t; })() }}",
+                "type": "string"
+              },
+              {
+                "id": "s6",
+                "name": "srv",
+                "value": "={{ $('Buscar Agendamento').item.json[0].servicos?.nome || 'Servico' }}",
+                "type": "string"
+              },
+              {
+                "id": "s7",
+                "name": "prof",
+                "value": "={{ $('Buscar Agendamento').item.json[0].profissionais?.nome || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "s8",
+                "name": "dthr",
+                "value": "={{ new Date($('Buscar Agendamento').item.json[0].data_hora).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) }}",
+                "type": "string"
+              }
+            ]
+          },
+          "includeOtherFields": false,
+          "options": {}
+        },
+        "id": "53ccf959-f730-4946-b7ce-67cf8fd3a8bd"
+      },
+      {
+        "name": "Criar Log",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1640,
+          180
+        ],
+        "parameters": {
+          "curlImport": "",
+          "method": "POST",
+          "url": "https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs",
+          "authentication": "none",
+          "provideSslCertificates": false,
+          "sendQuery": false,
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=representation"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "keypair",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "",
+                "value": ""
+              }
+            ]
+          },
+          "options": {},
+          "infoMessage": ""
+        },
+        "id": "02d1e9a1-f2aa-42ee-907b-4f6b9f26e2ad"
+      },
+      {
+        "name": "Enviar Z-API",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1920,
+          180
+        ],
+        "parameters": {
+          "curlImport": "",
+          "method": "POST",
+          "url": "https://api.z-api.io/instances/3EFBBECF9076D192D3C91E78C95369C2/token/4B0D7C7DF8E790BBD1B6122B/send-text",
+          "authentication": "none",
+          "provideSslCertificates": false,
+          "sendQuery": false,
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Client-Token",
+                "value": "Fbab85f2da2684d40ac0ff07d9ddcf0e8S"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "keypair",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "",
+                "value": ""
+              }
+            ]
+          },
+          "options": {},
+          "infoMessage": ""
+        },
+        "id": "446da239-de08-4c93-9f68-318ffc4a709e"
+      },
+      {
+        "name": "Log OK",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2200,
+          100
+        ],
+        "parameters": {
+          "curlImport": "",
+          "method": "PATCH",
+          "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?id=eq.={{ $('Criar Log').item.json[0].id }}",
+          "authentication": "none",
+          "provideSslCertificates": false,
+          "sendQuery": false,
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "keypair",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "",
+                "value": ""
+              }
+            ]
+          },
+          "options": {},
+          "infoMessage": ""
+        },
+        "id": "95adac7b-12aa-4db2-8b90-297b6c619dfa"
+      },
+      {
+        "name": "Log Falha",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2200,
+          300
+        ],
+        "parameters": {
+          "curlImport": "",
+          "method": "PATCH",
+          "url": "=https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/whatsapp_logs?id=eq.={{ $('Criar Log').item.json[0].id }}",
+          "authentication": "none",
+          "provideSslCertificates": false,
+          "sendQuery": false,
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "keypair",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "",
+                "value": ""
+              }
+            ]
+          },
+          "options": {},
+          "infoMessage": ""
+        },
+        "id": "525cb9c1-1f6b-4ec5-ab8f-e14fdc835fec"
+      }
+    ],
+    "connections": {
+      "Receber Agendamento": {
+        "main": [
+          [
+            {
+              "node": "Buscar Agendamento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar Agendamento": {
+        "main": [
+          [
+            {
+              "node": "Checar Duplicidade",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Checar Duplicidade": {
+        "main": [
+          [
+            {
+              "node": "Deve Enviar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Deve Enviar": {
+        "main": [
+          [
+            {
+              "node": "Preparar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Preparar": {
+        "main": [
+          [
+            {
+              "node": "Criar Log",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Criar Log": {
+        "main": [
+          [
+            {
+              "node": "Enviar Z-API",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar Z-API": {
+        "main": [
+          [
+            {
+              "node": "Log OK",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Log Falha",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "callerPolicy": "workflowsFromSameOwner",
+      "availableInMCP": false
+    },
+    "staticData": {},
+    "pinData": null
+  },
+  "customData": {}
+}

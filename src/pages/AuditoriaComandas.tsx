@@ -44,7 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useComandaAuditoria, AuditoriaRecord, ComandaFechada } from '@/hooks/useComandaAuditoria';
+import { useComandaAuditoria, AuditoriaRecord, ComandaFechada, MotivoCategoriaAuditoria } from '@/hooks/useComandaAuditoria';
 import { ComandaAuditoriaModal } from '@/components/atendimentos/ComandaAuditoriaModal';
 import { cn } from '@/lib/utils';
 
@@ -65,6 +65,7 @@ const statusComandaBadge: Record<string, { cor: string; label: string }> = {
   finalizado: { cor: 'bg-green-100 text-green-800',   label: 'Finalizada' },
   cancelado:  { cor: 'bg-red-100 text-red-800',       label: 'Cancelada' },
   aberto:     { cor: 'bg-amber-100 text-amber-800',   label: 'Aberta' },
+  reaberta:   { cor: 'bg-orange-100 text-orange-700 border-orange-200', label: '🔓 Reaberta' },
 };
 
 export default function AuditoriaComandas() {
@@ -112,12 +113,16 @@ export default function AuditoriaComandas() {
     setModalAberto(true);
   };
 
-  const confirmarAcao = async (motivo: string) => {
+  const confirmarAcao = async (motivo: string, categoria: MotivoCategoriaAuditoria) => {
     if (!comandaSelecionada) return;
     const fn = acaoAtual === 'reaberta' ? reabrirComanda : cancelarComandaFechada;
-    const result = await fn(comandaSelecionada, motivo);
+    const result = await fn(comandaSelecionada, motivo, categoria);
     if (result.success) {
-      toast({ title: `Comanda #${String(comandaSelecionada.numero_comanda).padStart(3,'0')} ${acaoAtual === 'reaberta' ? 'reaberta' : 'cancelada'}!` });
+      toast({
+        title: acaoAtual === 'reaberta'
+          ? `✅ Comanda #${String(comandaSelecionada.numero_comanda).padStart(3,'0')} reaberta com sucesso!`
+          : `🚫 Comanda #${String(comandaSelecionada.numero_comanda).padStart(3,'0')} cancelada.`,
+      });
       carregar();
     } else {
       toast({ title: 'Erro', description: result.error, variant: 'destructive' });
@@ -188,8 +193,18 @@ export default function AuditoriaComandas() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Comandas Fechadas</p>
-            <p className="text-2xl font-bold text-green-600">{comandas.length}</p>
+            <p className="text-xs text-muted-foreground">Impacto Financeiro</p>
+            <p className="text-2xl font-bold text-destructive">
+              {formatPrice(
+                auditoria
+                  .filter(a => a.acao === 'reaberta')
+                  .reduce((acc, a) => {
+                    const val = (a.detalhes as Record<string, number> | null)?.valor_estornado || 0;
+                    return acc + Number(val);
+                  }, 0)
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">Total estornado</p>
           </CardContent>
         </Card>
       </div>
@@ -273,6 +288,7 @@ export default function AuditoriaComandas() {
                       <TableRow>
                         <TableHead>Comanda</TableHead>
                         <TableHead>Ação</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Motivo</TableHead>
                         <TableHead>Por</TableHead>
                         <TableHead>Data/Hora</TableHead>
@@ -300,7 +316,16 @@ export default function AuditoriaComandas() {
                                 {badge.label}
                               </Badge>
                             </TableCell>
-                            <TableCell className="max-w-[200px] truncate">
+                            <TableCell>
+                              {r.status_anterior && r.status_novo ? (
+                                <span className="flex items-center gap-1 text-xs">
+                                  <span className="text-muted-foreground capitalize">{r.status_anterior}</span>
+                                  <span className="text-muted-foreground">→</span>
+                                  <span className="font-medium capitalize text-primary">{r.status_novo}</span>
+                                </span>
+                              ) : <span className="text-muted-foreground text-xs">—</span>}
+                            </TableCell>
+                            <TableCell className="max-w-[180px] truncate">
                               {r.motivo}
                             </TableCell>
                             <TableCell>
@@ -478,7 +503,7 @@ export default function AuditoriaComandas() {
           </DialogHeader>
           {registroDetalhe && (
             <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-muted-foreground">Comanda</p>
                   <p className="font-bold">#{String(registroDetalhe.numero_comanda).padStart(3,'0')}</p>
@@ -502,9 +527,47 @@ export default function AuditoriaComandas() {
                 <p className="text-muted-foreground">Motivo</p>
                 <p className="bg-muted/50 rounded p-2 mt-1">{registroDetalhe.motivo}</p>
               </div>
-              {registroDetalhe.detalhes && (
+              {registroDetalhe.motivo_categoria && (
                 <div>
-                  <p className="text-muted-foreground mb-1">Snapshot anterior</p>
+                  <p className="text-muted-foreground">Categoria</p>
+                  <p className="font-medium capitalize">{String(registroDetalhe.motivo_categoria).replace('_', ' ')}</p>
+                </div>
+              )}
+              {registroDetalhe.status_anterior && registroDetalhe.status_novo && (
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Mudança de Status</p>
+                  <p className="font-medium">
+                    <span className="capitalize">{registroDetalhe.status_anterior}</span>
+                    {' → '}
+                    <span className="capitalize text-primary font-bold">{registroDetalhe.status_novo}</span>
+                  </p>
+                </div>
+              )}
+              {registroDetalhe.snapshot_antes && (
+                <div className="col-span-2">
+                  <p className="text-muted-foreground mb-1">📸 Snapshot — Estado Antes da Ação</p>
+                  <pre className="bg-muted/50 rounded p-2 text-xs overflow-auto max-h-48">
+                    {JSON.stringify(
+                      (registroDetalhe.snapshot_antes as Record<string, unknown>)?.atendimento || registroDetalhe.snapshot_antes,
+                      null, 2
+                    )}
+                  </pre>
+                </div>
+              )}
+              {registroDetalhe.snapshot_depois && (
+                <div className="col-span-2">
+                  <p className="text-muted-foreground mb-1">📸 Snapshot — Estado Depois</p>
+                  <pre className="bg-muted/50 rounded p-2 text-xs overflow-auto max-h-48">
+                    {JSON.stringify(
+                      (registroDetalhe.snapshot_depois as Record<string, unknown>)?.atendimento || registroDetalhe.snapshot_depois,
+                      null, 2
+                    )}
+                  </pre>
+                </div>
+              )}
+              {registroDetalhe.detalhes && (
+                <div className="col-span-2">
+                  <p className="text-muted-foreground mb-1">Detalhes da Ação</p>
                   <pre className="bg-muted/50 rounded p-2 text-xs overflow-auto">
                     {JSON.stringify(registroDetalhe.detalhes, null, 2)}
                   </pre>

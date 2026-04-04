@@ -1,0 +1,1 @@
+https://hhzvjsrsoyhjzeiuxpep.supabase.co/rest/v1/agendamentos?id=eq.=8524d55b-d1b6-4397-807a-813f40070d95&select=id,data_hora,cliente_id,profissional_id,servico_id,clientes(nome,celular),profissionais(nome),servicos(nome)
