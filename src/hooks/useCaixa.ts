@@ -38,6 +38,8 @@ export interface CaixaMovimentacao {
   forma_pagamento: 'dinheiro' | 'debito' | 'credito' | 'pix' | 'fiado' | 'cheque' | null;
   atendimento_id: string | null;
   data_hora: string;
+  // Enriquecido no frontend via join
+  cliente_nome?: string | null;
 }
 
 export interface DespesaRapida {
@@ -227,16 +229,30 @@ export function useCaixa(): UseCaixaReturn {
         await localPut('caixa', serverCaixa as Caixa, true);
         setCaixaAberto(serverCaixa as Caixa);
         
-        // Fetch movimentações
+        // Fetch movimentações com join de cliente via atendimento
         const { data: serverMovs } = await supabase
           .from('caixa_movimentacoes')
-          .select('*')
+          .select(`
+            *,
+            atendimento:atendimentos(
+              numero_comanda,
+              cliente:clientes(nome)
+            )
+          `)
           .eq('caixa_id', serverCaixa.id)
           .order('data_hora', { ascending: false });
         
         if (serverMovs) {
-          await localBulkPut('caixa_movimentacoes', serverMovs as CaixaMovimentacao[]);
-          setMovimentacoes(serverMovs as CaixaMovimentacao[]);
+          // Enriquecer cada movimentação com o nome do cliente quando disponível
+          const movsEnriquecidas = (serverMovs as any[]).map(m => ({
+            ...m,
+            cliente_nome: m.atendimento?.cliente?.nome || null,
+            // Limpar o campo de join para não poluir a interface
+            atendimento: undefined,
+          })) as CaixaMovimentacao[];
+
+          await localBulkPut('caixa_movimentacoes', movsEnriquecidas);
+          setMovimentacoes(movsEnriquecidas);
         }
       } else {
         setCaixaAberto(null);

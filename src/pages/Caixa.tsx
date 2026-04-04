@@ -670,25 +670,50 @@ const Caixa = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {movimentacoesFiltradas.map((mov) => (
-                      <TableRow key={mov.id}>
-                        <TableCell className="text-sm">
-                          {format(parseISO(mov.data_hora), "HH:mm")}
-                        </TableCell>
-                        <TableCell>{getTipoBadge(mov.tipo, mov.categoria)}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{mov.descricao}</TableCell>
-                        <TableCell className="capitalize">{mov.forma_pagamento || "-"}</TableCell>
-                        <TableCell className={cn(
-                          "text-right font-medium",
-                          mov.tipo === "entrada" || mov.tipo === "reforco" 
-                            ? "text-success" 
-                            : "text-destructive"
-                        )}>
-                          {mov.tipo === "entrada" || mov.tipo === "reforco" ? "+" : "-"}
-                          {formatPrice(mov.valor)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {movimentacoesFiltradas.map((mov) => {
+                      // Extrai o nome da cliente da descrição antiga  ("Comanda #034 - pix")
+                      // ou usa o novo campo enriquecido via join
+                      const clienteNome = mov.cliente_nome || null;
+
+                      // Monta a linha principal da descrição  
+                      const isComanda = mov.categoria === 'atendimento';
+                      const comandaMatch = mov.descricao?.match(/^(Comanda #\d+)/i);
+                      const linhaComanda = comandaMatch ? comandaMatch[1] : null;
+
+                      return (
+                        <TableRow key={mov.id}>
+                          <TableCell className="text-sm">
+                            {format(parseISO(mov.data_hora), "HH:mm")}
+                          </TableCell>
+                          <TableCell>{getTipoBadge(mov.tipo, mov.categoria)}</TableCell>
+                          <TableCell className="max-w-[220px]">
+                            {isComanda && (linhaComanda || clienteNome) ? (
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {linhaComanda || mov.descricao}
+                                  {clienteNome && (
+                                    <span className="text-primary font-semibold"> · {clienteNome}</span>
+                                  )}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-sm truncate block">{mov.descricao}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="capitalize">{mov.forma_pagamento || "-"}</TableCell>
+                          <TableCell className={cn(
+                            "text-right font-medium",
+                            mov.tipo === "entrada" || mov.tipo === "reforco" 
+                              ? "text-success" 
+                              : "text-destructive"
+                          )}>
+                            {mov.tipo === "entrada" || mov.tipo === "reforco" ? "+" : "-"}
+                            {formatPrice(mov.valor)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+
                   </TableBody>
                 </Table>
               )}
