@@ -204,7 +204,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
       const clientesMap = new Map(clientes.map(c => [c.id, c]));
       const enriched = openLocal.map(a => ({
         ...a,
-        cliente: a.cliente_id ? { nome: clientesMap.get(a.cliente_id)?.nome || 'Cliente' } : null,
+        cliente: a.cliente_id ? { nome: clientesMap.get(a.cliente_id)?.nome || 'Cliente não identificado' } : null,
       }));
 
       setAtendimentos(enriched.sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()));

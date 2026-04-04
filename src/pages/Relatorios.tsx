@@ -265,7 +265,7 @@ const Relatorios = () => {
           .lte("created_at", endDate.toISOString()),
         supabase
           .from("pagamentos")
-          .select("*")
+          .select("*, atendimento:atendimentos(numero_comanda, cliente:clientes(nome))")
           .gte("data_hora", startDate.toISOString())
           .lte("data_hora", endDate.toISOString()),
         supabase
@@ -3241,6 +3241,8 @@ const Relatorios = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data/Hora</TableHead>
+                      <TableHead>Comanda</TableHead>
+                      <TableHead>Cliente</TableHead>
                       <TableHead>Forma</TableHead>
                       <TableHead className="text-center">Parcelas</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
@@ -3250,9 +3252,17 @@ const Relatorios = () => {
                     {pagamentosCartao.map((pgto) => (
                       <TableRow key={pgto.id}>
                         <TableCell>{format(new Date(pgto.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
-                        <TableCell>{pgto.forma_pagamento}</TableCell>
+                        <TableCell className="font-medium">
+                          {pgto.atendimento?.numero_comanda 
+                            ? `#${pgto.atendimento.numero_comanda.toString().padStart(3, '0')}` 
+                            : "-"}
+                        </TableCell>
+                        <TableCell>{pgto.atendimento?.cliente?.nome || "-"}</TableCell>
+                        <TableCell className="capitalize">{pgto.forma_pagamento}</TableCell>
                         <TableCell className="text-center">{pgto.parcelas || 1}x</TableCell>
-                        <TableCell className="text-right text-green-600">{formatCurrency(pgto.valor)}</TableCell>
+                        <TableCell className="text-right text-green-600 font-medium">
+                          {formatCurrency(pgto.valor)}
+                        </TableCell>
                       </TableRow>
                     ))}
                     {pagamentosCartao.length === 0 && (
