@@ -15,6 +15,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ const servicoSchema = z.object({
   gera_receita: z.boolean(),
   gera_comissao: z.boolean(),
   aparece_pdv: z.boolean(),
+  valor_variavel: z.boolean().default(false),
 });
 
 type ServicoFormData = z.infer<typeof servicoSchema>;
@@ -156,9 +158,9 @@ export default function ServicoFormDialog({
       ativo: true,
       tipo_servico: "normal",
       apenas_agenda: false,
-      gera_receita: true,
       gera_comissao: true,
       aparece_pdv: true,
+      valor_variavel: false,
     },
   });
 
@@ -182,6 +184,7 @@ export default function ServicoFormDialog({
         gera_receita: servico.gera_receita ?? true,
         gera_comissao: servico.gera_comissao ?? true,
         aparece_pdv: servico.aparece_pdv ?? true,
+        valor_variavel: servico.valor_variavel ?? false,
       });
       // Carregar comissões individuais salvas
       carregarComissoesProfissionais(servico.id);
@@ -199,6 +202,7 @@ export default function ServicoFormDialog({
         gera_receita: true,
         gera_comissao: true,
         aparece_pdv: true,
+        valor_variavel: false,
       });
       setComissoesProfissionais({});
     }
@@ -442,6 +446,27 @@ export default function ServicoFormDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="valor_variavel"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Preço de Valor Variável</FormLabel>
+                    <FormDescription>
+                      Permite alterar livremente o preço na comanda no momento do lançamento. O Preço Base acima funcionará apenas como sugestão.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

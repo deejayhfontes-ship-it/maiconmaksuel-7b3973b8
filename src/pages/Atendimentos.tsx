@@ -104,6 +104,9 @@ interface ItemServico {
   comissao_percentual: number;
   comissao_valor: number;
   subtotal: number;
+  tipo_ajuste?: 'desconto' | 'acrescimo' | null;
+  modo_ajuste?: 'valor' | 'porcentagem' | null;
+  valor_ajuste?: number | null;
   servico: { nome: string };
   profissional: { nome: string };
 }
@@ -114,6 +117,9 @@ interface ItemProduto {
   quantidade: number;
   preco_unitario: number;
   subtotal: number;
+  tipo_ajuste?: 'desconto' | 'acrescimo' | null;
+  modo_ajuste?: 'valor' | 'porcentagem' | null;
+  valor_ajuste?: number | null;
   produto: { nome: string };
 }
 
@@ -174,9 +180,17 @@ const Atendimentos = () => {
   const [profissionalId, setProfissionalId] = useState("");
   const [servicoQtd, setServicoQtd] = useState(1);
   const [servicoPreco, setServicoPreco] = useState(0);
+  const [servicoIsVariavel, setServicoIsVariavel] = useState(false);
+  const [servicoAjusteTipo, setServicoAjusteTipo] = useState<'nenhum' | 'desconto' | 'acrescimo'>('nenhum');
+  const [servicoAjusteModo, setServicoAjusteModo] = useState<'valor' | 'porcentagem'>('valor');
+  const [servicoAjusteValor, setServicoAjusteValor] = useState(0);
+
   const [produtoId, setProdutoId] = useState("");
   const [produtoQtd, setProdutoQtd] = useState(1);
   const [produtoPreco, setProdutoPreco] = useState(0);
+  const [produtoAjusteTipo, setProdutoAjusteTipo] = useState<'nenhum' | 'desconto' | 'acrescimo'>('nenhum');
+  const [produtoAjusteModo, setProdutoAjusteModo] = useState<'valor' | 'porcentagem'>('valor');
+  const [produtoAjusteValor, setProdutoAjusteValor] = useState(0);
 
   const { toast } = useToast();
 
@@ -263,7 +277,10 @@ const Atendimentos = () => {
   const handleServicoSelect = (id: string) => {
     setServicoId(id);
     const serv = servicos.find(s => s.id === id);
-    if (serv) setServicoPreco(Number(serv.preco));
+    if (serv) {
+      setServicoPreco(Number(serv.preco));
+      setServicoIsVariavel(!!serv.valor_variavel);
+    }
   };
 
   const handleProdutoSelect = (id: string) => {
@@ -281,7 +298,23 @@ const Atendimentos = () => {
     const serv = servicos.find(s => s.id === servicoId);
     if (!serv) return;
 
-    const subtotalItem = servicoPreco * servicoQtd;
+    let subtotalItem = servicoPreco * servicoQtd;
+    let ajusteCalculado = 0;
+
+    if (servicoAjusteTipo === 'desconto') {
+      ajusteCalculado = servicoAjusteModo === 'porcentagem' 
+        ? (subtotalItem * servicoAjusteValor) / 100 
+        : servicoAjusteValor;
+      subtotalItem -= ajusteCalculado;
+    } else if (servicoAjusteTipo === 'acrescimo') {
+      ajusteCalculado = servicoAjusteModo === 'porcentagem' 
+        ? (subtotalItem * servicoAjusteValor) / 100 
+        : servicoAjusteValor;
+      subtotalItem += ajusteCalculado;
+    }
+
+    subtotalItem = Math.max(0, subtotalItem);
+
     const comissaoValor = (subtotalItem * Number(serv.comissao_padrao)) / 100;
 
     const { error } = await supabase.from("atendimento_servicos").insert([{
@@ -293,19 +326,24 @@ const Atendimentos = () => {
       comissao_percentual: Number(serv.comissao_padrao),
       comissao_valor: comissaoValor,
       subtotal: subtotalItem,
+      tipo_ajuste: servicoAjusteTipo !== 'nenhum' ? servicoAjusteTipo : null,
+      modo_ajuste: servicoAjusteTipo !== 'nenhum' ? servicoAjusteModo : null,
+      valor_ajuste: servicoAjusteTipo !== 'nenhum' ? servicoAjusteValor : null,
     }]);
 
     if (error) {
       toast({ title: "Erro ao adicionar serviço", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Serviço adicionado!" });
-      // Trigger recalcula automaticamente no banco - apenas refetch
       await fetchItems(selectedAtendimento.id);
       await refetchAtendimentoTotals();
       setServicoId("");
       setProfissionalId("");
       setServicoQtd(1);
       setServicoPreco(0);
+      setServicoIsVariavel(false);
+      setServicoAjusteTipo('nenhum');
+      setServicoAjusteValor(0);
     }
   };
 
@@ -326,7 +364,22 @@ const Atendimentos = () => {
       return;
     }
 
-    const subtotalItem = produtoPreco * produtoQtd;
+    let subtotalItem = produtoPreco * produtoQtd;
+    let ajusteCalculado = 0;
+
+    if (produtoAjusteTipo === 'desconto') {
+      ajusteCalculado = produtoAjusteModo === 'porcentagem' 
+        ? (subtotalItem * produtoAjusteValor) / 100 
+        : produtoAjusteValor;
+      subtotalItem -= ajusteCalculado;
+    } else if (produtoAjusteTipo === 'acrescimo') {
+      ajusteCalculado = produtoAjusteModo === 'porcentagem' 
+        ? (subtotalItem * produtoAjusteValor) / 100 
+        : produtoAjusteValor;
+      subtotalItem += ajusteCalculado;
+    }
+
+    subtotalItem = Math.max(0, subtotalItem);
 
     const { error } = await supabase.from("atendimento_produtos").insert([{
       atendimento_id: selectedAtendimento.id,
@@ -334,18 +387,22 @@ const Atendimentos = () => {
       quantidade: produtoQtd,
       preco_unitario: produtoPreco,
       subtotal: subtotalItem,
+      tipo_ajuste: produtoAjusteTipo !== 'nenhum' ? produtoAjusteTipo : null,
+      modo_ajuste: produtoAjusteTipo !== 'nenhum' ? produtoAjusteModo : null,
+      valor_ajuste: produtoAjusteTipo !== 'nenhum' ? produtoAjusteValor : null,
     }]);
 
     if (error) {
       toast({ title: "Erro ao adicionar produto", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Produto adicionado!" });
-      // Trigger recalcula automaticamente no banco - apenas refetch
       await fetchItems(selectedAtendimento.id);
       await refetchAtendimentoTotals();
       setProdutoId("");
       setProdutoQtd(1);
       setProdutoPreco(0);
+      setProdutoAjusteTipo('nenhum');
+      setProdutoAjusteValor(0);
     }
   };
 
@@ -717,8 +774,8 @@ const Atendimentos = () => {
                 </TabsList>
 
                 <TabsContent value="servicos" className="space-y-3 mt-3">
-                  <div className="grid grid-cols-5 gap-2 items-end">
-                    <div className="col-span-2">
+                  <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
+                    <div className="col-span-2 md:col-span-4">
                       <Label className="text-xs">Serviço</Label>
                       <Select value={servicoId} onValueChange={handleServicoSelect}>
                         <SelectTrigger>
@@ -733,7 +790,7 @@ const Atendimentos = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="col-span-2 md:col-span-3">
                       <Label className="text-xs">Profissional</Label>
                       <Select value={profissionalId} onValueChange={setProfissionalId}>
                         <SelectTrigger>
@@ -746,7 +803,7 @@ const Atendimentos = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="col-span-1 md:col-span-1">
                       <Label className="text-xs">Qtd</Label>
                       <Input
                         type="number"
@@ -755,15 +812,77 @@ const Atendimentos = () => {
                         onChange={(e) => setServicoQtd(Number(e.target.value))}
                       />
                     </div>
-                    <Button onClick={handleAddServico} className="bg-primary">
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <div className="col-span-1 md:col-span-2">
+                      <Label className="text-xs">Preço Unit.</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={servicoPreco}
+                        disabled={!servicoIsVariavel}
+                        onChange={(e) => setServicoPreco(Number(e.target.value))}
+                        className={servicoIsVariavel ? "border-success/50 bg-success/5" : ""}
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-2">
+                      <Button onClick={handleAddServico} className="bg-primary w-full">
+                        <Plus className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Add</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end mt-2 p-2 bg-muted/20 rounded border border-dashed">
+                    <div className="col-span-2 md:col-span-4">
+                      <Label className="text-xs text-muted-foreground">Ajuste no Item</Label>
+                      <Select value={servicoAjusteTipo} onValueChange={(val: any) => setServicoAjusteTipo(val)}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nenhum">Sem Ajuste</SelectItem>
+                          <SelectItem value="desconto">Conceder Desconto</SelectItem>
+                          <SelectItem value="acrescimo">Aplicar Acréscimo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {servicoAjusteTipo !== 'nenhum' && (
+                      <>
+                        <div className="col-span-1 md:col-span-4">
+                          <Label className="text-xs text-muted-foreground">
+                            Tipo de {servicoAjusteTipo === 'desconto' ? 'Desconto' : 'Acréscimo'}
+                          </Label>
+                          <Select value={servicoAjusteModo} onValueChange={(val: any) => setServicoAjusteModo(val)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="valor">Valor Fixo (R$)</SelectItem>
+                              <SelectItem value="porcentagem">Porcentagem (%)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-1 md:col-span-4">
+                          <Label className="text-xs text-muted-foreground">
+                            Valor ({servicoAjusteModo === 'valor' ? 'R$' : '%'})
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={servicoAjusteValor}
+                            className="h-8 text-xs"
+                            onChange={(e) => setServicoAjusteValor(Number(e.target.value))}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </TabsContent>
 
                 <TabsContent value="produtos" className="space-y-3 mt-3">
-                  <div className="grid grid-cols-4 gap-2 items-end">
-                    <div className="col-span-2">
+                  <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
+                    <div className="col-span-2 md:col-span-6">
                       <Label className="text-xs">Produto (digite para buscar)</Label>
                       <ProductSearchInput
                         produtos={produtos}
@@ -777,7 +896,7 @@ const Atendimentos = () => {
                         placeholder="Nome, código de barras..."
                       />
                     </div>
-                    <div>
+                    <div className="col-span-1 md:col-span-2">
                       <Label className="text-xs">Qtd</Label>
                       <Input
                         type="number"
@@ -786,9 +905,69 @@ const Atendimentos = () => {
                         onChange={(e) => setProdutoQtd(Number(e.target.value))}
                       />
                     </div>
-                    <Button onClick={handleAddProduto} className="bg-primary">
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <div className="col-span-1 md:col-span-2">
+                      <Label className="text-xs">Preço Unit.</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={produtoPreco}
+                        onChange={(e) => setProdutoPreco(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-2">
+                      <Button onClick={handleAddProduto} className="bg-primary w-full">
+                        <Plus className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Add</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end mt-2 p-2 bg-muted/20 rounded border border-dashed">
+                    <div className="col-span-2 md:col-span-4">
+                      <Label className="text-xs text-muted-foreground">Ajuste no Item</Label>
+                      <Select value={produtoAjusteTipo} onValueChange={(val: any) => setProdutoAjusteTipo(val)}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nenhum">Sem Ajuste</SelectItem>
+                          <SelectItem value="desconto">Conceder Desconto</SelectItem>
+                          <SelectItem value="acrescimo">Aplicar Acréscimo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {produtoAjusteTipo !== 'nenhum' && (
+                      <>
+                        <div className="col-span-1 md:col-span-4">
+                          <Label className="text-xs text-muted-foreground">
+                            Tipo de {produtoAjusteTipo === 'desconto' ? 'Desconto' : 'Acréscimo'}
+                          </Label>
+                          <Select value={produtoAjusteModo} onValueChange={(val: any) => setProdutoAjusteModo(val)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="valor">Valor Fixo (R$)</SelectItem>
+                              <SelectItem value="porcentagem">Porcentagem (%)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-1 md:col-span-4">
+                          <Label className="text-xs text-muted-foreground">
+                            Valor ({produtoAjusteModo === 'valor' ? 'R$' : '%'})
+                          </Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={produtoAjusteValor}
+                            className="h-8 text-xs"
+                            onChange={(e) => setProdutoAjusteValor(Number(e.target.value))}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>
@@ -813,7 +992,14 @@ const Atendimentos = () => {
                         <TableCell>
                           <Badge variant="info">Serviço</Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{item.servico.nome}</TableCell>
+                        <TableCell className="font-medium">
+                          {item.servico.nome}
+                          {item.tipo_ajuste && item.tipo_ajuste !== 'nenhum' && item.valor_ajuste ? (
+                            <span className={`block text-[10px] font-normal mt-0.5 ${item.tipo_ajuste === 'desconto' ? 'text-destructive' : 'text-success'}`}>
+                               {item.tipo_ajuste === 'desconto' ? 'Desconto' : 'Acrésc.'}: {item.modo_ajuste === 'porcentagem' ? `${item.valor_ajuste}%` : formatPrice(Number(item.valor_ajuste))}
+                            </span>
+                          ) : null}
+                        </TableCell>
                         <TableCell>{item.profissional.nome}</TableCell>
                         <TableCell className="text-center">{item.quantidade}</TableCell>
                         <TableCell className="text-right">{formatPrice(Number(item.preco_unitario))}</TableCell>
@@ -830,7 +1016,14 @@ const Atendimentos = () => {
                         <TableCell>
                           <Badge variant="success">Produto</Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{item.produto.nome}</TableCell>
+                        <TableCell className="font-medium">
+                          {item.produto.nome}
+                          {item.tipo_ajuste && item.tipo_ajuste !== 'nenhum' && item.valor_ajuste ? (
+                            <span className={`block text-[10px] font-normal mt-0.5 ${item.tipo_ajuste === 'desconto' ? 'text-destructive' : 'text-success'}`}>
+                               {item.tipo_ajuste === 'desconto' ? 'Desconto' : 'Acrésc.'}: {item.modo_ajuste === 'porcentagem' ? `${item.valor_ajuste}%` : formatPrice(Number(item.valor_ajuste))}
+                            </span>
+                          ) : null}
+                        </TableCell>
                         <TableCell>-</TableCell>
                         <TableCell className="text-center">{item.quantidade}</TableCell>
                         <TableCell className="text-right">{formatPrice(Number(item.preco_unitario))}</TableCell>

@@ -30,6 +30,7 @@ export interface Servico {
   nome: string;
   preco: number;
   comissao_padrao: number;
+  valor_variavel?: boolean;
 }
 
 export interface Produto {
@@ -72,6 +73,9 @@ export interface AtendimentoServico {
   comissao_percentual: number;
   comissao_valor: number;
   subtotal: number;
+  tipo_ajuste?: 'desconto' | 'acrescimo' | null;
+  modo_ajuste?: 'valor' | 'porcentagem' | null;
+  valor_ajuste?: number | null;
   created_at?: string;
   servico?: { nome: string };
   profissional?: { nome: string };
@@ -84,6 +88,9 @@ export interface AtendimentoProduto {
   quantidade: number;
   preco_unitario: number;
   subtotal: number;
+  tipo_ajuste?: 'desconto' | 'acrescimo' | null;
+  modo_ajuste?: 'valor' | 'porcentagem' | null;
+  valor_ajuste?: number | null;
   created_at?: string;
   produto?: { nome: string };
 }

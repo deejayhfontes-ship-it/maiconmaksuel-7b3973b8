@@ -24,6 +24,7 @@ export interface Servico {
   gera_comissao: boolean;
   aparece_pdv: boolean;
   foto_url: string | null;
+  valor_variavel?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -159,6 +160,7 @@ export function useServicos() {
           gera_comissao: newServico.gera_comissao,
           aparece_pdv: newServico.aparece_pdv,
           foto_url: newServico.foto_url ?? null,
+          valor_variavel: newServico.valor_variavel ?? false,
         }])
         .select()
         .single();
@@ -258,6 +260,7 @@ export function useServicos() {
           gera_comissao: updated.gera_comissao,
           aparece_pdv: updated.aparece_pdv,
           foto_url: updated.foto_url ?? null,
+          valor_variavel: updated.valor_variavel ?? false,
           updated_at: updated.updated_at,
         })
         .eq('id', id)
