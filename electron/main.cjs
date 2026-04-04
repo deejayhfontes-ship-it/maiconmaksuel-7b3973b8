@@ -154,7 +154,7 @@ function createWindow() {
 
     mainWindow.once('ready-to-show', () => {
         mainWindow.show()
-        if (!isDev) autoUpdater.checkForUpdates().catch(err => console.error(err))
+        if (!isDev) autoUpdater.checkForUpdates().catch(() => { /* silencia erro se não há releases publicadas */ })
         const config = getConfig()
         if (config.kioskEnabled) createKioskWindow()
     })
@@ -198,7 +198,7 @@ autoUpdater.on('update-available', (i) => forwardEvent('update-available', i))
 autoUpdater.on('update-not-available', (i) => forwardEvent('update-not-available', i))
 autoUpdater.on('download-progress', (p) => forwardEvent('update-progress', p))
 autoUpdater.on('update-downloaded', (i) => forwardEvent('update-downloaded', i))
-autoUpdater.on('error', (e) => forwardEvent('update-error', e.message))
+autoUpdater.on('error', (e) => { /* silenciado — sem releases publicadas é esperado */ })
 
 // =========================================================
 // IPC — CONFIG & UPDATER
