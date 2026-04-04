@@ -686,7 +686,7 @@ const Caixa = () => {
                             {format(parseISO(mov.data_hora), "HH:mm")}
                           </TableCell>
                           <TableCell>{getTipoBadge(mov.tipo, mov.categoria)}</TableCell>
-                          <TableCell className="max-w-[220px]">
+                          <TableCell className="max-w-[240px]">
                             {isComanda && (linhaComanda || clienteNome) ? (
                               <div>
                                 <p className="font-medium text-sm">
@@ -695,6 +695,11 @@ const Caixa = () => {
                                     <span className="text-primary font-semibold"> · {clienteNome}</span>
                                   )}
                                 </p>
+                                {mov.profissional_nome && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    ✂ {mov.profissional_nome}
+                                  </p>
+                                )}
                               </div>
                             ) : (
                               <span className="text-sm truncate block">{mov.descricao}</span>

@@ -40,6 +40,7 @@ export interface CaixaMovimentacao {
   data_hora: string;
   // Enriquecido no frontend via join
   cliente_nome?: string | null;
+  profissional_nome?: string | null;
 }
 
 export interface DespesaRapida {
@@ -229,25 +230,27 @@ export function useCaixa(): UseCaixaReturn {
         await localPut('caixa', serverCaixa as Caixa, true);
         setCaixaAberto(serverCaixa as Caixa);
         
-        // Fetch movimentações com join de cliente via atendimento
+        // Fetch movimentações com join de cliente e profissional via atendimento
         const { data: serverMovs } = await supabase
           .from('caixa_movimentacoes')
           .select(`
             *,
             atendimento:atendimentos(
               numero_comanda,
-              cliente:clientes(nome)
+              cliente:clientes(nome),
+              servicos:atendimento_servicos(
+                profissional:profissionais(nome)
+              )
             )
           `)
           .eq('caixa_id', serverCaixa.id)
           .order('data_hora', { ascending: false });
         
         if (serverMovs) {
-          // Enriquecer cada movimentação com o nome do cliente quando disponível
           const movsEnriquecidas = (serverMovs as any[]).map(m => ({
             ...m,
             cliente_nome: m.atendimento?.cliente?.nome || null,
-            // Limpar o campo de join para não poluir a interface
+            profissional_nome: m.atendimento?.servicos?.[0]?.profissional?.nome || null,
             atendimento: undefined,
           })) as CaixaMovimentacao[];
 
