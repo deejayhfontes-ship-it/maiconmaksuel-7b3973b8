@@ -680,12 +680,14 @@ const Atendimentos = () => {
                         </span>
                         <Badge variant="warning" className="text-xs">Aberta</Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs font-medium truncate">
                         {at.cliente?.nome || "Sem cliente"}
                       </p>
-                      <span className="font-semibold text-success text-sm">
-                        {formatPrice(Number(at.valor_final))}
-                      </span>
+                      {at.profissional_principal && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {at.profissional_principal}
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 ))
@@ -716,19 +718,20 @@ const Atendimentos = () => {
                         </span>
                         <Badge variant="warning">Aberta</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <User className="h-3 w-3" />
+                      <p className="text-sm font-medium flex items-center gap-1 truncate">
+                        <User className="h-3 w-3 flex-shrink-0" />
                         {at.cliente?.nome || "Sem cliente"}
                       </p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {format(new Date(at.data_hora), "HH:mm", { locale: ptBR })}
-                        </span>
-                        <span className="font-semibold text-success">
-                          {formatPrice(Number(at.valor_final))}
-                        </span>
-                      </div>
+                      {at.profissional_principal && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 truncate">
+                          <Scissors className="h-3 w-3 flex-shrink-0" />
+                          {at.profissional_principal}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(at.data_hora), "HH:mm", { locale: ptBR })}
+                      </p>
                     </CardContent>
                   </Card>
                 ))

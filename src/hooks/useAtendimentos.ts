@@ -61,6 +61,7 @@ export interface Atendimento {
   created_at?: string;
   updated_at?: string;
   cliente?: { nome: string } | null;
+  profissional_principal?: string | null;
 }
 
 export interface AtendimentoServico {
@@ -220,14 +221,19 @@ export function useAtendimentos(): UseAtendimentosReturn {
       if (isOnline) {
         const { data: serverData, error } = await supabase
           .from('atendimentos')
-          .select('*, cliente:clientes(nome)')
+          .select('*, cliente:clientes(nome), servicos:atendimento_servicos(profissional:profissionais(nome))')
           .eq('status', 'aberto')
           .order('data_hora', { ascending: false });
 
         if (!error && serverData) {
-          // Save to local
-          await localBulkPut('atendimentos', serverData.map(a => ({ ...a, cliente: undefined })) as unknown as (Atendimento & { id: string })[]);
-          setAtendimentos(serverData as Atendimento[]);
+          // Enriquecer com profissional_principal (primeiro serviço)
+          const enrichedServerData = (serverData as any[]).map(a => ({
+            ...a,
+            profissional_principal: a.servicos?.[0]?.profissional?.nome || null,
+          }));
+          // Save to local (sem o campo servicos)
+          await localBulkPut('atendimentos', enrichedServerData.map(a => ({ ...a, cliente: undefined, servicos: undefined })) as unknown as (Atendimento & { id: string })[]);
+          setAtendimentos(enrichedServerData as Atendimento[]);
         }
       }
     } catch (err) {
