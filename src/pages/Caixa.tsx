@@ -667,6 +667,7 @@ const Caixa = () => {
                       <TableHead>Descrição</TableHead>
                       <TableHead>Forma</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -714,6 +715,18 @@ const Caixa = () => {
                           )}>
                             {mov.tipo === "entrada" || mov.tipo === "reforco" ? "+" : "-"}
                             {formatPrice(mov.valor)}
+                          </TableCell>
+                          <TableCell>
+                            {isComanda && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+                                onClick={() => navigate("/auditoria-comandas")}
+                              >
+                                Auditar
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );

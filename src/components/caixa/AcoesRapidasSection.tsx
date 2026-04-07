@@ -6,6 +6,7 @@ import {
   Heart,
   FileCheck,
   Wallet,
+  Shield,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -262,6 +263,20 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
       darkGradientTo: "dark:to-green-900/20",
       badgeColor: "bg-orange-500",
       onClick: () => setIsChequesOpen(true),
+      highlight: false,
+    },
+    {
+      icon: Shield,
+      label: "Auditoria",
+      count: null,
+      subtitle: null,
+      iconBgColor: "bg-slate-600",
+      gradientFrom: "from-slate-50",
+      gradientTo: "to-slate-100",
+      darkGradientFrom: "dark:from-slate-950/30",
+      darkGradientTo: "dark:to-slate-900/20",
+      badgeColor: "bg-slate-500",
+      onClick: () => navigate("/auditoria-comandas"),
       highlight: false,
     },
   ];
