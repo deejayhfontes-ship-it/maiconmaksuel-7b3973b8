@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -373,17 +373,27 @@ const Relatorios = () => {
   }, [atendimentos]);
 
   const vendasPorProfissional = useMemo(() => {
-    const agrupado: Record<string, { nome: string; valor: number; quantidade: number; comissao: number }> = {};
+    const agrupado: Record<string, { nome: string; valor: number; quantidade: number; comissao: number; servicos: Record<string, { quantidade: number, valor: number, comissao: number }> }> = {};
     
     atendimentoServicos.forEach((as) => {
-      const profId = as.profissional_id;
+      const profId = as.profissional_id || 'desconhecido';
       const profNome = as.profissional?.nome || "Desconhecido";
       if (!agrupado[profId]) {
-        agrupado[profId] = { nome: profNome, valor: 0, quantidade: 0, comissao: 0 };
+        agrupado[profId] = { nome: profNome, valor: 0, quantidade: 0, comissao: 0, servicos: {} };
       }
+      
+      const servNome = as.servico?.nome || "Serviço Avulso/Desconhecido";
+      if (!agrupado[profId].servicos[servNome]) {
+        agrupado[profId].servicos[servNome] = { quantidade: 0, valor: 0, comissao: 0 };
+      }
+
       agrupado[profId].valor += as.subtotal || 0;
       agrupado[profId].quantidade += 1;
       agrupado[profId].comissao += as.comissao_valor || 0;
+      
+      agrupado[profId].servicos[servNome].quantidade += as.quantidade || 1;
+      agrupado[profId].servicos[servNome].valor += as.subtotal || 0;
+      agrupado[profId].servicos[servNome].comissao += as.comissao_valor || 0;
     });
 
     return Object.values(agrupado).sort((a, b) => b.valor - a.valor);
@@ -985,12 +995,27 @@ const Relatorios = () => {
                   </TableHeader>
                   <TableBody>
                     {vendasPorProfissional.map((item) => (
-                      <TableRow key={item.nome}>
-                        <TableCell className="font-medium">{item.nome}</TableCell>
-                        <TableCell className="text-center">{item.quantidade}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.valor)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.comissao)}</TableCell>
-                      </TableRow>
+                      <Fragment key={item.nome}>
+                        <TableRow className="bg-muted/20">
+                          <TableCell className="font-semibold">{item.nome}</TableCell>
+                          <TableCell className="text-center font-semibold">{item.quantidade}</TableCell>
+                          <TableCell className="text-right font-semibold text-primary">{formatCurrency(item.valor)}</TableCell>
+                          <TableCell className="text-right font-semibold text-success">{formatCurrency(item.comissao)}</TableCell>
+                        </TableRow>
+                        {Object.entries(item.servicos)
+                          .sort(([, a], [, b]) => b.valor - a.valor)
+                          .map(([servNome, sData]) => (
+                            <TableRow key={`${item.nome}-${servNome}`} className="border-b-0 border-t-0 bg-transparent opacity-85 hover:bg-muted/10">
+                              <TableCell className="pl-6 md:pl-10 text-sm text-muted-foreground border-l-2 border-l-primary/30 flex items-center gap-2">
+                                <Activity className="h-3 w-3" />
+                                {servNome}
+                              </TableCell>
+                              <TableCell className="text-center text-sm text-muted-foreground">{sData.quantidade}</TableCell>
+                              <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(sData.valor)}</TableCell>
+                              <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(sData.comissao)}</TableCell>
+                            </TableRow>
+                        ))}
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
