@@ -381,6 +381,19 @@ export default function AuditoriaComandas() {
                     const statusInfo = statusComandaBadge[c.status] || { cor: 'bg-gray-100 text-gray-800', label: c.status };
                     const podeReabrir = c.status !== 'aberto';
                     const formasPgto = (c.pagamentos || []).map(p => p.forma_pagamento).filter(Boolean).join(', ') || '—';
+                    // Valor real: garante que nada vem como string do BD
+                    const valorFinalDb = Number(c.valor_final) || 0;
+                    const descontoDb = Number(c.desconto) || 0;
+                    
+                    const valorCalculado = (c.servicos || []).reduce((acc, s) => {
+                      const sub = Number(s.subtotal) || 0;
+                      const pu = Number(s.preco_unitario) || 0;
+                      const q = Number(s.quantidade ?? 1);
+                      return acc + (sub > 0 ? sub : pu * q);
+                    }, 0);
+                    
+                    const valorReal = valorFinalDb > 0 ? valorFinalDb : valorCalculado;
+                    const valorComDesconto = Math.max(0, valorReal - descontoDb);
                     return (
                       <Card key={c.id} className="border overflow-hidden">
                         {/* Linha principal */}
@@ -410,7 +423,7 @@ export default function AuditoriaComandas() {
                             </div>
                             <div className="text-right">
                               <p className="text-xs text-muted-foreground">Valor Total</p>
-                              <p className="font-bold text-success">{formatPrice(c.valor_final)}</p>
+                              <p className="font-bold text-success">{formatPrice(valorComDesconto)}</p>
                             </div>
                             <Badge variant="outline" className={cn('text-xs whitespace-nowrap', statusInfo.cor)}>
                               {statusInfo.label}
@@ -487,7 +500,15 @@ export default function AuditoriaComandas() {
           acao={acaoAtual}
           numeroComanda={comandaSelecionada.numero_comanda}
           clienteNome={comandaSelecionada.cliente?.nome}
-          valorComanda={comandaSelecionada.valor_final}
+          valorComanda={(() => {
+            const final = Number(comandaSelecionada.valor_final) || 0;
+            if (final > 0) return final;
+            const calc = (comandaSelecionada.servicos || []).reduce((acc, s) => {
+              const sub = Number(s.subtotal) || 0;
+              return acc + (sub > 0 ? sub : (Number(s.preco_unitario) || 0) * Number(s.quantidade ?? 1));
+            }, 0);
+            return Math.max(0, calc - (Number(comandaSelecionada.desconto) || 0));
+          })()}
           onConfirmar={confirmarAcao}
         />
       )}
