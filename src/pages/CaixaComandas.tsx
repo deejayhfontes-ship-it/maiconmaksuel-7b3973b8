@@ -110,7 +110,7 @@ export default function CaixaComandas() {
         *,
         cliente:cliente_id (nome, celular)
       `)
-      .eq("status", "aberto")
+      .in("status", ["aberto", "reaberta"])
       .order("data_hora", { ascending: true });
 
     if (error) {
@@ -156,7 +156,7 @@ export default function CaixaComandas() {
     const { data } = await supabase
       .from("atendimentos")
       .select(`*, cliente:cliente_id (nome, celular)`)
-      .in("status", ["finalizado", "fechado"])
+      .in("status", ["finalizado", "fechado", "cancelado"]) // 'reaberta' NAO aparece aqui
       .gte("data_hora", startOfDay(hoje).toISOString())
       .lte("data_hora", endOfDay(hoje).toISOString())
       .order("data_hora", { ascending: false });
@@ -197,6 +197,10 @@ export default function CaixaComandas() {
         subtotal: reabrirTarget.subtotal,
         desconto: reabrirTarget.desconto,
         valor_final: reabrirTarget.valor_final,
+        data_hora: reabrirTarget.data_hora,
+        cliente_id: reabrirTarget.cliente_id,
+        observacoes: reabrirTarget.observacoes,
+        cliente: reabrirTarget.cliente,
       },
       motivo,
       categoria
@@ -204,10 +208,13 @@ export default function CaixaComandas() {
     if (result.success) {
       toast({
         title: `✅ Comanda #${String(reabrirTarget.numero_comanda).padStart(3, '0')} reaberta!`,
-        description: 'A comanda voltou para a lista de abertas.',
+        description: 'A comanda voltou para a lista de abertas para edição.',
       });
-      fetchComandas();
-      fetchFechadas();
+      setIsReabrirModalOpen(false);
+      setReabrirTarget(null);
+      // Refresh ambas as listas para mover a comanda de 'fechadas' para 'abertas'
+      await fetchComandas();
+      await fetchFechadas();
     } else {
       toast({ title: 'Erro', description: result.error, variant: 'destructive' });
     }

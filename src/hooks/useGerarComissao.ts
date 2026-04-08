@@ -127,10 +127,23 @@ export function useGerarComissao() {
           .eq("atendimento_id", comandaId);
 
         if (existentes && existentes.length > 0) {
-          console.log(
-            "[useGerarComissao] Comissões já existem para essa comanda, pulando."
-          );
-          return;
+          // Se a comanda foi reaberta e está sendo finalizada novamente,
+          // apagar as comissões antigas para recalcular com os dados atuais
+          const comandaStatus = await supabase
+            .from("atendimentos")
+            .select("status")
+            .eq("id", comandaId)
+            .maybeSingle();
+          
+          if (comandaStatus.data?.status === "reaberta") {
+            await db.from("comissoes_registro").delete().eq("atendimento_id", comandaId);
+            console.log("[useGerarComissao] Reaberta detectada — comissões antigas removidas para recálculo.");
+          } else {
+            console.log(
+              "[useGerarComissao] Comissões já existem para essa comanda, pulando."
+            );
+            return;
+          }
         }
 
         // 4. Insere os registros
