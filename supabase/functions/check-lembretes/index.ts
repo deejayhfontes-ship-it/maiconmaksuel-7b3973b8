@@ -39,10 +39,10 @@ serve(async (req) => {
     for (const lembrete of lembretes) {
       const horasAntes = lembrete.horas_antes || 24;
 
-      // Window: agendamentos happening in [now + horasAntes - 1min, now + horasAntes + 1min]
+      // Window: abrangendo o intervalo do Cron (5 minutos) com folga (+- 6min)
       const windowCenter = new Date(now.getTime() + horasAntes * 60 * 60 * 1000);
-      const windowStart = new Date(windowCenter.getTime() - 60 * 1000);
-      const windowEnd = new Date(windowCenter.getTime() + 60 * 1000);
+      const windowStart = new Date(windowCenter.getTime() - 6 * 60 * 1000);
+      const windowEnd = new Date(windowCenter.getTime() + 6 * 60 * 1000);
 
       console.log(`[CHECK-LEMBRETES] Lembrete "${lembrete.nome}" (${horasAntes}h antes), janela: ${windowStart.toISOString()} - ${windowEnd.toISOString()}`);
 

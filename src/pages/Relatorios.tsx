@@ -1135,7 +1135,7 @@ const Relatorios = () => {
         );
 
       case "historico":
-        const historicoVendas = atendimentos.filter(a => a.status === "fechado").sort((a, b) => 
+        const historicoVendas = atendimentos.filter(a => a.status === "fechado" || a.status === "finalizado").sort((a, b) => 
           new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()
         );
         return (
@@ -1157,7 +1157,7 @@ const Relatorios = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Valor Total</p>
-                      <p className="text-2xl font-bold">{formatCurrency(historicoVendas.reduce((sum, v) => sum + (v.valor_final || 0), 0))}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(historicoVendas.reduce((sum, v) => sum + (v.valor_final || v.subtotal || 0), 0))}</p>
                     </div>
                     <DollarSign className="h-8 w-8 text-green-500" />
                   </div>
@@ -1168,7 +1168,7 @@ const Relatorios = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Ticket Médio</p>
-                      <p className="text-2xl font-bold">{formatCurrency(historicoVendas.length > 0 ? historicoVendas.reduce((sum, v) => sum + (v.valor_final || 0), 0) / historicoVendas.length : 0)}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(historicoVendas.length > 0 ? historicoVendas.reduce((sum, v) => sum + (v.valor_final || v.subtotal || 0), 0) / historicoVendas.length : 0)}</p>
                     </div>
                     <TrendingUp className="h-8 w-8 text-purple-500" />
                   </div>
@@ -1183,7 +1183,7 @@ const Relatorios = () => {
                   data: format(new Date(v.data_hora), "dd/MM/yyyy HH:mm"),
                   comanda: v.numero_comanda,
                   cliente: v.cliente?.nome || "Cliente avulso",
-                  valor: v.valor_final,
+                  valor: v.valor_final || v.subtotal || 0,
                   status: v.status
                 })), "historico-vendas")}>
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
@@ -1213,7 +1213,7 @@ const Relatorios = () => {
                           <TableCell>{format(new Date(v.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
                           <TableCell>#{v.numero_comanda}</TableCell>
                           <TableCell>{v.cliente?.nome || "Cliente avulso"}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(v.valor_final || 0)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(v.valor_final || v.subtotal || 0)}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                               Finalizado
