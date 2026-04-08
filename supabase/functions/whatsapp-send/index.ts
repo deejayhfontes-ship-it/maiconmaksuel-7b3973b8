@@ -84,24 +84,42 @@ serve(async (req) => {
       finalMessage = finalMessage.replace(/{nome}/g, cliente_nome);
     }
 
-    // Send message via Evolution API (or compatible)
+    // Send message via API
     const apiUrl = config.api_url.replace(/\/$/, "");
     const instanceName = config.numero_whatsapp || "default";
+    const isZApi = config.api_provider === "z_api" || apiUrl.includes("z-api");
 
-    console.log(`Sending message to ${formattedPhone} via ${apiUrl}`);
+    console.log(`[WHATSAPP-SEND] To: ${formattedPhone} via ${apiUrl} (provider: ${config.api_provider})`);
 
-    // Evolution API v2 endpoint format
-    const response = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: config.api_token,
-      },
-      body: JSON.stringify({
-        number: formattedPhone,
-        text: finalMessage,
-      }),
-    });
+    let response;
+
+    if (isZApi) {
+      // Z-API endpoint format
+      response = await fetch(`${apiUrl}/send-text`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Client-Token": config.api_token || "",
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          message: finalMessage,
+        }),
+      });
+    } else {
+      // Evolution API v2 endpoint format
+      response = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: config.api_token || "",
+        },
+        body: JSON.stringify({
+          number: formattedPhone,
+          text: finalMessage,
+        }),
+      });
+    }
 
     const responseText = await response.text();
     console.log("API Response:", response.status, responseText);
