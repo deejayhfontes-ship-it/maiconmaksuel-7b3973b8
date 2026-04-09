@@ -1,620 +1,977 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-    Percent,
-    Users,
-    DollarSign,
-    Calendar,
-    Download,
-    CheckCircle2,
-    Clock,
-    TrendingUp,
-    Search,
-    Filter,
-    FileDown,
-    Banknote,
+  Percent,
+  Users,
+  DollarSign,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
+  Search,
+  FileDown,
+  Banknote,
+  Eye,
+  ChevronLeft,
+  Scissors,
+  User,
+  AlertCircle,
+  History,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { isDesktop, isPinAuthenticated } from "@/lib/auth/pin-auth";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  subMonths,
+  parseISO,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 
-// Tipos
+// ─── Tipos ───────────────────────────────────────────────────────────────────
+
 interface Profissional {
-    id: string;
-    nome: string;
-    foto_url: string | null;
-    cor_agenda: string;
-    comissao_padrao?: number;
+  id: string;
+  nome: string;
+  foto_url: string | null;
+  cor_agenda: string;
+  comissao_padrao?: number;
 }
 
 interface ComissaoRegistro {
-    id: string;
-    profissional_id: string;
-    atendimento_id: string | null;
-    servico_id: string | null;
-    valor_servico: number;
-    percentual: number;
-    valor_comissao: number;
-    status: string;
-    data_pagamento: string | null;
-    periodo_ref: string | null;
-    created_at: string;
-    servico_nome?: string;
-    profissional_nome?: string;
+  id: string;
+  profissional_id: string;
+  atendimento_id: string | null;
+  servico_id: string | null;
+  servico_nome: string | null;
+  valor_servico: number;
+  percentual: number;
+  valor_comissao: number;
+  status: string;
+  data_pagamento: string | null;
+  periodo_ref: string | null;
+  created_at: string;
+  // Enriquecidos via join
+  cliente_nome?: string | null;
+  numero_comanda?: number | null;
 }
 
-interface ComissaoResumo {
-    profissional: Profissional;
-    total_servicos: number;
-    total_comissao: number;
-    total_pendente: number;
-    total_pago: number;
-    qtd_atendimentos: number;
+interface Vale {
+  id: string;
+  profissional_id: string;
+  valor_total: number;
+  saldo_restante: number;
+  motivo: string;
+  status: string;
+  data_lancamento: string;
 }
 
-type PeriodoFiltro = "hoje" | "semana" | "mes" | "mes_anterior" | "custom";
+interface PagamentoHistorico {
+  id: string;
+  profissional_id: string;
+  profissional_nome: string;
+  periodo_inicio: string;
+  periodo_fim: string;
+  valor_bruto: number;
+  valor_descontos: number;
+  valor_liquido: number;
+  qtd_itens: number;
+  observacao: string | null;
+  usuario_nome: string;
+  created_at: string;
+}
 
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-    }).format(value);
-};
+interface ResumoProf {
+  profissional: Profissional;
+  comissoes: ComissaoRegistro[];
+  vales: Vale[];
+  total_bruto: number;
+  total_vales: number;
+  total_liquido: number;
+  total_pago: number;
+  total_pendente_liquido: number;
+  qtd_atendimentos: number;
+}
 
-const getInitials = (name: string) => {
-    return name
-        .split(" ")
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase();
-};
+type PeriodoFiltro = "hoje" | "semana" | "mes" | "mes_anterior";
+type Tela = "lista" | "extrato" | "historico";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const fmt = (v: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+const initials = (name: string) =>
+  name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+
+// ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function Comissoes() {
-    const { toast } = useToast();
-    const [loading, setLoading] = useState(true);
-    const [profissionais, setProfissionais] = useState<Profissional[]>([]);
-    const [comissoes, setComissoes] = useState<ComissaoRegistro[]>([]);
-    const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedProfissional, setSelectedProfissional] = useState<string>("todos");
-    const [showPagarDialog, setShowPagarDialog] = useState(false);
-    const [profissionalPagar, setProfissionalPagar] = useState<ComissaoResumo | null>(null);
-    const [activeTab, setActiveTab] = useState("resumo");
+  const { toast } = useToast();
 
-    // Calcular range de datas baseado no período
-    const dateRange = useMemo(() => {
-        const now = new Date();
-        switch (periodo) {
-            case "hoje":
-                return { from: new Date(now.setHours(0, 0, 0, 0)), to: new Date() };
-            case "semana":
-                return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
-            case "mes":
-                return { from: startOfMonth(now), to: endOfMonth(now) };
-            case "mes_anterior": {
-                const mesAnterior = subMonths(now, 1);
-                return { from: startOfMonth(mesAnterior), to: endOfMonth(mesAnterior) };
-            }
-            default:
-                return { from: startOfMonth(now), to: endOfMonth(now) };
-        }
-    }, [periodo]);
+  // Estado de navegação
+  const [tela, setTela] = useState<Tela>("lista");
+  const [profissionalSelecionado, setProfissionalSelecionado] = useState<ResumoProf | null>(null);
 
-    // Buscar dados
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => {
-        fetchData();
-    }, [dateRange]);
+  // Dados
+  const [loading, setLoading] = useState(true);
+  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
+  const [comissoes, setComissoes] = useState<ComissaoRegistro[]>([]);
+  const [vales, setVales] = useState<Vale[]>([]);
+  const [historico, setHistorico] = useState<PagamentoHistorico[]>([]);
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        try {
-            // Buscar profissionais
-            const { data: profs } = await supabase
-                .from("profissionais")
-                .select("id, nome, foto_url, cor_agenda, comissao_padrao")
-                .eq("ativo", true)
-                .order("nome");
+  // Filtros
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filtroProf, setFiltroProf] = useState("todos");
 
-            if (profs) setProfissionais(profs as Profissional[]);
+  // Modal pagamento
+  const [showPagarDialog, setShowPagarDialog] = useState(false);
+  const [obsPagamento, setObsPagamento] = useState("");
+  const [pagando, setPagando] = useState(false);
 
-            // Buscar comissões do período
-            const { data: comissoesData } = await supabase
-                .from("comissoes_registro")
-                .select("*")
-                .gte("created_at", dateRange.from.toISOString())
-                .lte("created_at", dateRange.to.toISOString())
-                .order("created_at", { ascending: false });
+  // Range de datas
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    switch (periodo) {
+      case "hoje":
+        return { from: new Date(new Date().setHours(0, 0, 0, 0)), to: new Date() };
+      case "semana":
+        return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+      case "mes":
+        return { from: startOfMonth(now), to: endOfMonth(now) };
+      case "mes_anterior": {
+        const m = subMonths(now, 1);
+        return { from: startOfMonth(m), to: endOfMonth(m) };
+      }
+    }
+  }, [periodo]);
 
-            if (comissoesData) {
-                setComissoes(comissoesData as ComissaoRegistro[]);
-            }
-        } catch (error) {
-            console.error("Erro ao buscar comissões:", error);
-            // Se tabela não existe ainda, usar dados vazios
-            setComissoes([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [dateRange]);
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [profsRes, comissoesRes, valesRes] = await Promise.all([
+        supabase
+          .from("profissionais")
+          .select("id, nome, foto_url, cor_agenda, comissao_padrao")
+          .eq("ativo", true)
+          .order("nome"),
 
-    // Calcular resumo por profissional
-    const resumoPorProfissional = useMemo((): ComissaoResumo[] => {
-        return profissionais.map((prof) => {
-            const comissoesProf = comissoes.filter((c) => c.profissional_id === prof.id);
-            const pendentes = comissoesProf.filter((c) => c.status === "pendente");
-            const pagas = comissoesProf.filter((c) => c.status === "pago");
+        // Busca comissões com join para pegar cliente e número da comanda
+        supabase
+          .from("comissoes_registro")
+          .select(`
+            *,
+            atendimento:atendimentos(
+              numero_comanda,
+              cliente:clientes(nome)
+            )
+          `)
+          .gte("created_at", dateRange.from.toISOString())
+          .lte("created_at", dateRange.to.toISOString())
+          .order("created_at", { ascending: false }),
 
-            return {
-                profissional: prof,
-                total_servicos: comissoesProf.reduce((acc, c) => acc + c.valor_servico, 0),
-                total_comissao: comissoesProf.reduce((acc, c) => acc + c.valor_comissao, 0),
-                total_pendente: pendentes.reduce((acc, c) => acc + c.valor_comissao, 0),
-                total_pago: pagas.reduce((acc, c) => acc + c.valor_comissao, 0),
-                qtd_atendimentos: new Set(comissoesProf.map((c) => c.atendimento_id)).size,
-            };
-        }).filter((r) => r.total_comissao > 0 || selectedProfissional !== "todos");
-    }, [profissionais, comissoes, selectedProfissional]);
+        supabase
+          .from("vales")
+          .select("*")
+          .in("status", ["aberto", "parcial"])
+          .order("data_lancamento", { ascending: false }),
+      ]);
 
-    // Totais gerais
-    const totais = useMemo(() => {
-        return {
-            totalComissoes: resumoPorProfissional.reduce((acc, r) => acc + r.total_comissao, 0),
-            totalPendente: resumoPorProfissional.reduce((acc, r) => acc + r.total_pendente, 0),
-            totalPago: resumoPorProfissional.reduce((acc, r) => acc + r.total_pago, 0),
-            totalServicos: resumoPorProfissional.reduce((acc, r) => acc + r.total_servicos, 0),
-        };
-    }, [resumoPorProfissional]);
+      if (profsRes.data) setProfissionais(profsRes.data as Profissional[]);
 
-    // Filtrar por busca
-    const filteredResumo = useMemo(() => {
-        let result = resumoPorProfissional;
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            result = result.filter((r) => r.profissional.nome.toLowerCase().includes(query));
-        }
-        if (selectedProfissional !== "todos") {
-            result = result.filter((r) => r.profissional.id === selectedProfissional);
-        }
-        return result;
-    }, [resumoPorProfissional, searchQuery, selectedProfissional]);
+      if (comissoesRes.data) {
+        // Enriquecer com dados do atendimento
+        const enriquecidas = (comissoesRes.data as any[]).map((c) => ({
+          ...c,
+          cliente_nome: c.atendimento?.cliente?.nome || null,
+          numero_comanda: c.atendimento?.numero_comanda || null,
+          atendimento: undefined,
+        })) as ComissaoRegistro[];
+        setComissoes(enriquecidas);
+      }
 
-    // Detalhes de comissão filtrados
-    const comissoesFiltradas = useMemo(() => {
-        let result = comissoes;
-        if (selectedProfissional !== "todos") {
-            result = result.filter((c) => c.profissional_id === selectedProfissional);
-        }
-        return result;
-    }, [comissoes, selectedProfissional]);
+      if (valesRes.data) setVales(valesRes.data as Vale[]);
+    } catch (err) {
+      console.error("Erro ao buscar comissões:", err);
+      setComissoes([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [dateRange]);
 
-    // Pagar comissões de um profissional
-    const handlePagarComissoes = async () => {
-        if (!profissionalPagar) return;
+  const fetchHistorico = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("pagamentos_comissao")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (data) setHistorico(data as PagamentoHistorico[]);
+    } catch {
+      // tabela pode não existir ainda
+      setHistorico([]);
+    }
+  }, []);
 
-        try {
-            const { error } = await supabase
-                .from("comissoes_registro")
-                .update({ status: "pago", data_pagamento: new Date().toISOString() })
-                .eq("profissional_id", profissionalPagar.profissional.id)
-                .eq("status", "pendente")
-                .gte("created_at", dateRange.from.toISOString())
-                .lte("created_at", dateRange.to.toISOString());
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (tela === "historico") fetchHistorico(); }, [tela, fetchHistorico]);
 
-            if (error) throw error;
+  // ── Cálculo do resumo ──────────────────────────────────────────────────────
+  const resumos = useMemo((): ResumoProf[] => {
+    return profissionais.map((prof) => {
+      const comissoesProf = comissoes.filter((c) => c.profissional_id === prof.id);
+      const valesProf = vales.filter((v) => v.profissional_id === prof.id);
 
-            toast({
-                title: "✅ Comissões pagas!",
-                description: `Comissões de ${profissionalPagar.profissional.nome} marcadas como pagas.`,
-            });
+      const pendentes = comissoesProf.filter((c) => c.status === "pendente");
+      const pagas = comissoesProf.filter((c) => c.status === "pago");
 
-            setShowPagarDialog(false);
-            setProfissionalPagar(null);
-            fetchData();
-        } catch (error) {
-            console.error("Erro ao pagar comissões:", error);
-            toast({
-                title: "Erro",
-                description: "Não foi possível registrar o pagamento. Verifique se as tabelas foram criadas.",
-                variant: "destructive",
-            });
-        }
-    };
+      const bruto_pendente = pendentes.reduce((s, c) => s + Number(c.valor_comissao), 0);
+      const total_vales_prof = valesProf.reduce((s, v) => s + Number(v.saldo_restante || 0), 0);
+      const liquido_pendente = Math.max(0, bruto_pendente - total_vales_prof);
 
-    // Exportar para Excel
-    const exportToExcel = () => {
-        const data = filteredResumo.map((r) => ({
-            Profissional: r.profissional.nome,
-            "Total Serviços": r.total_servicos,
-            "Total Comissão": r.total_comissao,
-            Pendente: r.total_pendente,
-            Pago: r.total_pago,
-            Atendimentos: r.qtd_atendimentos,
-        }));
+      return {
+        profissional: prof,
+        comissoes: comissoesProf,
+        vales: valesProf,
+        total_bruto: comissoesProf.reduce((s, c) => s + Number(c.valor_comissao), 0),
+        total_vales: total_vales_prof,
+        total_liquido: comissoesProf.reduce((s, c) => s + Number(c.valor_comissao), 0) - total_vales_prof,
+        total_pago: pagas.reduce((s, c) => s + Number(c.valor_comissao), 0),
+        total_pendente_liquido: liquido_pendente,
+        qtd_atendimentos: new Set(comissoesProf.map((c) => c.atendimento_id)).size,
+      };
+    }).filter((r) => r.comissoes.length > 0);
+  }, [profissionais, comissoes, vales]);
 
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Comissões");
-        XLSX.writeFile(wb, `comissoes_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+  const totaisGerais = useMemo(() => ({
+    bruto: resumos.reduce((s, r) => s + r.total_bruto, 0),
+    vales: resumos.reduce((s, r) => s + r.total_vales, 0),
+    pendente: resumos.reduce((s, r) => s + r.total_pendente_liquido, 0),
+    pago: resumos.reduce((s, r) => s + r.total_pago, 0),
+  }), [resumos]);
 
-        toast({ title: "📥 Exportado!", description: "Planilha de comissões baixada." });
-    };
+  const resumosFiltrados = useMemo(() => {
+    let r = resumos;
+    if (searchQuery) r = r.filter((x) => x.profissional.nome.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (filtroProf !== "todos") r = r.filter((x) => x.profissional.id === filtroProf);
+    return r;
+  }, [resumos, searchQuery, filtroProf]);
 
-    const periodoLabel = useMemo(() => {
-        switch (periodo) {
-            case "hoje": return "Hoje";
-            case "semana": return "Esta Semana";
-            case "mes": return format(new Date(), "MMMM yyyy", { locale: ptBR });
-            case "mes_anterior": return format(subMonths(new Date(), 1), "MMMM yyyy", { locale: ptBR });
-            default: return "Período";
-        }
-    }, [periodo]);
+  const periodoLabel = useMemo(() => {
+    switch (periodo) {
+      case "hoje": return "Hoje";
+      case "semana": return "Esta Semana";
+      case "mes": return format(new Date(), "MMMM yyyy", { locale: ptBR });
+      case "mes_anterior": return format(subMonths(new Date(), 1), "MMMM yyyy", { locale: ptBR });
+    }
+  }, [periodo]);
+
+  // ── Pagar ──────────────────────────────────────────────────────────────────
+  const handlePagar = async () => {
+    if (!profissionalSelecionado) return;
+    setPagando(true);
+    const r = profissionalSelecionado;
+    try {
+      // 1. Marcar comissões como pagas
+      const pendentesIds = r.comissoes
+        .filter((c) => c.status === "pendente")
+        .map((c) => c.id);
+
+      if (pendentesIds.length === 0) {
+        toast({ title: "Nenhuma comissão pendente", variant: "destructive" });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("comissoes_registro")
+        .update({ status: "pago", data_pagamento: new Date().toISOString() })
+        .in("id", pendentesIds);
+
+      if (error) throw error;
+
+      // 2. Registrar no histórico (tabela pagamentos_comissao — cria silenciosamente se não existir)
+      await supabase.from("pagamentos_comissao").insert([{
+        profissional_id: r.profissional.id,
+        profissional_nome: r.profissional.nome,
+        periodo_inicio: dateRange.from.toISOString(),
+        periodo_fim: dateRange.to.toISOString(),
+        valor_bruto: r.total_bruto,
+        valor_descontos: r.total_vales,
+        valor_liquido: r.total_pendente_liquido,
+        qtd_itens: pendentesIds.length,
+        observacao: obsPagamento || null,
+        usuario_nome: localStorage.getItem("usuario_nome") || "Admin",
+      }]).select();
+
+      toast({
+        title: `✅ Pagamento registrado!`,
+        description: `${r.profissional.nome} — ${fmt(r.total_pendente_liquido)}`,
+      });
+
+      setShowPagarDialog(false);
+      setObsPagamento("");
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Erro ao registrar pagamento", description: err.message, variant: "destructive" });
+    } finally {
+      setPagando(false);
+    }
+  };
+
+  // ── Exportar Excel ─────────────────────────────────────────────────────────
+  const exportarExcel = () => {
+    if (tela === "extrato" && profissionalSelecionado) {
+      const rows = profissionalSelecionado.comissoes.map((c) => ({
+        Data: format(parseISO(c.created_at), "dd/MM/yyyy HH:mm"),
+        Comanda: c.numero_comanda ? `#${c.numero_comanda}` : "—",
+        Cliente: c.cliente_nome || "—",
+        Serviço: c.servico_nome || "—",
+        "Valor Serviço": c.valor_servico,
+        "%": c.percentual,
+        "Comissão": c.valor_comissao,
+        Status: c.status,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Extrato");
+      XLSX.writeFile(wb, `extrato_${profissionalSelecionado.profissional.nome.replace(/\s/g, "_")}_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    } else {
+      const rows = resumosFiltrados.map((r) => ({
+        Profissional: r.profissional.nome,
+        Atendimentos: r.qtd_atendimentos,
+        "Comissão Bruta": r.total_bruto,
+        "Vales/Descontos": r.total_vales,
+        "Líquido a Pagar": r.total_pendente_liquido,
+        "Já Pago": r.total_pago,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Comissões");
+      XLSX.writeFile(wb, `comissoes_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    }
+    toast({ title: "📥 Exportado com sucesso!" });
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER: EXTRATO DETALHADO
+  // ─────────────────────────────────────────────────────────────────────────
+  if (tela === "extrato" && profissionalSelecionado) {
+    const r = profissionalSelecionado;
+    const pendentes = r.comissoes.filter((c) => c.status === "pendente");
+    const pagas = r.comissoes.filter((c) => c.status === "pago");
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Percent className="h-7 w-7 text-primary" />
-                        Comissões
-                    </h1>
-                    <p className="text-muted-foreground text-sm mt-1">
-                        Gerencie as comissões dos profissionais • {periodoLabel}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={exportToExcel}>
-                        <FileDown className="h-4 w-4 mr-1" />
-                        Excel
-                    </Button>
-                </div>
+      <div className="space-y-6">
+        {/* Header extrato */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setTela("lista")}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-3 flex-1">
+            <Avatar className="h-12 w-12 border-2" style={{ borderColor: r.profissional.cor_agenda }}>
+              <AvatarImage src={r.profissional.foto_url || undefined} />
+              <AvatarFallback style={{ backgroundColor: r.profissional.cor_agenda + "20", color: r.profissional.cor_agenda }}>
+                {initials(r.profissional.nome)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-xl font-bold">{r.profissional.nome}</h1>
+              <p className="text-sm text-muted-foreground">Extrato de Comissões • {periodoLabel}</p>
             </div>
-
-            {/* Cards de Resumo */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="ios-card">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
-                                <DollarSign className="h-6 w-6 text-blue-500" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Serviços</p>
-                                <p className="text-xl font-bold">{formatCurrency(totais.totalServicos)}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="ios-card">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-2xl bg-green-500/10 flex items-center justify-center">
-                                <TrendingUp className="h-6 w-6 text-green-500" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Comissões</p>
-                                <p className="text-xl font-bold text-green-600">{formatCurrency(totais.totalComissoes)}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="ios-card">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-2xl bg-amber-500/10 flex items-center justify-center">
-                                <Clock className="h-6 w-6 text-amber-500" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Pendente</p>
-                                <p className="text-xl font-bold text-amber-600">{formatCurrency(totais.totalPendente)}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="ios-card">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Pago</p>
-                                <p className="text-xl font-bold text-emerald-600">{formatCurrency(totais.totalPago)}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Filtros */}
-            <Card className="ios-card">
-                <CardContent className="pt-6">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar profissional..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9"
-                            />
-                        </div>
-                        <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoFiltro)}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Período" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="hoje">Hoje</SelectItem>
-                                <SelectItem value="semana">Esta Semana</SelectItem>
-                                <SelectItem value="mes">Este Mês</SelectItem>
-                                <SelectItem value="mes_anterior">Mês Anterior</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={selectedProfissional} onValueChange={setSelectedProfissional}>
-                            <SelectTrigger className="w-[200px]">
-                                <SelectValue placeholder="Profissional" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="todos">Todos</SelectItem>
-                                {profissionais.map((p) => (
-                                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Tabs: Resumo / Detalhes */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-                    <TabsTrigger value="resumo">📊 Resumo</TabsTrigger>
-                    <TabsTrigger value="detalhes">📋 Detalhes</TabsTrigger>
-                </TabsList>
-
-                {/* Tab Resumo - Cards por Profissional */}
-                <TabsContent value="resumo" className="mt-4">
-                    {loading ? (
-                        <div className="text-center py-12 text-muted-foreground">Carregando...</div>
-                    ) : filteredResumo.length === 0 ? (
-                        <Card className="ios-card">
-                            <CardContent className="py-12 text-center">
-                                <Percent className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                                <p className="text-muted-foreground">Nenhuma comissão encontrada no período</p>
-                                <p className="text-sm text-muted-foreground/60 mt-1">
-                                    As comissões serão geradas automaticamente ao fechar comandas
-                                </p>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredResumo.map((resumo) => (
-                                <Card key={resumo.profissional.id} className="ios-card hover:shadow-lg transition-shadow">
-                                    <CardContent className="pt-6">
-                                        {/* Header do card */}
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <Avatar className="h-12 w-12 border-2" style={{ borderColor: resumo.profissional.cor_agenda }}>
-                                                <AvatarImage src={resumo.profissional.foto_url || undefined} />
-                                                <AvatarFallback style={{ backgroundColor: resumo.profissional.cor_agenda + "20", color: resumo.profissional.cor_agenda }}>
-                                                    {getInitials(resumo.profissional.nome)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold">{resumo.profissional.nome}</h3>
-                                                <p className="text-sm text-muted-foreground">{resumo.qtd_atendimentos} atendimentos</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Valores */}
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm text-muted-foreground">Total Serviços</span>
-                                                <span className="font-medium">{formatCurrency(resumo.total_servicos)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm text-muted-foreground">Comissão</span>
-                                                <span className="font-bold text-green-600">{formatCurrency(resumo.total_comissao)}</span>
-                                            </div>
-                                            <div className="h-px bg-border my-2" />
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm">
-                                                    <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
-                                                        Pendente
-                                                    </Badge>
-                                                </span>
-                                                <span className="text-amber-600 font-medium">{formatCurrency(resumo.total_pendente)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm">
-                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50">
-                                                        Pago
-                                                    </Badge>
-                                                </span>
-                                                <span className="text-emerald-600 font-medium">{formatCurrency(resumo.total_pago)}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Botão pagar */}
-                                        {resumo.total_pendente > 0 && (
-                                            <Button
-                                                className="w-full mt-4"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setProfissionalPagar(resumo);
-                                                    setShowPagarDialog(true);
-                                                }}
-                                            >
-                                                <Banknote className="h-4 w-4 mr-1" />
-                                                Pagar {formatCurrency(resumo.total_pendente)}
-                                            </Button>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-                </TabsContent>
-
-                {/* Tab Detalhes - Tabela */}
-                <TabsContent value="detalhes" className="mt-4">
-                    <Card className="ios-card">
-                        <CardContent className="pt-6">
-                            {comissoesFiltradas.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    Nenhuma comissão detalhada encontrada
-                                </div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Data</TableHead>
-                                                <TableHead>Profissional</TableHead>
-                                                <TableHead>Serviço</TableHead>
-                                                <TableHead className="text-right">Valor Serviço</TableHead>
-                                                <TableHead className="text-center">%</TableHead>
-                                                <TableHead className="text-right">Comissão</TableHead>
-                                                <TableHead className="text-center">Status</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {comissoesFiltradas.map((c) => {
-                                                const prof = profissionais.find((p) => p.id === c.profissional_id);
-                                                return (
-                                                    <TableRow key={c.id}>
-                                                        <TableCell className="text-sm">
-                                                            {format(new Date(c.created_at), "dd/MM/yyyy HH:mm")}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <div className="flex items-center gap-2">
-                                                                <Avatar className="h-7 w-7">
-                                                                    <AvatarImage src={prof?.foto_url || undefined} />
-                                                                    <AvatarFallback className="text-xs">
-                                                                        {prof ? getInitials(prof.nome) : "?"}
-                                                                    </AvatarFallback>
-                                                                </Avatar>
-                                                                <span className="text-sm font-medium">{prof?.nome || "—"}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-sm">{c.servico_nome || "—"}</TableCell>
-                                                        <TableCell className="text-right text-sm">{formatCurrency(c.valor_servico)}</TableCell>
-                                                        <TableCell className="text-center text-sm font-medium">{c.percentual}%</TableCell>
-                                                        <TableCell className="text-right text-sm font-bold text-green-600">
-                                                            {formatCurrency(c.valor_comissao)}
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            {c.status === "pago" ? (
-                                                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300">
-                                                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                                                    Pago
-                                                                </Badge>
-                                                            ) : (
-                                                                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
-                                                                    <Clock className="h-3 w-3 mr-1" />
-                                                                    Pendente
-                                                                </Badge>
-                                                            )}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-
-            {/* Dialog de Pagamento */}
-            <Dialog open={showPagarDialog} onOpenChange={setShowPagarDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>💰 Confirmar Pagamento de Comissões</DialogTitle>
-                    </DialogHeader>
-                    {profissionalPagar && (
-                        <div className="space-y-4 py-4">
-                            <div className="flex items-center gap-3">
-                                <Avatar className="h-14 w-14 border-2" style={{ borderColor: profissionalPagar.profissional.cor_agenda }}>
-                                    <AvatarImage src={profissionalPagar.profissional.foto_url || undefined} />
-                                    <AvatarFallback>{getInitials(profissionalPagar.profissional.nome)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <h3 className="text-lg font-semibold">{profissionalPagar.profissional.nome}</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        {profissionalPagar.qtd_atendimentos} atendimentos no período
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                                <div className="flex justify-between">
-                                    <span>Total Serviços:</span>
-                                    <span className="font-medium">{formatCurrency(profissionalPagar.total_servicos)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Já Pago:</span>
-                                    <span className="text-emerald-600">{formatCurrency(profissionalPagar.total_pago)}</span>
-                                </div>
-                                <div className="h-px bg-border" />
-                                <div className="flex justify-between text-lg">
-                                    <span className="font-semibold">A Pagar:</span>
-                                    <span className="font-bold text-green-600">{formatCurrency(profissionalPagar.total_pendente)}</span>
-                                </div>
-                            </div>
-
-                            <p className="text-sm text-muted-foreground">
-                                Ao confirmar, todas as comissões pendentes deste profissional no período selecionado serão marcadas como pagas.
-                            </p>
-                        </div>
-                    )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowPagarDialog(false)}>
-                            Cancelar
-                        </Button>
-                        <Button onClick={handlePagarComissoes} className="bg-green-600 hover:bg-green-700">
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Confirmar Pagamento
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+          </div>
+          <Button variant="outline" size="sm" onClick={exportarExcel}>
+            <FileDown className="h-4 w-4 mr-1" /> Excel
+          </Button>
+          {r.total_pendente_liquido > 0 && (
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => setShowPagarDialog(true)}
+            >
+              <Banknote className="h-4 w-4 mr-1" />
+              Pagar {fmt(r.total_pendente_liquido)}
+            </Button>
+          )}
         </div>
+
+        {/* Cards resumo do extrato */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground">Comissão Bruta</p>
+              <p className="text-xl font-bold">{fmt(r.total_bruto)}</p>
+              <p className="text-xs text-muted-foreground">{r.comissoes.length} itens</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground">Vales / Descontos</p>
+              <p className="text-xl font-bold text-destructive">- {fmt(r.total_vales)}</p>
+              <p className="text-xs text-muted-foreground">{r.vales.length} vale(s) aberto(s)</p>
+            </CardContent>
+          </Card>
+          <Card className="border-amber-200 dark:border-amber-800">
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground">Pendente</p>
+              <p className="text-xl font-bold text-amber-600">{fmt(r.total_pendente_liquido)}</p>
+              <p className="text-xs text-muted-foreground">{pendentes.length} itens</p>
+            </CardContent>
+          </Card>
+          <Card className="border-emerald-200 dark:border-emerald-800">
+            <CardContent className="pt-4 pb-4">
+              <p className="text-xs text-muted-foreground">Já Pago</p>
+              <p className="text-xl font-bold text-emerald-600">{fmt(r.total_pago)}</p>
+              <p className="text-xs text-muted-foreground">{pagas.length} itens</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Vales em aberto */}
+        {r.vales.length > 0 && (
+          <Card className="border-orange-200 dark:border-orange-800">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-orange-700 dark:text-orange-400 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Vales em Aberto (serão descontados do pagamento)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-1">
+                {r.vales.map((v) => (
+                  <div key={v.id} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{v.motivo} — {format(parseISO(v.data_lancamento), "dd/MM/yyyy")}</span>
+                    <span className="font-medium text-orange-600">- {fmt(Number(v.saldo_restante))}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tabela detalhada */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Detalhamento por Serviço</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[500px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Comanda</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead className="text-right">Val. Serviço</TableHead>
+                    <TableHead className="text-center">%</TableHead>
+                    <TableHead className="text-right">Comissão</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {r.comissoes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                        Nenhuma comissão no período
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    r.comissoes.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="text-sm whitespace-nowrap">
+                          {format(parseISO(c.created_at), "dd/MM/yy HH:mm")}
+                        </TableCell>
+                        <TableCell className="text-sm font-mono">
+                          {c.numero_comanda ? `#${String(c.numero_comanda).padStart(3, "0")}` : "—"}
+                        </TableCell>
+                        <TableCell className="text-sm max-w-[120px] truncate">
+                          {c.cliente_nome || <span className="text-muted-foreground italic">Avulso</span>}
+                        </TableCell>
+                        <TableCell className="text-sm flex items-center gap-1">
+                          <Scissors className="h-3 w-3 text-muted-foreground shrink-0" />
+                          {c.servico_nome || "—"}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{fmt(Number(c.valor_servico))}</TableCell>
+                        <TableCell className="text-center text-sm font-medium">{c.percentual}%</TableCell>
+                        <TableCell className="text-right text-sm font-bold text-green-600">
+                          {fmt(Number(c.valor_comissao))}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {c.status === "pago" ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">
+                              <CheckCircle2 className="h-3 w-3 mr-1" /> Pago
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
+                              <Clock className="h-3 w-3 mr-1" /> Pendente
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Modal Pagamento */}
+        <Dialog open={showPagarDialog} onOpenChange={setShowPagarDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>💰 Confirmar Pagamento</DialogTitle>
+              <DialogDescription>
+                Esta ação será registrada no histórico de pagamentos.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Profissional:</span>
+                  <span className="font-semibold">{r.profissional.nome}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Período:</span>
+                  <span>{periodoLabel}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Comissão Bruta:</span>
+                  <span className="font-medium">{fmt(r.total_bruto)}</span>
+                </div>
+                {r.total_vales > 0 && (
+                  <div className="flex justify-between text-destructive">
+                    <span>Vales / Descontos:</span>
+                    <span>- {fmt(r.total_vales)}</span>
+                  </div>
+                )}
+                <div className="h-px bg-border" />
+                <div className="flex justify-between text-base">
+                  <span className="font-bold">Líquido a Pagar:</span>
+                  <span className="font-bold text-green-600">{fmt(r.total_pendente_liquido)}</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Observação (opcional)</Label>
+                <Textarea
+                  placeholder="Ex: Pagamento via PIX, quinzena de abril..."
+                  value={obsPagamento}
+                  onChange={(e) => setObsPagamento(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPagarDialog(false)} disabled={pagando}>
+                Cancelar
+              </Button>
+              <Button onClick={handlePagar} disabled={pagando} className="bg-green-600 hover:bg-green-700">
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                {pagando ? "Registrando..." : "Confirmar Pagamento"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER: HISTÓRICO DE PAGAMENTOS
+  // ─────────────────────────────────────────────────────────────────────────
+  if (tela === "historico") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setTela("lista")}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <History className="h-5 w-5" /> Histórico de Pagamentos
+            </h1>
+            <p className="text-sm text-muted-foreground">Todos os pagamentos de comissões registrados</p>
+          </div>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={fetchHistorico}>
+            <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
+          </Button>
+        </div>
+
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data/Hora</TableHead>
+                  <TableHead>Profissional</TableHead>
+                  <TableHead>Período</TableHead>
+                  <TableHead className="text-center">Itens</TableHead>
+                  <TableHead className="text-right">Bruto</TableHead>
+                  <TableHead className="text-right">Descontos</TableHead>
+                  <TableHead className="text-right">Líquido Pago</TableHead>
+                  <TableHead>Usuário</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historico.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                      Nenhum pagamento registrado ainda
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  historico.map((h) => (
+                    <TableRow key={h.id}>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {format(parseISO(h.created_at), "dd/MM/yyyy HH:mm")}
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">{h.profissional_nome}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {format(parseISO(h.periodo_inicio), "dd/MM")} – {format(parseISO(h.periodo_fim), "dd/MM/yyyy")}
+                      </TableCell>
+                      <TableCell className="text-center text-sm">{h.qtd_itens}</TableCell>
+                      <TableCell className="text-right text-sm">{fmt(Number(h.valor_bruto))}</TableCell>
+                      <TableCell className="text-right text-sm text-destructive">
+                        {Number(h.valor_descontos) > 0 ? `- ${fmt(Number(h.valor_descontos))}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-emerald-600">
+                        {fmt(Number(h.valor_liquido))}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground flex items-center gap-1">
+                        <User className="h-3 w-3" /> {h.usuario_nome}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER: LISTA PRINCIPAL
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Percent className="h-7 w-7 text-primary" />
+            Comissões
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Valores a pagar por profissional • {periodoLabel}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setTela("historico")}>
+            <History className="h-4 w-4 mr-1" /> Histórico
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportarExcel}>
+            <FileDown className="h-4 w-4 mr-1" /> Excel
+          </Button>
+          <Button variant="ghost" size="icon" onClick={fetchData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Cards totais */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-5 w-5 text-blue-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">Comissão Bruta</p>
+                <p className="text-lg font-bold truncate">{fmt(totaisGerais.bruto)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                <DollarSign className="h-5 w-5 text-orange-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">Vales/Descontos</p>
+                <p className="text-lg font-bold text-orange-600 truncate">- {fmt(totaisGerais.vales)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Clock className="h-5 w-5 text-amber-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">A Pagar (Líquido)</p>
+                <p className="text-lg font-bold text-amber-600 truncate">{fmt(totaisGerais.pendente)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">Já Pago</p>
+                <p className="text-lg font-bold text-emerald-600 truncate">{fmt(totaisGerais.pago)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filtros */}
+      <Card>
+        <CardContent className="pt-4 pb-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar profissional..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoFiltro)}>
+              <SelectTrigger className="w-[180px]">
+                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hoje">Hoje</SelectItem>
+                <SelectItem value="semana">Esta Semana</SelectItem>
+                <SelectItem value="mes">Este Mês</SelectItem>
+                <SelectItem value="mes_anterior">Mês Anterior</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filtroProf} onValueChange={setFiltroProf}>
+              <SelectTrigger className="w-[200px]">
+                <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {profissionais.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabela por profissional */}
+      {loading ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-3" />
+            Carregando comissões...
+          </CardContent>
+        </Card>
+      ) : resumosFiltrados.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Percent className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">Nenhuma comissão encontrada no período</p>
+            <p className="text-sm text-muted-foreground/60 mt-1">
+              As comissões são geradas automaticamente ao fechar comandas
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Profissional</TableHead>
+                  <TableHead className="text-center">Atendimentos</TableHead>
+                  <TableHead className="text-right">Comissão Bruta</TableHead>
+                  <TableHead className="text-right">Vales</TableHead>
+                  <TableHead className="text-right">Líquido a Pagar</TableHead>
+                  <TableHead className="text-right">Já Pago</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {resumosFiltrados.map((r) => (
+                  <TableRow key={r.profissional.id} className="hover:bg-muted/30">
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8 border" style={{ borderColor: r.profissional.cor_agenda }}>
+                          <AvatarImage src={r.profissional.foto_url || undefined} />
+                          <AvatarFallback className="text-xs" style={{ backgroundColor: r.profissional.cor_agenda + "20", color: r.profissional.cor_agenda }}>
+                            {initials(r.profissional.nome)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium text-sm">{r.profissional.nome}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center text-sm">{r.qtd_atendimentos}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{fmt(r.total_bruto)}</TableCell>
+                    <TableCell className="text-right text-sm text-orange-600">
+                      {r.total_vales > 0 ? `- ${fmt(r.total_vales)}` : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-amber-600">{fmt(r.total_pendente_liquido)}</TableCell>
+                    <TableCell className="text-right text-sm text-emerald-600">{fmt(r.total_pago)}</TableCell>
+                    <TableCell className="text-center">
+                      {r.total_pendente_liquido > 0 ? (
+                        <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
+                          Pendente
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">
+                          Pago
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            setProfissionalSelecionado(r);
+                            setTela("extrato");
+                          }}
+                        >
+                          <Eye className="h-3.5 w-3.5 mr-1" /> Extrato
+                        </Button>
+                        {r.total_pendente_liquido > 0 && (
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                            onClick={() => {
+                              setProfissionalSelecionado(r);
+                              setShowPagarDialog(true);
+                            }}
+                          >
+                            <Banknote className="h-3.5 w-3.5 mr-1" /> Pagar
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Modal Pagamento (a partir da lista) */}
+      <Dialog open={showPagarDialog} onOpenChange={setShowPagarDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>💰 Confirmar Pagamento</DialogTitle>
+            <DialogDescription>Esta ação será registrada no histórico de pagamentos.</DialogDescription>
+          </DialogHeader>
+          {profissionalSelecionado && (
+            <div className="space-y-4 py-2">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Profissional:</span>
+                  <span className="font-semibold">{profissionalSelecionado.profissional.nome}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Período:</span>
+                  <span>{periodoLabel}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Comissão Bruta:</span>
+                  <span>{fmt(profissionalSelecionado.total_bruto)}</span>
+                </div>
+                {profissionalSelecionado.total_vales > 0 && (
+                  <div className="flex justify-between text-destructive">
+                    <span>Vales / Descontos:</span>
+                    <span>- {fmt(profissionalSelecionado.total_vales)}</span>
+                  </div>
+                )}
+                <div className="h-px bg-border" />
+                <div className="flex justify-between text-base">
+                  <span className="font-bold">Líquido a Pagar:</span>
+                  <span className="font-bold text-green-600">{fmt(profissionalSelecionado.total_pendente_liquido)}</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Observação (opcional)</Label>
+                <Textarea
+                  placeholder="Ex: Pagamento via PIX, quinzena de abril..."
+                  value={obsPagamento}
+                  onChange={(e) => setObsPagamento(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPagarDialog(false)} disabled={pagando}>
+              Cancelar
+            </Button>
+            <Button onClick={handlePagar} disabled={pagando} className="bg-green-600 hover:bg-green-700">
+              <CheckCircle2 className="h-4 w-4 mr-1" />
+              {pagando ? "Registrando..." : "Confirmar Pagamento"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
