@@ -349,8 +349,8 @@ const Relatorios = () => {
 
   // Cálculos para relatórios
   const vendasPorPeriodo = useMemo(() => {
-    const finalizados = atendimentos.filter((a) => a.status === "fechado");
-    const totalVendas = finalizados.reduce((sum, a) => sum + (a.valor_final || 0), 0);
+    const finalizados = atendimentos.filter((a) => a.status === "fechado" || a.status === "finalizado");
+    const totalVendas = finalizados.reduce((sum, a) => sum + (a.valor_final || a.subtotal || 0), 0);
     const ticketMedio = finalizados.length > 0 ? totalVendas / finalizados.length : 0;
 
     // Agrupar por dia
@@ -525,7 +525,7 @@ const Relatorios = () => {
 
   // Cálculo de Lucro Bruto
   const lucroBruto = useMemo(() => {
-    const finalizados = atendimentos.filter((a) => a.status === "fechado");
+    const finalizados = atendimentos.filter((a) => a.status === "fechado" || a.status === "finalizado");
     const receitaServicos = atendimentoServicos.reduce((sum, as) => sum + (as.subtotal || 0), 0);
     const receitaProdutos = atendimentoProdutos.reduce((sum, ap) => sum + (ap.subtotal || 0), 0);
     const custoProdutos = atendimentoProdutos.reduce((sum, ap) => {
@@ -1229,47 +1229,46 @@ const Relatorios = () => {
           </div>
         );
 
-      case "itens_vendidos":
-        const todosItens = [
-          ...atendimentoServicos.map(as => ({
-            tipo: "Serviço",
-            nome: as.servico?.nome || "Desconhecido",
-            quantidade: as.quantidade || 1,
-            valor: as.subtotal || 0,
-            data: as.created_at
-          })),
-          ...atendimentoProdutos.map(ap => ({
-            tipo: "Produto",
-            nome: ap.produto?.nome || "Desconhecido",
-            quantidade: ap.quantidade || 1,
-            valor: ap.subtotal || 0,
-            data: ap.created_at
-          }))
-        ].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+      case "itens_vendidos": {
+        // Filtrar apenas itens de atendimentos finalizados no período
+        const idsFinalizados = new Set(
+          atendimentos
+            .filter(a => a.status === "fechado" || a.status === "finalizado")
+            .map(a => a.id)
+        );
 
-        const totalServicos = atendimentoServicos.reduce((sum, as) => sum + (as.subtotal || 0), 0);
-        const totalProdutosVal = atendimentoProdutos.reduce((sum, ap) => sum + (ap.subtotal || 0), 0);
+        const servicosVendidos = atendimentoServicos
+          .filter(as => idsFinalizados.has(as.atendimento_id))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        const produtosVendidos = atendimentoProdutos
+          .filter(ap => idsFinalizados.has(ap.atendimento_id))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        const totalServicos = servicosVendidos.reduce((sum, as) => sum + (as.subtotal || 0), 0);
+        const totalProdutosVal = produtosVendidos.reduce((sum, ap) => sum + (ap.subtotal || 0), 0);
+
+        // Agrupar produtos por nome para ver os mais vendidos
+        const produtosPorNome: Record<string, { nome: string; quantidade: number; valor: number }> = {};
+        produtosVendidos.forEach(ap => {
+          const nome = ap.produto?.nome || "Desconhecido";
+          if (!produtosPorNome[nome]) produtosPorNome[nome] = { nome, quantidade: 0, valor: 0 };
+          produtosPorNome[nome].quantidade += ap.quantidade || 1;
+          produtosPorNome[nome].valor += ap.subtotal || 0;
+        });
+        const rankingProdutos = Object.values(produtosPorNome).sort((a, b) => b.valor - a.valor);
 
         return (
           <div className="space-y-6">
+            {/* Cards resumo */}
             <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Itens</p>
-                      <p className="text-2xl font-bold">{todosItens.length}</p>
-                    </div>
-                    <ShoppingBag className="h-8 w-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Serviços</p>
-                      <p className="text-2xl font-bold">{atendimentoServicos.length}</p>
+                      <p className="text-sm text-muted-foreground">Serviços realizados</p>
+                      <p className="text-2xl font-bold">{servicosVendidos.length}</p>
+                      <p className="text-sm text-muted-foreground">{formatCurrency(totalServicos)}</p>
                     </div>
                     <Activity className="h-8 w-8 text-purple-500" />
                   </div>
@@ -1279,8 +1278,9 @@ const Relatorios = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Produtos</p>
-                      <p className="text-2xl font-bold">{atendimentoProdutos.length}</p>
+                      <p className="text-sm text-muted-foreground">Produtos vendidos</p>
+                      <p className="text-2xl font-bold">{produtosVendidos.length}</p>
+                      <p className="text-sm text-muted-foreground">{formatCurrency(totalProdutosVal)}</p>
                     </div>
                     <Package className="h-8 w-8 text-amber-500" />
                   </div>
@@ -1290,25 +1290,116 @@ const Relatorios = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Vendido</p>
+                      <p className="text-sm text-muted-foreground">Total Geral</p>
                       <p className="text-2xl font-bold">{formatCurrency(totalServicos + totalProdutosVal)}</p>
                     </div>
                     <DollarSign className="h-8 w-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">% Produtos</p>
+                      <p className="text-2xl font-bold">
+                        {totalServicos + totalProdutosVal > 0
+                          ? `${Math.round((totalProdutosVal / (totalServicos + totalProdutosVal)) * 100)}%`
+                          : "0%"}
+                      </p>
+                    </div>
+                    <ShoppingBag className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
+            {/* Produtos (Bomboniere) — em destaque */}
+            <Card className="border-amber-200 dark:border-amber-800">
+              <CardHeader className="flex flex-row items-center justify-between bg-amber-50 dark:bg-amber-950/20 rounded-t-lg">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                    <Package className="h-5 w-5" />
+                    Produtos Vendidos (Bomboniere)
+                  </CardTitle>
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-0.5">
+                    {produtosVendidos.length} itens · {formatCurrency(totalProdutosVal)}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => exportToExcel(produtosVendidos.map(ap => ({
+                  produto: ap.produto?.nome || "Desconhecido",
+                  quantidade: ap.quantidade || 1,
+                  valor_unitario: ap.preco_unitario || 0,
+                  subtotal: ap.subtotal || 0,
+                  data: format(new Date(ap.created_at), "dd/MM/yyyy")
+                })), "produtos-vendidos")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                </Button>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {produtosVendidos.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-6">Nenhum produto vendido no período</p>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Ranking por produto */}
+                    {rankingProdutos.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-semibold text-muted-foreground mb-2">Ranking de produtos</p>
+                        <div className="flex flex-wrap gap-2">
+                          {rankingProdutos.slice(0, 8).map((p, i) => (
+                            <Badge key={i} variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              #{i + 1} {p.nome} — {p.quantidade}x · {formatCurrency(p.valor)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-center">Qtd</TableHead>
+                          <TableHead className="text-right">Unitário</TableHead>
+                          <TableHead className="text-right">Subtotal</TableHead>
+                          <TableHead>Data</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {produtosVendidos.slice(0, 100).map((ap, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{ap.produto?.nome || "Desconhecido"}</TableCell>
+                            <TableCell className="text-center">{ap.quantidade || 1}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(ap.preco_unitario || 0)}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatCurrency(ap.subtotal || 0)}</TableCell>
+                            <TableCell>{format(new Date(ap.created_at), "dd/MM/yyyy")}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Serviços */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Itens Vendidos</CardTitle>
-                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(todosItens.map(i => ({
-                  tipo: i.tipo,
-                  nome: i.nome,
-                  quantidade: i.quantidade,
-                  valor: i.valor,
-                  data: format(new Date(i.data), "dd/MM/yyyy")
-                })), "itens-vendidos")}>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-purple-500" />
+                    Serviços Realizados
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {servicosVendidos.length} serviços · {formatCurrency(totalServicos)}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => exportToExcel(servicosVendidos.map(as => ({
+                  servico: as.servico?.nome || "Desconhecido",
+                  profissional: as.profissional?.nome || "-",
+                  quantidade: as.quantidade || 1,
+                  subtotal: as.subtotal || 0,
+                  data: format(new Date(as.created_at), "dd/MM/yyyy")
+                })), "servicos-realizados")}>
                   <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
                 </Button>
               </CardHeader>
@@ -1316,32 +1407,28 @@ const Relatorios = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Item</TableHead>
+                      <TableHead>Serviço</TableHead>
+                      <TableHead>Profissional</TableHead>
                       <TableHead className="text-center">Qtd</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
                       <TableHead>Data</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {todosItens.length === 0 ? (
+                    {servicosVendidos.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          Nenhum item vendido no período selecionado
+                          Nenhum serviço encontrado no período
                         </TableCell>
                       </TableRow>
                     ) : (
-                      todosItens.slice(0, 100).map((item, idx) => (
+                      servicosVendidos.slice(0, 100).map((as, idx) => (
                         <TableRow key={idx}>
-                          <TableCell>
-                            <Badge variant="outline" className={item.tipo === "Serviço" ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-amber-50 text-amber-700 border-amber-200"}>
-                              {item.tipo}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-medium">{item.nome}</TableCell>
-                          <TableCell className="text-center">{item.quantidade}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.valor)}</TableCell>
-                          <TableCell>{format(new Date(item.data), "dd/MM/yyyy")}</TableCell>
+                          <TableCell className="font-medium">{as.servico?.nome || "Desconhecido"}</TableCell>
+                          <TableCell className="text-muted-foreground">{as.profissional?.nome || "-"}</TableCell>
+                          <TableCell className="text-center">{as.quantidade || 1}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(as.subtotal || 0)}</TableCell>
+                          <TableCell>{format(new Date(as.created_at), "dd/MM/yyyy")}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -1351,6 +1438,7 @@ const Relatorios = () => {
             </Card>
           </div>
         );
+      }
 
       case "clientes_ausentes":
         return (
@@ -1747,7 +1835,7 @@ const Relatorios = () => {
 
       case "historico": {
         const atendimentosFechados = atendimentos
-          .filter(a => a.status === 'fechado')
+          .filter(a => a.status === 'fechado' || a.status === 'finalizado')
           .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
 
         const historicoPorComanda = atendimentosFechados.map(at => {
@@ -2955,7 +3043,7 @@ const Relatorios = () => {
         // Calcular fluxo real com entradas e saídas por dia
         const fluxoPorDia: Record<string, { data: string; entradas: number; saidas: number; saldo: number }> = {};
         // Entradas: vendas fechadas
-        atendimentos.filter(a => a.status === "fechado").forEach(a => {
+        atendimentos.filter(a => a.status === "fechado" || a.status === "finalizado").forEach(a => {
           const dia = format(new Date(a.data_hora), "dd/MM");
           if (!fluxoPorDia[dia]) fluxoPorDia[dia] = { data: dia, entradas: 0, saidas: 0, saldo: 0 };
           fluxoPorDia[dia].entradas += a.valor_final || 0;
