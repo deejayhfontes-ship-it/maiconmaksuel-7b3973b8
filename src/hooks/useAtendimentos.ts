@@ -54,7 +54,7 @@ export interface Atendimento {
   subtotal: number;
   desconto: number;
   valor_final: number;
-  status: 'aberto' | 'fechado' | 'cancelado';
+  status: 'aberto' | 'fechado' | 'cancelado' | 'reaberta' | 'finalizado';
   observacoes: string | null;
   nota_fiscal_id: string | null;
   nota_fiscal_solicitada: boolean;
@@ -206,7 +206,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
     try {
       // Load from local first
       const localData = await localGetAll<Atendimento>('atendimentos');
-      const openLocal = localData.filter(a => a.status === 'aberto');
+      const openLocal = localData.filter(a => a.status === 'aberto' || a.status === 'reaberta');
 
       // Enrich with client names from local storage
       const clientesMap = new Map(clientes.map(c => [c.id, c]));
@@ -222,7 +222,7 @@ export function useAtendimentos(): UseAtendimentosReturn {
         const { data: serverData, error } = await supabase
           .from('atendimentos')
           .select('*, cliente:clientes(nome), servicos:atendimento_servicos(profissional:profissionais(nome))')
-          .eq('status', 'aberto')
+          .in('status', ['aberto', 'reaberta'])
           .order('data_hora', { ascending: false });
 
         if (!error && serverData) {
