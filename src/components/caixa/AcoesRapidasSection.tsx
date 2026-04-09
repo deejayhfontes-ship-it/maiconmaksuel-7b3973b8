@@ -89,7 +89,7 @@ export const AcoesRapidasSection = ({ caixaId, onActionComplete }: AcoesRapidasS
         status,
         clientes:cliente_id (nome)
       `)
-      .in("status", ["pendente", "parcial"])
+      .in("status", ["aberta", "parcial"])
       .order("data_vencimento", { ascending: true });
 
     if (dividasData) {

@@ -100,9 +100,9 @@ export default function CaixaDividas() {
       return;
     }
 
-    // Atualizar status de vencidas
+    // Atualizar status de vencidas (status "aberta" + data passada = vencida localmente)
     const dividasAtualizadas = (data || []).map((d) => {
-      if (d.status === "pendente" && isPast(parseISO(d.data_vencimento))) {
+      if (d.status === "aberta" && isPast(parseISO(d.data_vencimento))) {
         return { ...d, status: "vencida" };
       }
       return d;
@@ -203,13 +203,13 @@ export default function CaixaDividas() {
     
     switch (tab) {
       case "vencidas":
-        return matchSearch && (d.status === "vencida" || isPast(parseISO(d.data_vencimento)));
+        return matchSearch && d.status !== "quitada" && (d.status === "vencida" || isPast(parseISO(d.data_vencimento)));
       case "avencer":
         return matchSearch && d.status !== "quitada" && !isPast(parseISO(d.data_vencimento));
       case "quitadas":
         return matchSearch && d.status === "quitada";
-      default:
-        return matchSearch;
+      default: // "todas" — apenas pendentes/parciais/vencidas; quitadas ficam na aba própria
+        return matchSearch && d.status !== "quitada";
     }
   });
 

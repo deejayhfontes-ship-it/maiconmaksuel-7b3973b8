@@ -304,7 +304,7 @@ export default function CaixaComandas() {
       }
     }
 
-    // Si fiado, criar dívida
+    // Se fiado, criar dívida
     if (formaPagamento === "fiado" && selectedComanda.cliente_id) {
       const vencimento = new Date();
       vencimento.setDate(vencimento.getDate() + 30); // 30 dias padrão
@@ -313,9 +313,30 @@ export default function CaixaComandas() {
         cliente_id: selectedComanda.cliente_id,
         atendimento_id: selectedComanda.id,
         valor_original: total,
+        valor_pago: 0,
         saldo: total,
+        data_origem: new Date().toISOString().split("T")[0],
         data_vencimento: vencimento.toISOString().split("T")[0],
+        status: "aberta",
+        observacoes: `Comanda #${String(selectedComanda.numero_comanda).padStart(3, "0")} - Fiado`,
       }]);
+    } else {
+      // Pagamento real: quitar qualquer dívida em aberto vinculada a esta comanda
+      const { data: dividasAbertas } = await supabase
+        .from("dividas")
+        .select("id, valor_original")
+        .eq("atendimento_id", selectedComanda.id)
+        .in("status", ["aberta", "parcial"]);
+
+      if (dividasAbertas && dividasAbertas.length > 0) {
+        for (const div of dividasAbertas) {
+          await supabase.from("dividas").update({
+            status: "quitada",
+            saldo: 0,
+            valor_pago: div.valor_original,
+          }).eq("id", div.id);
+        }
+      }
     }
 
     // ✅ GERAR COMISSÕES AUTOMATICAMENTE por profissional
