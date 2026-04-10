@@ -862,39 +862,18 @@ export function useAtendimentos(): UseAtendimentosReturn {
         }
       }
 
-      // Register comissões for each profissional
-      const itemsServicos = await getItemsServicos(atendimentoId);
-      if (isOnline) {
-        for (const item of itemsServicos) {
-          if (Number(item.comissao_valor) > 0) {
-            await supabase.from('comissoes').insert([{
-              profissional_id: item.profissional_id,
-              atendimento_id: atendimentoId,
-              atendimento_servico_id: item.id,
-              tipo: 'servico',
-              descricao: `Comanda #${current.numero_comanda.toString().padStart(3, '0')} - ${item.servico?.nome || 'Serviço'}`,
-              valor_base: Number(item.subtotal),
-              percentual_comissao: Number(item.comissao_percentual),
-              valor_comissao: Number(item.comissao_valor),
-              status: 'pendente',
-              data_referencia: new Date().toISOString().split('T')[0],
-            }]);
-          }
-        }
-
-        // Register gorjetas as separate caixa movements
-        if (gorjetas && gorjetas.length > 0 && caixaId) {
-          const totalGorjetas = gorjetas.reduce((acc, g) => acc + g.valor, 0);
-          await supabase.from('caixa_movimentacoes').insert([{
-            caixa_id: caixaId,
-            tipo: 'entrada',
-            categoria: 'gorjeta',
-            descricao: `Gorjetas - Comanda #${current.numero_comanda.toString().padStart(3, '0')}`,
-            valor: totalGorjetas,
-            forma_pagamento: 'dinheiro',
-            atendimento_id: atendimentoId,
-          }]);
-        }
+      // Register gorjetas as separate caixa movements
+      if (isOnline && gorjetas && gorjetas.length > 0 && caixaId) {
+        const totalGorjetas = gorjetas.reduce((acc, g) => acc + g.valor, 0);
+        await supabase.from('caixa_movimentacoes').insert([{
+          caixa_id: caixaId,
+          tipo: 'entrada',
+          categoria: 'gorjeta',
+          descricao: `Gorjetas - Comanda #${current.numero_comanda.toString().padStart(3, '0')}`,
+          valor: totalGorjetas,
+          forma_pagamento: 'dinheiro',
+          atendimento_id: atendimentoId,
+        }]);
       }
 
       // Update cliente last visit

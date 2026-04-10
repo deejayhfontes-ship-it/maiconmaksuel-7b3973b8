@@ -72,12 +72,13 @@ export function ComissoesPanel() {
       const inicio = startOfMonth(mesReferencia);
       const fim = endOfMonth(mesReferencia);
 
-      let query = supabase
-        .from('comissoes')
+      const db = supabase as any;
+      let query = db
+        .from('comissoes_registro')
         .select('*')
-        .gte('data_referencia', format(inicio, 'yyyy-MM-dd'))
-        .lte('data_referencia', format(fim, 'yyyy-MM-dd'))
-        .order('data_referencia', { ascending: false });
+        .gte('created_at', inicio.toISOString())
+        .lte('created_at', fim.toISOString())
+        .order('created_at', { ascending: false });
 
       if (selectedProfissional !== 'all') {
         query = query.eq('profissional_id', selectedProfissional);
@@ -86,10 +87,19 @@ export function ComissoesPanel() {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Map profissional names
-      const comissoesComNomes = (data || []).map(c => ({
-        ...c,
-        profissional_nome: profissionais.find(p => p.id === c.profissional_id)?.nome || 'Desconhecido',
+      // Map comissoes_registro columns to Comissao interface
+      const comissoesComNomes = (data || []).map((c: any) => ({
+        id: c.id,
+        profissional_id: c.profissional_id,
+        profissional_nome: profissionais.find((p: Profissional) => p.id === c.profissional_id)?.nome || 'Desconhecido',
+        tipo: 'servico',
+        descricao: c.servico_nome || 'Serviço',
+        valor_base: c.valor_servico,
+        percentual_comissao: c.percentual,
+        valor_comissao: c.valor_comissao,
+        status: c.status,
+        data_referencia: c.created_at ? c.created_at.split('T')[0] : c.periodo_ref,
+        data_pagamento: c.data_pagamento,
       }));
 
       setComissoes(comissoesComNomes);
@@ -127,10 +137,10 @@ export function ComissoesPanel() {
 
     setProcessing(true);
     try {
-      const { error } = await supabase
-        .from('comissoes')
+      const { error } = await (supabase as any)
+        .from('comissoes_registro')
         .update({
-          status: 'paga',
+          status: 'pago',
           data_pagamento: new Date().toISOString(),
         })
         .in('id', Array.from(selectedIds));
@@ -170,7 +180,7 @@ export function ComissoesPanel() {
       }));
 
       const pendentes = comissoes.filter(c => c.status === 'pendente');
-      const pagas = comissoes.filter(c => c.status === 'paga');
+      const pagas = comissoes.filter(c => c.status === 'pago');
 
       const totais = {
         pendente: pendentes.reduce((sum, c) => sum + Number(c.valor_comissao), 0),
@@ -212,7 +222,7 @@ export function ComissoesPanel() {
     .reduce((sum, c) => sum + Number(c.valor_comissao), 0);
 
   const totalPago = comissoes
-    .filter(c => c.status === 'paga')
+    .filter(c => c.status === 'pago')
     .reduce((sum, c) => sum + Number(c.valor_comissao), 0);
 
   return (
@@ -336,7 +346,7 @@ export function ComissoesPanel() {
                         <Checkbox
                           checked={selectedIds.has(c.id)}
                           onCheckedChange={(checked) => handleSelectOne(c.id, !!checked)}
-                          disabled={c.status === 'paga'}
+                          disabled={c.status === 'pago'}
                         />
                       </TableCell>
                     )}
@@ -351,8 +361,8 @@ export function ComissoesPanel() {
                     <TableCell className="text-center">{c.percentual_comissao}%</TableCell>
                     <TableCell className="text-right font-semibold">{formatCurrency(Number(c.valor_comissao))}</TableCell>
                     <TableCell>
-                      <Badge variant={c.status === 'paga' ? 'default' : 'secondary'} className={c.status === 'paga' ? 'bg-green-600' : ''}>
-                        {c.status === 'paga' ? '✓ Pago' : '○ Pendente'}
+                      <Badge variant={c.status === 'pago' ? 'default' : 'secondary'} className={c.status === 'pago' ? 'bg-green-600' : ''}>
+                        {c.status === 'pago' ? '✓ Pago' : '○ Pendente'}
                       </Badge>
                     </TableCell>
                   </TableRow>

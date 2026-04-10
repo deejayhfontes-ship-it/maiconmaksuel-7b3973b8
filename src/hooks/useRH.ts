@@ -129,12 +129,13 @@ export function useRH() {
   // Load commissions for a period
   const loadComissoes = useCallback(async (startDate: Date, endDate: Date, profissionalId?: string) => {
     try {
-      let query = supabase
-        .from('comissoes')
-        .select('*')
-        .gte('data_referencia', format(startDate, 'yyyy-MM-dd'))
-        .lte('data_referencia', format(endDate, 'yyyy-MM-dd'))
-        .order('data_referencia', { ascending: false });
+      const db = supabase as any;
+      let query = db
+        .from('comissoes_registro')
+        .select('*, profissionais(nome)')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .order('created_at', { ascending: false });
 
       if (profissionalId) query = query.eq('profissional_id', profissionalId);
 
@@ -144,8 +145,22 @@ export function useRH() {
         toast.error(`Falha ao carregar comissões: ${error.message}`);
         throw error;
       }
-      setComissoes(data || []);
-      return data || [];
+      // Map comissoes_registro columns to Comissao interface
+      const mapped = (data || []).map((c: any) => ({
+        id: c.id,
+        profissional_id: c.profissional_id,
+        atendimento_id: c.atendimento_id,
+        tipo: 'servico',
+        descricao: c.servico_nome || 'Serviço',
+        valor_base: c.valor_servico,
+        percentual_comissao: c.percentual,
+        valor_comissao: c.valor_comissao,
+        status: c.status,
+        data_referencia: c.created_at ? c.created_at.split('T')[0] : c.periodo_ref,
+        data_pagamento: c.data_pagamento,
+      })) as Comissao[];
+      setComissoes(mapped);
+      return mapped;
     } catch (error) {
       console.error('[RH] comissoes_error', error);
       return [];
@@ -307,8 +322,8 @@ export function useRH() {
 
   const pagarComissao = useCallback(async (comissaoId: string) => {
     try {
-      const { error } = await supabase.from('comissoes')
-        .update({ status: 'paga', data_pagamento: new Date().toISOString() })
+      const { error } = await (supabase as any).from('comissoes_registro')
+        .update({ status: 'pago', data_pagamento: new Date().toISOString() })
         .eq('id', comissaoId);
 
       if (error) { console.error('[RH] pagar_comissao_fail', error); toast.error(`Erro: ${error.message}`); throw error; }

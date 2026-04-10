@@ -313,11 +313,10 @@ export function useServicos() {
         .eq('servico_id', id);
 
       if (aServicos && aServicos.length > 0) {
-        const asIds = aServicos.map((s) => s.id);
-        await supabase
-          .from('comissoes')
+        await (supabase as any)
+          .from('comissoes_registro')
           .delete()
-          .in('atendimento_servico_id', asIds);
+          .eq('servico_id', id);
       }
 
       // 2. Delete atendimento_servicos

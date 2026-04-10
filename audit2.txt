@@ -1,0 +1,18 @@
+﻿=== TRIGGERS na tabela agendamentos ===
+{
+  "message": "Unauthorized"
+}
+
+=== STATUS DO TRIGGER enviar_confirmacao ===
+{ message: 'Unauthorized' }
+
+=== ├ÜLTIMOS 5 AGENDAMENTOS ===
+{ message: 'Unauthorized' }
+
+=== EXTENS├âO pg_net STATUS ===
+{ message: 'Unauthorized' }
+
+=== DEFINI├ç├âO DA FUN├ç├âO TRIGGER ===
+
+=== TABELA confirmacoes_agendamento (├║ltimas 3) ===
+{ message: 'Unauthorized' }

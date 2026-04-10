@@ -581,27 +581,13 @@ const Atendimentos = () => {
     const profissionaisMap = new Map<string, typeof itemsServicos>();
     for (const item of itemsServicos) {
       if (item.comissao_valor > 0) {
-        // Mantém insert na tabela legada (usada pelo módulo RH)
-        await supabase.from("comissoes").insert([{
-          profissional_id: item.profissional_id,
-          atendimento_id: selectedAtendimento.id,
-          atendimento_servico_id: item.id,
-          tipo: "servico",
-          descricao: `Comanda #${selectedAtendimento.numero_comanda.toString().padStart(3, "0")} - ${item.servico.nome}`,
-          valor_base: Number(item.subtotal),
-          percentual_comissao: Number(item.comissao_percentual),
-          valor_comissao: Number(item.comissao_valor),
-          status: "pendente",
-          data_referencia: new Date().toISOString().split("T")[0],
-        }]);
-
         if (!profissionaisMap.has(item.profissional_id)) {
           profissionaisMap.set(item.profissional_id, []);
         }
         profissionaisMap.get(item.profissional_id)!.push(item);
       }
     }
-    // Também grava em comissoes_registro (usado pelo módulo Comissões e Fechamento)
+    // Grava em comissoes_registro (fonte única de verdade)
     for (const [profId, itens] of profissionaisMap.entries()) {
       await gerarComissoesDaComanda({
         comandaId: selectedAtendimento.id,
