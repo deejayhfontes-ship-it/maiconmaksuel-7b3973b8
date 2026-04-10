@@ -100,6 +100,9 @@ export default function CaixaComandas() {
   const [imprimirCupom, setImprimirCupom] = useState(false);
   const [enviarWhatsApp, setEnviarWhatsApp] = useState(false);
   const [gorjeta, setGorjeta] = useState(0);
+  // Prazo fiado
+  const [fiadoPrazo, setFiadoPrazo] = useState<"20" | "30" | "40" | "custom">("30");
+  const [fiadoDataCustom, setFiadoDataCustom] = useState("");
 
   const fetchComandas = useCallback(async () => {
     setLoading(true);
@@ -227,6 +230,8 @@ export default function CaixaComandas() {
     setFormaPagamento("dinheiro");
     setValorRecebido(0);
     setGorjeta(0);
+    setFiadoPrazo("30");
+    setFiadoDataCustom("");
     setIsFinalizarOpen(true);
   };
 
@@ -306,8 +311,13 @@ export default function CaixaComandas() {
 
     // Se fiado, criar dívida
     if (formaPagamento === "fiado" && selectedComanda.cliente_id) {
-      const vencimento = new Date();
-      vencimento.setDate(vencimento.getDate() + 30); // 30 dias padrão
+      let vencimento: Date;
+      if (fiadoPrazo === "custom" && fiadoDataCustom) {
+        vencimento = new Date(fiadoDataCustom + "T12:00:00");
+      } else {
+        vencimento = new Date();
+        vencimento.setDate(vencimento.getDate() + Number(fiadoPrazo));
+      }
 
       await supabase.from("dividas").insert([{
         cliente_id: selectedComanda.cliente_id,
@@ -673,6 +683,52 @@ export default function CaixaComandas() {
                 ))}
               </RadioGroup>
             </div>
+
+            {/* Prazo do Fiado */}
+            {formaPagamento === "fiado" && (
+              <div className="space-y-2">
+                <Label>Prazo de Vencimento</Label>
+                <div className="flex gap-2">
+                  {(["20", "30", "40"] as const).map((dias) => (
+                    <Button
+                      key={dias}
+                      type="button"
+                      size="sm"
+                      variant={fiadoPrazo === dias ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => { setFiadoPrazo(dias); setFiadoDataCustom(""); }}
+                    >
+                      {dias}d
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={fiadoPrazo === "custom" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setFiadoPrazo("custom")}
+                  >
+                    Data
+                  </Button>
+                </div>
+                {fiadoPrazo === "custom" ? (
+                  <Input
+                    type="date"
+                    value={fiadoDataCustom}
+                    min={new Date().toISOString().split("T")[0]}
+                    onChange={(e) => setFiadoDataCustom(e.target.value)}
+                  />
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Vence em: {(() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + Number(fiadoPrazo));
+                      return d.toLocaleDateString("pt-BR");
+                    })()}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Dinheiro - Troco */}
             {formaPagamento === "dinheiro" && (

@@ -946,6 +946,13 @@ export function useAtendimentos(): UseAtendimentosReturn {
       if (isOnline) {
         await supabase.from('atendimentos').update({ status: 'cancelado' }).eq('id', atendimentoId);
         await localPut('atendimentos', cancelled, true);
+
+        // Cancelar dívidas abertas vinculadas a esta comanda
+        await supabase
+          .from('dividas')
+          .update({ status: 'cancelada' })
+          .eq('atendimento_id', atendimentoId)
+          .in('status', ['aberta', 'parcial']);
       } else {
         await addToSyncQueue({
           entity: 'atendimentos',

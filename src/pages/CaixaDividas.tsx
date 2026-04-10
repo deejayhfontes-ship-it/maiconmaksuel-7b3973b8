@@ -92,6 +92,7 @@ export default function CaixaDividas() {
         *,
         cliente:cliente_id (nome, celular)
       `)
+      .neq("status", "cancelada")
       .order("data_vencimento", { ascending: true });
 
     if (error) {
@@ -236,11 +237,12 @@ export default function CaixaDividas() {
   });
 
   const totalPendente = dividas
-    .filter(d => d.status !== "quitada")
+    .filter(d => d.status !== "quitada" && d.status !== "cancelada")
     .reduce((acc, d) => acc + Number(d.saldo), 0);
 
   const totalVencido = dividas
-    .filter(d => d.status === "vencida" || (d.status !== "quitada" && isPast(parseISO(d.data_vencimento))))
+    .filter(d => d.status !== "quitada" && d.status !== "cancelada" &&
+      (d.status === "vencida" || isPast(parseISO(d.data_vencimento))))
     .reduce((acc, d) => acc + Number(d.saldo), 0);
 
   if (loading) {
