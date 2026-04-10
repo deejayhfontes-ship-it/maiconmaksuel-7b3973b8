@@ -127,6 +127,9 @@ serve(async (req) => {
     const responseText = await response.text();
     console.log("API Response:", response.status, responseText);
 
+    let finalSuccess = true;
+    let finalError = "";
+    
     if (!response.ok) {
       // Try alternative endpoint format (Evolution API v1)
       const altResponse = await fetch(`${apiUrl}/message/text`, {
@@ -146,27 +149,41 @@ serve(async (req) => {
       console.log("Alt API Response:", altResponse.status, altResponseText);
 
       if (!altResponse.ok) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: `Erro ao enviar mensagem: ${response.status} - ${responseText}`,
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
+        finalSuccess = false;
+        finalError = `Erro HTTP: ${altResponse.status} - ${altResponseText.substring(0, 100)}`;
       }
     }
 
-    // Atualizar whatsapp_logs se foi chamado com agendamento_id
+    if (!finalSuccess) {
+      if (agendamento_id) {
+        await supabase
+          .from("whatsapp_logs")
+          .update({ 
+            status_envio: "erro", 
+            observacoes: finalError 
+          })
+          .eq("agendamento_id", agendamento_id)
+          .eq("tipo_mensagem", tipo_mensagem || "confirmacao");
+      }
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: finalError,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    
+    // Atualizar whatsapp_logs se enviou com sucesso
     if (agendamento_id) {
       await supabase
         .from("whatsapp_logs")
         .update({ status_envio: "enviado", enviado_em: new Date().toISOString() })
         .eq("agendamento_id", agendamento_id)
-        .eq("tipo_mensagem", tipo_mensagem || "confirmacao")
-        .eq("status_envio", "enviado"); // atualiza o registro criado pelo trigger
+        .eq("tipo_mensagem", tipo_mensagem || "confirmacao");
     }
 
     // Update credits if applicable

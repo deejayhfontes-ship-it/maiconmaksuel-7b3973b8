@@ -113,67 +113,7 @@ export function useWhatsAppLogs(filtros: WhatsAppLogFiltros = {}) {
 
       let resultados = (data || []) as WhatsAppLog[];
 
-      // Injeta logs virtuais para agendamentos futuros não registrados na nova tabela
-      const { data: agendamentos, error: agErr } = await supabase
-        .from('agendamentos')
-        .select(`
-          id, data_hora, cliente_id, clientes ( nome, celular ), profissionais ( nome ), servicos ( nome )
-        `)
-        .neq('status', 'cancelado')
-        .gte('data_hora', new Date().toISOString())
-        .limit(200);
-
-      if (!agErr && agendamentos) {
-        agendamentos.forEach((ag: any) => {
-          const temLogConfirmacao = resultados.some(
-            l => l.agendamento_id === ag.id && (l.tipo_mensagem === 'confirmacao' || l.tipo_mensagem === 'reenvio')
-          );
-          
-          const statusOk = !filtros.statusEnvio || filtros.statusEnvio === 'todos' || filtros.statusEnvio === 'pendente';
-          const tipoOk = !filtros.tipoMensagem || filtros.tipoMensagem === 'todos' || filtros.tipoMensagem === 'confirmacao';
-
-          if (!temLogConfirmacao && statusOk && tipoOk) {
-            resultados.push({
-              id: `virtual-conf-${ag.id}`,
-              agendamento_id: ag.id,
-              cliente_id: ag.cliente_id,
-              telefone: ag.clientes?.celular || '',
-              tipo_mensagem: 'confirmacao',
-              status_envio: 'pendente',
-              status_interacao: 'sem_interacao',
-              mensagem_texto: null,
-              provider: 'z-api',
-              provider_message_id: null,
-              tentativa_numero: 0,
-              erro_detalhado: 'Mensagem não disparada',
-              payload_retorno: null,
-              enviado_em: null,
-              enviado_por_manual: false,
-              origem_fluxo: 'automatico',
-              usuario_reenvio_id: null,
-              created_at: ag.data_hora,
-              updated_at: ag.data_hora,
-              agendamento: ag,
-            } as WhatsAppLog);
-          }
-        });
-        
-        // Ordenação inteligente:
-        // 1. Logs Virtuais (Pendentes) ficam fixos no topo, ordenados pela data MAIS PRÓXIMA (ascendente).
-        // 2. Logs Reais (Enviados/Falhas) ficam abaixo, retornando os envios mais recentes primeiro (descendente).
-        resultados.sort((a, b) => {
-          const isVirtualA = a.id.startsWith('virtual-');
-          const isVirtualB = b.id.startsWith('virtual-');
-          
-          if (isVirtualA && isVirtualB) {
-            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-          }
-          if (isVirtualA) return -1;
-          if (isVirtualB) return 1;
-          
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-      }
+      // Injeta logs virtuais removido. Agora a tabela refletirá rigorosamente a base real.
 
       // Filtro client-side por busca (nome/telefone)
       if (filtros.busca && filtros.busca.trim()) {

@@ -36,12 +36,48 @@ serve(async (req) => {
       numeroRemetente = (payload.sender || payload.from || "").replace("@s.whatsapp.net", "");
       textoMensagem = payload.body || payload.text || payload.message || "";
     }
-    // Generic fallback
+    // Generic fallback for actual text messages
     else if (payload.messages?.[0]) {
       const msg = payload.messages[0];
       numeroRemetente = msg.from || msg.sender || "";
       textoMensagem = msg.text?.body || msg.body || "";
     }
+    
+    // === FASE 5: Captura Status de Entrega (ACK) ===
+     // Z-API message-status payload format & Evolution API message-status
+     if (payload.event === 'on-message-status' || payload.event === 'messages.update' || payload.status) {
+       const w_phone = (payload.phone || payload.data?.key?.remoteJid || payload.recipient || "").replace("@s.whatsapp.net", "").replace(/\D/g, "");
+       const w_status = payload.status || payload.data?.update?.status; // String like: "SENT", "DELIVERED", "READ"
+       
+       if (w_phone && w_status) {
+         let br_status = "";
+         if (['DELIVERED', 'RECEIVED'].includes(String(w_status).toUpperCase())) br_status = 'entregue';
+         if (['READ', 'VIEWED'].includes(String(w_status).toUpperCase())) br_status = 'lido';
+
+         if (br_status) {
+            // Find the most recent sent log for this number
+            const { data: latestLog } = await supabase
+              .from("whatsapp_logs")
+              .select("id")
+              .eq("numero_destino", w_phone)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (latestLog) {
+               await supabase
+                 .from("whatsapp_logs")
+                 .update({ status_interacao: br_status, data_interacao: new Date().toISOString() })
+                 .eq("id", latestLog.id);
+                 
+               console.log(`[WEBHOOK-ACK] Status atualizado: ${w_phone} -> ${br_status}`);
+            }
+         }
+         return new Response(JSON.stringify({ ok: true, action: "status_ack_processed" }), {
+           headers: { ...corsHeaders, "Content-Type": "application/json" },
+         });
+       }
+     }
 
     if (!numeroRemetente || !textoMensagem) {
       console.log("[WEBHOOK] Sem remetente ou mensagem, ignorando");

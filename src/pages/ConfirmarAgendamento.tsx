@@ -80,7 +80,8 @@ export default function ConfirmarAgendamento() {
           valor_taxa,
           confirmado_em,
           cancelado_em,
-          agendamento_id
+          agendamento_id,
+          created_at
         `)
         .eq("token_confirmacao", token)
         .single();
@@ -91,6 +92,12 @@ export default function ConfirmarAgendamento() {
       }
 
       setConfirmacao(confirmacaoData);
+
+      const diasDesdeCriacao = differenceInHours(new Date(), parseISO(confirmacaoData.created_at)) / 24;
+      if (diasDesdeCriacao > 7) {
+        setStatus("expired");
+        return;
+      }
 
       // Verificar se já foi usado
       if (confirmacaoData.status === "confirmado") {

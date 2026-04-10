@@ -77,10 +77,10 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving, zapi
   const [isNewCampanha, setIsNewCampanha] = useState(false);
   const [enviando, setEnviando] = useState<string | null>(null); // id da campanha sendo enviada
 
-  // Credenciais – prefere as do banco (via prop), cai no fallback se não tiver
-  const ZAPI_INSTANCE = zapiConfig?.instancia || '3EFBBECF9076D192D3C91E78C95369C2';
-  const ZAPI_TOKEN = zapiConfig?.token || '4B0D7C7DF8E790BBD1B6122B';
-  const ZAPI_CLIENT_TOKEN = zapiConfig?.clientToken || 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S';
+  // Credenciais – recebidas do banco (via prop), sem fallback hardcoded
+  const ZAPI_INSTANCE = zapiConfig?.instancia;
+  const ZAPI_TOKEN = zapiConfig?.token;
+  const ZAPI_CLIENT_TOKEN = zapiConfig?.clientToken;
 
   const getPreviewMessage = (template: string) => {
     return template
@@ -93,6 +93,11 @@ export function ComunicacaoCampanhas({ campanhas, onUpdateCampanha, saving, zapi
   };
 
   const handleDispararCampanha = async (campanha: ComunicacaoCampanha) => {
+    if (!ZAPI_INSTANCE || !ZAPI_TOKEN || !ZAPI_CLIENT_TOKEN) {
+        toast.error('Configurações da Z-API ausentes. Configure em WhatsApp -> Avançado antes de disparar campanhas.');
+        return;
+    }
+
     setEnviando(campanha.id);
     try {
       // 1. Busca clientes segmentados
