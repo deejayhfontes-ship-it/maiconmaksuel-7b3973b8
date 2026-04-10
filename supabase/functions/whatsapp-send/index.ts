@@ -11,6 +11,9 @@ interface SendMessageRequest {
   telefone: string;
   mensagem: string;
   cliente_nome?: string;
+  agendamento_id?: string;
+  cliente_id?: string;
+  tipo_mensagem?: string;
 }
 
 serve(async (req) => {
@@ -57,7 +60,7 @@ serve(async (req) => {
       );
     }
 
-    const { telefone, mensagem, cliente_nome }: SendMessageRequest = await req.json();
+    const { telefone, mensagem, cliente_nome, agendamento_id, cliente_id, tipo_mensagem }: SendMessageRequest = await req.json();
 
     if (!telefone || !mensagem) {
       return new Response(
@@ -154,6 +157,16 @@ serve(async (req) => {
           }
         );
       }
+    }
+
+    // Atualizar whatsapp_logs se foi chamado com agendamento_id
+    if (agendamento_id) {
+      await supabase
+        .from("whatsapp_logs")
+        .update({ status_envio: "enviado", enviado_em: new Date().toISOString() })
+        .eq("agendamento_id", agendamento_id)
+        .eq("tipo_mensagem", tipo_mensagem || "confirmacao")
+        .eq("status_envio", "enviado"); // atualiza o registro criado pelo trigger
     }
 
     // Update credits if applicable
