@@ -87,7 +87,7 @@ export function ComunicacaoConfigAvancadas({
     );
   }
 
-  const webhookUrl = `https://hhzvjsrsoyhjzeiuxpep.supabase.co/functions/v1/zapi-webhook`;
+  const webhookUrl = `https://hhzvjsrsoyhjzeiuxpep.supabase.co/functions/v1/whatsapp-webhook`;
   const isZApi = configWhatsApp?.api_provider === 'z_api';
 
   const handleVerificarConexao = async () => {
