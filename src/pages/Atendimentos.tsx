@@ -57,6 +57,7 @@ import { ClienteSelector } from "@/components/atendimentos/ClienteSelector";
 import { ProductSearchInput } from "@/components/atendimentos/ProductSearchInput";
 import { cn } from "@/lib/utils";
 import { useAtendimentos, AtendimentoServico, AtendimentoProduto } from "@/hooks/useAtendimentos";
+import { useGerarComissao } from "@/hooks/useGerarComissao";
 
 interface Cliente {
   id: string;
@@ -131,6 +132,8 @@ const formatPrice = (price: number) => {
 };
 
 const Atendimentos = () => {
+  const { gerarComissoesDaComanda } = useGerarComissao();
+
   // Use offline-first hook
   const {
     atendimentos,
@@ -573,8 +576,12 @@ const Atendimentos = () => {
     }
 
     // Registrar comissões dos profissionais
+    // Agrupa por profissional para chamar gerarComissoesDaComanda (→ comissoes_registro)
+    const periodoRef = new Date().toISOString().slice(0, 7);
+    const profissionaisMap = new Map<string, typeof itemsServicos>();
     for (const item of itemsServicos) {
       if (item.comissao_valor > 0) {
+        // Mantém insert na tabela legada (usada pelo módulo RH)
         await supabase.from("comissoes").insert([{
           profissional_id: item.profissional_id,
           atendimento_id: selectedAtendimento.id,
@@ -587,7 +594,26 @@ const Atendimentos = () => {
           status: "pendente",
           data_referencia: new Date().toISOString().split("T")[0],
         }]);
+
+        if (!profissionaisMap.has(item.profissional_id)) {
+          profissionaisMap.set(item.profissional_id, []);
+        }
+        profissionaisMap.get(item.profissional_id)!.push(item);
       }
+    }
+    // Também grava em comissoes_registro (usado pelo módulo Comissões e Fechamento)
+    for (const [profId, itens] of profissionaisMap.entries()) {
+      await gerarComissoesDaComanda({
+        comandaId: selectedAtendimento.id,
+        profissionalId: profId,
+        itens: itens.map((i) => ({
+          servico_id: i.servico_id ?? null,
+          nome_servico: i.servico?.nome,
+          valor: Number(i.subtotal ?? i.valor_unitario ?? 0),
+          gera_comissao: true,
+        })),
+        periodoRef,
+      });
     }
 
     // Registrar gorjetas como movimentação separada no caixa
