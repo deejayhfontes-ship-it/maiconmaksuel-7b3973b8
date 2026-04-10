@@ -115,7 +115,7 @@ export default function Login() {
       toast.success('Acesso autorizado!');
       
       // Admin login on Electron: auto-open kiosk in 2nd window if enabled
-      if (pin.join('') === '0000' || code === '0000') {
+      if (result.role === 'admin') {
         try {
           const kioskBoot = await window.electron?.getKioskEnabled();
           if (kioskBoot && window.electron?.openKioskWindow) {

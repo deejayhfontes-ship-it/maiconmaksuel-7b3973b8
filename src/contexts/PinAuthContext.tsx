@@ -129,7 +129,7 @@ interface PinAuthContextType {
   session: PinSession | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (pin: string) => Promise<{ success: boolean; error?: string }>;
+  login: (pin: string) => Promise<{ success: boolean; role?: string; error?: string }>;
   logout: () => void;
   canAccessRoute: (route: string) => boolean;
   getDefaultRoute: () => string;
@@ -235,7 +235,7 @@ export function PinAuthProvider({ children }: { children: ReactNode }) {
       // Log successful access
       await logAccessAttempt(data.id, data.nome, true, null, data.role);
 
-      return { success: true };
+      return { success: true, role: newSession.role };
     } catch {
       return { success: false, error: 'Erro ao verificar PIN' };
     }

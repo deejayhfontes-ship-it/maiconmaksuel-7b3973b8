@@ -72,40 +72,12 @@ export function usePinosAcesso() {
 
       if (checkError) throw checkError;
 
-      // Default PINs configuration
-      const defaultPins: Array<{ pin: string; nome: string; role: PinRole; descricao: string; ativo: boolean }> = [
-        { pin: '0000', nome: 'Administrador', role: 'admin', descricao: 'Acesso total ao sistema', ativo: true },
-        { pin: '1234', nome: 'Notebook', role: 'notebook', descricao: 'Agenda e gestão básica', ativo: true },
-        { pin: '9999', nome: 'Kiosk', role: 'kiosk', descricao: 'Caixa, ponto e mini agenda', ativo: true },
-        { pin: '1010', nome: 'Agenda Colaboradores', role: 'colaborador_agenda', descricao: 'Agenda somente leitura', ativo: true },
-      ];
-
-      // If no PINs exist, create all defaults
+      // Se já existe pelo menos um PIN no banco, não toca em nada.
+      // Os PINs são gerenciados exclusivamente pelo admin via painel.
+      // NUNCA recriar PINs padrão hardcoded — isso eliminaria o PIN real configurado pelo admin.
       if (!existing || existing.length === 0) {
-      const { error: insertError } = await supabase
-        .from('pinos_acesso')
-        .insert(defaultPins as any);
-
-        if (insertError) throw insertError;
-        
-        console.log('[PINs] Default PINs created: 0000 (admin), 1234 (notebook), 9999 (kiosk)');
-        await fetchPinos();
-        return;
-      }
-
-      // Check if each default role has at least one PIN, if not create it
-      const existingRoles = new Set(existing.map(p => p.role));
-      const missingPins = defaultPins.filter(dp => !existingRoles.has(dp.role));
-
-      if (missingPins.length > 0) {
-        const { error: insertError } = await supabase
-          .from('pinos_acesso')
-          .insert(missingPins as any);
-
-        if (!insertError) {
-          console.log('[PINs] Created missing default PINs for roles:', missingPins.map(p => p.role).join(', '));
-          await fetchPinos();
-        }
+        // Banco vazio: apenas loga o aviso. O admin deve configurar os PINs manualmente.
+        console.warn('[PINs] Nenhum PIN cadastrado no banco. Acesse Configurações → Controle de Acesso para criar os PINs.');
       }
     } catch (error) {
       console.error('Error initializing default PINs:', error);

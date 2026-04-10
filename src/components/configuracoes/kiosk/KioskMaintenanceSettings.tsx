@@ -2,7 +2,8 @@
  * Kiosk Reset, Maintenance & Safety Controls
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,6 @@ export default function KioskMaintenanceSettings() {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 
   const isAdmin = session?.role === 'admin';
-  const adminPin = '0000'; // Default admin PIN for verification
 
   const handleDestructiveAction = (action: string) => {
     if (!isAdmin) {
@@ -62,9 +62,18 @@ export default function KioskMaintenanceSettings() {
     setConfirmPin('');
   };
 
-  const executeAction = () => {
-    if (confirmPin !== adminPin) {
-      toast.error('PIN incorreto');
+  const executeAction = useCallback(async () => {
+    // Verifica PIN contra o banco — nunca compara com valor hardcoded
+    const { data, error } = await supabase
+      .from('pinos_acesso')
+      .select('id')
+      .eq('pin', confirmPin)
+      .eq('role', 'admin')
+      .eq('ativo', true)
+      .single();
+
+    if (error || !data) {
+      toast.error('PIN de administrador incorreto');
       return;
     }
 
@@ -79,7 +88,7 @@ export default function KioskMaintenanceSettings() {
 
     setSelectedAction(null);
     setConfirmPin('');
-  };
+  }, [confirmPin, selectedAction, clearCache, factoryReset]);
 
   const maintenanceActions = [
     {
