@@ -230,15 +230,21 @@ export default function Comissoes() {
 
       if (profsRes.data) setProfissionais(profsRes.data as Profissional[]);
 
+      console.log("[Comissoes] comissoesRes:", comissoesRes.data?.length, "erro:", comissoesRes.error);
+
+      if (comissoesRes.error) {
+        console.error("[Comissoes] Erro na query:", comissoesRes.error);
+      }
+
       if (comissoesRes.data) {
         // Enriquecer com dados do atendimento
-        // Supabase retorna nested join como c.atendimento.clientes (nome da tabela, sem alias)
         const enriquecidas = (comissoesRes.data as any[]).map((c) => ({
           ...c,
           cliente_nome: c.atendimento?.clientes?.nome || c.atendimento?.cliente?.nome || null,
           numero_comanda: c.atendimento?.numero_comanda || null,
           atendimento: undefined,
         })) as ComissaoRegistro[];
+        console.log("[Comissoes] enriquecidas:", enriquecidas.length);
         setComissoes(enriquecidas);
       }
 
