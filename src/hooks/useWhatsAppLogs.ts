@@ -59,10 +59,6 @@ export interface WhatsAppResumo {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const ZAPI_INSTANCE = '3EFBBECF9076D192D3C91E78C95369C2';
-const ZAPI_TOKEN = '4B0D7C7DF8E790BBD1B6122B';
-const ZAPI_CLIENT_TOKEN = 'Fbab85f2da2684d40ac0ff07d9ddcf0e8S';
-
 function formatarTelefone(tel: string): string {
   const digits = tel.replace(/\D/g, '');
   return digits.startsWith('55') ? digits : `55${digits}`;
@@ -262,20 +258,20 @@ export function useWhatsAppLogs(filtros: WhatsAppLogFiltros = {}) {
           .replace(/{{nome_profissional}}/g, ag.profissionais?.nome || 'Profissional');
       }
 
-      // Envio direto via Z-API
-      const resp = await fetch(
-        `https://api.z-api.io/instances/${ZAPI_INSTANCE}/token/${ZAPI_TOKEN}/send-text`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Client-Token': ZAPI_CLIENT_TOKEN,
-          },
-          body: JSON.stringify({ phone: telefone, message: mensagem }),
-        }
-      );
+      // Envio via edge function whatsapp-send (usa configuracoes_whatsapp do banco)
+      const { data: sendData, error: sendError } = await supabase.functions.invoke('whatsapp-send', {
+        body: {
+          telefone,
+          mensagem,
+          cliente_nome: log.agendamento?.clientes?.nome,
+          agendamento_id: log.agendamento_id,
+          cliente_id: log.cliente_id,
+          tipo_mensagem: 'reenvio',
+        },
+      });
 
-      const retorno = await resp.json();
+      const resp = { ok: !sendError && sendData?.success !== false };
+      const retorno = sendData || { error: sendError?.message };
 
       // Criar novo log de reenvio (não sobrescreve o original)
       const { error: insertErr } = await supabase.from('whatsapp_logs').insert({
