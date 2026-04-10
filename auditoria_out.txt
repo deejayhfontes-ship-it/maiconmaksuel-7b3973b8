@@ -1,0 +1,65 @@
+=== TODAS as dividas abertas: 7 ===
+
+[1] Elisa Santana ??? LEGITIMA
+  Status divida:      aberta
+  Status atendimento: cancelado
+  Comanda:            #87795
+  Valor:              R$ 170 | Saldo: R$ 170
+  Vencimento:         2026-04-10
+  Pagamentos:         nenhum
+  Obs:                Comanda #87795 - Fiado
+
+[2] Regislene Maria de Oliveira ??? LEGITIMA
+  Status divida:      aberta
+  Status atendimento: fechado
+  Comanda:            #45
+  Valor:              R$ 110 | Saldo: R$ 110
+  Vencimento:         2026-04-15
+  Pagamentos:         nenhum
+  Obs:                Comanda #045 - Fiado
+
+[3] Kamila Laura Oseias ??? LEGITIMA
+  Status divida:      aberta
+  Status atendimento: fechado
+  Comanda:            #51
+  Valor:              R$ 40 | Saldo: R$ 40
+  Vencimento:         2026-04-15
+  Pagamentos:         nenhum
+  Obs:                Comanda #051 - Fiado
+
+[4] Kamila Laura Oseias ??? LEGITIMA
+  Status divida:      aberta
+  Status atendimento: fechado
+  Comanda:            #87779
+  Valor:              R$ 100 | Saldo: R$ 100
+  Vencimento:         2026-04-15
+  Pagamentos:         nenhum
+  Obs:                Comanda #87779 - Fiado
+
+[5] Kamila Laura Oseias ??? LEGITIMA
+  Status divida:      aberta
+  Status atendimento: fechado
+  Comanda:            #87787
+  Valor:              R$ 7 | Saldo: R$ 7
+  Vencimento:         2026-04-15
+  Pagamentos:         nenhum
+  Obs:                Comanda #87787 - Fiado
+
+[6] Nayara dos Santos Silva ??? LEGITIMA
+  Status divida:      aberta
+  Status atendimento: fechado
+  Comanda:            #53
+  Valor:              R$ 75 | Saldo: R$ 75
+  Vencimento:         2026-04-20
+  Pagamentos:         nenhum
+  Obs:                Comanda #053 - Fiado
+
+[7] Josiele Aparecida Serpa ??? LEGITIMA
+  Status divida:      aberta
+  Status atendimento: fechado
+  Comanda:            #87786
+  Valor:              R$ 140 | Saldo: R$ 140
+  Vencimento:         2026-04-28
+  Pagamentos:         nenhum
+  Obs:                Comanda #87786 - Fiado
+

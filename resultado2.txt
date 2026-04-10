@@ -1,0 +1,3 @@
+comissoes: {"message":"Failed to run sql query: ERROR:  42P01: relation \"comissoes\" does not exist\nLINE 1: SELECT COUNT(*) as total FROM comissoes;\n                                      ^\n"}
+comissoes_registro: [{"total":0}]
+colunas_comissoes: []

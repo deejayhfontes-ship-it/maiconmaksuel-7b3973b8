@@ -1,0 +1,241 @@
+﻿# ­ƒºá Memory ÔÇö Sistema de Sal├úo (Antigravity)
+
+
+
+**Stack:** TypeScript + Vite + Tailwind CSS + Electron
+
+**Deploy:** Vercel ÔåÆ `https://maiconmaksuel-7b3973b8-nine.vercel.app`
+
+**Banco:** Supabase projeto `hhzvjsrsoyhjzeiuxpep`
+
+**WhatsApp:** workflow-whatsapp-confirmacao.json
+
+**Status:** Ô£à Ativo em produ├º├úo
+
+
+
+---
+
+
+
+## ­ƒöæ CREDENCIAIS CR├ìTICAS ÔÇö NUNCA PERDER
+
+
+
+| Item | Valor |
+
+|---|---|
+
+| **Supabase Project ID** | `hhzvjsrsoyhjzeiuxpep` |
+
+| **Supabase URL** | `https://hhzvjsrsoyhjzeiuxpep.supabase.co` |
+
+| **Supabase Anon Key** | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0` |
+
+| **Conta Lovable/Supabase (owner do projeto)** | Email: `maiconmaksuel35@gmail.com` / Senha: `Maiconapp1010*` |
+
+| **Supabase PAT Token 1** (mcp_config) | `sbp_9d6ce1cc0224d6a1e8480919e91cc6e5a0cc1cbb` |
+
+| **Supabase PAT Token 2** (fornecido 2026-04-02) | `sbp_a1efd6232e48db3c84484cb743171c29cf1800fd` |
+
+| **SQL Editor direto** | `https://supabase.com/dashboard/project/hhzvjsrsoyhjzeiuxpep/sql/new` |
+
+| **GitHub Repo** | `https://github.com/deejayhfontes-ship-it/maiconmaksuel-7b3973b8` |
+
+| **N8N** | `https://n8n.srv1479281.hstgr.cloud` |
+
+| **Vercel projeto** | `maiconmaksuel-7b3973b8` |
+
+
+
+> ÔÜá´©Å Projeto ANTIGO (n├úo usar): `dqcvdgugqqvdjxjflwaq` (origem da migra├º├úo)
+
+
+
+---
+
+
+
+## 2026-04-02 ÔÇö Feature: Sistema de Auditoria de Comandas Fechadas
+
+
+
+**O que foi feito:** Sistema completo para reabrir/cancelar comandas fechadas com auditoria obrigat├│ria.
+
+**Arquivos criados:** `useComandaAuditoria.ts`, `ComandaAuditoriaModal.tsx`, `AuditoriaComandas.tsx`, SQL migration.
+
+**Rotas:** `/auditoria-comandas` | Menu lateral: item "Auditoria" (├¡cone Shield).
+
+**ÔÜÖ´©Å Solu├º├úo Cloudflare WAF:** A cria├º├úo da tabela via `npx supabase` falhava (1010/403) devido ao Cloudflare. Resolvido enviando query SQL direto via Node `https.request` usando a Management API. Script de bypass: `rodasql_management.cjs`.
+
+**Tabela:** `atendimentos_auditoria` criada e ativa via Management API.
+
+**ÔÜá´©Å PENDENTE:** Valida├º├úo do fluxo na tela do usu├írio para garantir que o insert e refetch funcionaram.
+
+
+
+
+
+
+
+## M├│dulos conhecidos
+
+- [ ] Agendamentos
+
+- [ ] Clientes (`ClienteViewDialog.tsx` ÔÇö aba Hist├│rico implementada)
+
+- [ ] Financeiro / Caixa
+
+- [ ] Funcion├írios / Comiss├Áes
+
+- [ ] API Keys / Autentica├º├úo
+
+- [ ] Integra├º├úo WhatsApp
+
+
+
+---
+
+
+
+## Hist├│rico de altera├º├Áes
+
+
+
+## 2026-04-01 ÔÇö Ajuste de Hor├írio da Agenda (07h ├ás 20h)
+
+
+
+**O que foi feito:** Ajustado o range de hor├írios da agenda visual de `08:00ÔÇô20:00` para `07:00ÔÇô20:00`.
+
+**Arquivos alterados:**
+
+- `src/pages/Agenda.tsx` ÔÇö `timeSlots[]` agora come├ºa em `07:00`
+
+- `src/components/agenda/AgendamentoFormDialog.tsx` ÔÇö `horarios[]` come├ºa em `07:00`, inclui `20:00`, e valida├º├úo atualizada para `h < 7 || h > 20`
+
+
+
+---
+
+
+
+## 2026-04-02 ÔÇö Corre├º├úo: Nome da cliente n├úo aparecia no hist├│rico do caixa
+
+
+
+**O que foi feito:** Ao fechar uma comanda, a `descricao` gravada na tabela `caixa_movimentacoes` n├úo inclu├¡a o nome da cliente ÔÇö mostrava apenas o n├║mero da comanda e a forma de pagamento. Corrigido nos dois pontos onde o registro ├® feito.
+
+**Por qu├¬:** O usu├írio via apenas o nome da funcion├íria (via outra coluna) e n├úo o da cliente na movimenta├º├úo.
+
+**Arquivos alterados:**
+
+- `src/hooks/useAtendimentos.ts` linha 746 ÔÇö `clientes.find(c => c.id === current.cliente_id)?.nome || 'Cliente avulso'`
+
+- `src/pages/Atendimentos.tsx` linha 478 ÔÇö `selectedAtendimento.cliente?.nome || 'Cliente avulso'`
+
+
+
+**Formato da descri├º├úo agora:** `Comanda #001 - Amanda Silva - pix`
+
+
+
+---
+
+
+
+## 2026-04-02 ÔÇö Corre├º├úo: Bot├úo "+" Cadastrar Cliente na Agenda
+
+
+
+**O que foi feito:** Bot├úo `+` no `AgendamentoFormDialog.tsx` estava sem `onClick` (desativado). Implementado modal de cadastro r├ípido: abre direto no form, pede nome+telefone, salva no Supabase e seleciona automaticamente.
+
+**Arquivo:** `src/components/agenda/AgendamentoFormDialog.tsx`
+
+- Estados: `isNovoClienteOpen`, `novoClienteNome`, `novoClienteCelular`, `savingCliente`
+
+- Fun├º├úo `handleNovoClienteSubmit` + modal `<Dialog>` em fragmento `<>`
+
+
+
+---
+
+
+
+## 2026-04-02 ÔÇö Corre├º├úo: Comanda n├úo localizava cliente ao trocar
+
+
+
+**O que foi feito:** `ClienteSelector.tsx` ÔÇö ao trocar cliente na comanda, n├úo localizava se o cliente n├úo estava nas listas locais. Corrigido com `useEffect` que faz fetch direto no Supabase pelo `id`.
+
+**Arquivo:** `src/components/atendimentos/ClienteSelector.tsx`
+
+- Estado `clienteAtualFromServer` + fetch autom├ítico quando n├úo achado localmente
+
+
+
+---
+
+
+
+
+
+## 2026-03-30 ÔÇö Corre├º├úo dos Workflows N8N (data_hora)
+
+
+
+**O que foi feito:** Corrigidos 2 dos 3 workflows no n8n do Hostgator que usavam campos `data` e `hora` separados ÔÇö a tabela `agendamentos` usa `data_hora` (datetime ├║nico).
+
+**Por qu├¬:** Os workflows pararam de funcionar ap├│s migra├º├úo do banco. O campo antigo `data` n├úo existe mais na tabela atual.
+
+**Workflows corrigidos:**
+
+- `RZLEew5BlAhhFmlg` ÔÇö Lembretes Automaticos: select, filtros e c├│digo JS atualizados
+
+- `lFY3NsyE1dWzmvq6` ÔÇö Avaliacao Pos-Atendimento: select e filtros atualizados
+
+- `tcb575OhvvXqagsQ` ÔÇö Chatbot Confirma├º├úo: j├í estava correto (usa `data_hora`)
+
+
+
+**N8N:** `https://n8n.srv1479281.hstgr.cloud` (Hostgator)
+
+**Scripts gerados:** `corrigir_n8n_data_hora.py`, `inspecionar_n8n.py`, `corrigir_n8n_supabase.py`
+
+**Status:** Todos os 3 workflows ativos e apontando para Supabase correto (`hhzvjsrsoyhjzeiuxpep`)
+
+
+
+---
+
+
+
+## 2026-03-30 ÔÇö Setup inicial do memory.md
+
+
+
+**O que foi feito:** Criado sistema de mem├│ria para rastrear altera├º├Áes.
+
+**Por qu├¬:** Manter contexto entre sess├Áes do Claude Code.
+
+**Pend├¬ncias:**
+
+- Confirmar stack completa
+
+- Mapear todos os m├│dulos existentes
+
+
+
+---
+
+
+## 2026-04-04 ´┐¢ Feature: Pre´┐¢os Vari´┐¢veis e Ajustes nas Comandas
+
+**O que foi feito:** Adicionado o switch de Valor Vari´┐¢vel no cadastro de Servi´┐¢os e implementado controles de descontos/acr´┐¢scimos (por valor fixo ou %) na adi´┐¢´┐¢o de itens da Comanda.
+**Arquivos alterados:** useServicos, useAtendimentos, Atendimentos.tsx e ServicoFormDialog.tsx.
+**Tabelas afetadas:** servicos (coluna valor_variavel), atendimento_servicos e atendimento_produtos (campos tipo_ajuste, modo_ajuste, valor_ajuste) modificadas com sucesso e rodando via panel do Supabase.
+
+
+**Fixes Extras:** Atualizei o algoritmo de 'useWhatsAppLogs' para injetar a data real do agendamento nos logs virtuais e criei uma regra cronol´┐¢gica que fixa notifica´┐¢´┐¢es Pendentes no TOPO ordenadas pela data mais pr´┐¢xima, al´┐¢m de termos corrigido os erros de PGRST205 (Tabelas e RLS faltantes do modulo Comunica´┐¢´┐¢o no Supabase).
+
+

@@ -1,0 +1,11 @@
+=== PASSO 1: Habilitando pg_cron ===
+HTTP 201: []
+
+=== PASSO 2: Verificando pg_net ===
+HTTP 201: []
+
+=== PASSO 3: Criando cron job check-lembretes ===
+HTTP 201: [{"schedule":1}]
+
+=== PASSO 4: Jobs ativos ===
+HTTP 201: [{"jobid":1,"jobname":"check-lembretes-every-5min","schedule":"*/5 * * * *","active":true}]
