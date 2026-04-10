@@ -190,27 +190,20 @@ export default function Comissoes() {
       // Monta filtro correto por período:
       // Para mês/mês anterior usa periodo_ref (YYYY-MM) — evita problema de created_at desatualizado
       // Para hoje/semana usa created_at
-      const buildComissoesQuery = () => {
-        const base = supabase
-          .from("comissoes_registro")
-          .select(`
-            *,
-            atendimento:atendimentos(
-              numero_comanda,
-              clientes(nome)
-            )
-          `)
-          .order("created_at", { ascending: false });
+      // Monta query de comissões sem join (atendimento_id não tem FK formal no banco)
+      const db = supabase as any;
+      let comissoesQuery = db
+        .from("comissoes_registro")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-        if (periodo === "mes" || periodo === "mes_anterior") {
-          const periodoRef = format(dateRange.from, "yyyy-MM");
-          return base.eq("periodo_ref", periodoRef);
-        }
-        // hoje ou semana: filtra por created_at
-        return base
+      if (periodo === "mes" || periodo === "mes_anterior") {
+        comissoesQuery = comissoesQuery.eq("periodo_ref", format(dateRange.from, "yyyy-MM"));
+      } else {
+        comissoesQuery = comissoesQuery
           .gte("created_at", dateRange.from.toISOString())
           .lte("created_at", dateRange.to.toISOString());
-      };
+      }
 
       const [profsRes, comissoesRes, valesRes] = await Promise.all([
         supabase
@@ -219,7 +212,7 @@ export default function Comissoes() {
           .eq("ativo", true)
           .order("nome"),
 
-        buildComissoesQuery(),
+        comissoesQuery,
 
         supabase
           .from("vales")
@@ -230,22 +223,44 @@ export default function Comissoes() {
 
       if (profsRes.data) setProfissionais(profsRes.data as Profissional[]);
 
-      console.log("[Comissoes] comissoesRes:", comissoesRes.data?.length, "erro:", comissoesRes.error);
+      if (comissoesRes.data && comissoesRes.data.length > 0) {
+        // Buscar dados de atendimento separadamente para enriquecer com cliente e comanda
+        const atendimentoIds = [...new Set(
+          (comissoesRes.data as any[])
+            .map((c: any) => c.atendimento_id)
+            .filter(Boolean)
+        )];
 
-      if (comissoesRes.error) {
-        console.error("[Comissoes] Erro na query:", comissoesRes.error);
-      }
+        let atendimentoMap: Record<string, { numero_comanda: number; cliente_nome: string }> = {};
 
-      if (comissoesRes.data) {
-        // Enriquecer com dados do atendimento
+        if (atendimentoIds.length > 0) {
+          const { data: atendimentos } = await supabase
+            .from("atendimentos")
+            .select("id, numero_comanda, cliente_id, clientes:cliente_id(nome)")
+            .in("id", atendimentoIds);
+
+          if (atendimentos) {
+            atendimentoMap = Object.fromEntries(
+              (atendimentos as any[]).map((a) => [
+                a.id,
+                {
+                  numero_comanda: a.numero_comanda,
+                  cliente_nome: (a.clientes as any)?.nome || null,
+                },
+              ])
+            );
+          }
+        }
+
         const enriquecidas = (comissoesRes.data as any[]).map((c) => ({
           ...c,
-          cliente_nome: c.atendimento?.clientes?.nome || c.atendimento?.cliente?.nome || null,
-          numero_comanda: c.atendimento?.numero_comanda || null,
-          atendimento: undefined,
+          cliente_nome: atendimentoMap[c.atendimento_id]?.cliente_nome || null,
+          numero_comanda: atendimentoMap[c.atendimento_id]?.numero_comanda || null,
         })) as ComissaoRegistro[];
-        console.log("[Comissoes] enriquecidas:", enriquecidas.length);
+
         setComissoes(enriquecidas);
+      } else {
+        setComissoes([]);
       }
 
       if (valesRes.data) setVales(valesRes.data as Vale[]);
@@ -259,14 +274,13 @@ export default function Comissoes() {
 
   const fetchHistorico = useCallback(async () => {
     try {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("pagamentos_comissao")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
       if (data) setHistorico(data as PagamentoHistorico[]);
     } catch {
-      // tabela pode não existir ainda
       setHistorico([]);
     }
   }, []);
@@ -340,7 +354,7 @@ export default function Comissoes() {
         return;
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("comissoes_registro")
         .update({ status: "pago", data_pagamento: new Date().toISOString() })
         .in("id", pendentesIds);
@@ -348,7 +362,7 @@ export default function Comissoes() {
       if (error) throw error;
 
       // 2. Registrar no histórico (tabela pagamentos_comissao — cria silenciosamente se não existir)
-      await supabase.from("pagamentos_comissao").insert([{
+      await (supabase as any).from("pagamentos_comissao").insert([{
         profissional_id: r.profissional.id,
         profissional_nome: r.profissional.nome,
         periodo_inicio: dateRange.from.toISOString(),
