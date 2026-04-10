@@ -187,6 +187,31 @@ export default function Comissoes() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      // Monta filtro correto por período:
+      // Para mês/mês anterior usa periodo_ref (YYYY-MM) — evita problema de created_at desatualizado
+      // Para hoje/semana usa created_at
+      const buildComissoesQuery = () => {
+        const base = supabase
+          .from("comissoes_registro")
+          .select(`
+            *,
+            atendimento:atendimentos(
+              numero_comanda,
+              clientes(nome)
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        if (periodo === "mes" || periodo === "mes_anterior") {
+          const periodoRef = format(dateRange.from, "yyyy-MM");
+          return base.eq("periodo_ref", periodoRef);
+        }
+        // hoje ou semana: filtra por created_at
+        return base
+          .gte("created_at", dateRange.from.toISOString())
+          .lte("created_at", dateRange.to.toISOString());
+      };
+
       const [profsRes, comissoesRes, valesRes] = await Promise.all([
         supabase
           .from("profissionais")
@@ -194,19 +219,7 @@ export default function Comissoes() {
           .eq("ativo", true)
           .order("nome"),
 
-        // Busca comissões com join para pegar cliente e número da comanda
-        supabase
-          .from("comissoes_registro")
-          .select(`
-            *,
-            atendimento:atendimentos(
-              numero_comanda,
-              cliente:clientes(nome)
-            )
-          `)
-          .gte("created_at", dateRange.from.toISOString())
-          .lte("created_at", dateRange.to.toISOString())
-          .order("created_at", { ascending: false }),
+        buildComissoesQuery(),
 
         supabase
           .from("vales")
@@ -219,9 +232,10 @@ export default function Comissoes() {
 
       if (comissoesRes.data) {
         // Enriquecer com dados do atendimento
+        // Supabase retorna nested join como c.atendimento.clientes (nome da tabela, sem alias)
         const enriquecidas = (comissoesRes.data as any[]).map((c) => ({
           ...c,
-          cliente_nome: c.atendimento?.cliente?.nome || null,
+          cliente_nome: c.atendimento?.clientes?.nome || c.atendimento?.cliente?.nome || null,
           numero_comanda: c.atendimento?.numero_comanda || null,
           atendimento: undefined,
         })) as ComissaoRegistro[];
@@ -235,7 +249,7 @@ export default function Comissoes() {
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
+  }, [dateRange, periodo]);
 
   const fetchHistorico = useCallback(async () => {
     try {
