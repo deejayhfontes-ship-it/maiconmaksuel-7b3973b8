@@ -170,22 +170,44 @@ export default function CaixaDividas() {
       return;
     }
 
-    // Registrar no caixa se aberto
-    const { data: caixa } = await supabase
+    // Registrar no caixa — busca caixa aberto, ou o último fechado de hoje
+    const { data: caixaAberto } = await supabase
       .from("caixa")
-      .select("id")
+      .select("id, status")
       .eq("status", "aberto")
       .limit(1)
       .maybeSingle();
 
-    if (caixa) {
+    let caixaId: string | null = caixaAberto?.id || null;
+
+    if (!caixaId) {
+      // Caixa fechado: usa o último caixa fechado do dia para manter rastreabilidade
+      const inicioDia = new Date();
+      inicioDia.setHours(0, 0, 0, 0);
+      const { data: caixaHoje } = await supabase
+        .from("caixa")
+        .select("id")
+        .gte("data_abertura", inicioDia.toISOString())
+        .order("data_abertura", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      caixaId = caixaHoje?.id || null;
+    }
+
+    if (caixaId) {
       await supabase.from("caixa_movimentacoes").insert([{
-        caixa_id: caixa.id,
+        caixa_id: caixaId,
         tipo: "entrada",
         descricao: `Recebimento dívida - ${selectedDivida.cliente?.nome}`,
         valor: valorEfetivo,
         forma_pagamento: formaPagamento,
       }]);
+    } else {
+      toast({
+        title: "Atenção",
+        description: "Pagamento registrado no fiado, mas não há caixa do dia para vincular a movimentação.",
+        variant: "destructive",
+      });
     }
 
     toast({
