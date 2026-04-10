@@ -244,6 +244,7 @@ const Relatorios = () => {
         valesRes,
         dividasRes,
       ] = await Promise.all([
+        // Fetch atendimentos normal (vamos filtrar depois, ao final do map/reduce)
         supabase
           .from("atendimentos")
           .select("*, cliente:clientes(nome, celular)")
@@ -253,16 +254,18 @@ const Relatorios = () => {
         supabase.from("profissionais").select("*").eq("ativo", true),
         supabase.from("servicos").select("*").eq("ativo", true),
         supabase.from("produtos").select("*"),
+        // Buscar serviços e produtos usando nested params seria ideal, 
+        // mas para manter compatibilidade, vamos buscar com margem de data segura e filtrar na memória
         supabase
           .from("atendimento_servicos")
           .select("*, profissional:profissionais(nome), servico:servicos(nome)")
-          .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString()),
+          .gte("created_at", subMonths(startDate, 2).toISOString())
+          .lte("created_at", new Date(new Date(endDate).getTime() + 86400000).toISOString()),
         supabase
           .from("atendimento_produtos")
           .select("*, produto:produtos(nome, preco_custo, preco_venda)")
-          .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString()),
+          .gte("created_at", subMonths(startDate, 2).toISOString())
+          .lte("created_at", new Date(new Date(endDate).getTime() + 86400000).toISOString()),
         supabase
           .from("pagamentos")
           .select("*, atendimento:atendimentos(numero_comanda, cliente:clientes(nome))")
@@ -299,20 +302,32 @@ const Relatorios = () => {
           .order("data_vencimento", { ascending: true }),
       ]);
 
-      if (atendimentosRes.data) setAtendimentos(atendimentosRes.data);
-      if (clientesRes.data) setClientes(clientesRes.data);
-      if (profissionaisRes.data) setProfissionais(profissionaisRes.data);
-      if (servicosRes.data) setServicos(servicosRes.data);
-      if (produtosRes.data) setProdutos(produtosRes.data);
-      if (atendimentoServicosRes.data) setAtendimentoServicos(atendimentoServicosRes.data);
-      if (atendimentoProdutosRes.data) setAtendimentoProdutos(atendimentoProdutosRes.data);
-      if (pagamentosRes.data) setPagamentos(pagamentosRes.data);
-      if (caixasRes.data) setCaixas(caixasRes.data);
-      if (movimentacoesRes.data) setMovimentacoesCaixa(movimentacoesRes.data);
-      if (contasPagarRes.data) setContasPagar(contasPagarRes.data);
-      if (contasReceberRes.data) setContasReceber(contasReceberRes.data);
-      if (valesRes.data) setVales(valesRes.data);
-      if (dividasRes.data) setDividas(dividasRes.data);
+      const atendimentosData = atendimentosRes?.data || [];
+      const finalizadosIds = new Set(atendimentosData
+        .filter((a: any) => a.status === "fechado" || a.status === "finalizado")
+        .map((a: any) => a.id));
+
+      if (atendimentosRes?.data) setAtendimentos(atendimentosRes.data);
+      if (clientesRes?.data) setClientes(clientesRes.data);
+      if (profissionaisRes?.data) setProfissionais(profissionaisRes.data);
+      if (servicosRes?.data) setServicos(servicosRes.data);
+      if (produtosRes?.data) setProdutos(produtosRes.data);
+      
+      // FILTRAGEM CRÍTICA: Manter apenas os serviços e produtos que pertencem a um agendamento finalizado no período
+      if (atendimentoServicosRes?.data) {
+        setAtendimentoServicos(atendimentoServicosRes.data.filter((as: any) => finalizadosIds.has(as.atendimento_id)));
+      }
+      if (atendimentoProdutosRes?.data) {
+        setAtendimentoProdutos(atendimentoProdutosRes.data.filter((ap: any) => finalizadosIds.has(ap.atendimento_id)));
+      }
+      
+      if (pagamentosRes?.data) setPagamentos(pagamentosRes.data);
+      if (caixasRes?.data) setCaixas(caixasRes.data);
+      if (movimentacoesRes?.data) setMovimentacoesCaixa(movimentacoesRes.data);
+      if (contasPagarRes?.data) setContasPagar(contasPagarRes.data);
+      if (contasReceberRes?.data) setContasReceber(contasReceberRes.data);
+      if (valesRes?.data) setVales(valesRes.data);
+      if (dividasRes?.data) setDividas(dividasRes.data);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar dados",

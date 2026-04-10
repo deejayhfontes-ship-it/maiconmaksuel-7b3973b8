@@ -4,7 +4,8 @@
  * Monitor tab: real-time dispatch tracking with Z-API logs
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   MessageSquare,
   CheckCircle2,
@@ -41,7 +42,15 @@ const tabs = [
 export default function WhatsAppModule() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'monitor';
-  const [whatsappConectado] = useState(true); // Z-API confirmada ativa
+  const [whatsappConectado, setWhatsappConectado] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("configuracoes_whatsapp")
+      .select("sessao_ativa")
+      .single()
+      .then(({ data }) => setWhatsappConectado(data?.sessao_ativa || false));
+  }, []);
 
   const {
     lembretes,

@@ -59,6 +59,7 @@ export interface Pessoa {
   tipo: 'funcionario';
   foto_url?: string;
   ativo: boolean;
+  pin_ponto?: string;
 }
 
 function getDeviceId(): string {
@@ -107,7 +108,7 @@ export function usePonto() {
       if (isOnline) {
         const funcRes = await supabase
           .from('funcionarios')
-          .select('id, nome, cargo, foto_url, ativo')
+          .select('id, nome, cargo, foto_url, ativo, pin_ponto')
           .eq('ativo', true)
           .order('nome');
 
@@ -118,6 +119,7 @@ export function usePonto() {
           tipo: 'funcionario' as const,
           foto_url: f.foto_url,
           ativo: f.ativo ?? true,
+          pin_ponto: f.pin_ponto || '',
         }));
 
         setPessoas(funcionarios);
@@ -469,6 +471,42 @@ export function usePonto() {
     [deviceId, isOnline, isAcaoValida, checkPending]
   );
 
+  const verificarPinMasterParaRecuperacao = useCallback(async (pin: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('pinos_acesso')
+        .select('*')
+        .eq('pin', pin)
+        .eq('role', 'admin')
+        .eq('ativo', true)
+        .maybeSingle();
+      
+      if (error) return false;
+      return !!data;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const redefinirPinIndividual = useCallback(async (funcionario_id: string, novoPin: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase
+        .from('funcionarios')
+        .update({ pin_ponto: novoPin })
+        .eq('id', funcionario_id);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // Atualiza o cache local
+      setPessoas(prev => prev.map(p => p.id === funcionario_id ? { ...p, pin_ponto: novoPin } : p));
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, []);
+
   return {
     registrosHoje,
     pessoas,
@@ -483,6 +521,8 @@ export function usePonto() {
     getRegistrosPessoa,
     isAcaoValida,
     processQueue,
+    verificarPinMasterParaRecuperacao,
+    redefinirPinIndividual,
     refresh: () => Promise.all([loadPessoas(), loadRegistrosHoje(), checkPending()]),
   };
 }

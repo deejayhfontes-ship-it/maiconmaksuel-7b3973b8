@@ -45,6 +45,7 @@ interface Funcionario {
   jornada_saida?: string | null;
   observacoes?: string | null;
   ativo?: boolean;
+  pin_ponto?: string | null;
 }
 
 interface FuncionarioFormDialogProps {
@@ -107,6 +108,7 @@ const defaultForm: Funcionario = {
   jornada_entrada_tarde: "13:00",
   jornada_saida: "18:00",
   ativo: true,
+  pin_ponto: "",
 };
 
 export function FuncionarioFormDialog({ open, onOpenChange, funcionario, onSuccess }: FuncionarioFormDialogProps) {
@@ -207,6 +209,7 @@ export function FuncionarioFormDialog({ open, onOpenChange, funcionario, onSucce
         jornada_saida: form.jornada_saida,
         observacoes: form.observacoes,
         ativo: form.ativo ?? true,
+        pin_ponto: form.pin_ponto || null,
       };
 
       if (funcionario?.id) {
@@ -290,6 +293,16 @@ export function FuncionarioFormDialog({ open, onOpenChange, funcionario, onSucce
                   value={form.nome}
                   onChange={(e) => handleChange("nome", e.target.value)}
                   placeholder="Nome completo"
+                />
+              </div>
+              <div>
+                <Label>PIN de Ponto (4 dígitos)</Label>
+                <Input
+                  type="text"
+                  maxLength={4}
+                  value={form.pin_ponto || ""}
+                  onChange={(e) => handleChange("pin_ponto", e.target.value.replace(/\D/g, ""))}
+                  placeholder="Ex: 1234"
                 />
               </div>
               <div>

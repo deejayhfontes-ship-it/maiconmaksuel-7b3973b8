@@ -2625,6 +2625,7 @@ export type Database = {
           nome: string
           observacoes: string | null
           outros_beneficios: Json | null
+          pin_ponto: string | null
           pix_chave: string | null
           pix_tipo: string | null
           plano_saude: number | null
@@ -2662,6 +2663,7 @@ export type Database = {
           nome: string
           observacoes?: string | null
           outros_beneficios?: Json | null
+          pin_ponto?: string | null
           pix_chave?: string | null
           pix_tipo?: string | null
           plano_saude?: number | null
@@ -2699,6 +2701,7 @@ export type Database = {
           nome?: string
           observacoes?: string | null
           outros_beneficios?: Json | null
+          pin_ponto?: string | null
           pix_chave?: string | null
           pix_tipo?: string | null
           plano_saude?: number | null

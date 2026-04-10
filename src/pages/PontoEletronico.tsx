@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut, ArrowLeft, Wifi, WifiOff, RefreshCw, User, AlertTriangle, Coffee, UtensilsCrossed, Key, Delete } from 'lucide-react';
+import { Clock, LogIn, LogOut, ArrowLeft, Wifi, WifiOff, RefreshCw, User, AlertTriangle, Coffee, UtensilsCrossed, Key, Delete, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import logoMaiconMaksuel from '@/assets/logo-maicon-maksuel.png';
 
-type Step = 'select-employee' | 'verify-pin' | 'select-action' | 'confirm' | 'success';
+type Step = 'select-employee' | 'verify-pin' | 'select-action' | 'confirm' | 'success' | 'reset-master-auth' | 'reset-new-pin';
 
 const ACTION_CONFIG: Record<TipoEvento, { icon: typeof LogIn; color: string; bgColor: string; borderColor: string }> = {
   entrada: { icon: LogIn, color: 'text-green-600', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/30' },
@@ -39,6 +40,7 @@ const PontoEletronico = () => {
   const {
     pessoas, loading, isOnline, lastSync, syncing, pendingCount, deviceId,
     registrarPonto, getProximaAcao, getRegistrosPessoa, isAcaoValida,
+    verificarPinMasterParaRecuperacao, redefinirPinIndividual,
   } = usePonto();
 
   const isKioskRole = session?.role === 'kiosk' || session?.role === 'admin';
@@ -63,6 +65,9 @@ const PontoEletronico = () => {
     setLastResult(null);
     setPinDigits('');
     setPinError(null);
+    setMasterPinDigits('');
+    setNewPinDigits('');
+    setResetError(null);
   };
 
   const handleSelectEmployee = (pessoa: Pessoa) => {
@@ -87,32 +92,79 @@ const PontoEletronico = () => {
     setPinError(null);
   };
 
+  const [masterPinDigits, setMasterPinDigits] = useState('');
+  const [newPinDigits, setNewPinDigits] = useState('');
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  const handleMasterPinDigit = async (digit: string) => {
+    if (masterPinDigits.length >= 4) return;
+    const current = masterPinDigits + digit;
+    setMasterPinDigits(current);
+    setResetError(null);
+
+    if (current.length === 4) {
+      setVerifyingPin(true);
+      const isMasterValid = await verificarPinMasterParaRecuperacao(current);
+      setVerifyingPin(false);
+      
+      if (isMasterValid) {
+        setStep('reset-new-pin');
+        setMasterPinDigits('');
+      } else {
+        setResetError('PIN Master inválido');
+        setMasterPinDigits('');
+      }
+    }
+  };
+
+  const handleNewPinDigit = async (digit: string) => {
+    if (newPinDigits.length >= 4) return;
+    const current = newPinDigits + digit;
+    setNewPinDigits(current);
+    setResetError(null);
+
+    if (current.length === 4) {
+      if (!pessoaSelecionada) return;
+      setVerifyingPin(true);
+      const { success, error } = await redefinirPinIndividual(pessoaSelecionada.id, current);
+      setVerifyingPin(false);
+      
+      if (success) {
+        toast.success('PIN redefinido com sucesso!');
+        setNewPinDigits('');
+        setStep('verify-pin');
+      } else {
+        setResetError(error || 'Erro ao redefinir PIN');
+        setNewPinDigits('');
+      }
+    }
+  };
+
   const verifyPin = async (pin: string) => {
     if (!pessoaSelecionada) return;
     setVerifyingPin(true);
-    try {
-      const { data, error } = await supabase
-        .from('pinos_acesso')
-        .select('id, nome, role')
-        .eq('pin', pin)
-        .eq('ativo', true)
-        .maybeSingle();
+    
+    // Pequeno delay para feedback visual
+    await new Promise(r => setTimeout(r, 600));
 
-      if (error || !data) {
-        setPinError('PIN inv\u00e1lido');
-        setPinDigits('');
-        setVerifyingPin(false);
-        return;
-      }
-
-      // PIN v\u00e1lido - avan\u00e7ar
-      const nextAction = getProximaAcao(pessoaSelecionada.id);
-      setTipoRegistro(nextAction);
-      setStep('select-action');
-    } catch (err) {
-      setPinError('Erro ao verificar PIN');
+    if (!pessoaSelecionada.pin_ponto) {
+      setPinError('Colaborador sem PIN de Ponto configurado no RH.');
       setPinDigits('');
+      setVerifyingPin(false);
+      return;
     }
+
+    if (pin !== pessoaSelecionada.pin_ponto) {
+      setPinError('PIN inválido');
+      setPinDigits('');
+      setVerifyingPin(false);
+      return;
+    }
+
+    // PIN válido - avançar
+    const nextAction = getProximaAcao(pessoaSelecionada.id);
+    setTipoRegistro(nextAction);
+    setStep('select-action');
     setVerifyingPin(false);
   };
 
@@ -342,6 +394,139 @@ const PontoEletronico = () => {
             <p className="text-center text-xs text-muted-foreground mt-4">
               🔑 Use o PIN cadastrado para este colaborador
             </p>
+
+            <div className="mt-6 text-center">
+              <button 
+                onClick={() => {
+                  setStep('reset-master-auth');
+                  setMasterPinDigits('');
+                  setResetError(null);
+                }}
+                className="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline transition-colors"
+              >
+                Esqueci meu PIN / Redefinir
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Reset PIN - Master Auth */}
+        {step === 'reset-master-auth' && pessoaSelecionada && (
+          <div className="bg-card rounded-2xl p-6 shadow-lg">
+            <button onClick={() => setStep('verify-pin')} className="text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1">
+              <ArrowLeft className="w-4 h-4" /> Voltar
+            </button>
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-orange-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">Autorização Requerida</h2>
+              <p className="text-muted-foreground">Digite o <strong>PIN Master</strong> para permitir que {pessoaSelecionada.nome.split(' ')[0]} crie uma nova senha.</p>
+            </div>
+
+            <div className="flex justify-center gap-3 mb-6">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'w-14 h-16 rounded-xl flex items-center justify-center text-3xl font-bold border-2 transition-all',
+                    masterPinDigits[i] ? 'border-primary text-primary bg-primary/5' : 'border-border text-muted-foreground bg-muted/30'
+                  )}
+                >
+                  {masterPinDigits[i] ? '•' : ''}
+                </div>
+              ))}
+            </div>
+            
+            {resetError && <p className="text-center text-destructive text-sm mb-4 font-medium">{resetError}</p>}
+            
+            {verifyingPin && <div className="text-center mb-4"><RefreshCw className="w-5 h-5 animate-spin text-primary mx-auto" /></div>}
+
+            <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                <button
+                  key={digit}
+                  onClick={() => handleMasterPinDigit(digit)}
+                  disabled={verifyingPin}
+                  className="h-16 rounded-xl bg-muted/50 hover:bg-primary/10 active:scale-95 text-2xl font-bold text-foreground transition-all border border-border hover:border-primary/50"
+                >
+                  {digit}
+                </button>
+              ))}
+              <div />
+              <button
+                onClick={() => handleMasterPinDigit('0')}
+                disabled={verifyingPin}
+                className="h-16 rounded-xl bg-muted/50 hover:bg-primary/10 active:scale-95 text-2xl font-bold text-foreground transition-all border border-border hover:border-primary/50"
+              >
+                0
+              </button>
+              <button
+                onClick={() => { setMasterPinDigits(prev => prev.slice(0, -1)); setResetError(null); }}
+                disabled={verifyingPin}
+                className="h-16 rounded-xl bg-muted/50 hover:bg-destructive/10 active:scale-95 text-foreground transition-all border border-border hover:border-destructive/50 flex items-center justify-center"
+              >
+                <Delete className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Reset PIN - New PIN */}
+        {step === 'reset-new-pin' && pessoaSelecionada && (
+          <div className="bg-card rounded-2xl p-6 shadow-lg border-2 border-primary/20">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Key className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">Definir Novo PIN</h2>
+              <p className="text-muted-foreground"><strong>{pessoaSelecionada.nome.split(' ')[0]}</strong>, digite abaixo a sua NOVA senha de 4 dígitos para bater ponto.</p>
+            </div>
+
+            <div className="flex justify-center gap-3 mb-6">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'w-14 h-16 rounded-xl flex items-center justify-center text-3xl font-bold border-2 transition-all',
+                    newPinDigits[i] ? 'border-primary text-primary bg-primary/5' : 'border-border text-muted-foreground bg-muted/30'
+                  )}
+                >
+                  {newPinDigits[i] ? '•' : ''}
+                </div>
+              ))}
+            </div>
+            
+            {resetError && <p className="text-center text-destructive text-sm mb-4 font-medium">{resetError}</p>}
+            {verifyingPin && <div className="text-center mb-4"><RefreshCw className="w-5 h-5 animate-spin text-primary mx-auto" /></div>}
+
+            <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                <button
+                  key={digit}
+                  onClick={() => handleNewPinDigit(digit)}
+                  disabled={verifyingPin}
+                  className="h-16 rounded-xl bg-muted/50 hover:bg-primary/10 active:scale-95 text-2xl font-bold text-foreground transition-all border border-border hover:border-primary/50"
+                >
+                  {digit}
+                </button>
+              ))}
+              <div />
+              <button
+                onClick={() => handleNewPinDigit('0')}
+                disabled={verifyingPin}
+                className="h-16 rounded-xl bg-muted/50 hover:bg-primary/10 active:scale-95 text-2xl font-bold text-foreground transition-all border border-border hover:border-primary/50"
+              >
+                0
+              </button>
+              <button
+                onClick={() => { setNewPinDigits(prev => prev.slice(0, -1)); setResetError(null); }}
+                disabled={verifyingPin}
+                className="h-16 rounded-xl bg-muted/50 hover:bg-destructive/10 active:scale-95 text-foreground transition-all border border-border hover:border-destructive/50 flex items-center justify-center"
+              >
+                <Delete className="w-6 h-6" />
+              </button>
+            </div>
           </div>
         )}
 

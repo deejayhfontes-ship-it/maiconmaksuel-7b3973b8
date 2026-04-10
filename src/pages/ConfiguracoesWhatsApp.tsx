@@ -110,27 +110,48 @@ export default function ConfiguracoesWhatsApp() {
   };
 
   const handleTestarConexao = async () => {
+    if (!configWhatsApp) return;
     setTestando(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success("Conexão testada com sucesso!");
-    } catch {
-      toast.error("Falha ao testar conexão");
+      if (configWhatsApp.api_provider === 'z_api') {
+        const instanceId = configWhatsApp.instance_id;
+        const token = configWhatsApp.api_token;
+        const clientToken = configWhatsApp.client_token;
+        if (!instanceId || !token || !clientToken) {
+          toast.error("Preencha Instância, Token e Client Token na aba Configurações");
+          return;
+        }
+        const res = await fetch(`https://api.z-api.io/instances/${instanceId}/token/${token}/status`, { headers: { 'Client-Token': clientToken } });
+        const data = await res.json();
+        if (data?.connected || data?.status === 'connected') {
+          toast.success("✅ Conexão Z-API testada com sucesso!");
+        } else {
+          toast.warning(`Z-API status: ${data?.status || 'desconectado'}`);
+        }
+      } else {
+        // Evolution
+        if (!configWhatsApp.api_url || !configWhatsApp.api_token || !configWhatsApp.instance_name) {
+          toast.error("Preencha URL, Token e Instância na aba Configurações");
+          return;
+        }
+        const url = `${configWhatsApp.api_url}/instance/connectionState/${configWhatsApp.instance_name}`;
+        const res = await fetch(url, { headers: { apikey: configWhatsApp.api_token } });
+        const data = await res.json();
+        if (data?.instance?.state === 'open' || data?.state === 'open') {
+          toast.success("✅ Conexão Evolution testada com sucesso!");
+        } else {
+          toast.warning(`Evolution status: ${data?.instance?.state || data?.state || 'desconectado'}`);
+        }
+      }
+    } catch (err: any) {
+      toast.error(`Falha ao testar conexão: ${err.message}`);
     } finally {
       setTestando(false);
     }
   };
 
   const handleReconectar = async () => {
-    setTestando(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      toast.info("QR Code gerado! Escaneie com seu WhatsApp.");
-    } catch {
-      toast.error("Erro ao reconectar");
-    } finally {
-      setTestando(false);
-    }
+    toast.info("Abaixo, vá até a aba Configurações e clique em 'Gerar QR Code' (se disponível para sua API).");
   };
 
   const handleTestarMensagem = async (lembrete: { nome: string; template_mensagem: string }) => {
