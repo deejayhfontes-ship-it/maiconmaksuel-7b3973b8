@@ -142,6 +142,7 @@ const Caixa = () => {
   const [isReforcoOpen, setIsReforcoOpen] = useState(false);
   const [isChequesListOpen, setIsChequesListOpen] = useState(false);
   const [isNovoChequeOpen, setIsNovoChequeOpen] = useState(false);
+  const [isNovaEntradaOpen, setIsNovaEntradaOpen] = useState(false);
 
   // Form states
   const [valorInicial, setValorInicial] = useState(0);
@@ -157,6 +158,9 @@ const Caixa = () => {
   const [sangriaMotivo, setSangriaMotivo] = useState("");
   const [reforcoValor, setReforcoValor] = useState(0);
   const [reforcoMotivo, setReforcoMotivo] = useState("");
+  const [novaEntradaDesc, setNovaEntradaDesc] = useState("");
+  const [novaEntradaValor, setNovaEntradaValor] = useState(0);
+  const [novaEntradaForma, setNovaEntradaForma] = useState("dinheiro");
 
   // Update device info on resize
   useEffect(() => {
@@ -241,6 +245,38 @@ const Caixa = () => {
       setIsReforcoOpen(false);
       setReforcoValor(0);
       setReforcoMotivo("");
+    }
+  };
+
+  const handleNovaEntrada = async () => {
+    if (!novaEntradaDesc.trim() || novaEntradaValor <= 0) {
+      toast({ title: "Preencha a descrição e o valor", variant: "destructive" });
+      return;
+    }
+    if (!caixaAberto) {
+      toast({ title: "Caixa não está aberto", variant: "destructive" });
+      return;
+    }
+
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { error } = await supabase.from("caixa_movimentacoes").insert([{
+      caixa_id: caixaAberto.id,
+      tipo: "entrada",
+      categoria: "manual",
+      descricao: novaEntradaDesc.trim(),
+      valor: novaEntradaValor,
+      forma_pagamento: novaEntradaForma,
+    }]);
+
+    if (error) {
+      toast({ title: "Erro ao registrar entrada", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Entrada registrada com sucesso!" });
+      setIsNovaEntradaOpen(false);
+      setNovaEntradaDesc("");
+      setNovaEntradaValor(0);
+      setNovaEntradaForma("dinheiro");
+      refresh();
     }
   };
 
@@ -488,13 +524,23 @@ const Caixa = () => {
           </Button>
         )}
         {canReforco && (
-          <Button 
-            variant="outline" 
-            className="border-2 border-cyan-500 text-cyan-600 hover:bg-cyan-50 font-semibold" 
+          <Button
+            variant="outline"
+            className="border-2 border-cyan-500 text-cyan-600 hover:bg-cyan-50 font-semibold"
             onClick={() => setIsReforcoOpen(true)}
           >
             <ArrowUpCircle className="h-5 w-5 mr-2" />
             Reforço
+          </Button>
+        )}
+        {caixaAberto && (
+          <Button
+            variant="outline"
+            className="border-2 border-green-500 text-green-600 hover:bg-green-50 font-semibold"
+            onClick={() => setIsNovaEntradaOpen(true)}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Nova Entrada
           </Button>
         )}
         {canCheques && (
@@ -984,14 +1030,78 @@ const Caixa = () => {
       </Dialog>
 
       {/* Cheques Modals */}
-      <ChequesListModal 
-        open={isChequesListOpen} 
+      <ChequesListModal
+        open={isChequesListOpen}
         onOpenChange={setIsChequesListOpen}
       />
-      <ChequeFormModal 
-        open={isNovoChequeOpen} 
+      <ChequeFormModal
+        open={isNovoChequeOpen}
         onOpenChange={setIsNovoChequeOpen}
       />
+
+      {/* Modal Nova Entrada */}
+      <Dialog open={isNovaEntradaOpen} onOpenChange={setIsNovaEntradaOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-green-600" />
+              Registrar Entrada Manual
+            </DialogTitle>
+            <DialogDescription>
+              Use para registrar pagamentos de fiado ou entradas avulsas
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input
+                placeholder="Ex: Pagamento fiado - Maria Eduarda"
+                value={novaEntradaDesc}
+                onChange={(e) => setNovaEntradaDesc(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Valor (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                placeholder="0,00"
+                value={novaEntradaValor || ""}
+                onChange={(e) => setNovaEntradaValor(Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Forma de Pagamento</Label>
+              <Select value={novaEntradaForma} onValueChange={setNovaEntradaForma}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="debito">Débito</SelectItem>
+                  <SelectItem value="credito">Crédito</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setIsNovaEntradaOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                onClick={handleNovaEntrada}
+                disabled={!novaEntradaDesc.trim() || novaEntradaValor <= 0}
+              >
+                Registrar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
