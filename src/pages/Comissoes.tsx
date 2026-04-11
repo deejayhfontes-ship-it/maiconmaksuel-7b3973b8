@@ -242,8 +242,9 @@ export default function Comissoes() {
         if (atendimentoIds.length > 0) {
           const { data: atendimentos } = await supabase
             .from("atendimentos")
-            .select("id, numero_comanda, created_at, cliente_id, clientes:cliente_id(nome)")
-            .in("id", atendimentoIds);
+            .select("id, numero_comanda, created_at, status, cliente_id, clientes:cliente_id(nome)")
+            .in("id", atendimentoIds)
+            .in("status", ["fechado", "finalizado"]);
 
           if (atendimentos) {
             atendimentoMap = Object.fromEntries(
@@ -259,12 +260,15 @@ export default function Comissoes() {
           }
         }
 
-        const enriquecidas = (comissoesRes.data as any[]).map((c) => ({
-          ...c,
-          cliente_nome: atendimentoMap[c.atendimento_id]?.cliente_nome || null,
-          numero_comanda: atendimentoMap[c.atendimento_id]?.numero_comanda || null,
-          data_atendimento: atendimentoMap[c.atendimento_id]?.data_atendimento || c.created_at,
-        })) as ComissaoRegistro[];
+        // Filtrar apenas comissões de atendimentos fechados/finalizados
+        const enriquecidas = (comissoesRes.data as any[])
+          .filter((c) => !c.atendimento_id || atendimentoMap[c.atendimento_id])
+          .map((c) => ({
+            ...c,
+            cliente_nome: atendimentoMap[c.atendimento_id]?.cliente_nome || null,
+            numero_comanda: atendimentoMap[c.atendimento_id]?.numero_comanda || null,
+            data_atendimento: atendimentoMap[c.atendimento_id]?.data_atendimento || c.created_at,
+          })) as ComissaoRegistro[];
 
         setComissoes(enriquecidas);
       } else {
