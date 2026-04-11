@@ -10,11 +10,13 @@ import {
   Printer,
   Filter,
   Clock,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -23,6 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
@@ -49,13 +57,20 @@ const formatPrice = (price: number) => {
 export default function CaixaExtrato() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [loading, setLoading] = useState(true);
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [caixaId, setCaixaId] = useState<string | null>(null);
   const [tab, setTab] = useState("todas");
   const [search, setSearch] = useState("");
   const [formaPagFilter, setFormaPagFilter] = useState("todas");
+
+  // Modal nova entrada
+  const [isNovaEntradaOpen, setIsNovaEntradaOpen] = useState(false);
+  const [novaDescricao, setNovaDescricao] = useState("");
+  const [novaValor, setNovaValor] = useState<number>(0);
+  const [novaForma, setNovaForma] = useState("dinheiro");
+  const [salvando, setSalvando] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -90,30 +105,49 @@ export default function CaixaExtrato() {
     fetchData();
   }, [fetchData]);
 
+  const handleNovaEntrada = async () => {
+    if (!novaDescricao.trim() || novaValor <= 0) {
+      toast({ title: "Preencha a descrição e o valor", variant: "destructive" });
+      return;
+    }
+
+    if (!caixaId) {
+      toast({ title: "Caixa não está aberto", variant: "destructive" });
+      return;
+    }
+
+    setSalvando(true);
+    const { error } = await supabase.from("caixa_movimentacoes").insert([{
+      caixa_id: caixaId,
+      tipo: "entrada",
+      categoria: "manual",
+      descricao: novaDescricao.trim(),
+      valor: novaValor,
+      forma_pagamento: novaForma,
+    }]);
+
+    if (error) {
+      toast({ title: "Erro ao registrar entrada", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Entrada registrada com sucesso!" });
+      setIsNovaEntradaOpen(false);
+      setNovaDescricao("");
+      setNovaValor(0);
+      setNovaForma("dinheiro");
+      fetchData();
+    }
+    setSalvando(false);
+  };
+
   const filteredMovimentacoes = movimentacoes.filter((mov) => {
     const matchSearch = mov.descricao.toLowerCase().includes(search.toLowerCase());
-    const matchTab = tab === "todas" || 
+    const matchTab = tab === "todas" ||
       (tab === "entradas" && (mov.tipo === "entrada" || mov.tipo === "reforco")) ||
       (tab === "saidas" && (mov.tipo === "saida" || mov.tipo === "sangria"));
     const matchFormaPag = formaPagFilter === "todas" || mov.forma_pagamento === formaPagFilter;
-    
+
     return matchSearch && matchTab && matchFormaPag;
   });
-
-  const calcularSaldoAcumulado = (index: number) => {
-    // Começar do valor inicial do caixa (assumindo 0 por simplicidade)
-    // Para um cálculo real, precisaríamos do valor inicial
-    let saldo = 0;
-    for (let i = movimentacoes.length - 1; i >= index; i--) {
-      const mov = movimentacoes[i];
-      if (mov.tipo === "entrada" || mov.tipo === "reforco") {
-        saldo += Number(mov.valor);
-      } else {
-        saldo -= Number(mov.valor);
-      }
-    }
-    return saldo;
-  };
 
   const getTipoBadge = (tipo: string) => {
     switch (tipo) {
@@ -152,6 +186,12 @@ export default function CaixaExtrato() {
           </div>
         </div>
         <div className="flex gap-2">
+          {caixaId && (
+            <Button onClick={() => setIsNovaEntradaOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nova Entrada
+            </Button>
+          )}
           <Button variant="outline" size="icon">
             <Printer className="h-4 w-4" />
           </Button>
@@ -205,7 +245,7 @@ export default function CaixaExtrato() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {filteredMovimentacoes.map((mov, index) => (
+              {filteredMovimentacoes.map((mov) => (
                 <Card key={mov.id} className="overflow-hidden">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-4">
@@ -217,12 +257,7 @@ export default function CaixaExtrato() {
                           : "bg-destructive/10"
                       )}>
                         {mov.tipo === "entrada" || mov.tipo === "reforco" ? (
-                          <TrendingUp className={cn(
-                            "h-5 w-5",
-                            mov.tipo === "entrada" || mov.tipo === "reforco"
-                              ? "text-success"
-                              : "text-destructive"
-                          )} />
+                          <TrendingUp className="h-5 w-5 text-success" />
                         ) : (
                           <TrendingDown className="h-5 w-5 text-destructive" />
                         )}
@@ -299,6 +334,70 @@ export default function CaixaExtrato() {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal Nova Entrada */}
+      <Dialog open={isNovaEntradaOpen} onOpenChange={setIsNovaEntradaOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-success" />
+              Registrar Entrada Manual
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input
+                placeholder="Ex: Pagamento fiado - Maria Eduarda"
+                value={novaDescricao}
+                onChange={(e) => setNovaDescricao(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Valor</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  className="pl-10"
+                  value={novaValor || ""}
+                  onChange={(e) => setNovaValor(Number(e.target.value))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Forma de Pagamento</Label>
+              <Select value={novaForma} onValueChange={setNovaForma}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="debito">Débito</SelectItem>
+                  <SelectItem value="credito">Crédito</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setIsNovaEntradaOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-success hover:bg-success/90"
+                onClick={handleNovaEntrada}
+                disabled={salvando || !novaDescricao.trim() || novaValor <= 0}
+              >
+                Registrar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
