@@ -129,7 +129,7 @@ interface ResumoProf {
   qtd_atendimentos: number;
 }
 
-type PeriodoFiltro = "hoje" | "semana" | "mes" | "mes_anterior";
+type PeriodoFiltro = "hoje" | "semana" | "mes" | "mes_anterior" | "custom";
 type Tela = "lista" | "extrato" | "historico";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -158,6 +158,7 @@ export default function Comissoes() {
 
   // Filtros
   const [periodo, setPeriodo] = useState<PeriodoFiltro>("mes");
+  const [customMes, setCustomMes] = useState(() => format(new Date(), "yyyy-MM"));
   const [searchQuery, setSearchQuery] = useState("");
   const [filtroProf, setFiltroProf] = useState("todos");
 
@@ -180,8 +181,12 @@ export default function Comissoes() {
         const m = subMonths(now, 1);
         return { from: startOfMonth(m), to: endOfMonth(m) };
       }
+      case "custom": {
+        const m = new Date(customMes + "-01");
+        return { from: startOfMonth(m), to: endOfMonth(m) };
+      }
     }
-  }, [periodo]);
+  }, [periodo, customMes]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -197,7 +202,7 @@ export default function Comissoes() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (periodo === "mes" || periodo === "mes_anterior") {
+      if (periodo === "mes" || periodo === "mes_anterior" || periodo === "custom") {
         comissoesQuery = comissoesQuery.eq("periodo_ref", format(dateRange.from, "yyyy-MM"));
       } else {
         comissoesQuery = comissoesQuery
@@ -335,8 +340,9 @@ export default function Comissoes() {
       case "semana": return "Esta Semana";
       case "mes": return format(new Date(), "MMMM yyyy", { locale: ptBR });
       case "mes_anterior": return format(subMonths(new Date(), 1), "MMMM yyyy", { locale: ptBR });
+      case "custom": return format(new Date(customMes + "-01"), "MMMM yyyy", { locale: ptBR });
     }
-  }, [periodo]);
+  }, [periodo, customMes]);
 
   // ── Pagar ──────────────────────────────────────────────────────────────────
   const handlePagar = async () => {
@@ -821,18 +827,29 @@ export default function Comissoes() {
                 className="pl-9"
               />
             </div>
-            <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoFiltro)}>
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="hoje">Hoje</SelectItem>
-                <SelectItem value="semana">Esta Semana</SelectItem>
-                <SelectItem value="mes">Este Mês</SelectItem>
-                <SelectItem value="mes_anterior">Mês Anterior</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 items-center">
+              <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoFiltro)}>
+                <SelectTrigger className="w-[180px]">
+                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hoje">Hoje</SelectItem>
+                  <SelectItem value="semana">Esta Semana</SelectItem>
+                  <SelectItem value="mes">Este Mês</SelectItem>
+                  <SelectItem value="mes_anterior">Mês Anterior</SelectItem>
+                  <SelectItem value="custom">Escolher Mês...</SelectItem>
+                </SelectContent>
+              </Select>
+              {periodo === "custom" && (
+                <Input
+                  type="month"
+                  value={customMes}
+                  onChange={(e) => setCustomMes(e.target.value)}
+                  className="w-[160px]"
+                />
+              )}
+            </div>
             <Select value={filtroProf} onValueChange={setFiltroProf}>
               <SelectTrigger className="w-[200px]">
                 <Users className="h-4 w-4 mr-2 text-muted-foreground" />
