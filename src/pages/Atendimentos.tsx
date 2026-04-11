@@ -587,31 +587,34 @@ const Atendimentos = () => {
       }
     }
 
-    // Registrar comissões dos profissionais
-    // Agrupa por profissional para chamar gerarComissoesDaComanda (→ comissoes_registro)
-    const periodoRef = new Date().toISOString().slice(0, 7);
-    const profissionaisMap = new Map<string, typeof itemsServicos>();
-    for (const item of itemsServicos) {
-      if (item.comissao_valor > 0) {
-        if (!profissionaisMap.has(item.profissional_id)) {
-          profissionaisMap.set(item.profissional_id, []);
+    // REGRA: fiado NÃO gera comissão no momento do lançamento.
+    // Se todos os pagamentos forem fiado, bloquear geração de comissão.
+    // Comissão será gerada quando o fiado for quitado (baixa).
+    const todosFiado = pagamentos.every(p => p.forma === "fiado");
+    if (!todosFiado) {
+      const periodoRef = new Date().toISOString().slice(0, 7);
+      const profissionaisMap = new Map<string, typeof itemsServicos>();
+      for (const item of itemsServicos) {
+        if (item.comissao_valor > 0) {
+          if (!profissionaisMap.has(item.profissional_id)) {
+            profissionaisMap.set(item.profissional_id, []);
+          }
+          profissionaisMap.get(item.profissional_id)!.push(item);
         }
-        profissionaisMap.get(item.profissional_id)!.push(item);
       }
-    }
-    // Grava em comissoes_registro (fonte única de verdade)
-    for (const [profId, itens] of profissionaisMap.entries()) {
-      await gerarComissoesDaComanda({
-        comandaId: selectedAtendimento.id,
-        profissionalId: profId,
-        itens: itens.map((i) => ({
-          servico_id: i.servico_id ?? null,
-          nome_servico: i.servico?.nome,
-          valor: Number(i.subtotal ?? i.valor_unitario ?? 0),
-          gera_comissao: true,
-        })),
-        periodoRef,
-      });
+      for (const [profId, itens] of profissionaisMap.entries()) {
+        await gerarComissoesDaComanda({
+          comandaId: selectedAtendimento.id,
+          profissionalId: profId,
+          itens: itens.map((i) => ({
+            servico_id: i.servico_id ?? null,
+            nome_servico: i.servico?.nome,
+            valor: Number(i.subtotal ?? i.preco_unitario ?? 0),
+            gera_comissao: true,
+          })),
+          periodoRef,
+        });
+      }
     }
 
     // Registrar gorjetas como movimentação separada no caixa

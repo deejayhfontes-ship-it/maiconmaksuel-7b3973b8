@@ -38,6 +38,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useGerarComissao } from "@/hooks/useGerarComissao";
 import { format, parseISO, differenceInDays, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,7 @@ const formatPrice = (price: number) => {
 export default function CaixaDividas() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { gerarComissoesDaComanda } = useGerarComissao();
   
   const [loading, setLoading] = useState(true);
   const [dividas, setDividas] = useState<Divida[]>([]);
@@ -226,6 +228,45 @@ export default function CaixaDividas() {
         description: "Pagamento registrado no fiado, mas não há caixa do dia para vincular a movimentação.",
         variant: "destructive",
       });
+    }
+
+    // REGRA: ao quitar o fiado, gerar comissão na data da baixa (não da venda original)
+    if (novoStatus === "quitada" && selectedDivida.atendimento_id) {
+      try {
+        const periodoRef = new Date().toISOString().slice(0, 7); // mês da baixa
+
+        // Buscar serviços do atendimento original com profissional e comissão
+        const { data: servicos } = await supabase
+          .from("atendimento_servicos")
+          .select("profissional_id, servico_id, preco_unitario, quantidade, servicos(nome)")
+          .eq("atendimento_id", selectedDivida.atendimento_id);
+
+        if (servicos && servicos.length > 0) {
+          // Agrupar por profissional
+          const profMap = new Map<string, typeof servicos>();
+          for (const s of servicos) {
+            if (!s.profissional_id) continue;
+            if (!profMap.has(s.profissional_id)) profMap.set(s.profissional_id, []);
+            profMap.get(s.profissional_id)!.push(s);
+          }
+
+          for (const [profId, itens] of profMap.entries()) {
+            await gerarComissoesDaComanda({
+              comandaId: selectedDivida.atendimento_id,
+              profissionalId: profId,
+              itens: itens.map((i: any) => ({
+                servico_id: i.servico_id ?? null,
+                nome_servico: i.servicos?.nome ?? undefined,
+                valor: Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1),
+                gera_comissao: true,
+              })),
+              periodoRef,
+            });
+          }
+        }
+      } catch (e) {
+        console.error("[CaixaDividas] Erro ao gerar comissão na baixa do fiado:", e);
+      }
     }
 
     toast({

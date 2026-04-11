@@ -368,31 +368,33 @@ export default function CaixaComandas() {
       }
     }
 
-    // ✅ GERAR COMISSÕES AUTOMATICAMENTE por profissional
-    // Agrupa serviços por profissional e gera registros em comissoes_registro
-    const periodoRef = new Date().toISOString().slice(0, 7); // "YYYY-MM"
-    const profissionaisMap = new Map<string, typeof selectedComanda.servicos>();
+    // REGRA: fiado NÃO gera comissão no momento do lançamento.
+    // Comissão será gerada apenas quando o fiado for quitado (baixa no pagamento).
+    if (formaPagamento !== "fiado") {
+      const periodoRef = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+      const profissionaisMap = new Map<string, typeof selectedComanda.servicos>();
 
-    for (const s of selectedComanda.servicos) {
-      if (!s.profissional_id) continue;
-      if (!profissionaisMap.has(s.profissional_id)) {
-        profissionaisMap.set(s.profissional_id, []);
+      for (const s of selectedComanda.servicos) {
+        if (!s.profissional_id) continue;
+        if (!profissionaisMap.has(s.profissional_id)) {
+          profissionaisMap.set(s.profissional_id, []);
+        }
+        profissionaisMap.get(s.profissional_id)!.push(s);
       }
-      profissionaisMap.get(s.profissional_id)!.push(s);
-    }
 
-    for (const [profId, servicos] of profissionaisMap.entries()) {
-      await gerarComissoesDaComanda({
-        comandaId: selectedComanda.id,
-        profissionalId: profId,
-        itens: servicos.map((s) => ({
-          servico_id: s.servico_id ?? null,
-          nome_servico: s.servico?.nome ?? undefined,
-          valor: Number(s.subtotal ?? s.valor_unitario ?? 0),
-          gera_comissao: s.gera_comissao !== false, // assume true se não definido
-        })),
-        periodoRef,
-      });
+      for (const [profId, servicos] of profissionaisMap.entries()) {
+        await gerarComissoesDaComanda({
+          comandaId: selectedComanda.id,
+          profissionalId: profId,
+          itens: servicos.map((s) => ({
+            servico_id: s.servico_id ?? null,
+            nome_servico: s.servico?.nome ?? undefined,
+            valor: Number(s.subtotal ?? s.valor_unitario ?? 0),
+            gera_comissao: s.gera_comissao !== false,
+          })),
+          periodoRef,
+        });
+      }
     }
 
     toast({
