@@ -136,6 +136,23 @@ export default function CaixaDividas() {
   const confirmarPagamento = async () => {
     if (!selectedDivida) return;
 
+    // Verificar caixa aberto
+    const { data: caixaCheck } = await supabase
+      .from("caixa")
+      .select("id")
+      .eq("status", "aberto")
+      .limit(1)
+      .maybeSingle();
+
+    if (!caixaCheck) {
+      toast({
+        title: "Caixa não está aberto",
+        description: "Abra o caixa antes de receber pagamentos para que o valor entre no extrato do dia.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const valorEfetivo = calcularValorEfetivo();
     const novoValorPago = Number(selectedDivida.valor_pago) + valorEfetivo;
     const novoSaldo = Number(selectedDivida.valor_original) - novoValorPago;

@@ -257,6 +257,25 @@ export default function CaixaComandas() {
   const confirmarFinalizacao = async () => {
     if (!selectedComanda) return;
 
+    // Verificar caixa aberto antes de processar (exceto fiado que não entra no caixa)
+    if (formaPagamento !== "fiado") {
+      const { data: caixaCheck } = await supabase
+        .from("caixa")
+        .select("id")
+        .eq("status", "aberto")
+        .limit(1)
+        .maybeSingle();
+
+      if (!caixaCheck) {
+        toast({
+          title: "Caixa não está aberto",
+          description: "Abra o caixa antes de registrar pagamentos para que o valor entre corretamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     const total = calcularTotal();
     const descontoValor = descontoTipo === "percentual" 
       ? (selectedComanda.subtotal * desconto) / 100 

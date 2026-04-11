@@ -486,7 +486,19 @@ const Atendimentos = () => {
       .from("caixa")
       .select("id")
       .eq("status", "aberto")
-      .single();
+      .limit(1)
+      .maybeSingle();
+
+    // Bloquear se caixa fechado e pagamento não é fiado
+    const pagamentosNaoFiado = pagamentos.filter(p => p.forma !== "fiado");
+    if (!caixaAberto && pagamentosNaoFiado.length > 0) {
+      toast({
+        title: "Caixa não está aberto",
+        description: "Abra o caixa antes de registrar pagamentos para que o valor entre corretamente.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Inserir todos os pagamentos
     for (const pag of pagamentos) {
