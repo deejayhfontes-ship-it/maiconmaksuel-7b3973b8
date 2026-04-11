@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useGerarComissao } from "@/hooks/useGerarComissao";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ type EmissaoStatus = "idle" | "validating" | "emitting" | "success" | "error";
 
 export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess }: FecharComandaModalProps) {
   const queryClient = useQueryClient();
+  const { gerarComissoesDaComanda } = useGerarComissao();
   const [opcaoNota, setOpcaoNota] = useState<"nao" | "nfce">("nao");
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [email, setEmail] = useState("");
@@ -390,6 +392,50 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
         .eq("id", atendimento.id);
 
       if (error) throw error;
+
+      // Gerar comissões ao fechar comanda (exceto se pagamento foi fiado)
+      // Verifica forma de pagamento dos pagamentos registrados para essa comanda
+      try {
+        const { data: pagamentos } = await supabase
+          .from("pagamentos")
+          .select("forma_pagamento")
+          .eq("atendimento_id", atendimento.id);
+
+        const todosFiado = pagamentos && pagamentos.length > 0 &&
+          pagamentos.every(p => p.forma_pagamento === "fiado");
+
+        if (!todosFiado) {
+          const periodoRef = new Date().toISOString().slice(0, 7);
+          const { data: servicos } = await supabase
+            .from("atendimento_servicos")
+            .select("profissional_id, servico_id, preco_unitario, quantidade, servicos(nome)")
+            .eq("atendimento_id", atendimento.id);
+
+          if (servicos && servicos.length > 0) {
+            const profMap = new Map<string, typeof servicos>();
+            for (const s of servicos) {
+              if (!s.profissional_id) continue;
+              if (!profMap.has(s.profissional_id)) profMap.set(s.profissional_id, []);
+              profMap.get(s.profissional_id)!.push(s);
+            }
+            for (const [profId, itens] of profMap.entries()) {
+              await gerarComissoesDaComanda({
+                comandaId: atendimento.id,
+                profissionalId: profId,
+                itens: itens.map((i: any) => ({
+                  servico_id: i.servico_id ?? null,
+                  nome_servico: i.servicos?.nome ?? undefined,
+                  valor: Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1),
+                  gera_comissao: true,
+                })),
+                periodoRef,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("[FecharComandaModal] Erro ao gerar comissões:", e);
+      }
 
       // Atualizar última visita do cliente
       if (atendimento.cliente_id) {
