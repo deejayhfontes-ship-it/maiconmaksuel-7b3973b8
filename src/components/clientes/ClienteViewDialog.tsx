@@ -48,6 +48,8 @@ interface TimelineItem {
   value?: number;
   services?: string[];
   professionals?: string[];
+  products?: string[];
+  formaPagamento?: string;
 }
 
 const cleanPhoneForWhatsApp = (phone: string | null | undefined) => {
@@ -146,7 +148,7 @@ export default function ClienteViewDialog({
       .eq("cliente_id", cliente.id)
       .order("created_at", { ascending: false });
       
-    // 2. Fetch atendimentos
+    // 2. Fetch atendimentos com serviços e produtos
     const { data: atendData } = await supabase
       .from("atendimentos")
       .select(`
@@ -157,16 +159,39 @@ export default function ClienteViewDialog({
         atendimento_servicos (
           servicos ( nome ),
           profissionais ( nome )
+        ),
+        atendimento_produtos (
+          quantidade,
+          produtos ( nome )
         )
       `)
       .eq("cliente_id", cliente.id)
+      .neq("status", "cancelado")
       .order("created_at", { ascending: false });
+
+    // 3. Fetch formas de pagamento de caixa_movimentacoes
+    const atendIds = (atendData || []).map(a => a.id);
+    const pagamentosMap: Record<string, string> = {};
+    if (atendIds.length > 0) {
+      const { data: pagData } = await supabase
+        .from("caixa_movimentacoes")
+        .select("atendimento_id, forma_pagamento")
+        .in("atendimento_id", atendIds);
+      if (pagData) {
+        pagData.forEach((p) => {
+          if (p.atendimento_id && p.forma_pagamento) {
+            pagamentosMap[p.atendimento_id] = p.forma_pagamento;
+          }
+        });
+      }
+    }
 
     // Combine and sort
     const combined: TimelineItem[] = [];
-    
+
     if (manualData) {
-      manualData.forEach(m => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      manualData.forEach((m: any) => {
         combined.push({
           id: m.id,
           type: 'manual',
@@ -176,22 +201,37 @@ export default function ClienteViewDialog({
         });
       });
     }
-    
+
     if (atendData) {
       atendData.forEach((a) => {
-        const atendimentoServicos = (a.atendimento_servicos as unknown as Record<string, unknown>[]) || [];
-        const services = atendimentoServicos.map(s => (s.servicos as Record<string, unknown>)?.nome).filter(Boolean) as string[];
-        const profissionais = [...new Set(atendimentoServicos.map(s => (s.profissionais as Record<string, unknown>)?.nome).filter(Boolean))] as string[];
-        
+        const atendServicos = (a.atendimento_servicos as unknown as Record<string, unknown>[]) || [];
+        const atendProdutos = (a.atendimento_produtos as unknown as Record<string, unknown>[]) || [];
+
+        const services = atendServicos
+          .map(s => (s.servicos as Record<string, unknown>)?.nome)
+          .filter(Boolean) as string[];
+        const profissionais = [...new Set(
+          atendServicos.map(s => (s.profissionais as Record<string, unknown>)?.nome).filter(Boolean)
+        )] as string[];
+        const products = atendProdutos
+          .map(p => {
+            const nome = (p.produtos as Record<string, unknown>)?.nome as string;
+            const qtd = p.quantidade as number;
+            return nome ? (qtd > 1 ? `${nome} (x${qtd})` : nome) : null;
+          })
+          .filter(Boolean) as string[];
+
         combined.push({
           id: a.id,
           type: 'atendimento',
           date: a.created_at,
           title: `Comanda ${a.numero_comanda ? '#' + a.numero_comanda : ''}`,
-          description: "Atendimento concluído",
+          description: "",
           value: a.valor_final,
           services,
           professionals: profissionais,
+          products,
+          formaPagamento: pagamentosMap[a.id] ?? undefined,
         });
       });
     }
@@ -467,28 +507,44 @@ export default function ClienteViewDialog({
                       {item.description && <p className="text-sm text-foreground/90">{item.description}</p>}
 
                       {/* Detalhes específicos de atendimentos */}
-                      {item.type === 'atendimento' && (item.services?.length || item.professionals?.length) ? (
-                        <div className="mt-3 grid gap-2 md:grid-cols-2 text-sm bg-muted/40 p-2.5 rounded-md">
-                          {item.services && item.services.length > 0 && (
-                            <div>
-                              <span className="font-medium text-xs text-muted-foreground uppercase">Serviços executados:</span>
-                              <ul className="list-disc list-inside mt-0.5 ml-1 text-foreground/80">
-                                {item.services.map((s, i) => <li key={i} className="truncate">{s}</li>)}
-                              </ul>
-                            </div>
-                          )}
-                          {item.professionals && item.professionals.length > 0 && (
-                            <div>
-                              <span className="font-medium text-xs text-muted-foreground uppercase">Profissionais:</span>
-                              <div className="flex flex-wrap gap-1 mt-0.5">
+                      {item.type === 'atendimento' && (
+                        <div className="mt-3 space-y-2 text-sm bg-muted/40 p-2.5 rounded-md">
+                          <div className="grid gap-2 md:grid-cols-2">
+                            {item.services && item.services.length > 0 && (
+                              <div>
+                                <span className="font-medium text-xs text-muted-foreground uppercase">Serviços:</span>
+                                <ul className="list-disc list-inside mt-0.5 ml-1 text-foreground/80">
+                                  {item.services.map((s, i) => <li key={i}>{s}</li>)}
+                                </ul>
+                              </div>
+                            )}
+                            {item.products && item.products.length > 0 && (
+                              <div>
+                                <span className="font-medium text-xs text-muted-foreground uppercase">Produtos:</span>
+                                <ul className="list-disc list-inside mt-0.5 ml-1 text-foreground/80">
+                                  {item.products.map((p, i) => <li key={i}>{p}</li>)}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-3 pt-1 border-t border-muted">
+                            {item.professionals && item.professionals.length > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <span className="text-xs text-muted-foreground">Profissional:</span>
                                 {item.professionals.map((p, i) => (
                                   <Badge key={i} variant="secondary" className="font-normal text-xs">{p}</Badge>
                                 ))}
                               </div>
-                            </div>
-                          )}
+                            )}
+                            {item.formaPagamento && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-muted-foreground">Pagamento:</span>
+                                <Badge variant="outline" className="font-normal text-xs capitalize">{item.formaPagamento}</Badge>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 ))}
