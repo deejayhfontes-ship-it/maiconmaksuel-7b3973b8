@@ -90,6 +90,7 @@ interface ComissaoRegistro {
   // Enriquecidos via join
   cliente_nome?: string | null;
   numero_comanda?: number | null;
+  data_atendimento?: string;
 }
 
 interface Vale {
@@ -236,12 +237,12 @@ export default function Comissoes() {
             .filter(Boolean)
         )];
 
-        let atendimentoMap: Record<string, { numero_comanda: number; cliente_nome: string }> = {};
+        let atendimentoMap: Record<string, { numero_comanda: number; cliente_nome: string; data_atendimento: string }> = {};
 
         if (atendimentoIds.length > 0) {
           const { data: atendimentos } = await supabase
             .from("atendimentos")
-            .select("id, numero_comanda, cliente_id, clientes:cliente_id(nome)")
+            .select("id, numero_comanda, created_at, cliente_id, clientes:cliente_id(nome)")
             .in("id", atendimentoIds);
 
           if (atendimentos) {
@@ -251,6 +252,7 @@ export default function Comissoes() {
                 {
                   numero_comanda: a.numero_comanda,
                   cliente_nome: (a.clientes as any)?.nome || null,
+                  data_atendimento: a.created_at,
                 },
               ])
             );
@@ -261,6 +263,7 @@ export default function Comissoes() {
           ...c,
           cliente_nome: atendimentoMap[c.atendimento_id]?.cliente_nome || null,
           numero_comanda: atendimentoMap[c.atendimento_id]?.numero_comanda || null,
+          data_atendimento: atendimentoMap[c.atendimento_id]?.data_atendimento || c.created_at,
         })) as ComissaoRegistro[];
 
         setComissoes(enriquecidas);
@@ -400,7 +403,7 @@ export default function Comissoes() {
   const exportarExcel = () => {
     if (tela === "extrato" && profissionalSelecionado) {
       const rows = profissionalSelecionado.comissoes.map((c) => ({
-        Data: format(parseISO(c.created_at), "dd/MM/yyyy HH:mm"),
+        Data: format(parseISO(c.data_atendimento || c.created_at), "dd/MM/yyyy HH:mm"),
         Comanda: c.numero_comanda ? `#${c.numero_comanda}` : "—",
         Cliente: c.cliente_nome || "—",
         Serviço: c.servico_nome || "—",
@@ -557,7 +560,7 @@ export default function Comissoes() {
                     r.comissoes.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell className="text-sm whitespace-nowrap">
-                          {format(parseISO(c.created_at), "dd/MM/yy HH:mm")}
+                          {format(parseISO(c.data_atendimento || c.created_at), "dd/MM/yy HH:mm")}
                         </TableCell>
                         <TableCell className="text-sm font-mono">
                           {c.numero_comanda ? `#${String(c.numero_comanda).padStart(3, "0")}` : "—"}
