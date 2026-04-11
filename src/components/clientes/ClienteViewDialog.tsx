@@ -138,7 +138,9 @@ export default function ClienteViewDialog({
     setLoadingTimeline(true);
     
     // 1. Fetch manual entries
-    const { data: manualData } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabase as any;
+    const { data: manualData } = await db
       .from("cliente_historico_manual")
       .select("*")
       .eq("cliente_id", cliente.id)
@@ -189,7 +191,7 @@ export default function ClienteViewDialog({
           description: "Atendimento concluído",
           value: a.valor_final,
           services,
-          professionals
+          professionals: profissionais,
         });
       });
     }
@@ -204,7 +206,8 @@ export default function ClienteViewDialog({
   const handleCriarAnotacao = async () => {
     if (!cliente || !novaAnotacao.tipo) return;
     setCriando(true);
-    const { error } = await supabase.from("cliente_historico_manual").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from("cliente_historico_manual").insert({
       cliente_id: cliente.id,
       tipo_registro: novaAnotacao.tipo,
       observacoes: novaAnotacao.obs || null,
@@ -222,7 +225,8 @@ export default function ClienteViewDialog({
 
   const handleDeletarAnotacao = async (id: string, type: string) => {
     if (type !== 'manual') return; // Only allow deleting manual notes
-    await supabase.from("cliente_historico_manual").delete().eq("id", id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("cliente_historico_manual").delete().eq("id", id);
     setTimeline((prev) => prev.filter((t) => t.id !== id));
     toast({ title: "Anotação removida" });
   };
