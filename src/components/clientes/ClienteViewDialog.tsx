@@ -46,7 +46,7 @@ interface TimelineItem {
   title: string;
   description: string;
   value?: number;
-  services?: string[];
+  services?: { nome: string; preco: number | null }[];
   professionals?: string[];
   products?: string[];
   formaPagamento?: string;
@@ -157,6 +157,7 @@ export default function ClienteViewDialog({
         valor_final,
         created_at,
         atendimento_servicos (
+          preco_unitario,
           servicos ( nome ),
           profissionais ( nome )
         ),
@@ -208,8 +209,11 @@ export default function ClienteViewDialog({
         const atendProdutos = (a.atendimento_produtos as unknown as Record<string, unknown>[]) || [];
 
         const services = atendServicos
-          .map(s => (s.servicos as Record<string, unknown>)?.nome)
-          .filter(Boolean) as string[];
+          .map(s => ({
+            nome: (s.servicos as Record<string, unknown>)?.nome as string,
+            preco: s.preco_unitario as number | null,
+          }))
+          .filter(s => s.nome) as { nome: string; preco: number | null }[];
         const profissionais = [...new Set(
           atendServicos.map(s => (s.profissionais as Record<string, unknown>)?.nome).filter(Boolean)
         )] as string[];
@@ -513,8 +517,19 @@ export default function ClienteViewDialog({
                             {item.services && item.services.length > 0 && (
                               <div>
                                 <span className="font-medium text-xs text-muted-foreground uppercase">Serviços:</span>
-                                <ul className="list-disc list-inside mt-0.5 ml-1 text-foreground/80">
-                                  {item.services.map((s, i) => <li key={i}>{s}</li>)}
+                                <ul className="mt-0.5 ml-1 space-y-0.5">
+                                  {item.services.map((s, i) => (
+                                    <li key={i} className="flex items-center justify-between text-foreground/80">
+                                      <span className="flex items-center gap-1">
+                                        <span className="text-muted-foreground">•</span> {s.nome}
+                                      </span>
+                                      {s.preco != null && (
+                                        <span className="text-xs font-semibold text-green-700 bg-green-50 rounded px-1.5 py-0.5 ml-2 whitespace-nowrap">
+                                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(s.preco)}
+                                        </span>
+                                      )}
+                                    </li>
+                                  ))}
                                 </ul>
                               </div>
                             )}
