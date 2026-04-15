@@ -219,6 +219,7 @@ const Relatorios = () => {
   const [vales, setVales] = useState<any[]>([]);
   const [dividas, setDividas] = useState<any[]>([]);
   const [diasAusencia, setDiasAusencia] = useState(30);
+  const [comissoesRegistro, setComissoesRegistro] = useState<any[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -243,6 +244,7 @@ const Relatorios = () => {
         contasReceberRes,
         valesRes,
         dividasRes,
+        comissoesRegistroRes,
       ] = await Promise.all([
         // Fetch atendimentos normal (vamos filtrar depois, ao final do map/reduce)
         supabase
@@ -300,6 +302,11 @@ const Relatorios = () => {
           .from("dividas")
           .select("*, cliente:clientes(nome, celular, elegivel_crediario)")
           .order("data_vencimento", { ascending: true }),
+        (supabase as any)
+          .from("comissoes_registro")
+          .select("profissional_id, atendimento_id, valor_servico, valor_comissao, servico_nome")
+          .gte("created_at", subMonths(startDate, 2).toISOString())
+          .lte("created_at", new Date(new Date(endDate).getTime() + 86400000).toISOString()),
       ]);
 
       const atendimentosData = atendimentosRes?.data || [];
@@ -328,6 +335,11 @@ const Relatorios = () => {
       if (contasReceberRes?.data) setContasReceber(contasReceberRes.data);
       if (valesRes?.data) setVales(valesRes.data);
       if (dividasRes?.data) setDividas(dividasRes.data);
+      if (comissoesRegistroRes?.data) {
+        setComissoesRegistro(
+          (comissoesRegistroRes.data as any[]).filter((c: any) => finalizadosIds.has(c.atendimento_id))
+        );
+      }
     } catch (error: any) {
       toast({
         title: "Erro ao carregar dados",
@@ -387,16 +399,30 @@ const Relatorios = () => {
     };
   }, [atendimentos]);
 
+  // Mapa auxiliar: profissional_id → { servico_nome → comissao } — fonte: comissoes_registro
+  const comissaoMapProf = useMemo(() => {
+    const map: Record<string, { total: number; porServico: Record<string, number> }> = {};
+    comissoesRegistro.forEach((c: any) => {
+      const profId = c.profissional_id;
+      if (!profId) return;
+      if (!map[profId]) map[profId] = { total: 0, porServico: {} };
+      map[profId].total += c.valor_comissao || 0;
+      const sNome = c.servico_nome || "Serviço Avulso/Desconhecido";
+      map[profId].porServico[sNome] = (map[profId].porServico[sNome] || 0) + (c.valor_comissao || 0);
+    });
+    return map;
+  }, [comissoesRegistro]);
+
   const vendasPorProfissional = useMemo(() => {
     const agrupado: Record<string, { nome: string; valor: number; quantidade: number; comissao: number; servicos: Record<string, { quantidade: number, valor: number, comissao: number }> }> = {};
-    
+
     atendimentoServicos.forEach((as) => {
       const profId = as.profissional_id || 'desconhecido';
       const profNome = as.profissional?.nome || "Desconhecido";
       if (!agrupado[profId]) {
         agrupado[profId] = { nome: profNome, valor: 0, quantidade: 0, comissao: 0, servicos: {} };
       }
-      
+
       const servNome = as.servico?.nome || "Serviço Avulso/Desconhecido";
       if (!agrupado[profId].servicos[servNome]) {
         agrupado[profId].servicos[servNome] = { quantidade: 0, valor: 0, comissao: 0 };
@@ -404,15 +430,21 @@ const Relatorios = () => {
 
       agrupado[profId].valor += as.subtotal || 0;
       agrupado[profId].quantidade += 1;
-      agrupado[profId].comissao += as.comissao_valor || 0;
-      
       agrupado[profId].servicos[servNome].quantidade += as.quantidade || 1;
       agrupado[profId].servicos[servNome].valor += as.subtotal || 0;
-      agrupado[profId].servicos[servNome].comissao += as.comissao_valor || 0;
+    });
+
+    // Substituir comissão pelo valor correto de comissoes_registro
+    Object.keys(agrupado).forEach((profId) => {
+      const cm = comissaoMapProf[profId];
+      agrupado[profId].comissao = cm?.total || 0;
+      Object.keys(agrupado[profId].servicos).forEach((sNome) => {
+        agrupado[profId].servicos[sNome].comissao = cm?.porServico[sNome] || 0;
+      });
     });
 
     return Object.values(agrupado).sort((a, b) => b.valor - a.valor);
-  }, [atendimentoServicos]);
+  }, [atendimentoServicos, comissaoMapProf]);
 
   const vendasPorServico = useMemo(() => {
     const agrupado: Record<string, { nome: string; valor: number; quantidade: number }> = {};
@@ -479,23 +511,26 @@ const Relatorios = () => {
     }
    }, [clienteStats.diagnostico, clientesAusentes.length, clientesAtivos.length, clientesInativos.length, aniversariantes.length, diasAusencia]);
 
-  // Comissões por profissional
+  // Comissões por profissional — fonte: comissoes_registro (mesma do menu Comissões)
   const comissoesPorProfissional = useMemo(() => {
+    const profMap: Record<string, string> = {};
+    profissionais.forEach((p: any) => { profMap[p.id] = p.nome; });
+
     const agrupado: Record<string, { id: string; nome: string; totalServicos: number; totalComissao: number; atendimentos: number }> = {};
-    
-    atendimentoServicos.forEach((as) => {
-      const profId = as.profissional_id;
-      const profNome = as.profissional?.nome || "Desconhecido";
+
+    comissoesRegistro.forEach((c: any) => {
+      const profId = c.profissional_id;
+      if (!profId) return;
       if (!agrupado[profId]) {
-        agrupado[profId] = { id: profId, nome: profNome, totalServicos: 0, totalComissao: 0, atendimentos: 0 };
+        agrupado[profId] = { id: profId, nome: profMap[profId] || "Desconhecido", totalServicos: 0, totalComissao: 0, atendimentos: 0 };
       }
-      agrupado[profId].totalServicos += as.subtotal || 0;
-      agrupado[profId].totalComissao += as.comissao_valor || 0;
+      agrupado[profId].totalServicos += c.valor_servico || 0;
+      agrupado[profId].totalComissao += c.valor_comissao || 0;
       agrupado[profId].atendimentos += 1;
     });
 
     return Object.values(agrupado).sort((a, b) => b.totalComissao - a.totalComissao);
-  }, [atendimentoServicos]);
+  }, [comissoesRegistro, profissionais]);
 
   // Produtos mais vendidos
   const produtosMaisVendidos = useMemo(() => {
@@ -547,7 +582,7 @@ const Relatorios = () => {
       const custo = ap.produto?.preco_custo || 0;
       return sum + (custo * (ap.quantidade || 1));
     }, 0);
-    const comissoes = atendimentoServicos.reduce((sum, as) => sum + (as.comissao_valor || 0), 0);
+    const comissoes = comissoesRegistro.reduce((sum: number, c: any) => sum + (c.valor_comissao || 0), 0);
     
     const receitaTotal = receitaServicos + receitaProdutos;
     const custoTotal = custoProdutos + comissoes;
@@ -574,12 +609,12 @@ const Relatorios = () => {
       margemLucro,
       porDia: Object.values(porDia).sort((a, b) => a.data.localeCompare(b.data)),
     };
-  }, [atendimentos, atendimentoServicos, atendimentoProdutos]);
+  }, [atendimentos, atendimentoServicos, atendimentoProdutos, comissoesRegistro]);
 
-  // Serviços mais lucrativos
+  // Serviços mais lucrativos — comissão vem de comissoes_registro
   const servicosMaisLucrativos = useMemo(() => {
     const agrupado: Record<string, { nome: string; quantidade: number; receita: number; comissao: number; lucro: number }> = {};
-    
+
     atendimentoServicos.forEach((as) => {
       const servNome = as.servico?.nome || "Desconhecido";
       if (!agrupado[servNome]) {
@@ -587,12 +622,23 @@ const Relatorios = () => {
       }
       agrupado[servNome].quantidade += as.quantidade || 1;
       agrupado[servNome].receita += as.subtotal || 0;
-      agrupado[servNome].comissao += as.comissao_valor || 0;
-      agrupado[servNome].lucro = agrupado[servNome].receita - agrupado[servNome].comissao;
+    });
+
+    // Acumula comissão por nome de serviço a partir de comissoes_registro
+    comissoesRegistro.forEach((c: any) => {
+      const sNome = c.servico_nome || "Desconhecido";
+      if (!agrupado[sNome]) {
+        agrupado[sNome] = { nome: sNome, quantidade: 0, receita: 0, comissao: 0, lucro: 0 };
+      }
+      agrupado[sNome].comissao += c.valor_comissao || 0;
+    });
+
+    Object.values(agrupado).forEach((s) => {
+      s.lucro = s.receita - s.comissao;
     });
 
     return Object.values(agrupado).sort((a, b) => b.lucro - a.lucro);
-  }, [atendimentoServicos]);
+  }, [atendimentoServicos, comissoesRegistro]);
 
   // Produtos mais lucrativos
   const produtosMaisLucrativos = useMemo(() => {
