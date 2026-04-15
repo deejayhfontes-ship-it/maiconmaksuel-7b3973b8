@@ -592,7 +592,9 @@ const Atendimentos = () => {
     // Comissão será gerada quando o fiado for quitado (baixa).
     const todosFiado = pagamentos.every(p => p.forma === "fiado");
     if (!todosFiado) {
-      const periodoRef = new Date().toISOString().slice(0, 7);
+      const periodoRef = selectedAtendimento.data_hora
+        ? new Date(selectedAtendimento.data_hora).toISOString().slice(0, 7)
+        : new Date().toISOString().slice(0, 7);
       const profissionaisMap = new Map<string, typeof itemsServicos>();
       for (const item of itemsServicos) {
         if (item.comissao_valor > 0) {

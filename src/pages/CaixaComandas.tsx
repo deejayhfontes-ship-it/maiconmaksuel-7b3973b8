@@ -371,7 +371,9 @@ export default function CaixaComandas() {
     // REGRA: fiado NÃO gera comissão no momento do lançamento.
     // Comissão será gerada apenas quando o fiado for quitado (baixa no pagamento).
     if (formaPagamento !== "fiado") {
-      const periodoRef = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+      const periodoRef = selectedComanda.data_hora
+        ? new Date(selectedComanda.data_hora).toISOString().slice(0, 7)
+        : new Date().toISOString().slice(0, 7);
       const profissionaisMap = new Map<string, typeof selectedComanda.servicos>();
 
       for (const s of selectedComanda.servicos) {

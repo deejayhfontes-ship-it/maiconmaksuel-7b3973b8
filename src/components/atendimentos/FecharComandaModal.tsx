@@ -27,6 +27,7 @@ interface FecharComandaModalProps {
     valor_final: number;
     cliente_id: string | null;
     status: string;
+    data_hora?: string;
   } | null;
   onSuccess?: () => void;
 }
@@ -405,7 +406,9 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
           pagamentos.every(p => p.forma_pagamento === "fiado");
 
         if (!todosFiado) {
-          const periodoRef = new Date().toISOString().slice(0, 7);
+          const periodoRef = atendimento.data_hora
+            ? new Date(atendimento.data_hora).toISOString().slice(0, 7)
+            : new Date().toISOString().slice(0, 7);
           const { data: servicos } = await supabase
             .from("atendimento_servicos")
             .select("profissional_id, servico_id, preco_unitario, quantidade, servicos(nome)")

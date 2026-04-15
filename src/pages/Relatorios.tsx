@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useMemo, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -304,9 +310,9 @@ const Relatorios = () => {
           .order("data_vencimento", { ascending: true }),
         (supabase as any)
           .from("comissoes_registro")
-          .select("profissional_id, atendimento_id, valor_servico, valor_comissao, servico_nome")
-          .gte("created_at", subMonths(startDate, 2).toISOString())
-          .lte("created_at", new Date(new Date(endDate).getTime() + 86400000).toISOString()),
+          .select("id, profissional_id, atendimento_id, valor_servico, percentual, valor_comissao, servico_nome, status, data_pagamento, created_at")
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString()),
       ]);
 
       const atendimentosData = atendimentosRes?.data || [];
@@ -336,9 +342,7 @@ const Relatorios = () => {
       if (valesRes?.data) setVales(valesRes.data);
       if (dividasRes?.data) setDividas(dividasRes.data);
       if (comissoesRegistroRes?.data) {
-        setComissoesRegistro(
-          (comissoesRegistroRes.data as any[]).filter((c: any) => finalizadosIds.has(c.atendimento_id))
-        );
+        setComissoesRegistro(comissoesRegistroRes.data);
       }
     } catch (error: any) {
       toast({
@@ -516,17 +520,25 @@ const Relatorios = () => {
     const profMap: Record<string, string> = {};
     profissionais.forEach((p: any) => { profMap[p.id] = p.nome; });
 
-    const agrupado: Record<string, { id: string; nome: string; totalServicos: number; totalComissao: number; atendimentos: number }> = {};
+    const agrupado: Record<string, {
+      id: string; nome: string;
+      totalServicos: number; totalComissao: number; atendimentos: number;
+      pendingIds: string[]; todosPago: boolean;
+    }> = {};
 
     comissoesRegistro.forEach((c: any) => {
       const profId = c.profissional_id;
       if (!profId) return;
       if (!agrupado[profId]) {
-        agrupado[profId] = { id: profId, nome: profMap[profId] || "Desconhecido", totalServicos: 0, totalComissao: 0, atendimentos: 0 };
+        agrupado[profId] = { id: profId, nome: profMap[profId] || "Desconhecido", totalServicos: 0, totalComissao: 0, atendimentos: 0, pendingIds: [], todosPago: true };
       }
       agrupado[profId].totalServicos += c.valor_servico || 0;
       agrupado[profId].totalComissao += c.valor_comissao || 0;
       agrupado[profId].atendimentos += 1;
+      if (c.status !== "pago") {
+        agrupado[profId].pendingIds.push(c.id);
+        agrupado[profId].todosPago = false;
+      }
     });
 
     return Object.values(agrupado).sort((a, b) => b.totalComissao - a.totalComissao);
@@ -2477,24 +2489,112 @@ const Relatorios = () => {
                           {formatCurrency(item.comissaoLiquida)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant={comissoesStatus[item.id] ? "default" : "secondary"}>
-                            {comissoesStatus[item.id] ? "Pago" : "Pendente"}
+                          <Badge variant={item.todosPago ? "default" : "secondary"}>
+                            {item.todosPago ? "Pago" : "Pendente"}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button 
-                            size="sm" 
-                            variant={comissoesStatus[item.id] ? "outline" : "default"}
-                            onClick={() => setComissoesStatus(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                          >
-                            <Check className="h-3 w-3 mr-1" />
-                            {comissoesStatus[item.id] ? "Desfazer" : "Pagar"}
-                          </Button>
+                          {!item.todosPago && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={async () => {
+                                if (item.pendingIds.length === 0) return;
+                                try {
+                                  await (supabase as any)
+                                    .from("comissoes_registro")
+                                    .update({ status: "pago", data_pagamento: new Date().toISOString() })
+                                    .in("id", item.pendingIds);
+                                  await fetchData();
+                                } catch (e) {
+                                  console.error("Erro ao registrar pagamento:", e);
+                                }
+                              }}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Pagar
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Histórico de Comissões do Período</CardTitle>
+                <Button size="sm" variant="outline" onClick={() => exportToExcel(comissoesRegistro.map((c: any) => ({
+                  data: format(new Date(c.created_at), "dd/MM/yyyy HH:mm"),
+                  profissional: profissionais.find((p: any) => p.id === c.profissional_id)?.nome || "N/A",
+                  servico: c.servico_nome || "N/A",
+                  valor_servico: c.valor_servico,
+                  percentual: c.percentual,
+                  comissao: c.valor_comissao,
+                  status: c.status
+                })), "historico_comissoes")}>
+                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel Histórico
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {comissoesPorProfissional.length === 0 ? (
+                  <div className="text-center h-24 flex items-center justify-center text-muted-foreground">
+                    Nenhum profissional com comissões neste período.
+                  </div>
+                ) : (
+                  <Accordion type="single" collapsible className="w-full space-y-2">
+                    {comissoesPorProfissional.map((prof: any) => {
+                      const historico = comissoesRegistro.filter((c: any) => c.profissional_id === prof.id);
+                      if (historico.length === 0) return null;
+                      
+                      return (
+                        <AccordionItem value={prof.id} key={prof.id} className="border rounded-lg px-2 shadow-sm bg-card">
+                          <AccordionTrigger className="hover:no-underline hover:bg-muted/30 p-4 transition-colors rounded-lg">
+                            <div className="flex justify-between items-center w-full pr-4 text-left">
+                              <span className="font-semibold text-base">{prof.nome}</span>
+                              <span className="text-sm font-normal text-muted-foreground flex gap-4">
+                                <span>{historico.length} {historico.length === 1 ? 'comissão' : 'comissões'}</span>
+                                <span className="text-primary font-semibold">{formatCurrency(prof.totalComissao)}</span>
+                              </span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="pt-2 pb-4">
+                            <Table>
+                              <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                  <TableHead>Data</TableHead>
+                                  <TableHead>Serviço</TableHead>
+                                  <TableHead className="text-right">Valor Serviço</TableHead>
+                                  <TableHead className="text-right">%</TableHead>
+                                  <TableHead className="text-right">Comissão</TableHead>
+                                  <TableHead className="text-center">Status</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {historico.map((c: any) => (
+                                  <TableRow key={c.id}>
+                                    <TableCell className="text-muted-foreground whitespace-nowrap">{format(new Date(c.created_at), "dd/MM/yyyy HH:mm")}</TableCell>
+                                    <TableCell>{c.servico_nome || "Serviço"}</TableCell>
+                                    <TableCell className="text-right whitespace-nowrap">{formatCurrency(c.valor_servico)}</TableCell>
+                                    <TableCell className="text-right">{c.percentual}%</TableCell>
+                                    <TableCell className="text-right font-semibold text-primary whitespace-nowrap">{formatCurrency(c.valor_comissao)}</TableCell>
+                                    <TableCell className="text-center">
+                                      <Badge variant={c.status === "pago" ? "default" : "secondary"}>
+                                        {c.status === "pago" ? "Pago" : "Pendente"}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )
+                    })}
+                  </Accordion>
+                )}
               </CardContent>
             </Card>
           </div>
