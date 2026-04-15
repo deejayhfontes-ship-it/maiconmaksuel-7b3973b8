@@ -49,7 +49,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -243,26 +242,41 @@ export default function Comissoes() {
           const { data: atendimentos } = await supabase
             .from("atendimentos")
             .select("id, numero_comanda, created_at, status, cliente_id, clientes:cliente_id(nome)")
-            .in("id", atendimentoIds)
-            .in("status", ["fechado", "finalizado"]);
+            .in("id", atendimentoIds);
 
           if (atendimentos) {
-            atendimentoMap = Object.fromEntries(
-              (atendimentos as any[]).map((a) => [
-                a.id,
-                {
-                  numero_comanda: a.numero_comanda,
-                  cliente_nome: (a.clientes as any)?.nome || null,
-                  data_atendimento: a.created_at,
-                },
-              ])
+            // IDs de comandas ainda abertas — essas SIM devem ser ocultadas
+            const abertosIds = new Set(
+              (atendimentos as any[])
+                .filter((a) => a.status === "aberto")
+                .map((a) => a.id)
             );
+
+            atendimentoMap = Object.fromEntries(
+              (atendimentos as any[])
+                .filter((a) => a.status !== "aberto")
+                .map((a) => [
+                  a.id,
+                  {
+                    numero_comanda: a.numero_comanda,
+                    cliente_nome: (a.clientes as any)?.nome || null,
+                    data_atendimento: a.created_at,
+                  },
+                ])
+            );
+
+            // Remover comissões de comandas explicitamente abertas
+            (comissoesRes.data as any[]).forEach((c) => {
+              if (abertosIds.has(c.atendimento_id)) {
+                // marca para filtrar
+                c.__aberto = true;
+              }
+            });
           }
         }
 
-        // Filtrar apenas comissões de atendimentos fechados/finalizados
         const enriquecidas = (comissoesRes.data as any[])
-          .filter((c) => !c.atendimento_id || atendimentoMap[c.atendimento_id])
+          .filter((c) => !c.__aberto)
           .map((c) => ({
             ...c,
             cliente_nome: atendimentoMap[c.atendimento_id]?.cliente_nome || null,

@@ -28,8 +28,10 @@ export function useGerarComissao() {
         gera_comissao?: boolean;
       }>;
       periodoRef?: string;
+      /** Usado na baixa do fiado: ignora checagem de duplicata por comanda */
+      forcarGeracao?: boolean;
     }) => {
-      const { comandaId, profissionalId, itens, periodoRef } = params;
+      const { comandaId, profissionalId, itens, periodoRef, forcarGeracao } = params;
 
       if (!profissionalId || itens.length === 0) return;
 
@@ -121,27 +123,40 @@ export function useGerarComissao() {
         if (registros.length === 0) return;
 
         // 3. Verifica se já existem registros para essa comanda (evita duplicatas)
-        const { data: existentes } = await db
-          .from("comissoes_registro")
-          .select("id")
-          .eq("atendimento_id", comandaId);
+        // forcarGeracao = true é usado na baixa do fiado, onde pode haver comissões
+        // de outros serviços da mesma comanda pagos com outra forma de pagamento.
+        // Nesse caso verificamos duplicata apenas para este profissional específico.
+        if (!forcarGeracao) {
+          const { data: existentes } = await db
+            .from("comissoes_registro")
+            .select("id")
+            .eq("atendimento_id", comandaId);
 
-        if (existentes && existentes.length > 0) {
-          // Se a comanda foi reaberta e está sendo finalizada novamente,
-          // apagar as comissões antigas para recalcular com os dados atuais
-          const comandaStatus = await supabase
-            .from("atendimentos")
-            .select("status")
-            .eq("id", comandaId)
-            .maybeSingle();
-          
-          if (comandaStatus.data?.status === "reaberta") {
-            await db.from("comissoes_registro").delete().eq("atendimento_id", comandaId);
-            console.log("[useGerarComissao] Reaberta detectada — comissões antigas removidas para recálculo.");
-          } else {
-            console.log(
-              "[useGerarComissao] Comissões já existem para essa comanda, pulando."
-            );
+          if (existentes && existentes.length > 0) {
+            const comandaStatus = await supabase
+              .from("atendimentos")
+              .select("status")
+              .eq("id", comandaId)
+              .maybeSingle();
+
+            if (comandaStatus.data?.status === "reaberta") {
+              await db.from("comissoes_registro").delete().eq("atendimento_id", comandaId);
+              console.log("[useGerarComissao] Reaberta detectada — comissões antigas removidas para recálculo.");
+            } else {
+              console.log("[useGerarComissao] Comissões já existem para essa comanda, pulando.");
+              return;
+            }
+          }
+        } else {
+          // Baixa de fiado: evita duplicar apenas para este profissional nesta comanda
+          const { data: existenteProf } = await db
+            .from("comissoes_registro")
+            .select("id")
+            .eq("atendimento_id", comandaId)
+            .eq("profissional_id", profissionalId);
+
+          if (existenteProf && existenteProf.length > 0) {
+            console.log("[useGerarComissao] Comissão de fiado já gerada para este profissional, pulando.");
             return;
           }
         }

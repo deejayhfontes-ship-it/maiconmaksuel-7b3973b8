@@ -11,7 +11,6 @@ import {
   Check,
   Calendar,
   History,
-  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,7 +39,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useGerarComissao } from "@/hooks/useGerarComissao";
 import { format, parseISO, differenceInDays, isPast } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 interface Divida {
@@ -261,6 +259,7 @@ export default function CaixaDividas() {
                 gera_comissao: true,
               })),
               periodoRef,
+              forcarGeracao: true, // baixa de fiado: ignora dedup por comanda
             });
           }
         }
