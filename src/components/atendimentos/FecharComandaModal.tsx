@@ -411,7 +411,7 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
             : new Date().toISOString().slice(0, 7);
           const { data: servicos } = await supabase
             .from("atendimento_servicos")
-            .select("profissional_id, servico_id, preco_unitario, quantidade, servicos(nome)")
+            .select("profissional_id, servico_id, preco_unitario, quantidade, subtotal, servicos(nome)")
             .eq("atendimento_id", atendimento.id);
 
           if (servicos && servicos.length > 0) {
@@ -428,7 +428,7 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
                 itens: itens.map((i: any) => ({
                   servico_id: i.servico_id ?? null,
                   nome_servico: i.servicos?.nome ?? undefined,
-                  valor: Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1),
+                  valor: Number((i as any).subtotal ?? (Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1))),
                   gera_comissao: true,
                 })),
                 periodoRef,
