@@ -116,7 +116,11 @@ export function FolhaPontoPanel() {
 
     setLoading(true);
     try {
-      const [tipo, id] = selectedPessoa.split('-');
+      // UUID tem hífens — extrair só o prefixo (funcionario/profissional) antes do primeiro '-'
+      // e o restante é o UUID completo: "funcionario-a1dd176d-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+      const dashIdx = selectedPessoa.indexOf('-');
+      const tipo = selectedPessoa.substring(0, dashIdx);
+      const id = selectedPessoa.substring(dashIdx + 1);
       const inicio = startOfMonth(mesReferencia);
       const fim = endOfMonth(mesReferencia);
 
@@ -173,7 +177,9 @@ export function FolhaPontoPanel() {
     if (!selectedPessoa) return;
 
     try {
-      const [tipo, id] = selectedPessoa.split('-');
+      const dashIdx = selectedPessoa.indexOf('-');
+      const tipo = selectedPessoa.substring(0, dashIdx);
+      const id = selectedPessoa.substring(dashIdx + 1);
       const mesStr = format(startOfMonth(mesReferencia), 'yyyy-MM-dd');
 
       const { data, error } = await supabase
@@ -184,10 +190,14 @@ export function FolhaPontoPanel() {
         .eq('mes_referencia', mesStr)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
-      setFolha(data as FolhaPonto | null);
+      // PGRST116 = não encontrado; 42P01 = tabela não existe — ambos são ok
+      if (error && error.code !== 'PGRST116' && !error.message?.includes('does not exist') && !error.message?.includes('schema cache')) {
+        throw error;
+      }
+      setFolha((data as FolhaPonto | null) ?? null);
     } catch (error) {
       console.error('Error loading folha:', error);
+      setFolha(null);
     }
   };
 
