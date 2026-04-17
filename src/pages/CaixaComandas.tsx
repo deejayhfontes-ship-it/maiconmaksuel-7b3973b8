@@ -384,8 +384,9 @@ export default function CaixaComandas() {
         profissionaisMap.get(s.profissional_id)!.push(s);
       }
 
+      let totalComissoesGeradas = 0;
       for (const [profId, servicos] of profissionaisMap.entries()) {
-        await gerarComissoesDaComanda({
+        const resultado = await gerarComissoesDaComanda({
           comandaId: selectedComanda.id,
           profissionalId: profId,
           itens: servicos.map((s) => ({
@@ -395,6 +396,14 @@ export default function CaixaComandas() {
             gera_comissao: s.gera_comissao !== false,
           })),
           periodoRef,
+        });
+        totalComissoesGeradas += resultado?.geradas ?? 0;
+      }
+      if (profissionaisMap.size > 0 && totalComissoesGeradas === 0) {
+        toast({
+          title: "Aviso: comissões não geradas",
+          description: "Verifique se os profissionais têm % de comissão configurado e se os serviços têm valor > 0.",
+          variant: "destructive",
         });
       }
     }

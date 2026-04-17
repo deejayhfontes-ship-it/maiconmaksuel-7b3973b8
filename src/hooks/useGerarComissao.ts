@@ -33,7 +33,7 @@ export function useGerarComissao() {
     }) => {
       const { comandaId, profissionalId, itens, periodoRef } = params;
 
-      if (!profissionalId || itens.length === 0) return;
+      if (!profissionalId || itens.length === 0) return { geradas: 0 };
 
       try {
         // 1. Buscar dados do profissional (fallback de % padrão)
@@ -120,7 +120,7 @@ export function useGerarComissao() {
           });
         }
 
-        if (registros.length === 0) return;
+        if (registros.length === 0) return { geradas: 0 };
 
         // 3. Verifica duplicata por profissional+comanda (não por comanda inteira)
         // Isso permite que múltiplos profissionais na mesma comanda gerem comissões
@@ -148,7 +148,7 @@ export function useGerarComissao() {
             console.log("[useGerarComissao] Reaberta — comissões do profissional removidas para recálculo.");
           } else {
             console.log("[useGerarComissao] Comissão já existe para este profissional nessa comanda, pulando.");
-            return;
+            return { geradas: 0 };
           }
         }
 
@@ -159,13 +159,16 @@ export function useGerarComissao() {
 
         if (error) {
           console.error("[useGerarComissao] Erro ao inserir comissões:", error);
+          return { geradas: 0 };
         } else {
           console.log(
             `[useGerarComissao] ✅ ${registros.length} comissão(ões) gerada(s) para comanda ${comandaId}`
           );
+          return { geradas: registros.length };
         }
       } catch (err) {
         console.error("[useGerarComissao] Erro inesperado:", err);
+        return { geradas: 0 };
       }
     },
     []
