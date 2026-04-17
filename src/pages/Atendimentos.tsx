@@ -597,15 +597,14 @@ const Atendimentos = () => {
         : new Date().toISOString().slice(0, 7);
       const profissionaisMap = new Map<string, typeof itemsServicos>();
       for (const item of itemsServicos) {
-        if (item.comissao_valor > 0) {
-          if (!profissionaisMap.has(item.profissional_id)) {
-            profissionaisMap.set(item.profissional_id, []);
-          }
-          profissionaisMap.get(item.profissional_id)!.push(item);
+        if (!profissionaisMap.has(item.profissional_id)) {
+          profissionaisMap.set(item.profissional_id, []);
         }
+        profissionaisMap.get(item.profissional_id)!.push(item);
       }
+      let totalComissoesGeradas = 0;
       for (const [profId, itens] of profissionaisMap.entries()) {
-        await gerarComissoesDaComanda({
+        const resultado = await gerarComissoesDaComanda({
           comandaId: selectedAtendimento.id,
           profissionalId: profId,
           itens: itens.map((i) => ({
@@ -615,6 +614,14 @@ const Atendimentos = () => {
             gera_comissao: true,
           })),
           periodoRef,
+        });
+        totalComissoesGeradas += resultado?.geradas ?? 0;
+      }
+      if (profissionaisMap.size > 0 && totalComissoesGeradas === 0) {
+        toast({
+          title: "Aviso: comissões não geradas",
+          description: "Verifique se os profissionais têm % de comissão configurado.",
+          variant: "destructive",
         });
       }
     }
