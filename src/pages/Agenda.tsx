@@ -413,13 +413,19 @@ const Agenda = () => {
                     }
                   }}
                 >
-                  {ags.map((ag) => {
+                  {ags.map((ag, agIndex) => {
                     const slots = getSlotsForAgendamento(ag.duracao_minutos);
                     const startTime = format(new Date(ag.data_hora), "HH:mm");
                     const endTime = getEndTime(startTime, ag.duracao_minutos);
                     const isCancelled = ag.status === "cancelado";
                     const isFaltou = ag.status === "faltou";
                     const popoverId = isMobile ? `mobile-${ag.id}` : ag.id;
+
+                    // Divide a largura igualmente entre encaixes sobrepostos
+                    const total = ags.length;
+                    const pct = 100 / total;
+                    const leftPct = agIndex * pct;
+                    const rightPct = 100 - (agIndex + 1) * pct;
 
                     return (
                       <Popover
@@ -430,7 +436,7 @@ const Agenda = () => {
                         <PopoverTrigger asChild>
                           <div
                             className={cn(
-                              "absolute left-0.5 right-0.5 rounded-md px-1.5 py-0.5 cursor-pointer transition-all hover:shadow-lg z-10 overflow-hidden border-l-4",
+                              "absolute rounded-md px-1.5 py-0.5 cursor-pointer transition-all hover:shadow-lg z-10 overflow-hidden border-l-4",
                               isCancelled && "opacity-50 line-through",
                               isFaltou && "opacity-60"
                             )}
@@ -438,6 +444,9 @@ const Agenda = () => {
                               height: `${slots * slotHeight - 4}px`,
                               backgroundColor: `${ag.profissional.cor_agenda}cc`,
                               borderLeftColor: ag.profissional.cor_agenda,
+                              left: `${leftPct}%`,
+                              right: `${rightPct}%`,
+                              minWidth: 0,
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
