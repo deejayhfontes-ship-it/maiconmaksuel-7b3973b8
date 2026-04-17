@@ -73,6 +73,7 @@ export default function CaixaDividas() {
   const [tab, setTab] = useState("todas");
   const [selectedDivida, setSelectedDivida] = useState<Divida | null>(null);
   const [isPagarOpen, setIsPagarOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form
   const [valorPagamento, setValorPagamento] = useState(0);
@@ -134,7 +135,8 @@ export default function CaixaDividas() {
   };
 
   const confirmarPagamento = async () => {
-    if (!selectedDivida) return;
+    if (!selectedDivida || isSubmitting) return;
+    setIsSubmitting(true);
 
     // Verificar caixa aberto
     const { data: caixaCheck } = await supabase
@@ -170,6 +172,7 @@ export default function CaixaDividas() {
 
     if (pagError) {
       toast({ title: "Erro ao registrar pagamento", description: pagError.message, variant: "destructive" });
+      setIsSubmitting(false);
       return;
     }
 
@@ -185,6 +188,7 @@ export default function CaixaDividas() {
 
     if (divError) {
       toast({ title: "Erro ao atualizar dívida", description: divError.message, variant: "destructive" });
+      setIsSubmitting(false);
       return;
     }
 
@@ -275,6 +279,7 @@ export default function CaixaDividas() {
 
     setIsPagarOpen(false);
     setSelectedDivida(null);
+    setIsSubmitting(false);
     fetchDividas();
   };
 
@@ -588,13 +593,13 @@ export default function CaixaDividas() {
               <Button variant="outline" className="flex-1" onClick={() => setIsPagarOpen(false)}>
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 className="flex-1 bg-success hover:bg-success/90"
                 onClick={confirmarPagamento}
-                disabled={calcularValorEfetivo() <= 0}
+                disabled={calcularValorEfetivo() <= 0 || isSubmitting}
               >
                 <Check className="h-4 w-4 mr-2" />
-                Confirmar
+                {isSubmitting ? "Processando..." : "Confirmar"}
               </Button>
             </div>
           </div>
