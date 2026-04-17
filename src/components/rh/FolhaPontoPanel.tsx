@@ -73,9 +73,10 @@ export function FolhaPontoPanel() {
 
   useEffect(() => {
     if (selectedPessoa) {
-      loadPontos();
-      loadFolha();
+      // Roda em paralelo — erro em loadFolha NAO trava loadPontos
+      Promise.allSettled([loadPontos(), loadFolha()]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPessoa, mesReferencia]);
 
   const loadPessoas = async () => {

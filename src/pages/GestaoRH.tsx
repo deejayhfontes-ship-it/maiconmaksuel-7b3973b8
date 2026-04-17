@@ -194,16 +194,22 @@ const GestaoRH = () => {
   const carregarPontosHoje = async (funcs: Funcionario[]) => {
     const hoje = format(new Date(), 'yyyy-MM-dd');
 
+    // Buscar pontos de funcionarios E profissionais
     const { data: pontosData } = await supabase
       .from('ponto_registros')
       .select('*')
-      .eq('data', hoje)
-      .eq('tipo_pessoa', 'funcionario');
+      .eq('data', hoje);
 
     if (pontosData) {
       const pontosFormatados = pontosData.map(p => {
-        const func = funcs.find(f => f.id === p.pessoa_id);
-        return { ...p, nome: func?.nome || 'Funcionário', cargo_especialidade: func?.cargo || '' };
+        if (p.tipo_pessoa === 'funcionario') {
+          const func = funcs.find(f => f.id === p.pessoa_id);
+          return { ...p, nome: func?.nome || 'Funcionário', cargo_especialidade: func?.cargo || '' };
+        } else {
+          // profissional — busca do estado profissionais
+          const prof = profissionais.find(pf => pf.id === p.pessoa_id);
+          return { ...p, nome: prof?.nome || 'Profissional', cargo_especialidade: prof?.especialidade || '' };
+        }
       });
       setPontosHoje(pontosFormatados);
     }
@@ -212,7 +218,10 @@ const GestaoRH = () => {
   const carregarPontoAtual = async () => {
     if (!pessoaSelecionada) return;
 
-    const [tipo, id] = pessoaSelecionada.split('-');
+    // UUID tem hífens — extrair prefixo e UUID completo corretamente
+    const dashIdx = pessoaSelecionada.indexOf('-');
+    const tipo = pessoaSelecionada.substring(0, dashIdx);
+    const id = pessoaSelecionada.substring(dashIdx + 1);
     const hoje = format(new Date(), 'yyyy-MM-dd');
 
     const { data } = await supabase
@@ -272,11 +281,10 @@ const GestaoRH = () => {
     }
 
     setRegistrandoPonto(true);
-    // Ponto sempre é de funcionário — extrair apenas o id
-    const id = pessoaSelecionada.includes('-')
-      ? pessoaSelecionada.split('-').slice(1).join('-')
-      : pessoaSelecionada;
-    const tipo = 'funcionario';
+    // Extrair tipo e UUID completo corretamente (UUID tem hífens internos)
+    const dashIdx = pessoaSelecionada.indexOf('-');
+    const tipo = pessoaSelecionada.substring(0, dashIdx) as 'funcionario' | 'profissional';
+    const id = pessoaSelecionada.substring(dashIdx + 1);
     const agora = horaAtual.toTimeString().slice(0, 8); // HH:mm:ss — obrigatório para Date parse correto
     const hoje = format(new Date(), 'yyyy-MM-dd');
 
