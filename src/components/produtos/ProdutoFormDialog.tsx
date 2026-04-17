@@ -78,8 +78,17 @@ export default function ProdutoFormDialog({
 
   // Estado de imagem — gerenciado pelo ImageUploadField
   const [fotoFile, setFotoFile] = useState<File | null>(null);
-  const [fotoUrl, setFotoUrl] = useState<string | null>(null);   // URL externa (fallback CORS)
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [fotoRemoved, setFotoRemoved] = useState(false);
+
+  // Dados fiscais (não fazem parte do zod schema, gerenciados à parte)
+  const [showFiscal, setShowFiscal] = useState(false);
+  const [ncm, setNcm] = useState("00000000");
+  const [cfop, setCfop] = useState("5102");
+  const [cstIcms, setCstIcms] = useState("00");
+  const [csosn, setCsosn] = useState("");
+  const [cest, setCest] = useState("");
+  const [origem, setOrigem] = useState("0");
 
   const form = useForm<ProdutoFormData>({
     resolver: zodResolver(produtoSchema),
@@ -127,6 +136,25 @@ export default function ProdutoFormDialog({
       setFotoFile(null);
       setFotoUrl(null);
       setFotoRemoved(false);
+
+      // Carregar dados fiscais do produto (cast para any pois campos são novos)
+      if (produto) {
+        const p = produto as Record<string, unknown>;
+        setNcm((p.ncm as string) || "00000000");
+        setCfop((p.cfop as string) || "5102");
+        setCstIcms((p.cst_icms as string) || "00");
+        setCsosn((p.csosn as string) || "");
+        setCest((p.cest as string) || "");
+        setOrigem((p.origem as string) || "0");
+      } else {
+        setNcm("00000000");
+        setCfop("5102");
+        setCstIcms("00");
+        setCsosn("");
+        setCest("");
+        setOrigem("0");
+      }
+      setShowFiscal(false);
     }
   }, [produto, form, open]);
 
@@ -171,7 +199,14 @@ export default function ProdutoFormDialog({
         estoque_minimo: data.estoque_minimo,
         ativo: data.ativo,
         foto_url: null as string | null,
-      };
+        // Campos fiscais
+        ncm: ncm || "00000000",
+        cfop: cfop || "5102",
+        cst_icms: cstIcms || "00",
+        csosn: csosn || null,
+        cest: cest || null,
+        origem: origem || "0",
+      } as Record<string, unknown>;
 
       if (isEditing && produto) {
         payload.foto_url = await resolveFotoUrl(produto.id);
@@ -400,6 +435,89 @@ export default function ProdutoFormDialog({
                 </FormItem>
               )}
             />
+
+            {/* ── Dados Fiscais (NF-e) ── */}
+            <div className="rounded-lg border">
+              <button
+                type="button"
+                className="flex items-center justify-between w-full p-4 text-left hover:bg-muted/50 transition-colors"
+                onClick={() => setShowFiscal(!showFiscal)}
+              >
+                <div>
+                  <span className="font-medium text-sm">Dados Fiscais (NF-e)</span>
+                  <p className="text-xs text-muted-foreground">NCM, CFOP, CST/CSOSN, Origem</p>
+                </div>
+                <span className="text-muted-foreground text-xs">{showFiscal ? "▲" : "▼"}</span>
+              </button>
+              {showFiscal && (
+                <div className="px-4 pb-4 grid grid-cols-2 gap-3 border-t pt-3">
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-sm font-medium">NCM</label>
+                    <Input
+                      placeholder="00000000"
+                      maxLength={8}
+                      value={ncm}
+                      onChange={(e) => setNcm(e.target.value.replace(/\D/g, "").substring(0, 8))}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">8 dígitos. Serviços: 00000000</p>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-sm font-medium">CFOP</label>
+                    <Input
+                      placeholder="5102"
+                      maxLength={4}
+                      value={cfop}
+                      onChange={(e) => setCfop(e.target.value.replace(/\D/g, "").substring(0, 4))}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">5102 = venda interna</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">CST ICMS</label>
+                    <Input
+                      placeholder="00"
+                      maxLength={3}
+                      value={cstIcms}
+                      onChange={(e) => setCstIcms(e.target.value.replace(/\D/g, "").substring(0, 3))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">CSOSN</label>
+                    <Input
+                      placeholder="102"
+                      maxLength={4}
+                      value={csosn}
+                      onChange={(e) => setCsosn(e.target.value.replace(/\D/g, "").substring(0, 4))}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Simples Nacional</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">CEST</label>
+                    <Input
+                      placeholder="0000000"
+                      maxLength={7}
+                      value={cest}
+                      onChange={(e) => setCest(e.target.value.replace(/\D/g, "").substring(0, 7))}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Subst. tributária</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Origem</label>
+                    <Select value={origem} onValueChange={setOrigem}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0 - Nacional</SelectItem>
+                        <SelectItem value="1">1 - Estrangeira (import. direta)</SelectItem>
+                        <SelectItem value="2">2 - Estrangeira (mercado interno)</SelectItem>
+                        <SelectItem value="3">3 - Nacional (import. 40-70%)</SelectItem>
+                        <SelectItem value="7">7 - Nacional (import. conforme)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* ── Botões ── */}
             <div className="flex justify-end gap-3 pt-4 border-t">

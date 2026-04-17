@@ -95,6 +95,7 @@ const Agenda = () => {
   const [formInitialDate, setFormInitialDate] = useState<Date | undefined>();
   const [formInitialTime, setFormInitialTime] = useState<string | undefined>();
   const [formInitialProfissionalId, setFormInitialProfissionalId] = useState<string | undefined>();
+  const [isEncaixe, setIsEncaixe] = useState(false);
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
   const [colOrder, setColOrder] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('agenda_col_order') || '[]'); } catch { return []; }
@@ -329,6 +330,7 @@ const Agenda = () => {
     setFormInitialDate(undefined);
     setFormInitialTime(undefined);
     setFormInitialProfissionalId(undefined);
+    setIsEncaixe(false);
     if (refresh) refetch();
   };
 
@@ -658,6 +660,7 @@ const Agenda = () => {
               setFormInitialTime(undefined);
               setFormInitialProfissionalId(undefined);
               setSelectedAgendamento(null);
+              setIsEncaixe(false);
               setIsFormOpen(true);
             }}
           >
@@ -675,6 +678,7 @@ const Agenda = () => {
               setFormInitialTime(undefined);
               setFormInitialProfissionalId(undefined);
               setSelectedAgendamento(null);
+              setIsEncaixe(true);
               setIsFormOpen(true);
             }}
           >
@@ -736,6 +740,7 @@ const Agenda = () => {
               setFormInitialTime(undefined);
               setFormInitialProfissionalId(undefined);
               setSelectedAgendamento(null);
+              setIsEncaixe(false);
               setIsFormOpen(true);
             }}
           >
@@ -814,6 +819,7 @@ const Agenda = () => {
               setFormInitialTime(undefined);
               setFormInitialProfissionalId(undefined);
               setSelectedAgendamento(null);
+              setIsEncaixe(true);
               setIsFormOpen(true);
             }}
           >
@@ -1004,6 +1010,7 @@ const Agenda = () => {
         initialDate={formInitialDate}
         initialTime={formInitialTime}
         initialProfissionalId={formInitialProfissionalId}
+        isEncaixe={isEncaixe}
       />
 
       {/* Dialog de confirmação de exclusão */}

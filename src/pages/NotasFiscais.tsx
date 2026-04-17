@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -22,6 +22,8 @@ import {
   TrendingUp, Hash, DollarSign, Server
 } from "lucide-react";
 import { EmitirNotaFiscalDialog } from "@/components/fiscal/EmitirNotaFiscalDialog";
+import FiscalLogsDialog from "@/components/fiscal/FiscalLogsDialog";
+import { useNotaFiscalService } from "@/hooks/useNotaFiscal";
 
 type NotaFiscal = {
   id: string;
@@ -58,6 +60,7 @@ const STATUS_CONFIG = {
 export default function NotasFiscais() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const nfService = useNotaFiscalService();
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
@@ -66,6 +69,7 @@ export default function NotasFiscais() {
   const [modalCancelarAberto, setModalCancelarAberto] = useState(false);
   const [modalCartaCorrecao, setModalCartaCorrecao] = useState(false);
   const [modalInutilizar, setModalInutilizar] = useState(false);
+  const [modalLogsAberto, setModalLogsAberto] = useState(false);
   const [notaSelecionada, setNotaSelecionada] = useState<NotaFiscal | null>(null);
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
   const [textoCorrecao, setTextoCorrecao] = useState("");
@@ -110,110 +114,9 @@ export default function NotasFiscais() {
     },
   });
 
-  // Mutation para cancelar nota
-  const cancelarMutation = useMutation({
-    mutationFn: async ({ id, motivo }: { id: string; motivo: string }) => {
-      const { error } = await supabase
-        .from("notas_fiscais")
-        .update({
-          status: "cancelada",
-          data_cancelamento: new Date().toISOString(),
-          motivo_rejeicao: motivo,
-        })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Nota fiscal cancelada com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
-      setModalCancelarAberto(false);
-      setNotaSelecionada(null);
-      setMotivoCancelamento("");
-    },
-    onError: (error: Error) => {
-      toast.error("Erro ao cancelar nota: " + error.message);
-    },
-  });
+  // ===== Operações fiscais reais via Edge Function (Focus NFe) =====
 
-  // Mutation para carta de correção
-  const cartaCorrecaoMutation = useMutation({
-    mutationFn: async ({ id, texto }: { id: string; texto: string }) => {
-      const nota = notas?.find(n => n.id === id);
-      const seqAtual = (nota?.seq_carta_correcao || 0) + 1;
-
-      // Registrar evento de carta de correção (tabela nova criada via migration)
-      try {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/notas_fiscais_eventos`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            nota_fiscal_id: id,
-            tipo_evento: '110110',
-            descricao: 'Carta de Correção',
-            sequencial: seqAtual,
-            justificativa: texto,
-            status: 'processado',
-          }),
-        });
-      } catch (_) { /* ignora se a tabela ainda não existe */ }
-
-      // Atualizar nota
-      const { error } = await supabase
-        .from("notas_fiscais")
-        .update({ motivo_rejeicao: `CCe ${seqAtual}: ${texto}` })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Carta de correção registrada com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
-      setModalCartaCorrecao(false);
-      setNotaSelecionada(null);
-      setTextoCorrecao("");
-    },
-    onError: (error: Error) => {
-      toast.error("Erro na carta de correção: " + error.message);
-    },
-  });
-
-  // Mutation para inutilizar numeração
-  const inutilizarMutation = useMutation({
-    mutationFn: async (dados: { modelo: string; serie: number; numIni: number; numFin: number; justificativa: string }) => {
-      // Registrar inutilização (tabela nova, usa fetch direto)
-      try {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/notas_fiscais_inutilizadas`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            modelo: dados.modelo,
-            serie: dados.serie,
-            numero_inicial: dados.numIni,
-            numero_final: dados.numFin,
-            justificativa: dados.justificativa,
-            status: 'processado',
-          }),
-        });
-      } catch (_) { /* ignora se a tabela ainda não existe */ }
-    },
-    onSuccess: () => {
-      toast.success("Numeração inutilizada com sucesso!");
-      setModalInutilizar(false);
-      setInutNumIni("");
-      setInutNumFin("");
-      setInutJustificativa("");
-    },
-    onError: (error: Error) => {
-      toast.error("Erro ao inutilizar: " + error.message);
-    },
-  });
+  // Mutations não são mais necessárias — usamos nfService diretamente
 
   // Filtrar notas por busca
   const notasFiltradas = notas?.filter((nota) => {
@@ -254,48 +157,71 @@ export default function NotasFiscais() {
     }).format(valor);
   };
 
-  const handleCancelar = () => {
+  const handleCancelar = async () => {
     if (!notaSelecionada) return;
     if (motivoCancelamento.length < 15) {
       toast.error("O motivo deve ter pelo menos 15 caracteres");
       return;
     }
     setCancelando(true);
-    cancelarMutation.mutate(
-      { id: notaSelecionada.id, motivo: motivoCancelamento },
-      { onSettled: () => setCancelando(false) }
-    );
+    try {
+      await nfService.cancelar(notaSelecionada.id, motivoCancelamento);
+      queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
+      setModalCancelarAberto(false);
+      setNotaSelecionada(null);
+      setMotivoCancelamento("");
+    } catch { /* toast já tratado no hook */ }
+    setCancelando(false);
   };
 
-  const handleCartaCorrecao = () => {
+  const handleCartaCorrecao = async () => {
     if (!notaSelecionada) return;
     if (textoCorrecao.length < 15) {
       toast.error("O texto de correção deve ter pelo menos 15 caracteres");
       return;
     }
     setEnviandoCorrecao(true);
-    cartaCorrecaoMutation.mutate(
-      { id: notaSelecionada.id, texto: textoCorrecao },
-      { onSettled: () => setEnviandoCorrecao(false) }
-    );
+    try {
+      await nfService.cartaCorrecao(notaSelecionada.id, textoCorrecao);
+      queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
+      setModalCartaCorrecao(false);
+      setNotaSelecionada(null);
+      setTextoCorrecao("");
+    } catch { /* toast já tratado no hook */ }
+    setEnviandoCorrecao(false);
   };
 
-  const handleInutilizar = () => {
+  const handleInutilizar = async () => {
     if (!inutNumIni || !inutNumFin || inutJustificativa.length < 15) {
       toast.error("Preencha todos os campos. Justificativa mínima: 15 caracteres.");
       return;
     }
     setInutilizando(true);
-    inutilizarMutation.mutate(
-      {
+    try {
+      await nfService.inutilizar({
         modelo: inutModelo,
         serie: parseInt(inutSerie),
-        numIni: parseInt(inutNumIni),
-        numFin: parseInt(inutNumFin),
+        numero_inicial: parseInt(inutNumIni),
+        numero_final: parseInt(inutNumFin),
         justificativa: inutJustificativa,
-      },
-      { onSettled: () => setInutilizando(false) }
-    );
+      });
+      setModalInutilizar(false);
+      setInutNumIni("");
+      setInutNumFin("");
+      setInutJustificativa("");
+    } catch { /* toast já tratado no hook */ }
+    setInutilizando(false);
+  };
+
+  const handleBaixarDanfe = (notaId: string) => {
+    nfService.baixarDanfe(notaId);
+  };
+
+  const handleReenviar = async (notaId: string) => {
+    try {
+      await nfService.reenviar(notaId);
+      queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
+    } catch { /* toast já tratado no hook */ }
   };
 
   const podeSerCancelada = (nota: NotaFiscal) => {
@@ -522,13 +448,21 @@ export default function NotasFiscais() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 Ver Detalhes
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setNotaSelecionada(nota); 
+                                setModalLogsAberto(true); 
+                              }}>
+                                <Server className="mr-2 h-4 w-4" />
+                                Ver Logs Fiscais
+                              </DropdownMenuItem>
                               {nota.status === "autorizada" && (
                                 <>
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast.info("Download XML será implementado com integração completa"); }}>
                                     <FileDown className="mr-2 h-4 w-4" />
                                     Baixar XML
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleBaixarDanfe(nota.id); }}>
                                     <Download className="mr-2 h-4 w-4" />
                                     Baixar PDF (DANFE)
                                   </DropdownMenuItem>
@@ -563,7 +497,7 @@ export default function NotasFiscais() {
                                 </>
                               )}
                               {nota.status === "rejeitada" && (
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toast.info("Reenvio será implementado com a integração SEFAZ"); }}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleReenviar(nota.id); }}>
                                   <RefreshCw className="mr-2 h-4 w-4" />
                                   Reenviar Nota
                                 </DropdownMenuItem>
@@ -821,6 +755,16 @@ export default function NotasFiscais() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FiscalLogsDialog
+        open={modalLogsAberto}
+        onClose={() => {
+          setModalLogsAberto(false);
+          setNotaSelecionada(null);
+        }}
+        notaId={notaSelecionada?.id || null}
+        notaNumero={notaSelecionada?.numero}
+      />
     </div>
   );
 }

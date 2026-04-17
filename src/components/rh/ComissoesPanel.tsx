@@ -54,8 +54,11 @@ export function ComissoesPanel() {
   }, []);
 
   useEffect(() => {
-    loadComissoes();
-  }, [mesReferencia, selectedProfissional]);
+    // Aguarda profissionais carregados antes de buscar comissões (evita race condition de nome)
+    if (profissionais.length > 0 || mesReferencia) {
+      loadComissoes();
+    }
+  }, [mesReferencia, selectedProfissional, profissionais]);
 
   const loadProfissionais = async () => {
     const { data } = await supabase
@@ -69,15 +72,14 @@ export function ComissoesPanel() {
   const loadComissoes = async () => {
     setLoading(true);
     try {
-      const inicio = startOfMonth(mesReferencia);
-      const fim = endOfMonth(mesReferencia);
+      // Usa periodo_ref (YYYY-MM) para filtro mensal — mesmo critério da página /comissoes
+      const periodoFiltro = format(mesReferencia, 'yyyy-MM');
 
       const db = supabase as any;
       let query = db
         .from('comissoes_registro')
         .select('*')
-        .gte('created_at', inicio.toISOString())
-        .lte('created_at', fim.toISOString())
+        .eq('periodo_ref', periodoFiltro)
         .order('created_at', { ascending: false });
 
       if (selectedProfissional !== 'all') {

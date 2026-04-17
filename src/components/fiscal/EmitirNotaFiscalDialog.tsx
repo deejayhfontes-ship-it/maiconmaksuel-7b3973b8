@@ -20,6 +20,7 @@ import {
   Send, Printer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNotaFiscalService } from "@/hooks/useNotaFiscal";
 
 interface EmitirNotaFiscalDialogProps {
   open: boolean;
@@ -53,6 +54,7 @@ const STEPS = [
 
 export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: EmitirNotaFiscalDialogProps) {
   const queryClient = useQueryClient();
+  const nfService = useNotaFiscalService();
   const [step, setStep] = useState(1);
   const [tipoNota, setTipoNota] = useState<"nfe" | "nfce">("nfce");
   const [clienteId, setClienteId] = useState<string | null>(null);
@@ -128,7 +130,7 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
     },
   });
 
-  // Mutation para criar nota fiscal
+  // Mutation para criar nota fiscal e emitir via SEFAZ
   const criarNotaMutation = useMutation({
     mutationFn: async (dados: {
       tipo: string;
@@ -148,6 +150,7 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
       valor_iss: number;
       observacoes: string | null;
     }) => {
+      // 1. Salvar rascunho no banco
       const { data: nota, error } = await supabase
         .from("notas_fiscais")
         .insert([dados])
@@ -155,7 +158,7 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
         .single();
       if (error) throw error;
 
-      // Inserir itens
+      // 2. Inserir itens no banco
       if (itens.length > 0) {
         const itensParaInserir = itens.map(item => ({
           nota_fiscal_id: nota.id,
@@ -179,20 +182,62 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
         if (errorItens) throw errorItens;
       }
 
-      return nota;
+      // 3. Chamar Edge Function para emissão real via SEFAZ (Focus NFe)
+      const resp = await nfService.emitir({
+        nota_id: nota.id,
+        tipo: dados.tipo as "nfe" | "nfce",
+        cliente: {
+          nome: dados.cliente_nome || undefined,
+          cpf_cnpj: dados.cliente_cpf_cnpj || undefined,
+          endereco: dados.cliente_endereco || undefined,
+        },
+        itens: itens.map((item, index) => ({
+          numero_item: index + 1,
+          codigo_produto: item.codigo,
+          descricao: item.descricao,
+          ncm: item.ncm || "00000000",
+          cfop: item.cfop,
+          unidade: item.unidade,
+          quantidade: item.quantidade,
+          valor_unitario: item.valor_unitario,
+          valor_total: item.valor_total,
+          icms_origem: "0",
+          icms_situacao_tributaria: configFiscal?.regime_tributario === "1" ? "102" : "00",
+        })),
+        pagamento: {
+          forma: "01", // Dinheiro por padrão
+          valor: dados.valor_total,
+        },
+        valor_total: dados.valor_total,
+        valor_desconto: dados.valor_desconto,
+        observacoes: dados.observacoes || undefined,
+      });
+
+      return { nota, sefazResp: resp };
     },
-    onSuccess: (nota) => {
-      // Simular emissão (em produção, chamaria a API real)
-      setTimeout(() => {
+    onSuccess: ({ nota, sefazResp }) => {
+      if (sefazResp.success && sefazResp.status === "autorizada") {
         setResultadoEmissao({
           sucesso: true,
           numero: nota.numero,
-          chave: "3525 1234 5678 9012 3456 7890 1234 5678 9012 3456 7",
-          protocolo: "135" + Date.now().toString().slice(-12),
+          chave: sefazResp.chave_acesso || "",
+          protocolo: sefazResp.protocolo || "",
         });
-        setEmitindo(false);
-        queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
-      }, 2000);
+      } else if (sefazResp.status === "processando") {
+        setResultadoEmissao({
+          sucesso: true,
+          numero: nota.numero,
+          chave: "Processando...",
+          protocolo: "Aguardando resposta SEFAZ",
+        });
+      } else {
+        setResultadoEmissao({
+          sucesso: false,
+          mensagem: `${sefazResp.codigo || "ERRO"}: ${sefazResp.mensagem || "Nota rejeitada pela SEFAZ"}`,
+        });
+      }
+      setEmitindo(false);
+      queryClient.invalidateQueries({ queryKey: ["notas-fiscais"] });
     },
     onError: (error) => {
       setResultadoEmissao({

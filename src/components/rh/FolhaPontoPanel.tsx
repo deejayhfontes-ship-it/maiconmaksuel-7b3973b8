@@ -194,12 +194,36 @@ export function FolhaPontoPanel() {
   const calcularTotais = () => {
     let totalMinutos = 0;
     let diasTrabalhados = 0;
-    let totalAtrasos = 0;
+    const totalAtrasos = 0;
 
     pontos.forEach(p => {
-      if (p.entrada_manha && p.saida) {
+      // Conta o dia se tiver ao menos a entrada registrada
+      if (p.entrada_manha) {
         diasTrabalhados++;
-        totalMinutos += (p.horas_trabalhadas || 0) * 60;
+
+        // Se tiver saída, calcula horas reais; senão estima até agora (parcial)
+        if (p.saida) {
+          // Prefere horas_trabalhadas salvo no banco (calculado no fechamento)
+          if (p.horas_trabalhadas && p.horas_trabalhadas > 0) {
+            totalMinutos += p.horas_trabalhadas * 60;
+          } else {
+            // Recalcula localmente a partir dos campos de hora
+            const entrada = new Date(`2000-01-01T${p.entrada_manha}`);
+            const saida = new Date(`2000-01-01T${p.saida}`);
+            if (!isNaN(entrada.getTime()) && !isNaN(saida.getTime())) {
+              let mins = (saida.getTime() - entrada.getTime()) / 60000;
+              if (p.saida_almoco && p.entrada_tarde) {
+                const sa = new Date(`2000-01-01T${p.saida_almoco}`);
+                const et = new Date(`2000-01-01T${p.entrada_tarde}`);
+                if (!isNaN(sa.getTime()) && !isNaN(et.getTime())) {
+                  mins -= (et.getTime() - sa.getTime()) / 60000;
+                }
+              }
+              totalMinutos += Math.max(0, mins);
+            }
+          }
+        }
+        // Se não tem saída ainda (dia em aberto), não soma horas — mas conta presença
       }
     });
 
@@ -537,7 +561,11 @@ export function FolhaPontoPanel() {
                       <TableCell className="text-center">{formatTime(p.entrada_tarde)}</TableCell>
                       <TableCell className="text-center">{formatTime(p.saida)}</TableCell>
                       <TableCell className="text-center font-semibold text-primary">
-                        {p.horas_trabalhadas ? `${p.horas_trabalhadas}h` : '--'}
+                        {p.horas_trabalhadas && p.horas_trabalhadas > 0
+                          ? formatHours(p.horas_trabalhadas)
+                          : p.entrada_manha && !p.saida
+                          ? <span className="text-xs text-orange-500 font-medium">Em curso</span>
+                          : '--'}
                       </TableCell>
                     </TableRow>
                   );

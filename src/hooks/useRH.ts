@@ -126,16 +126,30 @@ export function useRH() {
     loadData();
   }, [loadData]);
 
-  // Load commissions for a period
+  // Load commissions for a period — uses periodo_ref for monthly consistency
   const loadComissoes = useCallback(async (startDate: Date, endDate: Date, profissionalId?: string) => {
     try {
       const db = supabase as any;
+      // Caso o intervalo seja um único mês, filtra por periodo_ref (padrão YYYY-MM)
+      // Compatible com o sistema unificado em /comissoes
+      const startMes = format(startOfMonth(startDate), 'yyyy-MM');
+      const endMes = format(startOfMonth(endDate), 'yyyy-MM');
+      const isMesmoMes = startMes === endMes;
+
       let query = db
         .from('comissoes_registro')
         .select('*, profissionais(nome)')
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: false });
+
+      if (isMesmoMes) {
+        // Filtro preciso por periodo_ref quando é um único mês
+        query = query.eq('periodo_ref', startMes);
+      } else {
+        // Para intervalos maiores, usa created_at
+        query = query
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString());
+      }
 
       if (profissionalId) query = query.eq('profissional_id', profissionalId);
 
@@ -156,7 +170,7 @@ export function useRH() {
         percentual_comissao: c.percentual,
         valor_comissao: c.valor_comissao,
         status: c.status,
-        data_referencia: c.created_at ? c.created_at.split('T')[0] : c.periodo_ref,
+        data_referencia: c.periodo_ref || (c.created_at ? c.created_at.split('T')[0] : null),
         data_pagamento: c.data_pagamento,
       })) as Comissao[];
       setComissoes(mapped);

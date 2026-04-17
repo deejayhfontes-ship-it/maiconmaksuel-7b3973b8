@@ -100,6 +100,8 @@ interface AgendamentoFormDialogProps {
   initialDate?: Date;
   initialTime?: string;
   initialProfissionalId?: string;
+  /** Quando true, desabilita validação de conflito (encaixe pode sobrepor horários) */
+  isEncaixe?: boolean;
 }
 
 const horarios = [
@@ -126,6 +128,7 @@ export default function AgendamentoFormDialog({
   initialDate,
   initialTime,
   initialProfissionalId,
+  isEncaixe = false,
 }: AgendamentoFormDialogProps) {
   const { toast } = useToast();
   const isEditing = !!agendamento;
@@ -241,25 +244,38 @@ export default function AgendamentoFormDialog({
   const horariosDisponiveis = useMemo(() => {
     return horarios.map(hora => {
       const [h, m] = hora.split(":").map(Number);
-      
-      // Verificar se está ocupado
+
+      // Encaixe: todos os horários ficam disponíveis
+      if (isEncaixe) {
+        const isOcupado = agendamentosExistentes.some(ag => {
+          if (isEditing && ag.id === agendamento?.id) return false;
+          const agHora = new Date(ag.data_hora);
+          const agStart = agHora.getHours() * 60 + agHora.getMinutes();
+          const agEnd = agStart + ag.duracao_minutos;
+          const slotStart = h * 60 + m;
+          return slotStart >= agStart && slotStart < agEnd;
+        });
+        return { hora, isOcupado: false, isEncaixeOcupado: isOcupado };
+      }
+
+      // Agendamento normal: bloqueia horários ocupados
       const isOcupado = agendamentosExistentes.some(ag => {
         if (isEditing && ag.id === agendamento?.id) return false;
-        
+
         const agHora = new Date(ag.data_hora);
         const agStart = agHora.getHours() * 60 + agHora.getMinutes();
         const agEnd = agStart + ag.duracao_minutos;
         const slotStart = h * 60 + m;
         const slotEnd = slotStart + 30;
-        
-        return (slotStart >= agStart && slotStart < agEnd) || 
+
+        return (slotStart >= agStart && slotStart < agEnd) ||
                (slotEnd > agStart && slotEnd <= agEnd) ||
                (slotStart <= agStart && slotEnd >= agEnd);
       });
 
-      return { hora, isOcupado };
+      return { hora, isOcupado, isEncaixeOcupado: false };
     });
-  }, [agendamentosExistentes, isEditing, agendamento]);
+  }, [agendamentosExistentes, isEditing, agendamento, isEncaixe]);
 
   const handleServicoChange = (servicoId: string) => {
     form.setValue("servico_id", servicoId);
@@ -295,6 +311,9 @@ export default function AgendamentoFormDialog({
   };
 
   const validateConflito = (data: AgendamentoFormData): string | null => {
+    // Encaixe nunca gera conflito — é por definição uma sobreposição permitida
+    if (isEncaixe) return null;
+
     if (!data.data || !data.hora || !data.profissional_id) return null;
 
     const [h, m] = data.hora.split(":").map(Number);
@@ -330,15 +349,17 @@ export default function AgendamentoFormDialog({
       return;
     }
 
-    // Validar horário comercial
-    const [h] = data.hora.split(":").map(Number);
-    if (h < 7 || h > 20) {
-      toast({
-        title: "Horário inválido",
-        description: "O horário deve ser entre 07:00 e 20:00",
-        variant: "destructive",
-      });
-      return;
+    // Validar horário comercial (apenas para agendamentos normais, não encaixe)
+    if (!isEncaixe) {
+      const [h] = data.hora.split(":").map(Number);
+      if (h < 7 || h > 20) {
+        toast({
+          title: "Horário inválido",
+          description: "O horário deve ser entre 07:00 e 20:00",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
@@ -414,7 +435,7 @@ export default function AgendamentoFormDialog({
       <DialogContent className="max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            {isEditing ? "Editar Agendamento" : "Novo Agendamento"}
+            {isEncaixe ? "⚡ Novo Encaixe" : isEditing ? "Editar Agendamento" : "Novo Agendamento"}
           </DialogTitle>
         </DialogHeader>
 
@@ -631,31 +652,51 @@ export default function AgendamentoFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Horário *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+
+                    {isEncaixe ? (
+                      /* Encaixe: campo livre — qualquer horário, sem grade */
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Horário" />
-                        </SelectTrigger>
+                        <div className="relative">
+                          <Input
+                            type="time"
+                            step={60}
+                            className="w-full pl-9"
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-orange-500 pointer-events-none" />
+                        </div>
                       </FormControl>
-                      <SelectContent>
-                        {horariosDisponiveis.map(({ hora, isOcupado }) => (
-                          <SelectItem 
-                            key={hora} 
-                            value={hora}
-                            disabled={isOcupado}
-                            className={isOcupado ? "text-muted-foreground" : ""}
-                          >
-                            <div className="flex items-center gap-2">
-                              {hora}
-                              {isOcupado && (
-                                <span className="text-xs text-destructive">(Ocupado)</span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    ) : (
+                      /* Agendamento normal: grade de slots pré-definidos */
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Horário" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {horariosDisponiveis.map(({ hora, isOcupado }) => (
+                            <SelectItem
+                              key={hora}
+                              value={hora}
+                              disabled={isOcupado}
+                              className={isOcupado ? "text-muted-foreground" : ""}
+                            >
+                              <div className="flex items-center gap-2">
+                                {hora}
+                                {isOcupado && (
+                                  <span className="text-xs text-destructive">(Ocupado)</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+
                     <FormMessage />
+
                   </FormItem>
                 )}
               />
@@ -753,9 +794,9 @@ export default function AgendamentoFormDialog({
               <Button type="button" variant="outline" onClick={() => onClose()}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading} className="bg-success hover:bg-success/90">
+              <Button type="submit" disabled={loading} className={isEncaixe ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-success hover:bg-success/90"}>
                 {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {isEditing ? "Salvar" : "Agendar"}
+                {isEncaixe ? "⚡ Encaixar" : isEditing ? "Salvar" : "Agendar"}
               </Button>
             </div>
           </form>

@@ -14,7 +14,11 @@ import {
   AlertTriangle,
   UserCheck,
   BarChart3,
-  Settings
+  Settings,
+  Percent,
+  ExternalLink,
+  TrendingUp,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { addOnlineStatusListener } from '@/lib/syncService';
@@ -27,7 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FuncionarioFormDialog } from '@/components/rh/FuncionarioFormDialog';
-import { ComissoesPanel } from '@/components/rh/ComissoesPanel';
+// ComissoesPanel removido — sistema unificado em /comissoes
 import { FolhaPontoPanel } from '@/components/rh/FolhaPontoPanel';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -230,22 +234,29 @@ const GestaoRH = () => {
     return { tipo: 'completo', label: 'Completo' };
   };
 
+  // Normaliza "HH:mm" para "HH:mm:ss" para garantir Date parse correto (inclusive em registros antigos)
+  const normHora = (h: string) => (h.length === 5 ? `${h}:00` : h);
+
   const calcularHorasTrabalhadas = (ponto: Partial<PontoRegistro>) => {
     if (!ponto.entrada_manha || !ponto.saida) return 0;
 
-    const entrada = new Date(`2000-01-01T${ponto.entrada_manha}`);
-    const saida = new Date(`2000-01-01T${ponto.saida}`);
+    const entrada = new Date(`2000-01-01T${normHora(ponto.entrada_manha)}`);
+    const saida = new Date(`2000-01-01T${normHora(ponto.saida)}`);
+
+    if (isNaN(entrada.getTime()) || isNaN(saida.getTime())) return 0;
 
     let totalMinutos = (saida.getTime() - entrada.getTime()) / 1000 / 60;
 
     if (ponto.saida_almoco && ponto.entrada_tarde) {
-      const saidaAlmoco = new Date(`2000-01-01T${ponto.saida_almoco}`);
-      const entradaTarde = new Date(`2000-01-01T${ponto.entrada_tarde}`);
-      const minutosAlmoco = (entradaTarde.getTime() - saidaAlmoco.getTime()) / 1000 / 60;
-      totalMinutos -= minutosAlmoco;
+      const saidaAlmoco = new Date(`2000-01-01T${normHora(ponto.saida_almoco)}`);
+      const entradaTarde = new Date(`2000-01-01T${normHora(ponto.entrada_tarde)}`);
+      if (!isNaN(saidaAlmoco.getTime()) && !isNaN(entradaTarde.getTime())) {
+        const minutosAlmoco = (entradaTarde.getTime() - saidaAlmoco.getTime()) / 1000 / 60;
+        totalMinutos -= minutosAlmoco;
+      }
     }
 
-    return Number((totalMinutos / 60).toFixed(2));
+    return Number((Math.max(0, totalMinutos) / 60).toFixed(2));
   };
 
   const baterPonto = async () => {
@@ -266,7 +277,7 @@ const GestaoRH = () => {
       ? pessoaSelecionada.split('-').slice(1).join('-')
       : pessoaSelecionada;
     const tipo = 'funcionario';
-    const agora = horaAtual.toTimeString().slice(0, 5);
+    const agora = horaAtual.toTimeString().slice(0, 8); // HH:mm:ss — obrigatório para Date parse correto
     const hoje = format(new Date(), 'yyyy-MM-dd');
 
     try {
@@ -925,9 +936,45 @@ const GestaoRH = () => {
           </Card>
         </TabsContent>
 
-        {/* Tab: Comissões */}
+        {/* Tab: Comissões — redireciona para página unificada */}
         <TabsContent value="comissoes" className="mt-6">
-          <ComissoesPanel />
+          <div className="flex flex-col items-center justify-center gap-6 py-12">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
+              <Percent className="h-10 w-10 text-primary" />
+            </div>
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">Sistema de Comissões Unificado</h2>
+              <p className="mt-2 max-w-md text-muted-foreground">
+                Para evitar inconsistências, a gestão de comissões foi centralizada em uma única
+                página com todos os filtros, extratos por profissional, histórico de pagamentos e
+                exportação.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
+              <div className="rounded-xl border p-4 text-center">
+                <TrendingUp className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                <p className="font-semibold text-sm">Resumo por profissional</p>
+                <p className="text-xs text-muted-foreground mt-1">Bruto, vales e líquido</p>
+              </div>
+              <div className="rounded-xl border p-4 text-center">
+                <DollarSign className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                <p className="font-semibold text-sm">Extrato detalhado</p>
+                <p className="text-xs text-muted-foreground mt-1">Serviço a serviço</p>
+              </div>
+              <div className="rounded-xl border p-4 text-center">
+                <UserCheck className="h-6 w-6 mx-auto mb-2 text-purple-500" />
+                <p className="font-semibold text-sm">Histórico de pagamentos</p>
+                <p className="text-xs text-muted-foreground mt-1">Registro completo</p>
+              </div>
+            </div>
+            <Link to="/comissoes">
+              <Button size="lg" className="gap-2">
+                <ExternalLink className="h-5 w-5" />
+                Abrir Gestão de Comissões
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </TabsContent>
 
         {/* Tab: Folha de Ponto */}
