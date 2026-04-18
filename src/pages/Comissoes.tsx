@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
@@ -166,6 +167,25 @@ export default function Comissoes() {
   const [showPagarDialog, setShowPagarDialog] = useState(false);
   const [obsPagamento, setObsPagamento] = useState("");
   const [pagando, setPagando] = useState(false);
+
+  // Seleção parcial
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (pendentes: ComissaoRegistro[]) => {
+    if (selectedIds.size === pendentes.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pendentes.map(c => c.id)));
+    }
+  };
 
   // Range de datas
   const dateRange = useMemo(() => {
@@ -372,14 +392,19 @@ export default function Comissoes() {
     const r = profissionalSelecionado;
     try {
       // 1. Marcar comissões como pagas
-      const pendentesIds = r.comissoes
-        .filter((c) => c.status === "pendente")
-        .map((c) => c.id);
+      const todasPendentes = r.comissoes.filter((c) => c.status === "pendente");
+      const pendentesIds = selectedIds.size > 0
+        ? todasPendentes.filter(c => selectedIds.has(c.id)).map(c => c.id)
+        : todasPendentes.map(c => c.id);
 
       if (pendentesIds.length === 0) {
-        toast({ title: "Nenhuma comissão pendente", variant: "destructive" });
+        toast({ title: "Nenhuma comissão selecionada", variant: "destructive" });
         return;
       }
+
+      const valorPago = todasPendentes
+        .filter(c => pendentesIds.includes(c.id))
+        .reduce((s, c) => s + Number(c.valor_comissao), 0);
 
       const { error } = await (supabase as any)
         .from("comissoes_registro")
@@ -396,7 +421,7 @@ export default function Comissoes() {
         periodo_fim: dateRange.to.toISOString(),
         valor_bruto: r.total_bruto,
         valor_descontos: r.total_vales,
-        valor_liquido: r.total_pendente_liquido,
+        valor_liquido: valorPago,
         qtd_itens: pendentesIds.length,
         observacao: obsPagamento || null,
         usuario_nome: localStorage.getItem("usuario_nome") || "Admin",
@@ -404,8 +429,9 @@ export default function Comissoes() {
 
       toast({
         title: `✅ Pagamento registrado!`,
-        description: `${r.profissional.nome} — ${fmt(r.total_pendente_liquido)}`,
+        description: `${r.profissional.nome} — ${fmt(valorPago)}`,
       });
+      setSelectedIds(new Set());
 
       setShowPagarDialog(false);
       setObsPagamento("");
@@ -458,6 +484,13 @@ export default function Comissoes() {
     const r = profissionalSelecionado;
     const pendentes = r.comissoes.filter((c) => c.status === "pendente");
     const pagas = r.comissoes.filter((c) => c.status === "pago");
+    const totalSelecionado = pendentes
+      .filter(c => selectedIds.has(c.id))
+      .reduce((s, c) => s + Number(c.valor_comissao), 0);
+    const valorBotao = selectedIds.size > 0 ? totalSelecionado : r.total_pendente_liquido;
+    const labelBotao = selectedIds.size > 0
+      ? `Pagar Selecionados ${fmt(totalSelecionado)}`
+      : `Pagar ${fmt(r.total_pendente_liquido)}`;
 
     return (
       <div className="space-y-6">
@@ -488,7 +521,7 @@ export default function Comissoes() {
               onClick={() => setShowPagarDialog(true)}
             >
               <Banknote className="h-4 w-4 mr-1" />
-              Pagar {fmt(r.total_pendente_liquido)}
+              {labelBotao}
             </Button>
           )}
         </div>
@@ -557,6 +590,14 @@ export default function Comissoes() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8">
+                      {pendentes.length > 0 && (
+                        <Checkbox
+                          checked={selectedIds.size === pendentes.length && pendentes.length > 0}
+                          onCheckedChange={() => toggleSelectAll(pendentes)}
+                        />
+                      )}
+                    </TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Comanda</TableHead>
                     <TableHead>Cliente</TableHead>
@@ -570,13 +611,24 @@ export default function Comissoes() {
                 <TableBody>
                   {r.comissoes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                         Nenhuma comissão no período
                       </TableCell>
                     </TableRow>
                   ) : (
                     r.comissoes.map((c) => (
-                      <TableRow key={c.id}>
+                      <TableRow
+                        key={c.id}
+                        className={c.status === "pendente" && selectedIds.has(c.id) ? "bg-green-50 dark:bg-green-950/20" : ""}
+                      >
+                        <TableCell>
+                          {c.status === "pendente" && (
+                            <Checkbox
+                              checked={selectedIds.has(c.id)}
+                              onCheckedChange={() => toggleSelected(c.id)}
+                            />
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm whitespace-nowrap">
                           {format(parseISO(c.data_atendimento || c.created_at), "dd/MM/yy HH:mm")}
                         </TableCell>
@@ -644,10 +696,16 @@ export default function Comissoes() {
                     <span>- {fmt(r.total_vales)}</span>
                   </div>
                 )}
+                {selectedIds.size > 0 && (
+                  <div className="flex justify-between text-amber-700">
+                    <span>Itens selecionados:</span>
+                    <span>{selectedIds.size} de {pendentes.length}</span>
+                  </div>
+                )}
                 <div className="h-px bg-border" />
                 <div className="flex justify-between text-base">
-                  <span className="font-bold">Líquido a Pagar:</span>
-                  <span className="font-bold text-green-600">{fmt(r.total_pendente_liquido)}</span>
+                  <span className="font-bold">{selectedIds.size > 0 ? "Pagamento Parcial:" : "Líquido a Pagar:"}</span>
+                  <span className="font-bold text-green-600">{fmt(valorBotao)}</span>
                 </div>
               </div>
               <div className="space-y-1">
