@@ -484,6 +484,7 @@ export default function Comissoes() {
     const r = profissionalSelecionado;
     const pendentes = r.comissoes.filter((c) => c.status === "pendente");
     const pagas = r.comissoes.filter((c) => c.status === "pago");
+    const comissoesOrdenadas = [...pendentes, ...pagas];
     const totalSelecionado = pendentes
       .filter(c => selectedIds.has(c.id))
       .reduce((s, c) => s + Number(c.valor_comissao), 0);
@@ -609,14 +610,14 @@ export default function Comissoes() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {r.comissoes.length === 0 ? (
+                  {comissoesOrdenadas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                         Nenhuma comissão no período
                       </TableCell>
                     </TableRow>
                   ) : (
-                    r.comissoes.map((c) => (
+                    comissoesOrdenadas.map((c) => (
                       <TableRow
                         key={c.id}
                         className={c.status === "pendente" && selectedIds.has(c.id) ? "bg-green-50 dark:bg-green-950/20" : ""}
