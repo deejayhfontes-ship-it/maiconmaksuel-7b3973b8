@@ -421,9 +421,8 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
               if (!profMap.has(s.profissional_id)) profMap.set(s.profissional_id, []);
               profMap.get(s.profissional_id)!.push(s);
             }
-            let totalGeradas = 0;
             for (const [profId, itens] of profMap.entries()) {
-              const resultado = await gerarComissoesDaComanda({
+              await gerarComissoesDaComanda({
                 comandaId: atendimento.id,
                 profissionalId: profId,
                 itens: itens.map((i: any) => ({
@@ -434,10 +433,6 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
                 })),
                 periodoRef,
               });
-              totalGeradas += resultado?.geradas ?? 0;
-            }
-            if (profMap.size > 0 && totalGeradas === 0) {
-              toast.warning("Comissões não geradas. Verifique o cadastro dos profissionais e o valor dos serviços.");
             }
           }
         }
