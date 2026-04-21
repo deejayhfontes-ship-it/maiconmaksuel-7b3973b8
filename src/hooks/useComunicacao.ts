@@ -101,9 +101,8 @@ export function useComunicacao() {
   const [avaliacoes, setAvaliacoes] = useState<ComunicacaoAvaliacao[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -203,11 +202,21 @@ export function useComunicacao() {
   };
 
   const fetchTemplatesProntos = async () => {
-    const { data } = await supabase
-      .from("comunicacao_templates_prontos")
-      .select("*")
-      .order("nome");
-    if (data) setTemplatesProntos(data);
+    try {
+      const { data, error } = await supabase
+        .from("comunicacao_templates_prontos")
+        .select("id, nome, tipo, mensagem, variaveis, ativo")
+        .order("nome");
+      if (error) {
+        console.warn("[useComunicacao] templates_prontos indisponível:", error.message);
+        setTemplatesProntos([]);
+        return;
+      }
+      if (data) setTemplatesProntos(data.map(d => ({ ...d, estilo: (d as Record<string, unknown>).estilo as string ?? 'padrao' })));
+    } catch (e) {
+      console.warn("[useComunicacao] Erro ao buscar templates:", e);
+      setTemplatesProntos([]);
+    }
   };
 
   const fetchConfigAvancadas = async () => {
