@@ -97,12 +97,20 @@ serve(async (req) => {
     let response;
 
     if (isZApi) {
-      // Z-API endpoint format
-      response = await fetch(`${apiUrl}/send-text`, {
+      // Z-API: URL deve ser montada com instance_id + api_token
+      const instanceId = config.instance_id || config.numero_whatsapp;
+      const zapiToken = config.api_token;
+      const clientToken = config.client_token || config.api_token || "";
+      const zapiUrl = instanceId && zapiToken
+        ? `https://api.z-api.io/instances/${instanceId}/token/${zapiToken}/send-text`
+        : `${apiUrl}/send-text`;
+
+      console.log(`[WHATSAPP-SEND] Z-API URL: ${zapiUrl}`);
+      response = await fetch(zapiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Client-Token": config.api_token || "",
+          "Client-Token": clientToken,
         },
         body: JSON.stringify({
           phone: formattedPhone,
