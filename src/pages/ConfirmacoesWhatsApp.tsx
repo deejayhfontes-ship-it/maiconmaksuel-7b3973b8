@@ -144,21 +144,25 @@ export default function ConfirmacoesWhatsApp() {
             profissional:profissionais(nome)
           )
         `)
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString())
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      const confirmacoesMapped = (data || []).map((c: any) => ({
-        ...c,
-        agendamento: {
-          ...c.agendamento,
-          cliente: c.agendamento?.cliente || { id: "", nome: "Cliente", celular: "", receber_mensagens: true },
-          servico: c.agendamento?.servico || { nome: "Serviço" },
-          profissional: c.agendamento?.profissional || { nome: "Profissional" },
-        },
-      }));
+      const confirmacoesMapped = (data || [])
+        .map((c: any) => ({
+          ...c,
+          agendamento: {
+            ...c.agendamento,
+            cliente: c.agendamento?.cliente || { id: "", nome: "Cliente", celular: "", receber_mensagens: true },
+            servico: c.agendamento?.servico || { nome: "Serviço" },
+            profissional: c.agendamento?.profissional || { nome: "Profissional" },
+          },
+        }))
+        .filter((c: any) => {
+          if (!c.agendamento?.data_hora) return false;
+          const dataHora = new Date(c.agendamento.data_hora);
+          return dataHora >= startDate && dataHora <= endDate;
+        });
 
       setConfirmacoes(confirmacoesMapped);
 
