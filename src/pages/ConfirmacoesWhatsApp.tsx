@@ -273,9 +273,71 @@ export default function ConfirmacoesWhatsApp() {
   };
 
   const handleReenviar = async (confirmacao: ConfirmacaoCompleta) => {
+    if (!confirmacao.agendamento.cliente.celular) {
+      toast.error('Cliente sem número de telefone');
+      return;
+    }
+    
     toast.info("Reenviando mensagem...");
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    toast.success("Mensagem reenviada com sucesso!");
+    setProcessing(true);
+    
+    try {
+      const dataHora = new Date(confirmacao.agendamento.data_hora);
+      const data = dataHora.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+      const hora = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+      
+      const mensagem = `Olá ${confirmacao.agendamento.cliente.nome}! 👋\n\nSeu agendamento está confirmado:\n\n📅 *${data}* às *${hora}*\n✂️ ${confirmacao.agendamento.servico.nome}\n\nResponda *SIM* para confirmar ou *NÃO* para cancelar.\n\nMaicon Maksuel Concept 💜`;
+      
+      const { data: sendData, error } = await supabase.functions.invoke("whatsapp-send", {
+        body: {
+          telefone: confirmacao.agendamento.cliente.celular,
+          mensagem: mensagem,
+          cliente_nome: confirmacao.agendamento.cliente.nome,
+          agendamento_id: confirmacao.agendamento_id,
+          tipo_mensagem: 'reenvio'
+        }
+      });
+      
+      if (error) throw error;
+      if (sendData?.success === false) throw new Error(sendData?.error || 'Falha na Z-API');
+      
+      toast.success("Mensagem reenviada com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao reenviar:", error);
+      toast.error(`Erro ao reenviar: ${error.message}`);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleMandarMensagemLivre = async (confirmacao: ConfirmacaoCompleta) => {
+    if (!confirmacao.agendamento.cliente.celular) {
+      toast.error('Cliente sem número de telefone');
+      return;
+    }
+    const msg = window.prompt(`Digite a mensagem para ${confirmacao.agendamento.cliente.nome}:`);
+    if (!msg) return;
+
+    toast.info("Enviando mensagem...");
+    try {
+      const { data: sendData, error } = await supabase.functions.invoke("whatsapp-send", {
+        body: {
+          telefone: confirmacao.agendamento.cliente.celular,
+          mensagem: msg,
+          cliente_nome: confirmacao.agendamento.cliente.nome,
+          agendamento_id: confirmacao.agendamento_id,
+          tipo_mensagem: 'manual'
+        }
+      });
+      
+      if (error) throw error;
+      if (sendData?.success === false) throw new Error(sendData?.error || 'Falha na Z-API');
+      
+      toast.success("Mensagem enviada com sucesso!");
+    } catch (error: any) {
+      console.error("Erro ao enviar:", error);
+      toast.error(`Erro ao enviar: ${error.message}`);
+    }
   };
 
   const handleLigar = (telefone: string) => {
@@ -528,7 +590,7 @@ export default function ConfirmacoesWhatsApp() {
                             <DropdownMenuSeparator />
                           </>
                         )}
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleMandarMensagemLivre(confirmacao)}>
                           <Send className="h-4 w-4 mr-2" />
                           Enviar Mensagem
                         </DropdownMenuItem>

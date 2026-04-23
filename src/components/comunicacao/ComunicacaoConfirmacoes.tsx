@@ -125,10 +125,34 @@ Responda *SIM* para confirmar ou *NÃO* para cancelar.
   const handleTestMessage = async () => {
     setTestando(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      toast.success('Mensagem de teste enviada!');
-    } catch (error) {
-      toast.error('Erro ao enviar mensagem de teste');
+      const { data: configAuth } = await supabase
+        .from("configuracoes_whatsapp")
+        .select("numero_whatsapp")
+        .single();
+        
+      if (!configAuth?.numero_whatsapp) {
+        toast.error("Configure o número do salão na aba Configurações primeiro");
+        return;
+      }
+      
+      const numeroSalao = configAuth.numero_whatsapp.replace(/\D/g, "");
+      const mensagemPrevia = getPreviewMessage();
+      
+      const { data, error } = await supabase.functions.invoke("whatsapp-send", {
+        body: {
+          telefone: numeroSalao,
+          mensagem: `[TESTE DE CONFIRMAÇÃO]\n\n${mensagemPrevia}`,
+          tipo_mensagem: 'manual'
+        }
+      });
+      
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data?.error || "Erro na Z-API");
+      
+      toast.success('Mensagem de teste enviada para o número do salão!');
+    } catch (error: any) {
+      console.error(error);
+      toast.error('Erro ao enviar mensagem: ' + error.message);
     } finally {
       setTestando(false);
     }

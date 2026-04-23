@@ -157,7 +157,7 @@ export function ComunicacaoLembretes({
                     <span className="text-muted-foreground/60">└─</span>
                     <span className="shrink-0">Template: </span>
                     <span className="text-foreground truncate max-w-md">
-                      "{lembrete.template_mensagem.substring(0, 50)}..."
+                      "{(lembrete.template_mensagem || "").substring(0, 50)}..."
                     </span>
                   </div>
                 </div>
