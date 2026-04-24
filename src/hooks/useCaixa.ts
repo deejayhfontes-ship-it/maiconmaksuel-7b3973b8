@@ -101,6 +101,9 @@ export function useCaixa(): UseCaixaReturn {
   const [syncing, setSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+
+  // 🔒 Lock anti-duplo-clique: guarda atendimento_ids sendo processados
+  const emProcessamento = useState<Set<string>>(() => new Set())[0];
   
   const { toast } = useToast();
 
@@ -410,7 +413,6 @@ export function useCaixa(): UseCaixaReturn {
     }
   }, [caixaAberto, totais, isOnline, toast]);
 
-  // Registrar Movimentação
   const registrarMovimentacao = useCallback(async (
     tipo: CaixaMovimentacao['tipo'],
     data: Omit<CaixaMovimentacao, 'id' | 'caixa_id' | 'tipo' | 'data_hora'>
@@ -419,26 +421,55 @@ export function useCaixa(): UseCaixaReturn {
       toast({ title: 'Nenhum caixa aberto', variant: 'destructive' });
       return false;
     }
-    
-    const novaMovimentacao: CaixaMovimentacao = {
-      id: crypto.randomUUID(),
-      caixa_id: caixaAberto.id,
-      tipo,
-      ...data,
-      data_hora: new Date().toISOString(),
-    };
-    
+
+    // 🔒 Proteção anti-duplo-clique: se já estiver processando este atendimento, ignora
+    const lockKey = data.atendimento_id ?? `${tipo}_${data.descricao}`;
+    if (emProcessamento.has(lockKey)) {
+      console.warn('[useCaixa] Requisição duplicada bloqueada para:', lockKey);
+      return false;
+    }
+    emProcessamento.add(lockKey);
+
     try {
+      // 🔒 Proteção extra no banco: verifica se já existe entrada para este atendimento
+      // nos últimos 30 segundos (evita duplicidade mesmo se o lock falhar por reload)
+      if (data.atendimento_id && tipo === 'entrada' && isOnline) {
+        const trintaSegundosAtras = new Date(Date.now() - 30_000).toISOString();
+        const { data: existente } = await supabase
+          .from('caixa_movimentacoes')
+          .select('id')
+          .eq('atendimento_id', data.atendimento_id)
+          .eq('tipo', 'entrada')
+          .eq('caixa_id', caixaAberto.id)
+          .gte('data_hora', trintaSegundosAtras)
+          .limit(1)
+          .maybeSingle();
+
+        if (existente) {
+          console.warn('[useCaixa] Movimentação duplicada detectada no banco — bloqueada:', data.atendimento_id);
+          emProcessamento.delete(lockKey);
+          return false;
+        }
+      }
+
+      const novaMovimentacao: CaixaMovimentacao = {
+        id: crypto.randomUUID(),
+        caixa_id: caixaAberto.id,
+        tipo,
+        ...data,
+        data_hora: new Date().toISOString(),
+      };
+
       await localPut('caixa_movimentacoes', novaMovimentacao, false);
       setMovimentacoes(prev => [novaMovimentacao, ...prev]);
-      
+
       await addToSyncQueue({
         entity: 'caixa_movimentacoes',
         operation: 'create',
         data: novaMovimentacao as unknown as Record<string, unknown>,
         timestamp: new Date().toISOString(),
       });
-      
+
       if (isOnline) {
         await supabase.from('caixa_movimentacoes').insert([{
           id: novaMovimentacao.id,
@@ -451,14 +482,17 @@ export function useCaixa(): UseCaixaReturn {
           atendimento_id: novaMovimentacao.atendimento_id,
         }]);
       }
-      
+
       return true;
     } catch (error) {
       console.error('Error registering movimentacao:', error);
       toast({ title: 'Erro ao registrar movimentação', variant: 'destructive' });
       return false;
+    } finally {
+      // 🔒 Sempre libera o lock, mesmo em caso de erro
+      emProcessamento.delete(lockKey);
     }
-  }, [caixaAberto, isOnline, toast]);
+  }, [caixaAberto, emProcessamento, isOnline, toast]);
 
   const registrarEntrada = useCallback(async (
     data: Omit<CaixaMovimentacao, 'id' | 'caixa_id' | 'tipo' | 'data_hora'>
