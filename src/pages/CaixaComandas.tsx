@@ -384,6 +384,14 @@ export default function CaixaComandas() {
         profissionaisMap.get(s.profissional_id)!.push(s);
       }
 
+      // Calcular fator de desconto proporcional para aplicar sobre cada serviço
+      // Ex: subtotal R$100, total final R$90 → fator = 0.9 → cada serviço paga comissão sobre 90% do valor
+      const subtotalBruto = selectedComanda.servicos.reduce(
+        (acc: number, s: any) => acc + Number(s.subtotal ?? 0),
+        0
+      );
+      const fatorDesconto = subtotalBruto > 0 ? total / subtotalBruto : 1;
+
       let totalComissoesGeradas = 0;
       for (const [profId, servicos] of profissionaisMap.entries()) {
         const resultado = await gerarComissoesDaComanda({
@@ -392,7 +400,8 @@ export default function CaixaComandas() {
           itens: servicos.map((s) => ({
             servico_id: s.servico_id ?? null,
             nome_servico: s.servico?.nome ?? undefined,
-            valor: Number(s.subtotal ?? s.valor_unitario ?? 0),
+            // Aplica desconto proporcional: comissão sobre valor real pago, não bruto
+            valor: Number(((s.subtotal ?? s.valor_unitario ?? 0) * fatorDesconto).toFixed(2)),
             gera_comissao: s.gera_comissao !== false,
           })),
           periodoRef,

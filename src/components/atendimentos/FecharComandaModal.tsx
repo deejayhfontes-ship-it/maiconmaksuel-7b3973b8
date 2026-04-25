@@ -415,6 +415,14 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
             .eq("atendimento_id", atendimento.id);
 
           if (servicos && servicos.length > 0) {
+            // Calcular fator de desconto proporcional baseado no valor_final do atendimento
+            // Ex: serviços somam R$100, valor_final = R$90 → fator = 0.9
+            const subtotalBruto = servicos.reduce(
+              (acc: number, s: any) => acc + Number(s.subtotal ?? (Number(s.preco_unitario ?? 0) * Number(s.quantidade ?? 1))),
+              0
+            );
+            const fatorDesconto = subtotalBruto > 0 ? atendimento.valor_final / subtotalBruto : 1;
+
             const profMap = new Map<string, typeof servicos>();
             for (const s of servicos) {
               if (!s.profissional_id) continue;
@@ -428,7 +436,8 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
                 itens: itens.map((i: any) => ({
                   servico_id: i.servico_id ?? null,
                   nome_servico: i.servicos?.nome ?? undefined,
-                  valor: Number((i as any).subtotal ?? (Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1))),
+                  // Aplica desconto proporcional: comissão sobre valor real pago, não bruto
+                  valor: Number(((i.subtotal ?? (Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1))) * fatorDesconto).toFixed(2)),
                   gera_comissao: true,
                 })),
                 periodoRef,
