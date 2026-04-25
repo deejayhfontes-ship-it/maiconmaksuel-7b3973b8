@@ -83,6 +83,7 @@ interface ComissaoRegistro {
   valor_servico: number;
   percentual: number;
   valor_comissao: number;
+  desconto_aplicado?: number;
   status: string;
   data_pagamento: string | null;
   periodo_ref: string | null;
@@ -452,6 +453,7 @@ export default function Comissoes() {
         Cliente: c.cliente_nome || "—",
         Serviço: c.servico_nome || "—",
         "Valor Serviço": c.valor_servico,
+        "Desc. Cliente": c.desconto_aplicado ?? 0,
         "%": c.percentual,
         "Comissão": c.valor_comissao,
         Status: c.status,
@@ -604,6 +606,7 @@ export default function Comissoes() {
                     <TableHead>Cliente</TableHead>
                     <TableHead>Serviço</TableHead>
                     <TableHead className="text-right">Val. Serviço</TableHead>
+                    <TableHead className="text-right text-destructive">Desc. Cliente</TableHead>
                     <TableHead className="text-center">%</TableHead>
                     <TableHead className="text-right">Comissão</TableHead>
                     <TableHead className="text-center">Status</TableHead>
@@ -612,7 +615,7 @@ export default function Comissoes() {
                 <TableBody>
                   {comissoesOrdenadas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
+                      <TableCell colSpan={10} className="text-center text-muted-foreground py-10">
                         Nenhuma comissão no período
                       </TableCell>
                     </TableRow>
@@ -644,6 +647,9 @@ export default function Comissoes() {
                           {c.servico_nome || "—"}
                         </TableCell>
                         <TableCell className="text-right text-sm">{fmt(Number(c.valor_servico))}</TableCell>
+                        <TableCell className="text-right text-sm text-destructive">
+                          {Number(c.desconto_aplicado ?? 0) > 0 ? `- ${fmt(Number(c.desconto_aplicado))}` : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
                         <TableCell className="text-center text-sm font-medium">{c.percentual}%</TableCell>
                         <TableCell className="text-right text-sm font-bold text-green-600">
                           {fmt(Number(c.valor_comissao))}

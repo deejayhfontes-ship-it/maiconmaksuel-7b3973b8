@@ -384,26 +384,28 @@ export default function CaixaComandas() {
         profissionaisMap.get(s.profissional_id)!.push(s);
       }
 
-      // Calcular fator de desconto proporcional para aplicar sobre cada serviço
-      // Ex: subtotal R$100, total final R$90 → fator = 0.9 → cada serviço paga comissão sobre 90% do valor
-      const subtotalBruto = selectedComanda.servicos.reduce(
-        (acc: number, s: any) => acc + Number(s.subtotal ?? 0),
-        0
-      );
-      const fatorDesconto = subtotalBruto > 0 ? total / subtotalBruto : 1;
+      // Calcular fator de desconto proporcional sobre o total da comanda (serviços + produtos)
+      // Usando selectedComanda.subtotal no denominador para que produtos não distorçam o fator
+      // Ex: serviços R$100 + produtos R$50 = subtotal R$150, desconto R$30 → total R$120
+      //     fator = 120/150 = 0.8 → cada serviço paga comissão sobre 80% do valor (correto)
+      const fatorDesconto = selectedComanda.subtotal > 0 ? total / selectedComanda.subtotal : 1;
 
       let totalComissoesGeradas = 0;
       for (const [profId, servicos] of profissionaisMap.entries()) {
         const resultado = await gerarComissoesDaComanda({
           comandaId: selectedComanda.id,
           profissionalId: profId,
-          itens: servicos.map((s) => ({
-            servico_id: s.servico_id ?? null,
-            nome_servico: s.servico?.nome ?? undefined,
-            // Aplica desconto proporcional: comissão sobre valor real pago, não bruto
-            valor: Number(((s.subtotal ?? s.valor_unitario ?? 0) * fatorDesconto).toFixed(2)),
-            gera_comissao: s.gera_comissao !== false,
-          })),
+          itens: servicos.map((s) => {
+            const valorOriginal = Number(s.subtotal ?? s.valor_unitario ?? 0);
+            const valorComDesconto = Number((valorOriginal * fatorDesconto).toFixed(2));
+            return {
+              servico_id: s.servico_id ?? null,
+              nome_servico: s.servico?.nome ?? undefined,
+              valor: valorComDesconto,
+              gera_comissao: s.gera_comissao !== false,
+              desconto_aplicado: Number((valorOriginal - valorComDesconto).toFixed(2)),
+            };
+          }),
           periodoRef,
         });
         totalComissoesGeradas += resultado?.geradas ?? 0;

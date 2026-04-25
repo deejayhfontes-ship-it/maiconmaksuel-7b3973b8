@@ -26,6 +26,7 @@ export function useGerarComissao() {
         nome_servico?: string;
         valor: number;
         gera_comissao?: boolean;
+        desconto_aplicado?: number;
       }>;
       periodoRef?: string;
       /** @deprecated — não tem mais efeito; dedup agora é sempre por profissional+comanda */
@@ -55,6 +56,7 @@ export function useGerarComissao() {
           valor_servico: number;
           percentual: number;
           valor_comissao: number;
+          desconto_aplicado: number;
           status: string;
           periodo_ref: string | null;
           servico_nome: string | null;
@@ -113,9 +115,10 @@ export function useGerarComissao() {
             valor_servico: item.valor,
             percentual,
             valor_comissao: Number(valorComissao.toFixed(2)),
+            desconto_aplicado: Number((item.desconto_aplicado ?? 0).toFixed(2)),
             status: "pendente",
             periodo_ref:
-              periodoRef ?? new Date().toISOString().slice(0, 7), // "YYYY-MM"
+              periodoRef ?? new Date().toISOString().slice(0, 7),
             servico_nome: item.nome_servico ?? null,
           });
         }
