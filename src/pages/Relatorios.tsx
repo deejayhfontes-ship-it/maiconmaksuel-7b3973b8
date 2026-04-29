@@ -226,6 +226,7 @@ const Relatorios = () => {
   const [dividas, setDividas] = useState<any[]>([]);
   const [diasAusencia, setDiasAusencia] = useState(30);
   const [comissoesRegistro, setComissoesRegistro] = useState<any[]>([]);
+  const [historicoFiltroTipo, setHistoricoFiltroTipo] = useState<'todos' | 'servicos' | 'produtos'>('todos');
 
   const fetchData = async () => {
     setLoading(true);
@@ -1635,43 +1636,96 @@ const Relatorios = () => {
           return { at, servs, prods, formasPgto };
         });
 
+        // Filtrar por tipo selecionado
+        const historicoFiltrado = historicoPorComanda.filter(({ servs, prods }) => {
+          if (historicoFiltroTipo === 'servicos') return servs.length > 0;
+          if (historicoFiltroTipo === 'produtos') return prods.length > 0;
+          return true;
+        });
+
+        // Totais separados
+        const totalServicos = atendimentoServicos.reduce((s, item) => s + (item.subtotal || 0), 0);
+        const totalProdutos = atendimentoProdutos.reduce((s, item) => s + (item.subtotal || 0), 0);
+        const totalGeral = atendimentosFechados.reduce((s, a) => s + (a.valor_final || 0), 0);
+
         return (
           <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-4">
+            {/* Cards de resumo com separação */}
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
               <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Comandas Fechadas</p><p className="text-2xl font-bold">{atendimentosFechados.length}</p></div><DollarSign className="h-8 w-8 text-blue-500" /></div></CardContent></Card>
-              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Faturamento Total</p><p className="text-2xl font-bold">{formatCurrency(atendimentosFechados.reduce((s,a) => s + (a.valor_final||0), 0))}</p></div><DollarSign className="h-8 w-8 text-green-500" /></div></CardContent></Card>
-              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Ticket Médio</p><p className="text-2xl font-bold">{formatCurrency(atendimentosFechados.length > 0 ? atendimentosFechados.reduce((s,a)=>s+(a.valor_final||0),0)/atendimentosFechados.length : 0)}</p></div><TrendingUp className="h-8 w-8 text-purple-500" /></div></CardContent></Card>
-              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Serviços Realizados</p><p className="text-2xl font-bold">{atendimentoServicos.length}</p></div><Activity className="h-8 w-8 text-amber-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Faturamento Total</p><p className="text-2xl font-bold">{formatCurrency(totalGeral)}</p></div><DollarSign className="h-8 w-8 text-green-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Ticket Médio</p><p className="text-2xl font-bold">{formatCurrency(atendimentosFechados.length > 0 ? totalGeral / atendimentosFechados.length : 0)}</p></div><TrendingUp className="h-8 w-8 text-purple-500" /></div></CardContent></Card>
+              <Card className="border-blue-200 dark:border-blue-800"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-blue-600 dark:text-blue-400 font-medium">✂ Serviços</p><p className="text-2xl font-bold">{formatCurrency(totalServicos)}</p><p className="text-xs text-muted-foreground">{atendimentoServicos.length} realizados</p></div><Activity className="h-8 w-8 text-blue-500" /></div></CardContent></Card>
+              <Card className="border-amber-200 dark:border-amber-800"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-amber-600 dark:text-amber-400 font-medium">📦 Produtos</p><p className="text-2xl font-bold">{formatCurrency(totalProdutos)}</p><p className="text-xs text-muted-foreground">{atendimentoProdutos.length} vendidos</p></div><Package className="h-8 w-8 text-amber-500" /></div></CardContent></Card>
+              <Card><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">% Produtos</p><p className="text-2xl font-bold">{totalGeral > 0 ? `${Math.round((totalProdutos / (totalServicos + totalProdutos || 1)) * 100)}%` : '0%'}</p></div><PieChart className="h-8 w-8 text-pink-500" /></div></CardContent></Card>
             </div>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <CardTitle>Histórico Detalhado de Vendas</CardTitle>
-                <div className="flex gap-2">
-                  <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(
-                    historicoPorComanda.map(({ at, formasPgto }) => ({
-                      Comanda: `#${String(at.numero_comanda).padStart(3,'0')}`,
-                      Cliente: at.cliente?.nome || 'Avulso',
-                      'Data/Hora': format(new Date(at.data_hora), 'dd/MM/yyyy HH:mm'),
-                      'Forma Pgto': formasPgto,
-                      Desconto: at.desconto || 0,
-                      Total: at.valor_final || 0,
-                    })), "historico-vendas")}>
-                    <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => exportToPDF(
-                    "Histórico de Vendas",
-                    ["Comanda", "Cliente", "Data/Hora", "Pgto", "Desconto", "Total"],
-                    historicoPorComanda.map(({ at, formasPgto }) => [
-                      `#${String(at.numero_comanda).padStart(3,'0')}`,
-                      at.cliente?.nome || 'Avulso',
-                      format(new Date(at.data_hora), 'dd/MM/yyyy HH:mm'),
-                      formasPgto,
-                      formatCurrency(at.desconto || 0),
-                      formatCurrency(at.valor_final || 0),
-                    ]), "historico-vendas")}>
-                    <FileText className="h-4 w-4 mr-1" /> PDF
-                  </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Filtro de tipo */}
+                  <div className="flex rounded-lg border overflow-hidden">
+                    <button
+                      onClick={() => setHistoricoFiltroTipo('todos')}
+                      className={cn(
+                        'px-3 py-1.5 text-xs font-medium transition-colors',
+                        historicoFiltroTipo === 'todos'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-background hover:bg-muted'
+                      )}
+                    >
+                      Todos ({historicoPorComanda.length})
+                    </button>
+                    <button
+                      onClick={() => setHistoricoFiltroTipo('servicos')}
+                      className={cn(
+                        'px-3 py-1.5 text-xs font-medium transition-colors border-l',
+                        historicoFiltroTipo === 'servicos'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-background hover:bg-muted'
+                      )}
+                    >
+                      ✂ Serviços ({historicoPorComanda.filter(h => h.servs.length > 0).length})
+                    </button>
+                    <button
+                      onClick={() => setHistoricoFiltroTipo('produtos')}
+                      className={cn(
+                        'px-3 py-1.5 text-xs font-medium transition-colors border-l',
+                        historicoFiltroTipo === 'produtos'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-background hover:bg-muted'
+                      )}
+                    >
+                      📦 Produtos ({historicoPorComanda.filter(h => h.prods.length > 0).length})
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(
+                      historicoFiltrado.map(({ at, formasPgto }) => ({
+                        Comanda: `#${String(at.numero_comanda).padStart(3,'0')}`,
+                        Cliente: at.cliente?.nome || 'Avulso',
+                        'Data/Hora': format(new Date(at.data_hora), 'dd/MM/yyyy HH:mm'),
+                        'Forma Pgto': formasPgto,
+                        Desconto: at.desconto || 0,
+                        Total: at.valor_final || 0,
+                      })), `historico-vendas-${historicoFiltroTipo}`)}>
+                      <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => exportToPDF(
+                      `Histórico de Vendas${historicoFiltroTipo !== 'todos' ? ` (${historicoFiltroTipo === 'servicos' ? 'Serviços' : 'Produtos'})` : ''}`,
+                      ["Comanda", "Cliente", "Data/Hora", "Pgto", "Desconto", "Total"],
+                      historicoFiltrado.map(({ at, formasPgto }) => [
+                        `#${String(at.numero_comanda).padStart(3,'0')}`,
+                        at.cliente?.nome || 'Avulso',
+                        format(new Date(at.data_hora), 'dd/MM/yyyy HH:mm'),
+                        formasPgto,
+                        formatCurrency(at.desconto || 0),
+                        formatCurrency(at.valor_final || 0),
+                      ]), `historico-vendas-${historicoFiltroTipo}`)}>
+                      <FileText className="h-4 w-4 mr-1" /> PDF
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1682,32 +1736,41 @@ const Relatorios = () => {
                         <TableHead>Comanda</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Data/Hora</TableHead>
-                        <TableHead>Serviços / Profissional</TableHead>
+                        <TableHead>{historicoFiltroTipo === 'produtos' ? 'Produtos' : historicoFiltroTipo === 'servicos' ? 'Serviços / Profissional' : 'Serviços / Produtos'}</TableHead>
                         <TableHead>Pagamento</TableHead>
                         <TableHead className="text-right">Desconto</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {historicoPorComanda.length === 0 ? (
-                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma venda no período selecionado</TableCell></TableRow>
-                      ) : historicoPorComanda.map(({ at, servs, prods, formasPgto }) => (
+                      {historicoFiltrado.length === 0 ? (
+                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                          {historicoFiltroTipo === 'produtos' ? 'Nenhuma venda com produtos no período' : historicoFiltroTipo === 'servicos' ? 'Nenhuma venda com serviços no período' : 'Nenhuma venda no período selecionado'}
+                        </TableCell></TableRow>
+                      ) : historicoFiltrado.map(({ at, servs, prods, formasPgto }) => (
                         <TableRow key={at.id}>
                           <TableCell className="font-bold whitespace-nowrap">#{String(at.numero_comanda).padStart(3,'0')}</TableCell>
                           <TableCell className="font-medium">{at.cliente?.nome || <span className="text-muted-foreground italic">Avulso</span>}</TableCell>
                           <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{format(new Date(at.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
                           <TableCell>
                             <div className="space-y-0.5">
-                              {servs.map((s, i) => (
-                                <p key={i} className="text-xs">
+                              {historicoFiltroTipo !== 'produtos' && servs.map((s, i) => (
+                                <p key={`s${i}`} className="text-xs">
+                                  <span className="inline-block w-4 text-blue-500">✂</span>
                                   <span className="font-medium">{s.servico?.nome || '—'}</span>
                                   {s.profissional?.nome && <span className="text-muted-foreground"> · {s.profissional.nome}</span>}
+                                  <span className="text-muted-foreground ml-1">({formatCurrency(s.subtotal || 0)})</span>
                                 </p>
                               ))}
-                              {prods.map((p, i) => (
-                                <p key={i} className="text-xs text-muted-foreground">📦 {p.produto?.nome || '—'} ×{p.quantidade}</p>
+                              {historicoFiltroTipo !== 'servicos' && prods.map((p, i) => (
+                                <p key={`p${i}`} className="text-xs">
+                                  <span className="inline-block w-4">📦</span>
+                                  <span className="font-medium text-amber-700 dark:text-amber-400">{p.produto?.nome || '—'}</span>
+                                  <span className="text-muted-foreground"> ×{p.quantidade}</span>
+                                  <span className="text-muted-foreground ml-1">({formatCurrency(p.subtotal || 0)})</span>
+                                </p>
                               ))}
-                              {servs.length === 0 && prods.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
+                              {((historicoFiltroTipo !== 'produtos' ? servs.length : 0) + (historicoFiltroTipo !== 'servicos' ? prods.length : 0)) === 0 && <span className="text-xs text-muted-foreground">—</span>}
                             </div>
                           </TableCell>
                           <TableCell className="text-sm capitalize">{formasPgto}</TableCell>
