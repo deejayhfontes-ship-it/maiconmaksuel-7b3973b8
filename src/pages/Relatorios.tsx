@@ -316,11 +316,33 @@ const Relatorios = () => {
       ]);
 
       const atendimentosData = atendimentosRes?.data || [];
-      const finalizadosIds = new Set(atendimentosData
+      const servicosData = atendimentoServicosRes?.data || [];
+      const produtosData = atendimentoProdutosRes?.data || [];
+
+      // Correção para comandas com subtotal/valor_final = 0 (bug de trigger)
+      const atendimentosCorrigidos = atendimentosData.map((a: any) => {
+        if ((a.valor_final && a.valor_final > 0) || (a.subtotal && a.subtotal > 0)) {
+          return a;
+        }
+        
+        const itensS = servicosData.filter((s: any) => s.atendimento_id === a.id);
+        const itensP = produtosData.filter((p: any) => p.atendimento_id === a.id);
+        
+        const sumS = itensS.reduce((sum: number, item: any) => sum + (item.subtotal || 0), 0);
+        const sumP = itensP.reduce((sum: number, item: any) => sum + (item.subtotal || 0), 0);
+        
+        const subtotal = sumS + sumP;
+        const desconto = a.desconto || 0;
+        const valor_final = Math.max(0, subtotal - desconto);
+        
+        return { ...a, subtotal, valor_final };
+      });
+
+      const finalizadosIds = new Set(atendimentosCorrigidos
         .filter((a: any) => a.status === "fechado" || a.status === "finalizado")
         .map((a: any) => a.id));
 
-      if (atendimentosRes?.data) setAtendimentos(atendimentosRes.data);
+      if (atendimentosRes?.data) setAtendimentos(atendimentosCorrigidos);
       if (clientesRes?.data) setClientes(clientesRes.data);
       if (profissionaisRes?.data) setProfissionais(profissionaisRes.data);
       if (servicosRes?.data) setServicos(servicosRes.data);
@@ -328,10 +350,10 @@ const Relatorios = () => {
       
       // FILTRAGEM CRÍTICA: Manter apenas os serviços e produtos que pertencem a um agendamento finalizado no período
       if (atendimentoServicosRes?.data) {
-        setAtendimentoServicos(atendimentoServicosRes.data.filter((as: any) => finalizadosIds.has(as.atendimento_id)));
+        setAtendimentoServicos(servicosData.filter((as: any) => finalizadosIds.has(as.atendimento_id)));
       }
       if (atendimentoProdutosRes?.data) {
-        setAtendimentoProdutos(atendimentoProdutosRes.data.filter((ap: any) => finalizadosIds.has(ap.atendimento_id)));
+        setAtendimentoProdutos(produtosData.filter((ap: any) => finalizadosIds.has(ap.atendimento_id)));
       }
       
       if (pagamentosRes?.data) setPagamentos(pagamentosRes.data);
@@ -1206,312 +1228,6 @@ const Relatorios = () => {
             </div>
           </div>
         );
-
-      case "historico":
-        const historicoVendas = atendimentos.filter(a => a.status === "fechado" || a.status === "finalizado").sort((a, b) => 
-          new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()
-        );
-        return (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total de Vendas</p>
-                      <p className="text-2xl font-bold">{historicoVendas.length}</p>
-                    </div>
-                    <ShoppingBag className="h-8 w-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Valor Total</p>
-                      <p className="text-2xl font-bold">{formatCurrency(historicoVendas.reduce((sum, v) => sum + (v.valor_final || v.subtotal || 0), 0))}</p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Ticket Médio</p>
-                      <p className="text-2xl font-bold">{formatCurrency(historicoVendas.length > 0 ? historicoVendas.reduce((sum, v) => sum + (v.valor_final || v.subtotal || 0), 0) / historicoVendas.length : 0)}</p>
-                    </div>
-                    <TrendingUp className="h-8 w-8 text-purple-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Histórico de Vendas</CardTitle>
-                <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => exportToExcel(historicoVendas.map(v => ({
-                  data: format(new Date(v.data_hora), "dd/MM/yyyy HH:mm"),
-                  comanda: v.numero_comanda,
-                  cliente: v.cliente?.nome || "Cliente avulso",
-                  valor: v.valor_final || v.subtotal || 0,
-                  status: v.status
-                })), "historico-vendas")}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data/Hora</TableHead>
-                      <TableHead>Comanda</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {historicoVendas.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          Nenhuma venda encontrada no período selecionado
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      historicoVendas.slice(0, 50).map((v) => (
-                        <TableRow key={v.id}>
-                          <TableCell>{format(new Date(v.data_hora), "dd/MM/yyyy HH:mm")}</TableCell>
-                          <TableCell>#{v.numero_comanda}</TableCell>
-                          <TableCell>{v.cliente?.nome || "Cliente avulso"}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(v.valor_final || v.subtotal || 0)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                              Finalizado
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case "itens_vendidos": {
-        // Filtrar apenas itens de atendimentos finalizados no período
-        const idsFinalizados = new Set(
-          atendimentos
-            .filter(a => a.status === "fechado" || a.status === "finalizado")
-            .map(a => a.id)
-        );
-
-        const servicosVendidos = atendimentoServicos
-          .filter(as => idsFinalizados.has(as.atendimento_id))
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-        const produtosVendidos = atendimentoProdutos
-          .filter(ap => idsFinalizados.has(ap.atendimento_id))
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-        const totalServicos = servicosVendidos.reduce((sum, as) => sum + (as.subtotal || 0), 0);
-        const totalProdutosVal = produtosVendidos.reduce((sum, ap) => sum + (ap.subtotal || 0), 0);
-
-        // Agrupar produtos por nome para ver os mais vendidos
-        const produtosPorNome: Record<string, { nome: string; quantidade: number; valor: number }> = {};
-        produtosVendidos.forEach(ap => {
-          const nome = ap.produto?.nome || "Desconhecido";
-          if (!produtosPorNome[nome]) produtosPorNome[nome] = { nome, quantidade: 0, valor: 0 };
-          produtosPorNome[nome].quantidade += ap.quantidade || 1;
-          produtosPorNome[nome].valor += ap.subtotal || 0;
-        });
-        const rankingProdutos = Object.values(produtosPorNome).sort((a, b) => b.valor - a.valor);
-
-        return (
-          <div className="space-y-6">
-            {/* Cards resumo */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Serviços realizados</p>
-                      <p className="text-2xl font-bold">{servicosVendidos.length}</p>
-                      <p className="text-sm text-muted-foreground">{formatCurrency(totalServicos)}</p>
-                    </div>
-                    <Activity className="h-8 w-8 text-purple-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Produtos vendidos</p>
-                      <p className="text-2xl font-bold">{produtosVendidos.length}</p>
-                      <p className="text-sm text-muted-foreground">{formatCurrency(totalProdutosVal)}</p>
-                    </div>
-                    <Package className="h-8 w-8 text-amber-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Geral</p>
-                      <p className="text-2xl font-bold">{formatCurrency(totalServicos + totalProdutosVal)}</p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">% Produtos</p>
-                      <p className="text-2xl font-bold">
-                        {totalServicos + totalProdutosVal > 0
-                          ? `${Math.round((totalProdutosVal / (totalServicos + totalProdutosVal)) * 100)}%`
-                          : "0%"}
-                      </p>
-                    </div>
-                    <ShoppingBag className="h-8 w-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Produtos (Bomboniere) — em destaque */}
-            <Card className="border-amber-200 dark:border-amber-800">
-              <CardHeader className="flex flex-row items-center justify-between bg-amber-50 dark:bg-amber-950/20 rounded-t-lg">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
-                    <Package className="h-5 w-5" />
-                    Produtos Vendidos (Bomboniere)
-                  </CardTitle>
-                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-0.5">
-                    {produtosVendidos.length} itens · {formatCurrency(totalProdutosVal)}
-                  </p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => exportToExcel(produtosVendidos.map(ap => ({
-                  produto: ap.produto?.nome || "Desconhecido",
-                  quantidade: ap.quantidade || 1,
-                  valor_unitario: ap.preco_unitario || 0,
-                  subtotal: ap.subtotal || 0,
-                  data: format(new Date(ap.created_at), "dd/MM/yyyy")
-                })), "produtos-vendidos")}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
-                </Button>
-              </CardHeader>
-              <CardContent className="pt-4">
-                {produtosVendidos.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-6">Nenhum produto vendido no período</p>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Ranking por produto */}
-                    {rankingProdutos.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-sm font-semibold text-muted-foreground mb-2">Ranking de produtos</p>
-                        <div className="flex flex-wrap gap-2">
-                          {rankingProdutos.slice(0, 8).map((p, i) => (
-                            <Badge key={i} variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                              #{i + 1} {p.nome} — {p.quantidade}x · {formatCurrency(p.valor)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Produto</TableHead>
-                          <TableHead className="text-center">Qtd</TableHead>
-                          <TableHead className="text-right">Unitário</TableHead>
-                          <TableHead className="text-right">Subtotal</TableHead>
-                          <TableHead>Data</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {produtosVendidos.slice(0, 100).map((ap, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="font-medium">{ap.produto?.nome || "Desconhecido"}</TableCell>
-                            <TableCell className="text-center">{ap.quantidade || 1}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(ap.preco_unitario || 0)}</TableCell>
-                            <TableCell className="text-right font-semibold">{formatCurrency(ap.subtotal || 0)}</TableCell>
-                            <TableCell>{format(new Date(ap.created_at), "dd/MM/yyyy")}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Serviços */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-purple-500" />
-                    Serviços Realizados
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {servicosVendidos.length} serviços · {formatCurrency(totalServicos)}
-                  </p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => exportToExcel(servicosVendidos.map(as => ({
-                  servico: as.servico?.nome || "Desconhecido",
-                  profissional: as.profissional?.nome || "-",
-                  quantidade: as.quantidade || 1,
-                  subtotal: as.subtotal || 0,
-                  data: format(new Date(as.created_at), "dd/MM/yyyy")
-                })), "servicos-realizados")}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Serviço</TableHead>
-                      <TableHead>Profissional</TableHead>
-                      <TableHead className="text-center">Qtd</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                      <TableHead>Data</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {servicosVendidos.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          Nenhum serviço encontrado no período
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      servicosVendidos.slice(0, 100).map((as, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="font-medium">{as.servico?.nome || "Desconhecido"}</TableCell>
-                          <TableCell className="text-muted-foreground">{as.profissional?.nome || "-"}</TableCell>
-                          <TableCell className="text-center">{as.quantidade || 1}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(as.subtotal || 0)}</TableCell>
-                          <TableCell>{format(new Date(as.created_at), "dd/MM/yyyy")}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      }
 
       case "clientes_ausentes":
         return (
