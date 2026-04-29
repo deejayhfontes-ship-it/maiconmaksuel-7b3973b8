@@ -171,3 +171,38 @@ WHERE cr.atendimento_id = a.id
 ```
 
 **Observação:** Alguns registros antigos têm `atendimentos.subtotal = 0` (bug de trigger não persistir), mas `atendimento_servicos.subtotal` está correto. O fix usa o SUM dos itens como base nesse caso.
+
+---
+
+## 2026-04-29 — Bugfix: Histórico de Vendas exibindo R$ 0,00
+
+**Problema:** A tela de Relatórios → Histórico de Vendas mostrava todos os valores (Faturamento Total, Ticket Médio e coluna Total) como R$ 0,00. Os dados existiam no banco, mas os campos `subtotal` e `valor_final` da tabela `atendimentos` estavam zerados para diversas comandas antigas (bug de trigger que não persistia os totais na tabela principal).
+
+**Causa raiz:** Comandas fechadas tinham `atendimentos.valor_final = 0` e `atendimentos.subtotal = 0`, porém os itens em `atendimento_servicos` e `atendimento_produtos` possuíam os valores corretos.
+
+**Correção (commit `2913842`):**
+- `src/pages/Relatorios.tsx` (função `fetchData`, linhas ~318-355) — Após buscar os dados do Supabase, o código agora detecta atendimentos com `valor_final = 0` e recalcula automaticamente somando os subtotais de `atendimento_servicos` + `atendimento_produtos`, abatendo o desconto.
+- Também removidos blocos duplicados de `case "historico"` e `case "itens_vendidos"` que causavam warnings na build.
+
+**Validação:** Build limpa sem erros. Verificado no localhost com PIN `1308` — valores exibidos corretamente (Faturamento: R$ 34.863,00, Ticket Médio: R$ 242,10, 144 comandas).
+
+---
+
+## 2026-04-29 — Feature: Filtro Serviços / Produtos no Histórico de Vendas
+
+**O que foi feito:** Adicionada separação visual e funcional entre Serviços e Produtos dentro da tela "Histórico de Vendas" em Relatórios.
+
+**Mudanças implementadas (commit `29b0566`):**
+- **6 Cards de resumo** (antes eram 4):
+  - Comandas Fechadas | Faturamento Total | Ticket Médio
+  - ✂ Serviços (valor + quantidade) | 📦 Produtos (valor + quantidade) | % Produtos
+- **Botões de filtro** no topo da tabela: `Todos (N)` / `✂ Serviços (N)` / `📦 Produtos (N)`
+  - Filtram as comandas exibidas na tabela conforme o tipo selecionado
+  - Cor diferenciada: azul para serviços, âmbar para produtos
+- **Detalhamento por item** na coluna de serviços/produtos mostra o valor individual entre parênteses
+- **Exportação respeitando filtro** — Excel e PDF exportam apenas os dados do filtro ativo
+- **State adicionado:** `historicoFiltroTipo` (`'todos' | 'servicos' | 'produtos'`)
+
+**Arquivo alterado:** `src/pages/Relatorios.tsx`
+
+**Resultado visual:** Cards com bordas coloridas (azul para serviços, âmbar para produtos), filtro toggle segmentado com contadores, itens diferenciados por ícone (✂/📦) e valor individual.
