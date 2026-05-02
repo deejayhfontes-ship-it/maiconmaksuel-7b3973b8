@@ -266,16 +266,16 @@ export default function Comissoes() {
             .in("id", atendimentoIds);
 
           if (atendimentos) {
-            // IDs de comandas ainda abertas — essas SIM devem ser ocultadas
-            const abertosIds = new Set(
+            // IDs de comandas abertas ou canceladas — essas devem ser ocultadas
+            const ocultarIds = new Set(
               (atendimentos as any[])
-                .filter((a) => a.status === "aberto")
+                .filter((a) => a.status === "aberto" || a.status === "cancelado")
                 .map((a) => a.id)
             );
 
             atendimentoMap = Object.fromEntries(
               (atendimentos as any[])
-                .filter((a) => a.status !== "aberto")
+                .filter((a) => a.status !== "aberto" && a.status !== "cancelado")
                 .map((a) => [
                   a.id,
                   {
@@ -286,18 +286,18 @@ export default function Comissoes() {
                 ])
             );
 
-            // Remover comissões de comandas explicitamente abertas
+            // Remover comissões de comandas explicitamente abertas ou canceladas
             (comissoesRes.data as any[]).forEach((c) => {
-              if (abertosIds.has(c.atendimento_id)) {
+              if (ocultarIds.has(c.atendimento_id)) {
                 // marca para filtrar
-                c.__aberto = true;
+                c.__ocultar = true;
               }
             });
           }
         }
 
         const enriquecidas = (comissoesRes.data as any[])
-          .filter((c) => !c.__aberto)
+          .filter((c) => !c.__ocultar)
           .map((c) => ({
             ...c,
             cliente_nome: atendimentoMap[c.atendimento_id]?.cliente_nome || null,

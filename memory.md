@@ -206,3 +206,31 @@ WHERE cr.atendimento_id = a.id
 **Arquivo alterado:** `src/pages/Relatorios.tsx`
 
 **Resultado visual:** Cards com bordas coloridas (azul para serviços, âmbar para produtos), filtro toggle segmentado com contadores, itens diferenciados por ícone (✂/📦) e valor individual.
+
+---
+
+## 2026-05-02 — Bugfix: Comandas canceladas contaminando Caixa e Comissões
+
+**Problema:** Quando uma comanda era cancelada, os registros de comissão (`comissoes_registro`) e movimentações de caixa (`caixa_movimentacoes`) permaneciam ativos. Resultado: (1) valores cancelados somavam no total do caixa do dia, (2) comissões de atendimentos cancelados apareciam na tela de Comissões.
+
+**Causa raiz:**
+- `ComandasAbertasSection.tsx` fazia apenas `.update({ status: "cancelado" })` sem limpar comissões/caixa.
+- `CaixaComandas.tsx` buscava `["finalizado", "fechado", "cancelado"]` no filtro de fechadas — canceladas somavam no total.
+- `Comissoes.tsx` filtrava apenas comissões de comandas `"aberto"`, não `"cancelado"`.
+
+**Correção (3 partes):**
+
+1. **`src/components/caixa/ComandasAbertasSection.tsx`** — `handleCancelarComanda`:
+   - Após marcar status como "cancelado", deleta `comissoes_registro` pendentes e `caixa_movimentacoes` vinculadas ao `atendimento_id`.
+
+2. **`src/pages/Comissoes.tsx`** — `fetchData`:
+   - Filtro de ocultação agora inclui `status === "aberto" || status === "cancelado"`.
+   - Flag renomeada de `__aberto` para `__ocultar` (cobre ambos os casos).
+
+3. **`src/pages/CaixaComandas.tsx`** — `fetchFechadas` + render:
+   - Query separada para canceladas (não somam no cálculo).
+   - Badge dinâmico: verde "Fechada" ou vermelho "Cancelada".
+   - Valor riscado e acinzentado em canceladas.
+   - Botão "Reabrir" oculto em canceladas.
+   - Total exibido exclui canceladas.
+

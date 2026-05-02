@@ -156,16 +156,29 @@ export default function CaixaComandas() {
 
   const fetchFechadas = useCallback(async () => {
     const hoje = new Date();
+    
+    // Buscar finalizadas/fechadas (entram no cálculo do caixa)
     const { data } = await supabase
       .from("atendimentos")
       .select(`*, cliente:cliente_id (nome, celular)`)
-      .in("status", ["finalizado", "fechado", "cancelado"]) // 'reaberta' NAO aparece aqui
+      .in("status", ["finalizado", "fechado"]) // 'cancelado' e 'reaberta' NÃO entram aqui
       .gte("data_hora", startOfDay(hoje).toISOString())
       .lte("data_hora", endOfDay(hoje).toISOString())
       .order("data_hora", { ascending: false });
 
+    // Buscar canceladas separadamente (NÃO somam no caixa, só exibem com badge vermelho)
+    const { data: canceladas } = await supabase
+      .from("atendimentos")
+      .select(`*, cliente:cliente_id (nome, celular)`)
+      .eq("status", "cancelado")
+      .gte("data_hora", startOfDay(hoje).toISOString())
+      .lte("data_hora", endOfDay(hoje).toISOString())
+      .order("data_hora", { ascending: false });
+
+    const todasFechadas = [...(data || []), ...(canceladas || [])];
+
     const fechadas = await Promise.all(
-      (data || []).map(async (at) => {
+      todasFechadas.map(async (at) => {
         const { data: servicos } = await supabase
           .from("atendimento_servicos")
           .select(`*, servico:servico_id (nome), profissional:profissional_id (nome)`)
@@ -590,11 +603,23 @@ export default function CaixaComandas() {
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-lg font-semibold">Fechadas Hoje</h2>
-            <Badge variant="outline" className="ml-auto">{comandasFechadas.length}</Badge>
+            <Badge variant="outline" className="ml-auto">
+              {comandasFechadas.filter(c => c.status !== "cancelado").length} fechadas
+              {comandasFechadas.filter(c => c.status === "cancelado").length > 0 && (
+                <span className="text-destructive ml-1">
+                  + {comandasFechadas.filter(c => c.status === "cancelado").length} canceladas
+                </span>
+              )}
+            </Badge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {comandasFechadas.map((c) => (
-              <Card key={c.id} className="opacity-80 hover:opacity-100 transition-opacity">
+            {comandasFechadas.map((c) => {
+              const isCancelada = c.status === "cancelado";
+              return (
+              <Card key={c.id} className={cn(
+                "transition-opacity",
+                isCancelada ? "opacity-60 border-destructive/30" : "opacity-80 hover:opacity-100"
+              )}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -616,10 +641,18 @@ export default function CaixaComandas() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-bold text-lg">{formatPrice(c.valor_final || c.subtotal)}</p>
-                      <Badge className="bg-green-100 text-green-800 text-[10px]">Fechada</Badge>
+                      <p className={cn(
+                        "font-bold text-lg",
+                        isCancelada && "line-through text-muted-foreground"
+                      )}>{formatPrice(c.valor_final || c.subtotal)}</p>
+                      {isCancelada ? (
+                        <Badge className="bg-red-100 text-red-700 border-red-300 text-[10px]">Cancelada</Badge>
+                      ) : (
+                        <Badge className="bg-green-100 text-green-800 text-[10px]">Fechada</Badge>
+                      )}
                     </div>
                   </div>
+                  {!isCancelada && (
                   <div className="mt-3 pt-2 border-t">
                     <Button
                       variant="outline"
@@ -631,9 +664,22 @@ export default function CaixaComandas() {
                       Reabrir Comanda
                     </Button>
                   </div>
+                  )}
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
+          </div>
+          {/* Total fechadas (excluindo canceladas) */}
+          <div className="flex justify-end">
+            <p className="text-sm text-muted-foreground">
+              Total fechadas: <span className="font-bold text-foreground">
+                {formatPrice(comandasFechadas
+                  .filter(c => c.status !== "cancelado")
+                  .reduce((acc, c) => acc + Number(c.valor_final || c.subtotal || 0), 0)
+                )}
+              </span>
+            </p>
           </div>
         </div>
       )}

@@ -180,6 +180,19 @@ export const ComandasAbertasSection = ({ onComandaFinalizada }: ComandasAbertasS
     if (error) {
       toast({ title: "Erro ao cancelar comanda", variant: "destructive" });
     } else {
+      // Limpar comissões pendentes vinculadas a este atendimento
+      await supabase
+        .from("comissoes_registro")
+        .delete()
+        .eq("atendimento_id", id)
+        .eq("status", "pendente");
+
+      // Reverter movimentação de caixa vinculada (se houver)
+      await supabase
+        .from("caixa_movimentacoes")
+        .delete()
+        .eq("atendimento_id", id);
+
       toast({ title: "Comanda cancelada" });
       fetchComandas();
     }
