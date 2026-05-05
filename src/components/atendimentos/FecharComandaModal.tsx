@@ -395,7 +395,6 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
       if (error) throw error;
 
       // Gerar comissões ao fechar comanda (exceto se pagamento foi fiado)
-      // Verifica forma de pagamento dos pagamentos registrados para essa comanda
       try {
         const { data: pagamentos } = await supabase
           .from("pagamentos")
@@ -415,13 +414,45 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
             .eq("atendimento_id", atendimento.id);
 
           if (servicos && servicos.length > 0) {
-            // Calcular fator de desconto proporcional baseado no valor_final do atendimento
-            // Ex: serviços somam R$100, valor_final = R$90 → fator = 0.9
+            // Buscar valor_final FRESCO do banco — ÚNICA fonte de verdade
+            const { data: atendimentoFresco } = await supabase
+              .from("atendimentos")
+              .select("subtotal, valor_final, desconto")
+              .eq("id", atendimento.id)
+              .single();
+
+            const valorFinalReal = Number(atendimentoFresco?.valor_final ?? 0);
+            const descontoReal = Number(atendimentoFresco?.desconto ?? 0);
+
+            // Calcular subtotal bruto a partir dos itens do banco
             const subtotalBruto = servicos.reduce(
               (acc: number, s: any) => acc + Number(s.subtotal ?? (Number(s.preco_unitario ?? 0) * Number(s.quantidade ?? 1))),
               0
             );
-            const fatorDesconto = subtotalBruto > 0 ? atendimento.valor_final / subtotalBruto : 1;
+
+            // VALIDAÇÃO BLOQUEANTE: Se temos serviços pagos mas valor_final <= 0
+            if (subtotalBruto > 0 && valorFinalReal <= 0 && descontoReal < subtotalBruto) {
+              // NÃO é desconto 100% — é inconsistência real
+              console.error("[FecharComanda] ❌ BLOQUEIO: valor_final=0 com serviços somando", subtotalBruto);
+              throw new Error(
+                "Erro ao validar o valor final da comanda. O fechamento foi bloqueado para evitar comissão ou caixa incorretos. " +
+                `Serviços somam R$ ${subtotalBruto.toFixed(2)} mas valor_final = R$ ${valorFinalReal.toFixed(2)}. ` +
+                "Reabra a comanda e tente novamente."
+              );
+            }
+
+            // Calcular fator de desconto — sem fallback
+            const fatorDesconto = subtotalBruto > 0 ? valorFinalReal / subtotalBruto : 1;
+
+            // Log de auditoria
+            console.log("[FecharComanda] 📊 Auditoria comissão:", {
+              comandaId: atendimento.id,
+              valorFinalBanco: valorFinalReal,
+              subtotalBruto,
+              descontoReal,
+              fatorDesconto,
+              qtdServicos: servicos.length,
+            });
 
             const profMap = new Map<string, typeof servicos>();
             for (const s of servicos) {
@@ -429,24 +460,57 @@ export function FecharComandaModal({ open, onOpenChange, atendimento, onSuccess 
               if (!profMap.has(s.profissional_id)) profMap.set(s.profissional_id, []);
               profMap.get(s.profissional_id)!.push(s);
             }
+
+            let totalComissoesGeradas = 0;
+            const errosComissao: string[] = [];
+
             for (const [profId, itens] of profMap.entries()) {
-              await gerarComissoesDaComanda({
+              const resultado = await gerarComissoesDaComanda({
                 comandaId: atendimento.id,
                 profissionalId: profId,
-                itens: itens.map((i: any) => ({
-                  servico_id: i.servico_id ?? null,
-                  nome_servico: i.servicos?.nome ?? undefined,
-                  // Aplica desconto proporcional: comissão sobre valor real pago, não bruto
-                  valor: Number(((i.subtotal ?? (Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1))) * fatorDesconto).toFixed(2)),
-                  gera_comissao: true,
-                })),
+                itens: itens.map((i: any) => {
+                  const valorOriginal = Number(i.subtotal ?? (Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1)));
+                  const valorComDesconto = Number((valorOriginal * fatorDesconto).toFixed(2));
+                  return {
+                    servico_id: i.servico_id ?? null,
+                    nome_servico: i.servicos?.nome ?? undefined,
+                    valor: valorComDesconto,
+                    gera_comissao: true,
+                    desconto_aplicado: Number((valorOriginal - valorComDesconto).toFixed(2)),
+                  };
+                }),
                 periodoRef,
               });
+
+              totalComissoesGeradas += resultado.geradas;
+              if (!resultado.sucesso) {
+                errosComissao.push(...resultado.erros);
+              }
+              if (resultado.avisos.length > 0) {
+                console.warn("[FecharComanda] Avisos:", resultado.avisos);
+              }
+            }
+
+            // Tratar erros de comissão como falha real
+            if (errosComissao.length > 0) {
+              console.error("[FecharComanda] ❌ Erros na geração de comissão:", errosComissao);
+              toast.error(`⚠️ Comissões com problemas: ${errosComissao[0]}`);
+            }
+
+            if (profMap.size > 0 && totalComissoesGeradas === 0 && errosComissao.length > 0) {
+              toast.error("❌ Nenhuma comissão gerada. Verifique a configuração dos profissionais e serviços.");
+            } else if (totalComissoesGeradas > 0) {
+              console.log(`[FecharComanda] ✅ ${totalComissoesGeradas} comissão(ões) gerada(s)`);
             }
           }
         }
       } catch (e) {
-        console.error("[FecharComandaModal] Erro ao gerar comissões:", e);
+        // Se o erro é de validação financeira, propagar para bloquear fechamento
+        if (e instanceof Error && e.message.includes("bloqueado")) {
+          throw e;
+        }
+        console.error("[FecharComandaModal] ❌ FALHA ao gerar comissões:", e);
+        toast.error("❌ Erro ao gerar comissões. Verifique manualmente na tela de Comissões.");
       }
 
       // Atualizar última visita do cliente

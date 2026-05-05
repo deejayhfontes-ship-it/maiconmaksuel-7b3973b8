@@ -13,6 +13,7 @@ import {
   Search,
   RotateCcw,
   Lock,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,6 +104,7 @@ export default function CaixaComandas() {
   // Prazo fiado
   const [fiadoPrazo, setFiadoPrazo] = useState<"20" | "30" | "40" | "custom">("30");
   const [fiadoDataCustom, setFiadoDataCustom] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchComandas = useCallback(async () => {
     setLoading(true);
@@ -268,16 +270,18 @@ export default function CaixaComandas() {
   };
 
   const confirmarFinalizacao = async () => {
-    if (!selectedComanda) return;
+    if (!selectedComanda || isSubmitting) return;
+    setIsSubmitting(true);
 
-    // Verificar caixa aberto antes de processar (exceto fiado que não entra no caixa)
-    if (formaPagamento !== "fiado") {
-      const { data: caixaCheck } = await supabase
-        .from("caixa")
-        .select("id")
-        .eq("status", "aberto")
-        .limit(1)
-        .maybeSingle();
+    try {
+      // Verificar caixa aberto antes de processar (exceto fiado que não entra no caixa)
+      if (formaPagamento !== "fiado") {
+        const { data: caixaCheck } = await supabase
+          .from("caixa")
+          .select("id")
+          .eq("status", "aberto")
+          .limit(1)
+          .maybeSingle();
 
       if (!caixaCheck) {
         toast({
@@ -397,13 +401,31 @@ export default function CaixaComandas() {
         profissionaisMap.get(s.profissional_id)!.push(s);
       }
 
-      // Calcular fator de desconto proporcional sobre o total da comanda (serviços + produtos)
-      // Usando selectedComanda.subtotal no denominador para que produtos não distorçam o fator
-      // Ex: serviços R$100 + produtos R$50 = subtotal R$150, desconto R$30 → total R$120
-      //     fator = 120/150 = 0.8 → cada serviço paga comissão sobre 80% do valor (correto)
-      const fatorDesconto = selectedComanda.subtotal > 0 ? total / selectedComanda.subtotal : 1;
+      // Calcular fator de desconto proporcional sobre o total da comanda
+      let fatorDesconto = selectedComanda.subtotal > 0 ? total / selectedComanda.subtotal : 1;
+
+      // VALIDAÇÃO BLOQUEANTE: Se total > 0 mas fatorDesconto ficou inválido
+      if (total > 0 && fatorDesconto <= 0) {
+        console.error("[CaixaComandas] ❌ BLOQUEIO: fatorDesconto inválido:", { total, subtotal: selectedComanda.subtotal, fatorDesconto });
+        toast({
+          title: "❌ Erro no cálculo de valores",
+          description: "Finalização bloqueada: inconsistência entre total e subtotal. Verifique os valores da comanda.",
+          variant: "destructive",
+        });
+        return; // BLOQUEIA — não finaliza
+      }
+
+      console.log("[CaixaComandas] 📊 Auditoria comissão:", {
+        comandaId: selectedComanda.id,
+        total,
+        subtotal: selectedComanda.subtotal,
+        fatorDesconto,
+        qtdProfissionais: profissionaisMap.size,
+      });
 
       let totalComissoesGeradas = 0;
+      const errosComissao: string[] = [];
+
       for (const [profId, servicos] of profissionaisMap.entries()) {
         const resultado = await gerarComissoesDaComanda({
           comandaId: selectedComanda.id,
@@ -421,11 +443,22 @@ export default function CaixaComandas() {
           }),
           periodoRef,
         });
-        totalComissoesGeradas += resultado?.geradas ?? 0;
+        totalComissoesGeradas += resultado.geradas;
+        if (!resultado.sucesso) {
+          errosComissao.push(...resultado.erros);
+        }
       }
-      if (profissionaisMap.size > 0 && totalComissoesGeradas === 0) {
+
+      if (errosComissao.length > 0) {
         toast({
-          title: "Aviso: comissões não geradas",
+          title: "⚠️ Problemas na comissão",
+          description: errosComissao[0],
+          variant: "destructive",
+        });
+      }
+      if (profissionaisMap.size > 0 && totalComissoesGeradas === 0 && errosComissao.length > 0) {
+        toast({
+          title: "❌ Comissões não geradas",
           description: "Verifique se os profissionais têm % de comissão configurado e se os serviços têm valor > 0.",
           variant: "destructive",
         });
@@ -440,6 +473,9 @@ export default function CaixaComandas() {
     setIsFinalizarOpen(false);
     setSelectedComanda(null);
     fetchComandas();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const filteredComandas = comandas.filter((c) =>
@@ -862,15 +898,25 @@ export default function CaixaComandas() {
 
             {/* Botões */}
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setIsFinalizarOpen(false)}>
+              <Button variant="outline" className="flex-1" onClick={() => setIsFinalizarOpen(false)} disabled={isSubmitting}>
                 Cancelar
               </Button>
               <Button 
                 className="flex-1 bg-success hover:bg-success/90"
                 onClick={confirmarFinalizacao}
+                disabled={isSubmitting}
               >
-                <Check className="h-4 w-4 mr-2" />
-                Confirmar
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Confirmando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Confirmar
+                  </>
+                )}
               </Button>
             </div>
           </div>

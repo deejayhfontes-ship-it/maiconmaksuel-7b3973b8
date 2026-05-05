@@ -587,44 +587,11 @@ const Atendimentos = () => {
       }
     }
 
-    // REGRA: fiado NÃO gera comissão no momento do lançamento.
-    // Se todos os pagamentos forem fiado, bloquear geração de comissão.
-    // Comissão será gerada quando o fiado for quitado (baixa).
-    const todosFiado = pagamentos.every(p => p.forma === "fiado");
-    if (!todosFiado) {
-      const periodoRef = selectedAtendimento.data_hora
-        ? new Date(selectedAtendimento.data_hora).toISOString().slice(0, 7)
-        : new Date().toISOString().slice(0, 7);
-      const profissionaisMap = new Map<string, typeof itemsServicos>();
-      for (const item of itemsServicos) {
-        if (!profissionaisMap.has(item.profissional_id)) {
-          profissionaisMap.set(item.profissional_id, []);
-        }
-        profissionaisMap.get(item.profissional_id)!.push(item);
-      }
-      let totalComissoesGeradas = 0;
-      for (const [profId, itens] of profissionaisMap.entries()) {
-        const resultado = await gerarComissoesDaComanda({
-          comandaId: selectedAtendimento.id,
-          profissionalId: profId,
-          itens: itens.map((i) => ({
-            servico_id: i.servico_id ?? null,
-            nome_servico: i.servico?.nome,
-            valor: Number(i.subtotal ?? i.preco_unitario ?? 0),
-            gera_comissao: true,
-          })),
-          periodoRef,
-        });
-        totalComissoesGeradas += resultado?.geradas ?? 0;
-      }
-      if (profissionaisMap.size > 0 && totalComissoesGeradas === 0) {
-        toast({
-          title: "Aviso: comissões não geradas",
-          description: "Verifique se os profissionais têm % de comissão configurado.",
-          variant: "destructive",
-        });
-      }
-    }
+    // CORREÇÃO 6 (DEFINITIVA): Comissão NÃO é mais gerada aqui.
+    // A geração de comissão acontece EXCLUSIVAMENTE no FecharComandaModal
+    // ao confirmar o fechamento da comanda. Isso evita duplicidade e garante
+    // que o valor_final esteja correto antes de calcular comissões.
+    // Para fiado: comissão é gerada na baixa (CaixaDividas.tsx).
 
     // Registrar gorjetas como movimentação separada no caixa
     if (gorjetas && gorjetas.length > 0 && caixaAberto) {
@@ -646,9 +613,31 @@ const Atendimentos = () => {
 
     // Abrir modal de NF após pagamento
     setIsPaymentOpen(false);
+
+    // CORREÇÃO: Buscar valor_final atualizado do banco (trigger pode ter recalculado)
+    let valorFinalSeguro = valorFinal;
+    try {
+      const { data: freshData } = await supabase
+        .from("atendimentos")
+        .select("subtotal, valor_final, desconto")
+        .eq("id", selectedAtendimento.id)
+        .single();
+
+      if (freshData) {
+        const valorBanco = Number(freshData.valor_final ?? 0);
+        if (valorBanco > 0 && valorFinal <= 0) {
+          console.warn("[Atendimentos] valor_final local=0, usando valor do banco=", valorBanco);
+        }
+        // Usar o MAIOR valor como segurança contra zeragem
+        valorFinalSeguro = Math.max(valorBanco, valorFinal);
+      }
+    } catch (e) {
+      console.warn("[Atendimentos] Não conseguiu buscar valor fresco do banco, usando local:", e);
+    }
+
     setAtendimentoParaNf({
       ...selectedAtendimento,
-      valor_final: valorFinal,
+      valor_final: valorFinalSeguro,
       status: selectedAtendimento.status, // manter status atual (aberto)
     });
     setIsNfModalOpen(true);

@@ -233,6 +233,7 @@ export default function CaixaDividas() {
     }
 
     // REGRA: ao quitar o fiado, gerar comissão na data da baixa (não da venda original)
+    let comissaoOk = true;
     if (novoStatus === "quitada" && selectedDivida.atendimento_id) {
       try {
         const periodoRef = new Date().toISOString().slice(0, 7); // mês da baixa
@@ -240,10 +241,24 @@ export default function CaixaDividas() {
         // Buscar serviços do atendimento original com profissional e comissão
         const { data: servicos } = await supabase
           .from("atendimento_servicos")
-          .select("profissional_id, servico_id, preco_unitario, quantidade, servicos(nome)")
+          .select("profissional_id, servico_id, preco_unitario, quantidade, subtotal, servicos(nome)")
           .eq("atendimento_id", selectedDivida.atendimento_id);
 
         if (servicos && servicos.length > 0) {
+          // Buscar valor_final do atendimento original para calcular desconto proporcional
+          const { data: atendOriginal } = await supabase
+            .from("atendimentos")
+            .select("subtotal, valor_final, desconto")
+            .eq("id", selectedDivida.atendimento_id)
+            .single();
+
+          const subtotalBruto = servicos.reduce(
+            (acc: number, s: any) => acc + Number(s.subtotal ?? (Number(s.preco_unitario ?? 0) * Number(s.quantidade ?? 1))),
+            0
+          );
+          const valorFinalOriginal = Number(atendOriginal?.valor_final ?? subtotalBruto);
+          const fatorDesconto = subtotalBruto > 0 ? valorFinalOriginal / subtotalBruto : 1;
+
           // Agrupar por profissional
           const profMap = new Map<string, typeof servicos>();
           for (const s of servicos) {
@@ -253,28 +268,51 @@ export default function CaixaDividas() {
           }
 
           for (const [profId, itens] of profMap.entries()) {
-            await gerarComissoesDaComanda({
+            const resultado = await gerarComissoesDaComanda({
               comandaId: selectedDivida.atendimento_id,
               profissionalId: profId,
-              itens: itens.map((i: any) => ({
-                servico_id: i.servico_id ?? null,
-                nome_servico: i.servicos?.nome ?? undefined,
-                valor: Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1),
-                gera_comissao: true,
-              })),
+              itens: itens.map((i: any) => {
+                const valorOriginal = Number(i.subtotal ?? (Number(i.preco_unitario ?? 0) * Number(i.quantidade ?? 1)));
+                const valorComDesconto = Number((valorOriginal * fatorDesconto).toFixed(2));
+                return {
+                  servico_id: i.servico_id ?? null,
+                  nome_servico: i.servicos?.nome ?? undefined,
+                  valor: valorComDesconto,
+                  gera_comissao: true,
+                  desconto_aplicado: Number((valorOriginal - valorComDesconto).toFixed(2)),
+                };
+              }),
               periodoRef,
-              forcarGeracao: true, // baixa de fiado: ignora dedup por comanda
             });
+
+            if (!resultado.sucesso) {
+              comissaoOk = false;
+              console.error("[CaixaDividas] ❌ Erro comissão:", resultado.erros);
+              toast({
+                title: "⚠️ Erro na comissão",
+                description: resultado.erros[0] || "Verifique a tela de Comissões.",
+                variant: "destructive",
+              });
+            }
           }
         }
       } catch (e) {
-        console.error("[CaixaDividas] Erro ao gerar comissão na baixa do fiado:", e);
+        comissaoOk = false;
+        console.error("[CaixaDividas] ❌ Erro ao gerar comissão na baixa do fiado:", e);
+        toast({
+          title: "❌ Erro ao gerar comissão",
+          description: "A dívida foi quitada mas a comissão pode não ter sido gerada. Verifique manualmente.",
+          variant: "destructive",
+        });
       }
     }
 
     toast({
-      title: novoStatus === "quitada" ? "Dívida quitada!" : "Pagamento registrado!",
+      title: novoStatus === "quitada"
+        ? (comissaoOk ? "Dívida quitada!" : "Dívida quitada — verifique comissões")
+        : "Pagamento registrado!",
       description: `${formatPrice(valorEfetivo)} de ${selectedDivida.cliente?.nome}`,
+      variant: comissaoOk ? "default" : "destructive",
     });
 
     setIsPagarOpen(false);
