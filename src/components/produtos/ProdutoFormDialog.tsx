@@ -137,15 +137,14 @@ export default function ProdutoFormDialog({
       setFotoUrl(null);
       setFotoRemoved(false);
 
-      // Carregar dados fiscais do produto (cast para any pois campos são novos)
+      // Carregar dados fiscais do produto
       if (produto) {
-        const p = produto as Record<string, unknown>;
-        setNcm((p.ncm as string) || "00000000");
-        setCfop((p.cfop as string) || "5102");
-        setCstIcms((p.cst_icms as string) || "00");
-        setCsosn((p.csosn as string) || "");
-        setCest((p.cest as string) || "");
-        setOrigem((p.origem as string) || "0");
+        setNcm(produto.ncm || "00000000");
+        setCfop(produto.cfop || "5102");
+        setCstIcms(produto.cst_icms || "00");
+        setCsosn(produto.csosn || "");
+        setCest(produto.cest || "");
+        setOrigem(produto.origem || "0");
       } else {
         setNcm("00000000");
         setCfop("5102");
@@ -206,7 +205,7 @@ export default function ProdutoFormDialog({
         csosn: csosn || null,
         cest: cest || null,
         origem: origem || "0",
-      } as Record<string, unknown>;
+      };
 
       if (isEditing && produto) {
         payload.foto_url = await resolveFotoUrl(produto.id);

@@ -26,6 +26,13 @@ export interface Produto {
   categoria: string | null;
   foto_url: string | null;
   ativo: boolean;
+  // Campos fiscais
+  ncm: string | null;
+  cfop: string | null;
+  cst_icms: string | null;
+  csosn: string | null;
+  cest: string | null;
+  origem: string | null;
   created_at: string;
   updated_at: string;
 }

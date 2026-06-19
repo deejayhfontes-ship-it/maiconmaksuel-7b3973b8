@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import EntradasPage from "@/features/compras/pages/EntradasPage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -238,26 +240,34 @@ export default function NotasFiscais() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Notas Fiscais</h1>
           <p className="text-muted-foreground mt-1">
-            Gerencie a emissão de notas fiscais eletrônicas (NF-e / NFC-e)
+            Gerencie a emissão de notas fiscais eletrônicas (NF-e) e as notas de compras (Entradas)
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/configuracoes/fiscal")} className="gap-2">
-            <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">Config. Fiscal</span>
-          </Button>
-          <Button variant="outline" onClick={() => setModalInutilizar(true)} className="gap-2">
-            <Ban className="h-4 w-4" />
-            <span className="hidden sm:inline">Inutilizar</span>
-          </Button>
-          <Button onClick={() => setModalEmitirAberto(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Emitir Nota
-          </Button>
         </div>
       </div>
 
-      {/* Cards de Resumo */}
+      <Tabs defaultValue="saidas" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="saidas">Saídas (Vendas)</TabsTrigger>
+          <TabsTrigger value="entradas">Entradas (Compras)</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="saidas" className="space-y-6">
+          <div className="flex gap-2 justify-start sm:justify-end">
+            <Button variant="outline" onClick={() => navigate("/configuracoes/fiscal")} className="gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Config. Fiscal</span>
+            </Button>
+            <Button variant="outline" onClick={() => setModalInutilizar(true)} className="gap-2">
+              <Ban className="h-4 w-4" />
+              <span className="hidden sm:inline">Inutilizar</span>
+            </Button>
+            <Button onClick={() => setModalEmitirAberto(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Emitir Nota
+            </Button>
+          </div>
+
+          {/* Cards de Resumo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4 pb-4">
@@ -765,6 +775,12 @@ export default function NotasFiscais() {
         notaId={notaSelecionada?.id || null}
         notaNumero={notaSelecionada?.numero}
       />
+      </TabsContent>
+
+      <TabsContent value="entradas">
+        <EntradasPage />
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }

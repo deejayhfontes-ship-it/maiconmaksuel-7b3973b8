@@ -1,0 +1,63 @@
+import { useState } from "react";
+import { Plus, Upload, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { HistoricoEntradas } from "../components/HistoricoEntradas";
+import { XmlUploader } from "../components/XmlUploader";
+import { NfeParseResult } from "../types/nfe.types";
+
+export default function EntradasPage() {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleXmlParsed = (data: NfeParseResult) => {
+    // Aqui vai entrar a Fase 4: O coração da conferência!
+    setIsUploading(false);
+    console.log("XML Lido:", data);
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-white">Notas de Compra</h2>
+          <p className="text-muted-foreground mt-1">
+            Gerencie as compras e importe notas fiscais (XML) dos seus fornecedores
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {/* Botão de Upload será o gatilho principal da Fase 3 */}
+          <Button 
+            onClick={() => setIsUploading(true)}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Importar XML
+          </Button>
+          
+          <Button variant="outline" className="border-white/10 hidden md:flex">
+            <Plus className="w-4 h-4 mr-2" />
+            Entrada Manual
+          </Button>
+        </div>
+      </div>
+
+      <Dialog open={isUploading} onOpenChange={setIsUploading}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Importar Nota Fiscal</DialogTitle>
+            <DialogDescription>
+              Selecione o arquivo .xml da nota fiscal do seu fornecedor.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-6">
+            <XmlUploader onXmlParsed={handleXmlParsed} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <HistoricoEntradas />
+    </div>
+  );
+}

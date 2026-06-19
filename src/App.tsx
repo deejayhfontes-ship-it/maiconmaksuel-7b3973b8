@@ -21,6 +21,7 @@ import Clientes from "./pages/Clientes";
 import Profissionais from "./pages/Profissionais";
 import Servicos from "./pages/Servicos";
 import Produtos from "./pages/Produtos";
+import EntradasPage from "@/features/compras/pages/EntradasPage";
 import Agenda from "./pages/Agenda";
 import Atendimentos from "./pages/Atendimentos";
 import Caixa from "./pages/Caixa";
@@ -115,6 +116,7 @@ const App = () => (
                         <Route path="/profissional/:id" element={<ProfissionalDetalhe />} />
                         <Route path="/servicos" element={<Servicos />} />
                         <Route path="/produtos" element={<Produtos />} />
+                        <Route path="/estoque/entradas" element={<EntradasPage />} />
                         <Route path="/agenda" element={<Agenda />} />
                         <Route path="/atendimentos" element={<Atendimentos />} />
                         <Route path="/caixa" element={<Caixa />} />

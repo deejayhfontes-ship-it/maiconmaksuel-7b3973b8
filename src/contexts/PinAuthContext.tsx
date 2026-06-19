@@ -81,6 +81,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/mapa-sistema',
     '/comissoes',
     '/estoque',
+    '/estoque/entradas',
     '/vouchers',
     '/planos',
     '/ficha-avaliacao',
@@ -97,6 +98,7 @@ export const ROUTE_PERMISSIONS: Record<PinRole, string[]> = {
     '/profissional', // Legacy: /profissional/:id
     '/servicos',
     '/produtos',
+    '/estoque/entradas',
     '/perfil',
     // RH - View only (no config, no payroll processing)
     '/gestao-rh',
