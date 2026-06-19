@@ -4,16 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { HistoricoEntradas } from "../components/HistoricoEntradas";
 import { XmlUploader } from "../components/XmlUploader";
+import { ConferenciaPage } from "../components/ConferenciaPage";
 import { NfeParseResult } from "../types/nfe.types";
 
 export default function EntradasPage() {
   const [isUploading, setIsUploading] = useState(false);
+  const [conferenciaData, setConferenciaData] = useState<NfeParseResult | null>(null);
 
   const handleXmlParsed = (data: NfeParseResult) => {
-    // Aqui vai entrar a Fase 4: O coração da conferência!
     setIsUploading(false);
-    console.log("XML Lido:", data);
+    setConferenciaData(data);
   };
+
+  if (conferenciaData) {
+    return (
+      <ConferenciaPage 
+        data={conferenciaData} 
+        onCancel={() => setConferenciaData(null)}
+        onSuccess={() => {
+          setConferenciaData(null);
+          // O react-query vai invalidar o histórico automaticamente se fizermos direitinho
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
