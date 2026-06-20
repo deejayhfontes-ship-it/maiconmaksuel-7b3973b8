@@ -135,7 +135,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const focusToken = Deno.env.get("FOCUS_NFE_TOKEN");
+    const focusToken = Deno.env.get("FOCUS_NFE_TOKEN") || "SoYfaJslu75CtgVIDKIotk5QkCeM7qH9";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (!focusToken) {
@@ -194,7 +194,7 @@ serve(async (req) => {
 
       const tipoDoc = body.tipo || nota.tipo || "nfce";
       const endpoint = tipoDoc === "nfce" ? "/v2/nfce" : "/v2/nfe";
-      const ref = `nota-${nota.id.substring(0, 8)}-${Date.now()}`;
+      const ref = nota.venda_id ? `venda-${nota.venda_id}` : `nota-${nota.id}`;
 
       // Montar payload Focus NFe
       const payload: Record<string, unknown> = {
@@ -304,6 +304,7 @@ serve(async (req) => {
           chave_acesso: resp.data?.chave_nfe || resp.data?.chave,
           protocolo: resp.data?.numero_protocolo || resp.data?.protocolo,
           provider_ref: ref,
+          pdf_url: resp.data?.caminho_danfe ? (resp.data.caminho_danfe.startsWith('http') ? resp.data.caminho_danfe : `https://api.focusnfe.com.br${resp.data.caminho_danfe}`) : null,
         });
       } else if (resp.data?.status === "processando_autorizacao") {
         // Ainda processando (NF-e assíncrona)

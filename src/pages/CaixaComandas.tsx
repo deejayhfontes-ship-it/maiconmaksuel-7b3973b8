@@ -44,23 +44,24 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useGerarComissao } from "@/hooks/useGerarComissao";
 import { useComandaAuditoria, MotivoCategoriaAuditoria } from "@/hooks/useComandaAuditoria";
+import { useNotaFiscalService } from "@/hooks/useNotaFiscal";
+import { Switch } from "@/components/ui/switch";
 import { ComandaAuditoriaModal } from "@/components/atendimentos/ComandaAuditoriaModal";
 import { startOfDay, endOfDay } from "date-fns";
 
-interface Comanda {
+export type Comanda = {
   id: string;
   numero_comanda: number;
   data_hora: string;
   cliente_id: string | null;
-  cliente?: { nome: string; celular: string };
+  cliente?: { nome: string; celular: string; cpf?: string; cnpj?: string };
   status: string;
   subtotal: number;
   desconto: number;
   valor_final: number;
-  observacoes: string | null;
-  servicos: any[];
   produtos: any[];
-}
+  servicos: any[];
+};
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -81,6 +82,7 @@ export default function CaixaComandas() {
   const { toast } = useToast();
   const { gerarComissoesDaComanda } = useGerarComissao();
   const { reabrirComanda } = useComandaAuditoria();
+  const nfService = useNotaFiscalService();
   
   const [loading, setLoading] = useState(true);
   const [comandas, setComandas] = useState<Comanda[]>([]);
@@ -106,6 +108,11 @@ export default function CaixaComandas() {
   const [fiadoDataCustom, setFiadoDataCustom] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // NFC-e states
+  const [emitirNfce, setEmitirNfce] = useState(true);
+  const [cpfNfce, setCpfNfce] = useState("");
+  const [cupomNfceUrl, setCupomNfceUrl] = useState<string | null>(null);
+
   const fetchComandas = useCallback(async () => {
     setLoading(true);
 
@@ -113,7 +120,7 @@ export default function CaixaComandas() {
       .from("atendimentos")
       .select(`
         *,
-        cliente:cliente_id (nome, celular)
+        cliente:cliente_id (nome, celular, cpf, cnpj)
       `)
       .in("status", ["aberto", "reaberta"])
       .order("data_hora", { ascending: true });
@@ -245,6 +252,9 @@ export default function CaixaComandas() {
     setFormaPagamento("dinheiro");
     setValorRecebido(0);
     setGorjeta(0);
+    setEmitirNfce(true);
+    setCpfNfce(comanda.cliente?.cpf || comanda.cliente?.cnpj || "");
+    setCupomNfceUrl(null);
     setFiadoPrazo("30");
     setFiadoDataCustom("");
     setIsFinalizarOpen(true);
@@ -470,8 +480,75 @@ export default function CaixaComandas() {
       description: `${formatPrice(total)} - ${selectedComanda.cliente?.nome || "Cliente avulso"}`,
     });
 
+    if (emitirNfce) {
+      toast({ title: "Emitindo NFC-e...", description: "Aguarde enquanto geramos a nota fiscal com a SEFAZ.", duration: 3000 });
+      try {
+        const itensPayload: any[] = [];
+        let nItem = 1;
+        selectedComanda.servicos.forEach(s => {
+          itensPayload.push({
+            numero_item: nItem++,
+            codigo_produto: "SERV" + (s.servico_id?.substring(0, 4) || "001"),
+            descricao: s.servico?.nome || "Serviço",
+            valor_unitario: Number(s.valor_unitario || 0),
+            quantidade: 1,
+            valor_total: Number(s.subtotal || s.valor_unitario || 0),
+          });
+        });
+        selectedComanda.produtos.forEach(p => {
+          itensPayload.push({
+            numero_item: nItem++,
+            codigo_produto: "PROD" + (p.produto_id?.substring(0, 4) || "001"),
+            descricao: p.produto?.nome || "Produto",
+            valor_unitario: Number(p.valor_unitario || 0),
+            quantidade: Number(p.quantidade || 1),
+            valor_total: Number(p.subtotal || p.valor_unitario || 0),
+          });
+        });
+
+        // 1. Criar a nota na base via RPC (Processando)
+        const { data: notaId, error: rpcError } = await supabase.rpc('finalizar_venda_com_nfce', {
+          p_venda_id: selectedComanda.id,
+          p_cliente_id: selectedComanda.cliente_id,
+          p_cliente_nome: selectedComanda.cliente?.nome || null,
+          p_cliente_cpf_cnpj: cpfNfce || null,
+          p_valor_total: total,
+          p_itens: itensPayload,
+          p_pagamento: { forma: formaPagamento, valor: total }
+        });
+
+        if (rpcError) throw rpcError;
+
+        // 2. Transmitir via Edge Function síncrona
+        if (notaId) {
+          const resp = await nfService.emitir({
+            nota_id: notaId,
+            tipo: "nfce",
+            cliente: {
+              nome: selectedComanda.cliente?.nome || "Consumidor Final",
+              cpf_cnpj: cpfNfce || undefined
+            },
+            itens: itensPayload.map(i => ({ ...i, ncm: "00000000", cfop: "5102", unidade: "UN" })),
+            pagamento: { forma: formaPagamento, valor: total },
+            valor_total: total
+          });
+
+          if (resp.success && resp.pdf_url) {
+            setCupomNfceUrl(resp.pdf_url);
+            setIsSubmitting(false);
+            fetchComandas(); // Atualiza a lista por trás
+            return; // Interrompe para manter o modal aberto com o botão do cupom
+          }
+        }
+      } catch (err: any) {
+        console.error("Erro na NFC-e:", err);
+        toast({ title: "Erro na NFC-e", description: "Venda salva, mas NFC-e falhou: " + err.message, variant: "destructive" });
+      }
+    }
+
     setIsFinalizarOpen(false);
     setSelectedComanda(null);
+    setCupomNfceUrl(null);
     fetchComandas();
     } finally {
       setIsSubmitting(false);
@@ -734,14 +811,41 @@ export default function CaixaComandas() {
       )}
 
       {/* Modal Finalizar */}
-      <Dialog open={isFinalizarOpen} onOpenChange={setIsFinalizarOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={isFinalizarOpen} onOpenChange={(open) => {
+        setIsFinalizarOpen(open);
+        if (!open) {
+          setCupomNfceUrl(null);
+          setSelectedComanda(null);
+        }
+      }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Finalizar Comanda</DialogTitle>
             <DialogDescription>
-              {selectedComanda?.cliente?.nome || "Cliente avulso"} - #{selectedComanda?.numero_comanda}
+              {cupomNfceUrl ? "Nota fiscal emitida com sucesso!" : `${selectedComanda?.cliente?.nome || "Cliente avulso"} - #${selectedComanda?.numero_comanda}`}
             </DialogDescription>
           </DialogHeader>
+
+        {selectedComanda && cupomNfceUrl ? (
+          <div className="space-y-6 py-4 flex flex-col items-center">
+            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+              <Check className="h-8 w-8 text-green-600" />
+            </div>
+            <h3 className="text-xl font-bold text-center">Tudo Certo!</h3>
+            <p className="text-center text-muted-foreground">Venda finalizada e NFC-e emitida.</p>
+            <div className="w-full flex flex-col gap-3 mt-4">
+              <Button onClick={() => window.open(cupomNfceUrl, '_blank')} className="w-full gap-2">
+                <FileText className="h-4 w-4" /> Imprimir Cupom Fiscal
+              </Button>
+              <Button onClick={() => window.open(`https://wa.me/?text=Seu+cupom+fiscal+foi+emitido:+${encodeURIComponent(cupomNfceUrl)}`, '_blank')} variant="outline" className="w-full gap-2 text-green-600 border-green-600 hover:bg-green-50">
+                <Check className="h-4 w-4" /> Enviar por WhatsApp
+              </Button>
+              <Button variant="ghost" className="w-full mt-2" onClick={() => { setIsFinalizarOpen(false); setCupomNfceUrl(null); }}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        ) : (
           <div className="space-y-4">
             {/* Resumo */}
             <div className="p-4 bg-muted rounded-lg">
@@ -883,12 +987,35 @@ export default function CaixaComandas() {
                 onChange={(e) => setGorjeta(Number(e.target.value))}
               />
             </div>
+            {/* Emissão NFC-e */}
+            <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="nfce-toggle" className="font-semibold cursor-pointer">Emitir NFC-e (Cupom Fiscal)</Label>
+                  <p className="text-xs text-muted-foreground">Gerar nota fiscal automática ao finalizar a venda.</p>
+                </div>
+                <Switch id="nfce-toggle" checked={emitirNfce} onCheckedChange={setEmitirNfce} />
+              </div>
+
+              {emitirNfce && (
+                <div className="pt-2 border-t">
+                  <Label htmlFor="cpf-nfce">CPF/CNPJ na Nota (opcional)</Label>
+                  <Input 
+                    id="cpf-nfce"
+                    placeholder="Somente números" 
+                    value={cpfNfce} 
+                    onChange={e => setCpfNfce(e.target.value.replace(/\D/g, ''))}
+                    className="mt-1"
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Opções */}
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox id="cupom" checked={imprimirCupom} onCheckedChange={(c) => setImprimirCupom(!!c)} />
-                <Label htmlFor="cupom" className="cursor-pointer">Imprimir cupom</Label>
+                <Label htmlFor="cupom" className="cursor-pointer">Imprimir ficha/recibo simples</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox id="whatsapp" checked={enviarWhatsApp} onCheckedChange={(c) => setEnviarWhatsApp(!!c)} />

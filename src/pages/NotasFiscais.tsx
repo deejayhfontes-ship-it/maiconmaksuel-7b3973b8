@@ -33,7 +33,7 @@ type NotaFiscal = {
   numero: number;
   serie: number;
   chave_acesso: string | null;
-  status: "rascunho" | "processando" | "autorizada" | "cancelada" | "rejeitada";
+  status: "rascunho" | "processando" | "autorizada" | "cancelada" | "rejeitada" | "contingencia";
   motivo_rejeicao: string | null;
   cliente_id: string | null;
   cliente_nome: string | null;
@@ -51,9 +51,10 @@ type NotaFiscal = {
   seq_carta_correcao?: number;
 };
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   rascunho: { label: "Rascunho", color: "bg-info text-info-foreground", icon: FileText },
   processando: { label: "Processando", color: "bg-warning text-warning-foreground", icon: Clock },
+  contingencia: { label: "Contingência", color: "bg-orange-500 text-white", icon: AlertTriangle },
   autorizada: { label: "Autorizada", color: "bg-success text-success-foreground", icon: CheckCircle2 },
   cancelada: { label: "Cancelada", color: "bg-muted text-muted-foreground", icon: X },
   rejeitada: { label: "Rejeitada", color: "bg-destructive text-destructive-foreground", icon: XCircle },
@@ -137,6 +138,7 @@ export default function NotasFiscais() {
     total: notas?.length ?? 0,
     autorizadas: notas?.filter(n => n.status === "autorizada")?.length ?? 0,
     canceladas: notas?.filter(n => n.status === "cancelada")?.length ?? 0,
+    problemas: notas?.filter(n => n.status === "rejeitada" || n.status === "contingencia")?.length ?? 0,
     faturamentoMes: notas
       ?.filter(n => {
         if (!n.data_emissao) return false;
@@ -268,7 +270,7 @@ export default function NotasFiscais() {
           </div>
 
           {/* Cards de Resumo */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
@@ -304,6 +306,19 @@ export default function NotasFiscais() {
               <div>
                 <p className="text-2xl font-bold">{resumos.canceladas}</p>
                 <p className="text-xs text-muted-foreground">Canceladas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-orange-500/10">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{resumos.problemas}</p>
+                <p className="text-xs text-muted-foreground">Problemas</p>
               </div>
             </div>
           </CardContent>
@@ -356,6 +371,7 @@ export default function NotasFiscais() {
                 <SelectItem value="autorizada">Autorizadas</SelectItem>
                 <SelectItem value="cancelada">Canceladas</SelectItem>
                 <SelectItem value="rejeitada">Rejeitadas</SelectItem>
+                <SelectItem value="contingencia">Contingência</SelectItem>
                 <SelectItem value="processando">Processando</SelectItem>
                 <SelectItem value="rascunho">Rascunhos</SelectItem>
               </SelectContent>
@@ -506,7 +522,7 @@ export default function NotasFiscais() {
                                   )}
                                 </>
                               )}
-                              {nota.status === "rejeitada" && (
+                              {(nota.status === "rejeitada" || nota.status === "contingencia") && (
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleReenviar(nota.id); }}>
                                   <RefreshCw className="mr-2 h-4 w-4" />
                                   Reenviar Nota
