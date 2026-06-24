@@ -135,7 +135,8 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const focusToken = Deno.env.get("FOCUS_NFE_TOKEN") || "SoYfaJslu75CtgVIDKIotk5QkCeM7qH9";
+    // Atualizado para o Token Produção (API) da Empresa, que a Focus validou e autorizou
+    const focusToken = Deno.env.get("FOCUS_NFE_TOKEN") || "lkrQudtneLTJ7Ojz1ZzViyM9Q5GF2ddz";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (!focusToken) {
