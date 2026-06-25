@@ -1,3 +1,34 @@
+// Shape usada pela ConferenciaPage / ItensConferenciaTable (frontend)
+export interface NfeItem {
+  codigo: string;
+  descricao: string;
+  ncm: string;
+  cfop: string;
+  unidade: string;
+  quantidade: number;
+  valorUnitario: number;
+  valorTotal: number;
+  ean?: string;
+}
+
+export interface NfeParseResult {
+  fornecedor: {
+    nome: string;
+    cnpj: string;
+    inscricaoEstadual?: string;
+  };
+  notaInfo: {
+    numero: string;
+    serie: string;
+    dataEmissao: string;
+    chave: string;
+    valorTotal?: number;
+  };
+  itens: NfeItem[];
+  duplicatas?: DuplicataParse[];
+}
+
+// Shape usada pela Edge Function / RPC (backend)
 export interface FornecedorParse {
   tipo_pessoa: "PJ" | "PF";
   documento: string;

@@ -5,14 +5,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { HistoricoEntradas } from "../components/HistoricoEntradas";
 import { XmlUploader } from "../components/XmlUploader";
 import { ConferenciaPage } from "../components/ConferenciaPage";
+import { EntradaManualForm } from "../components/EntradaManualForm";
 import { NfeParseResult } from "../types/nfe.types";
 
 export default function EntradasPage() {
   const [isUploading, setIsUploading] = useState(false);
+  const [isManualEntry, setIsManualEntry] = useState(false);
   const [conferenciaData, setConferenciaData] = useState<NfeParseResult | null>(null);
 
   const handleXmlParsed = (data: NfeParseResult) => {
     setIsUploading(false);
+    setConferenciaData(data);
+  };
+
+  const handleManualSubmit = (data: NfeParseResult) => {
+    setIsManualEntry(false);
     setConferenciaData(data);
   };
 
@@ -49,7 +56,11 @@ export default function EntradasPage() {
             Importar XML
           </Button>
           
-          <Button variant="outline" className="border-white/10 hidden md:flex">
+          <Button
+            variant="outline"
+            className="border-white/10"
+            onClick={() => setIsManualEntry(true)}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Entrada Manual
           </Button>
@@ -68,6 +79,22 @@ export default function EntradasPage() {
           <div className="py-6">
             <XmlUploader onXmlParsed={handleXmlParsed} />
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isManualEntry} onOpenChange={setIsManualEntry}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Entrada Manual de Nota Fiscal</DialogTitle>
+            <DialogDescription>
+              Preencha os dados do fornecedor, nota e itens da compra.
+            </DialogDescription>
+          </DialogHeader>
+
+          <EntradaManualForm
+            onSubmit={handleManualSubmit}
+            onCancel={() => setIsManualEntry(false)}
+          />
         </DialogContent>
       </Dialog>
 
