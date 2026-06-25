@@ -1047,6 +1047,7 @@ export default function CaixaComandas() {
               </Button>
             </div>
           </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
