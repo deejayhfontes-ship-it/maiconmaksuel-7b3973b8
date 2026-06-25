@@ -695,7 +695,7 @@ function AparenciaContent() {
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Personalização</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Personalização</Button>
         </div>
       </div>
     </Card>
@@ -817,7 +817,7 @@ function DadosSalaoContent() {
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Alterações</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Alterações</Button>
         </div>
       </div>
     </Card>
@@ -1450,7 +1450,7 @@ function TemasCoresContent() {
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Tema</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Tema</Button>
           <Button variant="outline">Restaurar Padrão</Button>
         </div>
       </div>
@@ -1546,8 +1546,8 @@ function LogoSistemaContent() {
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Alterações</Button>
-          <Button variant="outline">Restaurar Padrão</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Alterações</Button>
+          <Button variant="outline" onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Restaurar Padrão</Button>
         </div>
       </div>
     </Card>
@@ -1618,7 +1618,7 @@ function HorariosFuncionamentoContent() {
         <div className="space-y-4 border-t pt-6">
           <div className="flex items-center justify-between">
             <h3 className="font-medium">Feriados e Datas Especiais</h3>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => toast.info("Esta configuração estará disponível em breve.")}>
               <Calendar className="h-4 w-4 mr-2" />
               Adicionar Feriado
             </Button>
@@ -1664,8 +1664,8 @@ function HorariosFuncionamentoContent() {
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Horários</Button>
-          <Button variant="outline">Restaurar Padrão</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Horários</Button>
+          <Button variant="outline" onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Restaurar Padrão</Button>
         </div>
       </div>
     </Card>
@@ -1776,7 +1776,7 @@ function ImagensLogoContent() {
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Imagens</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Imagens</Button>
         </div>
       </div>
     </Card>
@@ -1878,8 +1878,8 @@ function TelaLoginContent() {
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Alterações</Button>
-          <Button variant="outline">Restaurar Padrão</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Alterações</Button>
+          <Button variant="outline" onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Restaurar Padrão</Button>
         </div>
       </div>
     </Card>
@@ -2116,7 +2116,7 @@ function PacotesCombosContent() {
         {/* Botão Adicionar */}
         <div className="flex justify-between items-center">
           <p className="text-muted-foreground">Crie combos de serviços com descontos especiais</p>
-          <Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>
             <Package className="h-4 w-4 mr-2" />
             Novo Pacote
           </Button>
@@ -2384,7 +2384,7 @@ function ContasBancariasContent() {
       <div className="space-y-6">
         {/* Adicionar */}
         <div className="flex justify-end">
-          <Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>
             <DollarSign className="h-4 w-4 mr-2" />
             Nova Conta
           </Button>
@@ -2525,7 +2525,7 @@ function ComissoesContent() {
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button>Salvar Configurações</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Configurações</Button>
         </div>
       </div>
     </Card>
@@ -2623,7 +2623,7 @@ function FornecedoresContent() {
             </h2>
             <p className="text-muted-foreground text-sm">Gerencie seus fornecedores de produtos</p>
           </div>
-          <Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Fornecedor
           </Button>
@@ -2823,7 +2823,7 @@ function HorariosDisponiveisContent() {
           ))}
         </div>
 
-        <Button>Salvar Horários</Button>
+        <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Horários</Button>
       </div>
     </Card>
   );
@@ -2974,7 +2974,7 @@ function CoresVisualizacaoContent() {
           </div>
         </div>
 
-        <Button>Salvar Configurações</Button>
+        <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Configurações</Button>
       </div>
     </Card>
   );
@@ -3073,7 +3073,7 @@ function LembretesContent() {
           </>
         )}
 
-        <Button>Salvar Configurações</Button>
+        <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Configurações</Button>
       </div>
     </Card>
   );
@@ -3154,7 +3154,7 @@ function EmailAutomaticoContent() {
           </>
         )}
         <div className="pt-4 border-t">
-          <Button onClick={() => toast.success("Configurações de email salvas!")}>Salvar Configurações</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Configurações</Button>
         </div>
       </div>
     </Card>
@@ -3223,7 +3223,7 @@ function FormatosPadraoContent() {
           <input type="color" value={config.corCabecalho} onChange={(e) => setConfig(p => ({ ...p, corCabecalho: e.target.value }))} className="h-10 w-16 rounded border" />
         </div>
         <div className="pt-4 border-t">
-          <Button onClick={() => toast.success("Formatos padrão salvos!")}>Salvar Configurações</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Configurações</Button>
         </div>
       </div>
     </Card>
@@ -3279,7 +3279,7 @@ function LogoRelatoriosContent() {
           </label>
         </div>
         <div className="pt-4 border-t">
-          <Button onClick={() => toast.success("Configurações do logo salvas!")}>Salvar Alterações</Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>Salvar Alterações</Button>
         </div>
       </div>
     </Card>
@@ -3436,7 +3436,7 @@ function BloqueiosContent() {
             </h2>
             <p className="text-muted-foreground text-sm">Gerencie bloqueios e indisponibilidades</p>
           </div>
-          <Button>
+          <Button onClick={() => toast.info("Esta configuração estará disponível em breve.")}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Bloqueio
           </Button>
