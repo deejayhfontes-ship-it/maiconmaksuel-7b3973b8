@@ -5,15 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
  * Hook para gerar automaticamente registros de comissão
  * ao fechar uma comanda/atendimento.
  *
- * Hierarquia de prioridade do percentual:
+ * Hierarquia de prioridade do percentual (serviços):
  * 1. servico_comissao_profissional.percentual  (% individual do profissional naquele serviço)
  * 2. servicos.comissao_padrao                  (% global do serviço)
  * 3. profissionais.comissao_servicos           (% padrão do profissional para serviços)
- * 4. ERRO — sem percentual configurado
  *
- * RETORNO EXPLÍCITO:
- * { sucesso, geradas, ignoradas, erros, avisos }
- * O chamador DEVE tratar sucesso=false como erro real.
+ * Para produtos:
+ * 1. profissionais.comissao_produtos            (% padrão do profissional para produtos)
+ *
+ * Respeita configuracoes_rh:
+ * - regra_comissao_base: 'valor_bruto' | 'valor_liquido'
+ * - arredondamento_comissao: 'centavos' | 'reais' | 'dezena'
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
@@ -26,6 +28,18 @@ export interface ComissaoResultado {
   avisos: string[];
 }
 
+function aplicarArredondamento(valor: number, regra: string): number {
+  switch (regra) {
+    case "reais":
+      return Math.round(valor);
+    case "dezena":
+      return Math.round(valor / 10) * 10;
+    case "centavos":
+    default:
+      return Number(valor.toFixed(2));
+  }
+}
+
 export function useGerarComissao() {
   const gerarComissoesDaComanda = useCallback(
     async (params: {
@@ -33,6 +47,7 @@ export function useGerarComissao() {
       profissionalId: string;
       itens: Array<{
         servico_id: string | null;
+        produto_id?: string | null;
         nome_servico?: string;
         valor: number;
         gera_comissao?: boolean;
@@ -47,7 +62,6 @@ export function useGerarComissao() {
       const avisos: string[] = [];
       let ignoradas = 0;
 
-      // Validação de entrada
       if (!profissionalId) {
         return { sucesso: false, geradas: 0, ignoradas: 0, erros: ["profissional_id não informado"], avisos: [] };
       }
@@ -56,10 +70,10 @@ export function useGerarComissao() {
       }
 
       try {
-        // 1. Buscar dados do profissional (fallback de % padrão)
+        // 1. Buscar dados do profissional
         const { data: profData, error: profError } = await supabase
           .from("profissionais")
-          .select("id, comissao_servicos, comissao_padrao")
+          .select("id, comissao_servicos, comissao_padrao, comissao_produtos")
           .eq("id", profissionalId)
           .single();
 
@@ -68,9 +82,25 @@ export function useGerarComissao() {
         }
 
         const profRow = profData as Record<string, unknown>;
-        const comissaoProfissional = Number(profRow?.comissao_servicos ?? profRow?.comissao_padrao ?? 0);
+        const comissaoProfServicos = Number(profRow?.comissao_servicos ?? profRow?.comissao_padrao ?? 0);
+        const comissaoProfProdutos = Number(profRow?.comissao_produtos ?? 0);
 
-        // 2. Para cada item, resolver % pela hierarquia e validar
+        // 2. Buscar config RH (regra comissão base + arredondamento)
+        let regraBase = "valor_liquido";
+        let regraArredondamento = "centavos";
+
+        const { data: rhConfig } = await db
+          .from("configuracoes_rh")
+          .select("regra_comissao_base, arredondamento_comissao")
+          .limit(1)
+          .maybeSingle();
+
+        if (rhConfig) {
+          regraBase = rhConfig.regra_comissao_base || "valor_liquido";
+          regraArredondamento = rhConfig.arredondamento_comissao || "centavos";
+        }
+
+        // 3. Para cada item, resolver % pela hierarquia e calcular
         const registros: Array<{
           profissional_id: string;
           atendimento_id: string;
@@ -85,18 +115,14 @@ export function useGerarComissao() {
         }> = [];
 
         for (const item of itens) {
-          // A) Item marcado como não gera comissão — ignorar legitimamente
           if (item.gera_comissao === false) {
             ignoradas++;
             avisos.push(`Item ${item.nome_servico ?? item.servico_id} marcado como não gera comissão`);
             continue;
           }
 
-          // B) Valor zero — ANALISAR o motivo
           if (item.valor <= 0) {
             ignoradas++;
-            // Diferente de antes: NÃO continuar silenciosamente.
-            // Registrar como ERRO se valor deveria ser positivo
             erros.push(`Item "${item.nome_servico ?? item.servico_id}" com valor ${item.valor} — possível inconsistência`);
             console.error(`[useGerarComissao] ❌ Item com valor ${item.valor}:`, {
               servico_id: item.servico_id,
@@ -107,67 +133,75 @@ export function useGerarComissao() {
             continue;
           }
 
-          // C) Sem servico_id — avisar
-          if (!item.servico_id) {
-            avisos.push(`Item sem servico_id — usando % padrão do profissional (${comissaoProfissional}%)`);
-          }
+          const isProduto = !!item.produto_id && !item.servico_id;
 
-          // Começa com o % padrão do profissional (prioridade 3)
-          let percentual = comissaoProfissional;
+          // Determinar valor base conforme regra RH
+          const descontoItem = Number(item.desconto_aplicado ?? 0);
+          const valorLiquido = item.valor;
+          const valorBruto = valorLiquido + descontoItem;
+          const valorBase = regraBase === "valor_bruto" ? valorBruto : valorLiquido;
 
-          if (item.servico_id) {
-            // Busca dados do serviço (prioridade 2 e verificação de flag)
-            const { data: servicoData } = await supabase
-              .from("servicos")
-              .select("comissao_padrao, gera_comissao")
-              .eq("id", item.servico_id)
-              .single();
+          // Resolver percentual
+          let percentual: number;
 
-            const servicoRow = servicoData as Record<string, unknown> | null;
+          if (isProduto) {
+            percentual = comissaoProfProdutos;
+          } else {
+            percentual = comissaoProfServicos;
 
-            if (servicoRow) {
-              // Respeita flag gera_comissao do serviço
-              if (servicoRow.gera_comissao === false) {
-                ignoradas++;
-                avisos.push(`Serviço "${item.nome_servico}" tem gera_comissao=false`);
-                continue;
-              }
-
-              // Prioridade 2: % global do serviço
-              if (servicoRow.comissao_padrao !== null && servicoRow.comissao_padrao !== undefined) {
-                percentual = Number(servicoRow.comissao_padrao);
-              }
+            if (!item.servico_id) {
+              avisos.push(`Item sem servico_id — usando % padrão do profissional (${comissaoProfServicos}%)`);
             }
 
-            // Prioridade 1: % individual do profissional naquele serviço específico
-            const { data: scpData } = await db
-              .from("servico_comissao_profissional")
-              .select("percentual")
-              .eq("servico_id", item.servico_id)
-              .eq("profissional_id", profissionalId)
-              .maybeSingle();
+            if (item.servico_id) {
+              const { data: servicoData } = await supabase
+                .from("servicos")
+                .select("comissao_padrao, gera_comissao")
+                .eq("id", item.servico_id)
+                .single();
 
-            if (scpData && scpData.percentual !== null && scpData.percentual !== undefined) {
-              percentual = Number(scpData.percentual);
+              const servicoRow = servicoData as Record<string, unknown> | null;
+
+              if (servicoRow) {
+                if (servicoRow.gera_comissao === false) {
+                  ignoradas++;
+                  avisos.push(`Serviço "${item.nome_servico}" tem gera_comissao=false`);
+                  continue;
+                }
+
+                if (servicoRow.comissao_padrao !== null && servicoRow.comissao_padrao !== undefined) {
+                  percentual = Number(servicoRow.comissao_padrao);
+                }
+              }
+
+              // Prioridade 1: % individual do profissional naquele serviço
+              const { data: scpData } = await db
+                .from("servico_comissao_profissional")
+                .select("percentual")
+                .eq("servico_id", item.servico_id)
+                .eq("profissional_id", profissionalId)
+                .maybeSingle();
+
+              if (scpData && scpData.percentual !== null && scpData.percentual !== undefined) {
+                percentual = Number(scpData.percentual);
+              }
             }
           }
 
-          // D) Sem percentual definido em nenhum nível
           if (percentual <= 0) {
-            avisos.push(`Serviço "${item.nome_servico}" sem % de comissão configurado (0%)`);
-            // Continua com 0% — gera registro com valor_comissao = 0 para rastreabilidade
+            avisos.push(`${isProduto ? "Produto" : "Serviço"} "${item.nome_servico}" sem % de comissão configurado (0%)`);
           }
 
-          const valorComissao = (item.valor * percentual) / 100;
+          const valorComissao = aplicarArredondamento((valorBase * percentual) / 100, regraArredondamento);
 
           registros.push({
             profissional_id: profissionalId,
             atendimento_id: comandaId,
             servico_id: item.servico_id,
-            valor_servico: item.valor,
+            valor_servico: valorBase,
             percentual,
-            valor_comissao: Number(valorComissao.toFixed(2)),
-            desconto_aplicado: Number((item.desconto_aplicado ?? 0).toFixed(2)),
+            valor_comissao: valorComissao,
+            desconto_aplicado: Number(descontoItem.toFixed(2)),
             status: "pendente",
             periodo_ref: periodoRef ?? new Date().toISOString().slice(0, 7),
             servico_nome: item.nome_servico ?? null,
@@ -175,15 +209,13 @@ export function useGerarComissao() {
         }
 
         if (registros.length === 0) {
-          // Se ignorou tudo E teve erros, é falha
           if (erros.length > 0) {
             return { sucesso: false, geradas: 0, ignoradas, erros, avisos };
           }
-          // Se ignorou tudo mas sem erros, é legítimo (ex: todos gera_comissao=false)
           return { sucesso: true, geradas: 0, ignoradas, erros, avisos };
         }
 
-        // 3. Verifica duplicata por profissional+comanda
+        // 4. Verifica duplicata por profissional+comanda
         const { data: existenteProf } = await db
           .from("comissoes_registro")
           .select("id, status")
@@ -192,7 +224,6 @@ export function useGerarComissao() {
           .not("status", "in", "(cancelado,estornado)");
 
         if (existenteProf && existenteProf.length > 0) {
-          // Verifica se a comanda foi reaberta — nesse caso regenera
           const { data: comandaStatus } = await supabase
             .from("atendimentos")
             .select("status")
@@ -200,7 +231,6 @@ export function useGerarComissao() {
             .maybeSingle();
 
           if (comandaStatus?.status === "reaberta") {
-            // Cancelar comissões anteriores (não deletar, manter histórico)
             await db
               .from("comissoes_registro")
               .update({ status: "estornado" })
@@ -216,10 +246,11 @@ export function useGerarComissao() {
           }
         }
 
-        // 4. Log de auditoria antes de inserir
         console.log("[useGerarComissao] 📊 Preparando inserção:", {
           comandaId,
           profissionalId,
+          regraBase,
+          regraArredondamento,
           totalRegistros: registros.length,
           ignoradas,
           registros: registros.map(r => ({
@@ -230,14 +261,12 @@ export function useGerarComissao() {
           })),
         });
 
-        // 5. Insere os registros
         const { error } = await db
           .from("comissoes_registro")
           .insert(registros);
 
         if (error) {
           console.error("[useGerarComissao] ❌ Erro ao inserir comissões:", error);
-          // Tratar erro de constraint única como duplicidade
           if (error.message?.includes("idx_comissao_unica_ativa") || error.code === "23505") {
             return { sucesso: true, geradas: 0, ignoradas, erros: [], avisos: ["Comissão já existia (bloqueada por constraint)"] };
           }
