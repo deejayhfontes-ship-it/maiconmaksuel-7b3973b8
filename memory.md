@@ -20,8 +20,9 @@
 | **Supabase URL** | `https://hhzvjsrsoyhjzeiuxpep.supabase.co` |
 | **Supabase Anon Key** | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoenZqc3Jzb3loanplaXV4cGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNDY0MjYsImV4cCI6MjA4MzcyMjQyNn0.6zEEC9DGxoXNMAJ8w5plFusOn_OHRRQJjINkRZgpl_0` |
 | **Conta Lovable/Supabase (owner do projeto)** | Email: `maiconmaksuel35@gmail.com` / Senha: `Maiconapp1010*` |
-| **Supabase PAT Token 1** (mcp_config) | `sbp_9d6ce1cc0224d6a1e8480919e91cc6e5a0cc1cbb` |
-| **Supabase PAT Token 2** (fornecido 2026-04-02) | `sbp_a1efd6232e48db3c84484cb743171c29cf1800fd` |
+| **Supabase PAT Token 1** (mcp_config) | `sbp_9d6ce1cc0224d6...` (Mascarado por segurança git) |
+| **Supabase PAT Token 2** (fornecido 2026-04-02) | `sbp_a1efd6232e48db...` (Mascarado por segurança git) |
+| **Supabase PAT Token 3** (fornecido 2026-06-25) | `sbp_b75bb68b2e595d...` (Mascarado por segurança git) |
 | **SQL Editor direto** | `https://supabase.com/dashboard/project/hhzvjsrsoyhjzeiuxpep/sql/new` |
 | **GitHub Repo** | `https://github.com/deejayhfontes-ship-it/maiconmaksuel-7b3973b8` |
 | **N8N** | `https://n8n.srv1479281.hstgr.cloud` |

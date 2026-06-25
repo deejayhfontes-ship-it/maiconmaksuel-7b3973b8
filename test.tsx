@@ -1,0 +1,886 @@
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Plus,
+  Clock,
+  User,
+  Scissors,
+  ShoppingBag,
+  Printer,
+  X,
+  Check,
+  Search,
+  RotateCcw,
+  Lock,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { format, parseISO, differenceInMinutes } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { useGerarComissao } from "@/hooks/useGerarComissao";
+import { useComandaAuditoria, MotivoCategoriaAuditoria } from "@/hooks/useComandaAuditoria";
+import { useNotaFiscalService } from "@/hooks/useNotaFiscal";
+import { Switch } from "@/components/ui/switch";
+import { ComandaAuditoriaModal } from "@/components/atendimentos/ComandaAuditoriaModal";
+import { startOfDay, endOfDay } from "date-fns";
+
+export type Comanda = {
+  id: string;
+  numero_comanda: number;
+  data_hora: string;
+  cliente_id: string | null;
+  cliente?: { nome: string; celular: string; cpf?: string; cnpj?: string };
+  status: string;
+  subtotal: number;
+  desconto: number;
+  valor_final: number;
+  produtos: any[];
+  servicos: any[];
+};
+
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(price);
+};
+
+const formatDuration = (minutes: number) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}min`;
+  return `${h}h ${m}min`;
+};
+
+export default function CaixaComandas() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { gerarComissoesDaComanda } = useGerarComissao();
+  const { reabrirComanda } = useComandaAuditoria();
+  const nfService = useNotaFiscalService();
+  
+  const [loading, setLoading] = useState(true);
+  const [comandas, setComandas] = useState<Comanda[]>([]);
+  const [comandasFechadas, setComandasFechadas] = useState<Comanda[]>([]);
+  const [search, setSearch] = useState("");
+  const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null);
+  const [isFinalizarOpen, setIsFinalizarOpen] = useState(false);
+  
+  // Reabrir comanda
+  const [reabrirTarget, setReabrirTarget] = useState<Comanda | null>(null);
+  const [isReabrirModalOpen, setIsReabrirModalOpen] = useState(false);
+  
+  // Form state para finalização
+  const [desconto, setDesconto] = useState(0);
+  const [descontoTipo, setDescontoTipo] = useState<"valor" | "percentual">("valor");
+  const [formaPagamento, setFormaPagamento] = useState("dinheiro");
+  const [valorRecebido, setValorRecebido] = useState(0);
+  const [imprimirCupom, setImprimirCupom] = useState(false);
+  const [enviarWhatsApp, setEnviarWhatsApp] = useState(false);
+  const [gorjeta, setGorjeta] = useState(0);
+  // Prazo fiado
+  const [fiadoPrazo, setFiadoPrazo] = useState<"20" | "30" | "40" | "custom">("30");
+  const [fiadoDataCustom, setFiadoDataCustom] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // NFC-e states
+  const [emitirNfce, setEmitirNfce] = useState(true);
+  const [cpfNfce, setCpfNfce] = useState("");
+  const [cupomNfceUrl, setCupomNfceUrl] = useState<string | null>(null);
+
+  const fetchComandas = useCallback(async () => {
+    setLoading(true);
+
+    const { data: atendimentos, error } = await supabase
+      .from("atendimentos")
+      .select(`
+        *,
+        cliente:cliente_id (nome, celular, cpf, cnpj)
+      `)
+      .in("status", ["aberto", "reaberta"])
+      .order("data_hora", { ascending: true });
+
+    if (error) {
+      toast({ title: "Erro ao carregar comandas", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    // Buscar serviços e produtos de cada atendimento
+    const comandasCompletas = await Promise.all(
+      (atendimentos || []).map(async (at) => {
+        const { data: servicos } = await supabase
+          .from("atendimento_servicos")
+          .select(`
+            *,
+            servico:servico_id (nome),
+            profissional:profissional_id (nome)
+          `)
+          .eq("atendimento_id", at.id);
+
+        const { data: produtos } = await supabase
+          .from("atendimento_produtos")
+          .select(`
+            *,
+            produto:produto_id (nome)
+          `)
+          .eq("atendimento_id", at.id);
+
+        return {
+          ...at,
+          servicos: servicos || [],
+          produtos: produtos || [],
+        };
+      })
+    );
+
+    setComandas(comandasCompletas);
+    setLoading(false);
+  }, [toast]);
+
+  const fetchFechadas = useCallback(async () => {
+    const hoje = new Date();
+    
+    // Buscar finalizadas/fechadas (entram no cálculo do caixa)
+    const { data } = await supabase
+      .from("atendimentos")
+      .select(`*, cliente:cliente_id (nome, celular)`)
+      .in("status", ["finalizado", "fechado"]) // 'cancelado' e 'reaberta' NÃO entram aqui
+      .gte("data_hora", startOfDay(hoje).toISOString())
+      .lte("data_hora", endOfDay(hoje).toISOString())
+      .order("data_hora", { ascending: false });
+
+    // Buscar canceladas separadamente (NÃO somam no caixa, só exibem com badge vermelho)
+    const { data: canceladas } = await supabase
+      .from("atendimentos")
+      .select(`*, cliente:cliente_id (nome, celular)`)
+      .eq("status", "cancelado")
+      .gte("data_hora", startOfDay(hoje).toISOString())
+      .lte("data_hora", endOfDay(hoje).toISOString())
+      .order("data_hora", { ascending: false });
+
+    const todasFechadas = [...(data || []), ...(canceladas || [])];
+
+    const fechadas = await Promise.all(
+      todasFechadas.map(async (at) => {
+        const { data: servicos } = await supabase
+          .from("atendimento_servicos")
+          .select(`*, servico:servico_id (nome), profissional:profissional_id (nome)`)
+          .eq("atendimento_id", at.id);
+        const { data: produtos } = await supabase
+          .from("atendimento_produtos")
+          .select(`*, produto:produto_id (nome)`)
+          .eq("atendimento_id", at.id);
+        return { ...at, servicos: servicos || [], produtos: produtos || [] };
+      })
+    );
+    setComandasFechadas(fechadas);
+  }, []);
+
+  useEffect(() => {
+    fetchComandas();
+    fetchFechadas();
+  }, [fetchComandas, fetchFechadas]);
+
+  const handleReabrir = (comanda: Comanda) => {
+    setReabrirTarget(comanda);
+    setIsReabrirModalOpen(true);
+  };
+
+  const confirmarReabertura = async (motivo: string, categoria: MotivoCategoriaAuditoria) => {
+    if (!reabrirTarget) return;
+    const result = await reabrirComanda(
+      {
+        id: reabrirTarget.id,
+        numero_comanda: reabrirTarget.numero_comanda,
+        status: reabrirTarget.status,
+        subtotal: reabrirTarget.subtotal,
+        desconto: reabrirTarget.desconto,
+        valor_final: reabrirTarget.valor_final,
+        data_hora: reabrirTarget.data_hora,
+        cliente_id: reabrirTarget.cliente_id,
+        observacoes: reabrirTarget.observacoes,
+        cliente: reabrirTarget.cliente,
+      },
+      motivo,
+      categoria
+    );
+    if (result.success) {
+      toast({
+        title: `✅ Comanda #${String(reabrirTarget.numero_comanda).padStart(3, '0')} reaberta!`,
+        description: 'A comanda voltou para a lista de abertas para edição.',
+      });
+      setIsReabrirModalOpen(false);
+      setReabrirTarget(null);
+      // Refresh ambas as listas para mover a comanda de 'fechadas' para 'abertas'
+      await fetchComandas();
+      await fetchFechadas();
+    } else {
+      toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+    }
+  };
+
+  const handleFinalizar = (comanda: Comanda) => {
+    setSelectedComanda(comanda);
+    setDesconto(0);
+    setDescontoTipo("valor");
+    setFormaPagamento("dinheiro");
+    setValorRecebido(0);
+    setGorjeta(0);
+    setEmitirNfce(true);
+    setCpfNfce(comanda.cliente?.cpf || comanda.cliente?.cnpj || "");
+    setCupomNfceUrl(null);
+    setFiadoPrazo("30");
+    setFiadoDataCustom("");
+    setIsFinalizarOpen(true);
+  };
+
+  const calcularTotal = () => {
+    if (!selectedComanda) return 0;
+    const subtotal = selectedComanda.subtotal;
+    let descontoValor = 0;
+    
+    if (descontoTipo === "percentual") {
+      descontoValor = (subtotal * desconto) / 100;
+    } else {
+      descontoValor = desconto;
+    }
+    
+    return Math.max(0, subtotal - descontoValor);
+  };
+
+  const calcularTroco = () => {
+    if (formaPagamento !== "dinheiro") return 0;
+    return Math.max(0, valorRecebido - calcularTotal());
+  };
+
+  const confirmarFinalizacao = async () => {
+    if (!selectedComanda || isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      // Verificar caixa aberto antes de processar (exceto fiado que não entra no caixa)
+      if (formaPagamento !== "fiado") {
+        const { data: caixaCheck } = await supabase
+          .from("caixa")
+          .select("id")
+          .eq("status", "aberto")
+          .limit(1)
+          .maybeSingle();
+
+      if (!caixaCheck) {
+        toast({
+          title: "Caixa não está aberto",
+          description: "Abra o caixa antes de registrar pagamentos para que o valor entre corretamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const total = calcularTotal();
+    const descontoValor = descontoTipo === "percentual" 
+      ? (selectedComanda.subtotal * desconto) / 100 
+      : desconto;
+
+    // Atualizar atendimento
+    const { error: atError } = await supabase
+      .from("atendimentos")
+      .update({
+        status: "finalizado",
+        desconto: descontoValor,
+        valor_final: total,
+      })
+      .eq("id", selectedComanda.id);
+
+    if (atError) {
+      toast({ title: "Erro ao finalizar", description: atError.message, variant: "destructive" });
+      return;
+    }
+
+    // Buscar caixa aberto
+    const { data: caixa } = await supabase
+      .from("caixa")
+      .select("id")
+      .eq("status", "aberto")
+      .limit(1)
+      .maybeSingle();
+
+    if (caixa) {
+      // Registrar movimentação no caixa
+      await supabase.from("caixa_movimentacoes").insert([{
+        caixa_id: caixa.id,
+        tipo: "entrada",
+        descricao: `Venda #${selectedComanda.numero_comanda} - ${selectedComanda.cliente?.nome || "Cliente avulso"}`,
+        valor: total,
+        forma_pagamento: formaPagamento,
+        atendimento_id: selectedComanda.id,
+      }]);
+
+      // Registrar gorjeta se houver
+      if (gorjeta > 0 && selectedComanda.servicos.length > 0) {
+        const profissionalId = selectedComanda.servicos[0]?.profissional_id;
+        if (profissionalId) {
+          await supabase.from("gorjetas").insert([{
+            atendimento_id: selectedComanda.id,
+            profissional_id: profissionalId,
+            valor: gorjeta,
+          }]);
+        }
+      }
+    }
+
+    // Se fiado, criar dívida
+    if (formaPagamento === "fiado" && selectedComanda.cliente_id) {
+      let vencimento: Date;
+      if (fiadoPrazo === "custom" && fiadoDataCustom) {
+        vencimento = new Date(fiadoDataCustom + "T12:00:00");
+      } else {
+        vencimento = new Date();
+        vencimento.setDate(vencimento.getDate() + Number(fiadoPrazo));
+      }
+
+      await supabase.from("dividas").insert([{
+        cliente_id: selectedComanda.cliente_id,
+        atendimento_id: selectedComanda.id,
+        valor_original: total,
+        valor_pago: 0,
+        saldo: total,
+        data_origem: new Date().toISOString().split("T")[0],
+        data_vencimento: vencimento.toISOString().split("T")[0],
+        status: "aberta",
+        observacoes: `Comanda #${String(selectedComanda.numero_comanda).padStart(3, "0")} - Fiado`,
+      }]);
+    } else {
+      // Pagamento real: quitar qualquer dívida em aberto vinculada a esta comanda
+      const { data: dividasAbertas } = await supabase
+        .from("dividas")
+        .select("id, valor_original")
+        .eq("atendimento_id", selectedComanda.id)
+        .in("status", ["aberta", "parcial"]);
+
+      if (dividasAbertas && dividasAbertas.length > 0) {
+        for (const div of dividasAbertas) {
+          await supabase.from("dividas").update({
+            status: "quitada",
+            saldo: 0,
+            valor_pago: div.valor_original,
+          }).eq("id", div.id);
+        }
+      }
+    }
+
+    // REGRA: fiado NÃO gera comissão no momento do lançamento.
+    // Comissão será gerada apenas quando o fiado for quitado (baixa no pagamento).
+    if (formaPagamento !== "fiado") {
+      const periodoRef = selectedComanda.data_hora
+        ? new Date(selectedComanda.data_hora).toISOString().slice(0, 7)
+        : new Date().toISOString().slice(0, 7);
+      const profissionaisMap = new Map<string, typeof selectedComanda.servicos>();
+
+      for (const s of selectedComanda.servicos) {
+        if (!s.profissional_id) continue;
+        if (!profissionaisMap.has(s.profissional_id)) {
+          profissionaisMap.set(s.profissional_id, []);
+        }
+        profissionaisMap.get(s.profissional_id)!.push(s);
+      }
+
+      // Calcular fator de desconto proporcional sobre o total da comanda
+      let fatorDesconto = selectedComanda.subtotal > 0 ? total / selectedComanda.subtotal : 1;
+
+      // VALIDAÇÃO BLOQUEANTE: Se total > 0 mas fatorDesconto ficou inválido
+      if (total > 0 && fatorDesconto <= 0) {
+        console.error("[CaixaComandas] ❌ BLOQUEIO: fatorDesconto inválido:", { total, subtotal: selectedComanda.subtotal, fatorDesconto });
+        toast({
+          title: "❌ Erro no cálculo de valores",
+          description: "Finalização bloqueada: inconsistência entre total e subtotal. Verifique os valores da comanda.",
+          variant: "destructive",
+        });
+        return; // BLOQUEIA — não finaliza
+      }
+
+      console.log("[CaixaComandas] 📊 Auditoria comissão:", {
+        comandaId: selectedComanda.id,
+        total,
+        subtotal: selectedComanda.subtotal,
+        fatorDesconto,
+        qtdProfissionais: profissionaisMap.size,
+      });
+
+      let totalComissoesGeradas = 0;
+      const errosComissao: string[] = [];
+
+      for (const [profId, servicos] of profissionaisMap.entries()) {
+        const resultado = await gerarComissoesDaComanda({
+          comandaId: selectedComanda.id,
+          profissionalId: profId,
+          itens: servicos.map((s) => {
+            const valorOriginal = Number(s.subtotal ?? s.valor_unitario ?? 0);
+            const valorComDesconto = Number((valorOriginal * fatorDesconto).toFixed(2));
+            return {
+              servico_id: s.servico_id ?? null,
+              nome_servico: s.servico?.nome ?? undefined,
+              valor: valorComDesconto,
+              gera_comissao: s.gera_comissao !== false,
+              desconto_aplicado: Number((valorOriginal - valorComDesconto).toFixed(2)),
+            };
+          }),
+          periodoRef,
+        });
+        totalComissoesGeradas += resultado.geradas;
+        if (!resultado.sucesso) {
+          errosComissao.push(...resultado.erros);
+        }
+      }
+
+      if (errosComissao.length > 0) {
+        toast({
+          title: "⚠️ Problemas na comissão",
+          description: errosComissao[0],
+          variant: "destructive",
+        });
+      }
+      if (profissionaisMap.size > 0 && totalComissoesGeradas === 0 && errosComissao.length > 0) {
+        toast({
+          title: "❌ Comissões não geradas",
+          description: "Verifique se os profissionais têm % de comissão configurado e se os serviços têm valor > 0.",
+          variant: "destructive",
+        });
+      }
+    }
+
+    toast({
+      title: "Venda finalizada!",
+      description: `${formatPrice(total)} - ${selectedComanda.cliente?.nome || "Cliente avulso"}`,
+    });
+
+    if (emitirNfce) {
+      toast({ title: "Emitindo NFC-e...", description: "Aguarde enquanto geramos a nota fiscal com a SEFAZ.", duration: 3000 });
+      try {
+        const itensPayload: any[] = [];
+        let nItem = 1;
+        selectedComanda.servicos.forEach(s => {
+          itensPayload.push({
+            numero_item: nItem++,
+            codigo_produto: "SERV" + (s.servico_id?.substring(0, 4) || "001"),
+            descricao: s.servico?.nome || "Serviço",
+            valor_unitario: Number(s.valor_unitario || 0),
+            quantidade: 1,
+            valor_total: Number(s.subtotal || s.valor_unitario || 0),
+          });
+        });
+        selectedComanda.produtos.forEach(p => {
+          itensPayload.push({
+            numero_item: nItem++,
+            codigo_produto: "PROD" + (p.produto_id?.substring(0, 4) || "001"),
+            descricao: p.produto?.nome || "Produto",
+            valor_unitario: Number(p.valor_unitario || 0),
+            quantidade: Number(p.quantidade || 1),
+            valor_total: Number(p.subtotal || p.valor_unitario || 0),
+          });
+        });
+
+        // 1. Criar a nota na base via RPC (Processando)
+        const { data: notaId, error: rpcError } = await supabase.rpc('finalizar_venda_com_nfce', {
+          p_venda_id: selectedComanda.id,
+          p_cliente_id: selectedComanda.cliente_id,
+          p_cliente_nome: selectedComanda.cliente?.nome || null,
+          p_cliente_cpf_cnpj: cpfNfce || null,
+          p_valor_total: total,
+          p_itens: itensPayload,
+          p_pagamento: { forma: formaPagamento, valor: total }
+        });
+
+        if (rpcError) throw rpcError;
+
+        // 2. Transmitir via Edge Function síncrona
+        if (notaId) {
+          const resp = await nfService.emitir({
+            nota_id: notaId,
+            tipo: "nfce",
+            cliente: {
+              nome: selectedComanda.cliente?.nome || "Consumidor Final",
+              cpf_cnpj: cpfNfce || undefined
+            },
+            itens: itensPayload.map(i => ({ ...i, ncm: "00000000", cfop: "5102", unidade: "UN" })),
+            pagamento: { forma: formaPagamento, valor: total },
+            valor_total: total
+          });
+
+          if (resp.success && resp.pdf_url) {
+            setCupomNfceUrl(resp.pdf_url);
+            setIsSubmitting(false);
+            fetchComandas(); // Atualiza a lista por trás
+            return; // Interrompe para manter o modal aberto com o botão do cupom
+          }
+        }
+      } catch (err: any) {
+        console.error("Erro na NFC-e:", err);
+        toast({ title: "Erro na NFC-e", description: "Venda salva, mas NFC-e falhou: " + err.message, variant: "destructive" });
+      }
+    }
+
+    setIsFinalizarOpen(false);
+    setSelectedComanda(null);
+    setCupomNfceUrl(null);
+    fetchComandas();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filteredComandas = comandas.filter((c) =>
+    c.cliente?.nome?.toLowerCase().includes(search.toLowerCase()) ||
+    c.numero_comanda.toString().includes(search)
+  );
+
+  const totalValor = filteredComandas.reduce((acc, c) => acc + Number(c.subtotal), 0);
+  const tempoMedio = filteredComandas.length > 0
+    ? Math.round(filteredComandas.reduce((acc, c) => 
+        acc + differenceInMinutes(new Date(), parseISO(c.data_hora)), 0
+      ) / filteredComandas.length)
+    : 0;
+
+  if (loading) {
+    return null;
+  }
+
+  return null;
+            
+            return null;
+          })}
+        </div>
+      )}
+
+      {/* Resumo */}
+      {filteredComandas.length > 0 && (
+        <Card className="bg-muted/50">
+          <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-muted-foreground">Total comandas abertas</p>
+              <p className="text-xl sm:text-2xl font-bold truncate">{formatPrice(totalValor)}</p>
+            </div>
+            <div className="text-left sm:text-right">
+              <p className="text-xs sm:text-sm text-muted-foreground">Tempo médio aberto</p>
+              <p className="text-base sm:text-lg font-medium">{formatDuration(tempoMedio)}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fechadas Hoje */}
+      {comandasFechadas.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Fechadas Hoje</h2>
+            <Badge variant="outline" className="ml-auto">
+              {comandasFechadas.filter(c => c.status !== "cancelado").length} fechadas
+              {comandasFechadas.filter(c => c.status === "cancelado").length > 0 && (
+                <span className="text-destructive ml-1">
+                  + {comandasFechadas.filter(c => c.status === "cancelado").length} canceladas
+                </span>
+              )}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {comandasFechadas.map((c) => {
+              const isCancelada = c.status === "cancelado";
+              return null;
+            })}
+          </div>
+          {/* Total fechadas (excluindo canceladas) */}
+          <div className="flex justify-end">
+            <p className="text-sm text-muted-foreground">
+              Total fechadas: <span className="font-bold text-foreground">
+                {formatPrice(comandasFechadas
+                  .filter(c => c.status !== "cancelado")
+                  .reduce((acc, c) => acc + Number(c.valor_final || c.subtotal || 0), 0)
+                )}
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Reabrir */}
+      {reabrirTarget && (
+        <ComandaAuditoriaModal
+          open={isReabrirModalOpen}
+          onOpenChange={setIsReabrirModalOpen}
+          acao="reaberta"
+          numeroComanda={reabrirTarget.numero_comanda}
+          clienteNome={reabrirTarget.cliente?.nome}
+          valorComanda={reabrirTarget.valor_final || reabrirTarget.subtotal}
+          onConfirmar={confirmarReabertura}
+        />
+      )}
+
+      {/* Modal Finalizar */}
+      <Dialog open={isFinalizarOpen} onOpenChange={(open) => {
+        setIsFinalizarOpen(open);
+        if (!open) {
+          setCupomNfceUrl(null);
+          setSelectedComanda(null);
+        }
+      }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Finalizar Comanda</DialogTitle>
+            <DialogDescription>
+              {cupomNfceUrl ? "Nota fiscal emitida com sucesso!" : `${selectedComanda?.cliente?.nome || "Cliente avulso"} - #${selectedComanda?.numero_comanda}`}
+            </DialogDescription>
+          </DialogHeader>
+
+        {selectedComanda && cupomNfceUrl ? (
+          <div className="space-y-6 py-4 flex flex-col items-center">
+            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+              <Check className="h-8 w-8 text-green-600" />
+            </div>
+            <h3 className="text-xl font-bold text-center">Tudo Certo!</h3>
+            <p className="text-center text-muted-foreground">Venda finalizada e NFC-e emitida.</p>
+            <div className="w-full flex flex-col gap-3 mt-4">
+              <Button onClick={() => window.open(cupomNfceUrl, '_blank')} className="w-full gap-2">
+                <FileText className="h-4 w-4" /> Imprimir Cupom Fiscal
+              </Button>
+              <Button onClick={() => window.open(`https://wa.me/?text=Seu+cupom+fiscal+foi+emitido:+${encodeURIComponent(cupomNfceUrl)}`, '_blank')} variant="outline" className="w-full gap-2 text-green-600 border-green-600 hover:bg-green-50">
+                <Check className="h-4 w-4" /> Enviar por WhatsApp
+              </Button>
+              <Button variant="ghost" className="w-full mt-2" onClick={() => { setIsFinalizarOpen(false); setCupomNfceUrl(null); }}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Resumo */}
+            <div className="p-4 bg-muted rounded-lg">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span className="font-medium">{formatPrice(selectedComanda?.subtotal || 0)}</span>
+              </div>
+              {desconto > 0 && (
+                <div className="flex justify-between text-destructive">
+                  <span>Desconto:</span>
+                  <span>-{descontoTipo === "percentual" 
+                    ? `${desconto}%`
+                    : formatPrice(desconto)
+                  }</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-bold border-t mt-2 pt-2">
+                <span>Total:</span>
+                <span className="text-primary">{formatPrice(calcularTotal())}</span>
+              </div>
+            </div>
+
+            {/* Desconto */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Desconto</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={desconto || ""}
+                  onChange={(e) => setDesconto(Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={descontoTipo} onValueChange={(v: any) => setDescontoTipo(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="valor">R$</SelectItem>
+                    <SelectItem value="percentual">%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Forma de Pagamento */}
+            <div>
+              <Label>Forma de Pagamento</Label>
+              <RadioGroup value={formaPagamento} onValueChange={setFormaPagamento} className="grid grid-cols-2 gap-2 mt-2">
+                {[
+                  { value: "dinheiro", label: "Dinheiro" },
+                  { value: "debito", label: "Débito" },
+                  { value: "credito", label: "Crédito" },
+                  { value: "pix", label: "PIX" },
+                  { value: "cheque", label: "Cheque" },
+                  { value: "fiado", label: "Fiado" },
+                ].map((fp) => (
+                  <div key={fp.value} className="flex items-center space-x-2">
+                    <RadioGroupItem value={fp.value} id={fp.value} />
+                    <Label htmlFor={fp.value} className="cursor-pointer">{fp.label}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            {/* Prazo do Fiado */}
+            {formaPagamento === "fiado" && (
+              <div className="space-y-2">
+                <Label>Prazo de Vencimento</Label>
+                <div className="flex gap-2">
+                  {(["20", "30", "40"] as const).map((dias) => (
+                    <Button
+                      key={dias}
+                      type="button"
+                      size="sm"
+                      variant={fiadoPrazo === dias ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => { setFiadoPrazo(dias); setFiadoDataCustom(""); }}
+                    >
+                      {dias}d
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={fiadoPrazo === "custom" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setFiadoPrazo("custom")}
+                  >
+                    Data
+                  </Button>
+                </div>
+                {fiadoPrazo === "custom" ? (
+                  <Input
+                    type="date"
+                    value={fiadoDataCustom}
+                    min={new Date().toISOString().split("T")[0]}
+                    onChange={(e) => setFiadoDataCustom(e.target.value)}
+                  />
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Vence em: {(() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + Number(fiadoPrazo));
+                      return d.toLocaleDateString("pt-BR");
+                    })()}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Dinheiro - Troco */}
+            {formaPagamento === "dinheiro" && (
+              <div>
+                <Label>Valor Recebido</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={valorRecebido || ""}
+                  onChange={(e) => setValorRecebido(Number(e.target.value))}
+                />
+                {valorRecebido > calcularTotal() && (
+                  <p className="text-sm text-success mt-1">
+                    Troco: {formatPrice(calcularTroco())}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Gorjeta */}
+            <div>
+              <Label>Gorjeta (opcional)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={gorjeta || ""}
+                onChange={(e) => setGorjeta(Number(e.target.value))}
+              />
+            </div>
+            {/* Emissão NFC-e */}
+            <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="nfce-toggle" className="font-semibold cursor-pointer">Emitir NFC-e (Cupom Fiscal)</Label>
+                  <p className="text-xs text-muted-foreground">Gerar nota fiscal automática ao finalizar a venda.</p>
+                </div>
+                <Switch id="nfce-toggle" checked={emitirNfce} onCheckedChange={setEmitirNfce} />
+              </div>
+
+              {emitirNfce && (
+                <div className="pt-2 border-t">
+                  <Label htmlFor="cpf-nfce">CPF/CNPJ na Nota (opcional)</Label>
+                  <Input 
+                    id="cpf-nfce"
+                    placeholder="Somente números" 
+                    value={cpfNfce} 
+                    onChange={e => setCpfNfce(e.target.value.replace(/\D/g, ''))}
+                    className="mt-1"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Opções */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox id="cupom" checked={imprimirCupom} onCheckedChange={(c) => setImprimirCupom(!!c)} />
+                <Label htmlFor="cupom" className="cursor-pointer">Imprimir ficha/recibo simples</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="whatsapp" checked={enviarWhatsApp} onCheckedChange={(c) => setEnviarWhatsApp(!!c)} />
+                <Label htmlFor="whatsapp" className="cursor-pointer">Enviar por WhatsApp</Label>
+              </div>
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => setIsFinalizarOpen(false)} disabled={isSubmitting}>
+                Cancelar
+              </Button>
+              <Button 
+                className="flex-1 bg-success hover:bg-success/90"
+                onClick={confirmarFinalizacao}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Confirmando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Confirmar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
