@@ -145,7 +145,6 @@ const App = () => (
                         <Route path="/whatsapp" element={<WhatsAppModule />} />
                         <Route path="/atendimento-whatsapp" element={<AtendimentoWhatsApp />} />
                         <Route path="/gestao-rh" element={<GestaoRH />} />
-                        <Route path="/ponto" element={<PontoEletronico />} />
                         <Route path="/configuracoes" element={<Configuracoes />} />
                         <Route path="/configuracoes/alertas" element={<CentroAlertas />} />
                         <Route path="/configuracoes/notificacoes" element={<ConfiguracoesNotificacoes />} />
@@ -165,7 +164,6 @@ const App = () => (
                         <Route path="/ficha-avaliacao" element={<FichaAvaliacao />} />
                         <Route path="/nps" element={<NpsPesquisa />} />
                         <Route path="/gerador-artes" element={<GeradorArtes />} />
-                        <Route path="/configuracoes/fiscal" element={<ConfiguracoesFiscais />} />
                         <Route path="/auditoria-comandas" element={<AuditoriaComandas />} />
                       </Route>
 

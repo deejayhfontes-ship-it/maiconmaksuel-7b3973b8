@@ -19,8 +19,8 @@ const G = {
 };
 
 // ── API Key ──
-const SB_URL = 'https://nzngwbknezmfthbyfjmx.supabase.co';
-const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bmd3YmtuZXptZnRoYnlmam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxODU5MDIsImV4cCI6MjA4NDc2MTkwMn0.S_2Hr2KEqrEj1nHIot1fBr2U1ihojl_f-owxDhf-iAk';
+const SB_URL = import.meta.env.VITE_KEYS_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
+const SB_ANON = import.meta.env.VITE_KEYS_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 let _key: string | null = null;
 let _keyTs = 0;
 async function getKey() {
@@ -55,7 +55,6 @@ async function runAgent(
 
     // Modelos de texto atualizados — igual ao gerador de imagens
     const TEXT_MODELS = [
-        'gemini-3.1-pro-preview',
         'gemini-2.0-flash',
         'gemini-2.0-flash-lite',
         'gemini-1.5-flash',

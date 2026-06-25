@@ -2,11 +2,10 @@ import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
 
 // ============================================================
-// API KEY — Busca do Supabase "fontesapp" (tabela api_keys)
-// Projeto separado para armazenar chaves de forma segura
+// API KEY — Busca do Supabase (tabela api_keys)
 // ============================================================
-const KEYS_SUPABASE_URL = 'https://nzngwbknezmfthbyfjmx.supabase.co';
-const KEYS_SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bmd3YmtuZXptZnRoYnlmam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxODU5MDIsImV4cCI6MjA4NDc2MTkwMn0.S_2Hr2KEqrEj1nHIot1fBr2U1ihojl_f-owxDhf-iAk';
+const KEYS_SUPABASE_URL = import.meta.env.VITE_KEYS_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
+const KEYS_SUPABASE_ANON = import.meta.env.VITE_KEYS_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 let _cachedApiKeys: string[] | null = null;
 let _cacheTimestamp = 0;
@@ -234,20 +233,19 @@ const SHOT_TYPES: Record<string, string> = {
 };
 
 // ============================================================
-// Modelos padrão — Gemini 3 (Nano Banana Pro) + fallbacks
+// Modelos padrão — Gemini + fallbacks
 // ============================================================
-const DEFAULT_TEXT_MODEL = 'gemini-3.1-pro-preview';
-const DEFAULT_IMAGE_MODEL = 'gemini-3-pro-image-preview';
+const DEFAULT_TEXT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_IMAGE_MODEL = 'gemini-2.0-flash-exp-image-generation';
 
 const IMAGE_MODEL_FALLBACKS: string[] = [
-    'gemini-3-pro-image-preview',
-    'gemini-3.1-flash-image-preview',
     'gemini-2.0-flash-exp-image-generation',
+    'imagen-3.0-generate-002',
 ];
 
 const TEXT_MODEL_FALLBACKS: string[] = [
-    'gemini-3.1-pro-preview',
     'gemini-2.0-flash',
+    'gemini-1.5-flash',
 ];
 
 const SDK_VERSION = '@google/genai@^1.30.0';

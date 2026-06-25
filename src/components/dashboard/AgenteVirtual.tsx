@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { TOOL_DECLARATIONS, executeTool } from "@/hooks/useAgenteVirtualTools";
 
 // ── API Key (mesmo pool do gerador de imagens) ──
-const KEYS_SUPABASE_URL = 'https://nzngwbknezmfthbyfjmx.supabase.co';
-const KEYS_SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bmd3YmtuZXptZnRoYnlmam14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxODU5MDIsImV4cCI6MjA4NDc2MTkwMn0.S_2Hr2KEqrEj1nHIot1fBr2U1ihojl_f-owxDhf-iAk';
+const KEYS_SUPABASE_URL = import.meta.env.VITE_KEYS_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
+const KEYS_SUPABASE_ANON = import.meta.env.VITE_KEYS_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 let _cachedKey: string | null = null;
 async function getGeminiKey(): Promise<string | null> {
     if (_cachedKey) return _cachedKey;

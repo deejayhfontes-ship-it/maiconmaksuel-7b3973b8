@@ -135,8 +135,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    // Atualizado para o Token Produção (API) da Empresa, que a Focus validou e autorizou
-    const focusToken = Deno.env.get("FOCUS_NFE_TOKEN") || "lkrQudtneLTJ7Ojz1ZzViyM9Q5GF2ddz";
+    const focusToken = Deno.env.get("FOCUS_NFE_TOKEN");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (!focusToken) {
@@ -151,6 +150,13 @@ serve(async (req) => {
       .from("configuracoes_fiscal")
       .select("*")
       .maybeSingle();
+
+    if (!config) {
+      return jsonResponse({
+        success: false,
+        error: "Configurações fiscais não encontradas. Configure os dados da empresa em Configurações → Fiscal antes de emitir notas.",
+      }, 422);
+    }
 
     const ambiente = config?.ambiente || "2"; // Default: homologação
 

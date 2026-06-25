@@ -95,6 +95,13 @@ serve(async (req) => {
       .select("*")
       .maybeSingle();
 
+    if (!config) {
+      return jsonResponse({
+        success: false,
+        error: "Configurações fiscais não encontradas. Configure os dados da empresa em Configurações → Fiscal antes de emitir notas.",
+      }, 422);
+    }
+
     const ambiente = config?.ambiente || "2";
 
     const body = await req.json();

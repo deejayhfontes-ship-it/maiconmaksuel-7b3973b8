@@ -104,11 +104,11 @@ export default function ConfiguracoesFiscais() {
         queryFn: async () => {
             try {
                 const res = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/configuracoes_fiscais?limit=1`,
+                    `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/configuracoes_fiscal?limit=1`,
                     {
                         headers: {
-                            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
                         },
                     }
                 );
@@ -123,7 +123,21 @@ export default function ConfiguracoesFiscais() {
 
     useEffect(() => {
         if (configSalva) {
-            setConfig({ ...defaultConfig, ...configSalva });
+            setConfig({
+                ...defaultConfig,
+                ...configSalva,
+                razao_social: configSalva.empresa_razao_social ?? defaultConfig.razao_social,
+                nome_fantasia: configSalva.empresa_nome_fantasia ?? defaultConfig.nome_fantasia,
+                crt: configSalva.regime_tributario ?? defaultConfig.crt,
+                cep: configSalva.endereco_cep ?? defaultConfig.cep,
+                logradouro: configSalva.endereco_logradouro ?? defaultConfig.logradouro,
+                numero: configSalva.endereco_numero ?? defaultConfig.numero,
+                complemento: configSalva.endereco_complemento ?? defaultConfig.complemento,
+                bairro: configSalva.endereco_bairro ?? defaultConfig.bairro,
+                codigo_municipio: configSalva.codigo_municipio_ibge ?? defaultConfig.codigo_municipio,
+                municipio: configSalva.endereco_cidade ?? defaultConfig.municipio,
+                uf: configSalva.endereco_uf ?? defaultConfig.uf,
+            });
         }
     }, [configSalva]);
 
@@ -205,20 +219,20 @@ export default function ConfiguracoesFiscais() {
         try {
             const payload = {
                 cnpj: config.cnpj.replace(/\D/g, ""),
-                razao_social: config.razao_social,
-                nome_fantasia: config.nome_fantasia,
+                empresa_razao_social: config.razao_social,
+                empresa_nome_fantasia: config.nome_fantasia,
                 inscricao_estadual: config.inscricao_estadual,
                 inscricao_municipal: config.inscricao_municipal,
                 cnae: config.cnae,
-                crt: config.crt,
-                cep: config.cep.replace(/\D/g, ""),
-                logradouro: config.logradouro,
-                numero: config.numero,
-                complemento: config.complemento,
-                bairro: config.bairro,
-                codigo_municipio: config.codigo_municipio,
-                municipio: config.municipio,
-                uf: config.uf,
+                regime_tributario: config.crt,
+                endereco_cep: config.cep.replace(/\D/g, ""),
+                endereco_logradouro: config.logradouro,
+                endereco_numero: config.numero,
+                endereco_complemento: config.complemento,
+                endereco_bairro: config.bairro,
+                codigo_municipio_ibge: config.codigo_municipio,
+                endereco_cidade: config.municipio,
+                endereco_uf: config.uf,
                 telefone: config.telefone.replace(/\D/g, ""),
                 ambiente: config.ambiente,
                 serie_nfe: parseInt(config.serie_nfe) || 1,
@@ -235,13 +249,13 @@ export default function ConfiguracoesFiscais() {
 
             if (config.id) {
                 const res = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/configuracoes_fiscais?id=eq.${config.id}`,
+                    `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/configuracoes_fiscal?id=eq.${config.id}`,
                     {
                         method: 'PATCH',
                         headers: {
                             'Content-Type': 'application/json',
-                            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
                             'Prefer': 'return=minimal',
                         },
                         body: JSON.stringify(payload),
@@ -250,13 +264,13 @@ export default function ConfiguracoesFiscais() {
                 if (!res.ok) throw new Error(await res.text());
             } else {
                 const res = await fetch(
-                    `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/configuracoes_fiscais`,
+                    `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/configuracoes_fiscal`,
                     {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
                             'Prefer': 'return=minimal',
                         },
                         body: JSON.stringify(payload),
