@@ -106,7 +106,7 @@ export function EntradaManualForm({ onSubmit, onCancel }: EntradaManualFormProps
   };
 
   return (
-    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
+    <div className="space-y-6">
       {/* Fornecedor */}
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold text-primary">Dados do Fornecedor</legend>
@@ -256,6 +256,7 @@ export function EntradaManualForm({ onSubmit, onCancel }: EntradaManualFormProps
                   className="h-9 w-9 text-destructive hover:text-destructive"
                   disabled={itens.length <= 1}
                   onClick={() => removeItem(idx)}
+                  aria-label="Remover item"
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>

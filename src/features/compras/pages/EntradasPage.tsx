@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Plus, Upload, ArrowLeft } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HistoricoEntradas } from "../components/HistoricoEntradas";
 import { XmlUploader } from "../components/XmlUploader";
 import { ConferenciaPage } from "../components/ConferenciaPage";
@@ -25,12 +27,11 @@ export default function EntradasPage() {
 
   if (conferenciaData) {
     return (
-      <ConferenciaPage 
-        data={conferenciaData} 
+      <ConferenciaPage
+        data={conferenciaData}
         onCancel={() => setConferenciaData(null)}
         onSuccess={() => {
           setConferenciaData(null);
-          // O react-query vai invalidar o histórico automaticamente se fizermos direitinho
         }}
       />
     );
@@ -40,29 +41,35 @@ export default function EntradasPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">Notas de Compra</h2>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">Entradas de Compra</h2>
           <p className="text-muted-foreground mt-1">
-            Gerencie as compras e importe notas fiscais (XML) dos seus fornecedores
+            Registre compras via XML ou entrada manual
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
-          {/* Botão de Upload será o gatilho principal da Fase 3 */}
-          <Button 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                className="border-border"
+                onClick={() => setIsManualEntry(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Entrada Manual
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Cadastre uma compra digitando os dados manualmente</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Button
             onClick={() => setIsUploading(true)}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Upload className="w-4 h-4 mr-2" />
             Importar XML
-          </Button>
-          
-          <Button
-            variant="outline"
-            className="border-white/10"
-            onClick={() => setIsManualEntry(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Entrada Manual
           </Button>
         </div>
       </div>
@@ -75,30 +82,30 @@ export default function EntradasPage() {
               Selecione o arquivo .xml da nota fiscal do seu fornecedor.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-6">
             <XmlUploader onXmlParsed={handleXmlParsed} />
           </div>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isManualEntry} onOpenChange={setIsManualEntry}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Entrada Manual de Nota Fiscal</DialogTitle>
-            <DialogDescription>
+      <Sheet open={isManualEntry} onOpenChange={setIsManualEntry}>
+        <SheetContent side="right" className="sm:max-w-2xl w-full overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle>Entrada Manual de Nota Fiscal</SheetTitle>
+            <SheetDescription>
               Preencha os dados do fornecedor, nota e itens da compra.
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <EntradaManualForm
             onSubmit={handleManualSubmit}
             onCancel={() => setIsManualEntry(false)}
           />
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
-      <HistoricoEntradas />
+      <HistoricoEntradas onImportXml={() => setIsUploading(true)} onManualEntry={() => setIsManualEntry(true)} />
     </div>
   );
 }
