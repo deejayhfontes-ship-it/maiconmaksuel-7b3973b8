@@ -90,14 +90,17 @@ export function useProfissionais() {
 
   const calculateMetrics = useCallback(async (profData: Profissional[]): Promise<ProfissionalComMetas[]> => {
     const { inicioMes, fimMes } = getMonthRange();
+    const db = supabase as any;
 
+    // Faturamento de serviços (para metas) — continua lendo de atendimento_servicos
     const { data: servicosData } = await supabase
       .from('atendimento_servicos')
-      .select(`profissional_id, subtotal, comissao_percentual, comissao_valor, atendimento:atendimentos!inner(status, data_hora)`)
+      .select(`profissional_id, subtotal, atendimento:atendimentos!inner(id, status, data_hora)`)
       .eq('atendimento.status', 'fechado')
       .gte('atendimento.data_hora', inicioMes)
       .lte('atendimento.data_hora', fimMes);
 
+    // Faturamento de produtos (para metas)
     const { data: produtosData } = await supabase
       .from('atendimento_produtos')
       .select(`subtotal, atendimento:atendimentos!inner(status, data_hora, atendimento_servicos(profissional_id))`)
@@ -105,13 +108,20 @@ export function useProfissionais() {
       .gte('atendimento.data_hora', inicioMes)
       .lte('atendimento.data_hora', fimMes);
 
+    // Comissões — fonte autoritativa: comissoes_registro
+    const periodoRef = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { data: comissoesData } = await db
+      .from('comissoes_registro')
+      .select('profissional_id, valor_comissao, servico_id, status')
+      .eq('periodo_ref', periodoRef)
+      .not('status', 'in', '(cancelado,estornado)');
+
     const metricas: Record<string, { servicos: number; produtos: number; comissaoServicos: number; comissaoProdutos: number; atendimentos: Set<string> }> = {};
 
     servicosData?.forEach((item: any) => {
       const profId = item.profissional_id;
       if (!metricas[profId]) metricas[profId] = { servicos: 0, produtos: 0, comissaoServicos: 0, comissaoProdutos: 0, atendimentos: new Set() };
       metricas[profId].servicos += Number(item.subtotal || 0);
-      metricas[profId].comissaoServicos += Number(item.comissao_valor || 0);
       if (item.atendimento?.id) metricas[profId].atendimentos.add(item.atendimento.id);
     });
 
@@ -127,6 +137,17 @@ export function useProfissionais() {
       }
     });
 
+    // Somar comissões da fonte autoritativa (comissoes_registro)
+    comissoesData?.forEach((item: any) => {
+      const profId = item.profissional_id;
+      if (!metricas[profId]) metricas[profId] = { servicos: 0, produtos: 0, comissaoServicos: 0, comissaoProdutos: 0, atendimentos: new Set() };
+      if (item.servico_id) {
+        metricas[profId].comissaoServicos += Number(item.valor_comissao || 0);
+      } else {
+        metricas[profId].comissaoProdutos += Number(item.valor_comissao || 0);
+      }
+    });
+
     return profData.map(prof => {
       const m = metricas[prof.id] || { servicos: 0, produtos: 0, comissaoServicos: 0, comissaoProdutos: 0, atendimentos: new Set() };
       return {
@@ -134,7 +155,7 @@ export function useProfissionais() {
         realizado_servicos: m.servicos,
         realizado_produtos: m.produtos,
         comissao_servicos_valor: m.comissaoServicos,
-        comissao_produtos_valor: m.produtos * (prof.comissao_produtos / 100),
+        comissao_produtos_valor: m.comissaoProdutos,
         total_atendimentos: m.atendimentos.size,
       };
     });
@@ -211,30 +232,34 @@ export function useProfissionais() {
   }, []);
 
   const getComissoesDetalhadas = useCallback(async (profissionalId: string, mes?: Date): Promise<ComissaoDetalhada[]> => {
+    const db = supabase as any;
     const targetDate = mes || new Date();
-    const inicioMes = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1).toISOString();
-    const fimMes = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    const periodoRef = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
-    const { data: servicosData } = await supabase
-      .from('atendimento_servicos')
-      .select(`id, subtotal, comissao_percentual, comissao_valor, servico:servicos(nome), atendimento:atendimentos!inner(id, data_hora, status, cliente:clientes(nome))`)
+    const { data: registros } = await db
+      .from('comissoes_registro')
+      .select('id, created_at, servico_id, servico_nome, valor_servico, percentual, valor_comissao, atendimento_id, status')
       .eq('profissional_id', profissionalId)
-      .eq('atendimento.status', 'fechado')
-      .gte('atendimento.data_hora', inicioMes)
-      .lte('atendimento.data_hora', fimMes)
-      .order('atendimento(data_hora)', { ascending: false });
+      .eq('periodo_ref', periodoRef)
+      .not('status', 'in', '(cancelado,estornado)')
+      .order('created_at', { ascending: false });
 
     const comissoes: ComissaoDetalhada[] = [];
-    servicosData?.forEach((item: any) => {
+    registros?.forEach((item: any) => {
       comissoes.push({
-        id: item.id, data: item.atendimento?.data_hora, tipo: 'servico',
-        descricao: item.servico?.nome || 'Serviço', valor_base: Number(item.subtotal),
-        percentual: Number(item.comissao_percentual), valor_comissao: Number(item.comissao_valor),
-        atendimento_id: item.atendimento?.id, cliente_nome: item.atendimento?.cliente?.nome || null,
+        id: item.id,
+        data: item.created_at,
+        tipo: item.servico_id ? 'servico' : 'produto',
+        descricao: item.servico_nome || (item.servico_id ? 'Serviço' : 'Produto'),
+        valor_base: Number(item.valor_servico || 0),
+        percentual: Number(item.percentual || 0),
+        valor_comissao: Number(item.valor_comissao || 0),
+        atendimento_id: item.atendimento_id,
+        cliente_nome: null,
       });
     });
 
-    return comissoes.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    return comissoes;
   }, []);
 
   const saveProfissional = useCallback(async (
