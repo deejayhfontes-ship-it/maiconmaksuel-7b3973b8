@@ -17,6 +17,7 @@ import {
   AlertCircle,
   History,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { gerarPDFRelatorioContador, downloadPDF } from "@/lib/rhPdfService";
+import { gerarPDFRelatorioContador, gerarPDFRelatorioIRPF, gerarReciboPagamento, downloadPDF } from "@/lib/rhPdfService";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -178,6 +179,14 @@ export default function Comissoes() {
     nome: string; cpf: string; totalServicos: number; totalProdutos: number; totalComissao: number; status: string;
   }>>([]);
   const [relGerado, setRelGerado] = useState(false);
+
+  // IRPF Anual
+  const [irpfAno, setIrpfAno] = useState(() => new Date().getFullYear());
+  const [irpfLoading, setIrpfLoading] = useState(false);
+  const [irpfDados, setIrpfDados] = useState<Array<{
+    nome: string; cpf: string; meses: number[]; total: number;
+  }>>([]);
+  const [irpfGerado, setIrpfGerado] = useState(false);
 
   // Seleção parcial
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -439,8 +448,32 @@ export default function Comissoes() {
       }]).select();
 
       toast({
-        title: `✅ Pagamento registrado!`,
+        title: `Pagamento registrado!`,
         description: `${r.profissional.nome} — ${fmt(valorPago)}`,
+        action: (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                const blob = await gerarReciboPagamento({
+                  profissionalNome: r.profissional.nome,
+                  profissionalCpf: "",
+                  valor: valorPago,
+                  periodo: periodoLabel,
+                  dataPagamento: format(new Date(), "dd/MM/yyyy"),
+                  descricao: `Pagamento de comissoes ref. periodo ${periodoLabel}`,
+                  salonNome: "",
+                });
+                downloadPDF(blob, `recibo_${r.profissional.nome.replace(/\s/g, "_")}_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+              } catch (err) {
+                console.error("Erro ao gerar recibo:", err);
+              }
+            }}
+          >
+            <FileText className="h-3 w-3 mr-1" /> Gerar Recibo
+          </Button>
+        ),
       });
       setSelectedIds(new Set());
 
@@ -565,6 +598,82 @@ export default function Comissoes() {
       const blob = await gerarPDFRelatorioContador(relMes, relDados, relGrandTotal);
       downloadPDF(blob, `comissoes_${relMes}.pdf`);
       toast({ title: "PDF exportado!" });
+    } catch (err: any) {
+      toast({ title: "Erro ao gerar PDF", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // ── IRPF Anual: Gerar ────────────────────────────────────────────────
+  const gerarRelatorioIRPF = async () => {
+    setIrpfLoading(true);
+    try {
+      const db = supabase as any;
+      const { data: registros, error } = await db
+        .from("comissoes_registro")
+        .select("*")
+        .like("periodo_ref", `${irpfAno}-%`);
+      if (error) throw error;
+
+      const { data: profs } = await supabase
+        .from("profissionais")
+        .select("id, nome, cpf")
+        .eq("ativo", true);
+
+      const profMap: Record<string, { nome: string; cpf: string }> = {};
+      (profs || []).forEach((p: any) => { profMap[p.id] = { nome: p.nome, cpf: p.cpf || "" }; });
+
+      const agrupado: Record<string, number[]> = {};
+      ((registros as any[]) || []).forEach((r: any) => {
+        if (!agrupado[r.profissional_id]) agrupado[r.profissional_id] = new Array(12).fill(0);
+        const ref = r.periodo_ref as string;
+        const mes = parseInt(ref.split("-")[1], 10) - 1;
+        if (mes >= 0 && mes < 12) agrupado[r.profissional_id][mes] += Number(r.valor_comissao);
+      });
+
+      const dados = Object.entries(agrupado).map(([id, meses]) => ({
+        nome: profMap[id]?.nome || "Desconhecido",
+        cpf: profMap[id]?.cpf || "",
+        meses,
+        total: meses.reduce((a, b) => a + b, 0),
+      })).sort((a, b) => a.nome.localeCompare(b.nome));
+
+      setIrpfDados(dados);
+      setIrpfGerado(true);
+    } catch (err: any) {
+      toast({ title: "Erro ao gerar IRPF", description: err.message, variant: "destructive" });
+    } finally {
+      setIrpfLoading(false);
+    }
+  };
+
+  const irpfGrandTotal = useMemo(() => irpfDados.reduce((s, d) => s + d.total, 0), [irpfDados]);
+
+  const exportarCSVIRPF = () => {
+    const mesesNomes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const bom = "﻿";
+    const header = ["Profissional", "CPF", ...mesesNomes, "Total Anual"].join(";");
+    const rows = irpfDados.map(d =>
+      [d.nome, d.cpf, ...d.meses.map(v => v.toFixed(2).replace(".", ",")), d.total.toFixed(2).replace(".", ",")].join(";")
+    );
+    const totalRow = ["TOTAL", "", ...Array.from({ length: 12 }, (_, i) =>
+      irpfDados.reduce((s, d) => s + d.meses[i], 0).toFixed(2).replace(".", ",")
+    ), irpfGrandTotal.toFixed(2).replace(".", ",")].join(";");
+    const csv = bom + [header, ...rows, totalRow].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `irpf_comissoes_${irpfAno}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "CSV IRPF exportado!" });
+  };
+
+  const exportarPDFIRPF = async () => {
+    try {
+      const blob = await gerarPDFRelatorioIRPF(irpfAno, irpfDados, irpfGrandTotal);
+      downloadPDF(blob, `irpf_comissoes_${irpfAno}.pdf`);
+      toast({ title: "PDF IRPF exportado!" });
     } catch (err: any) {
       toast({ title: "Erro ao gerar PDF", description: err.message, variant: "destructive" });
     }
@@ -939,6 +1048,7 @@ export default function Comissoes() {
         <TabsList>
           <TabsTrigger value="comissoes">Comissões</TabsTrigger>
           <TabsTrigger value="relatorio">Relatório Contador</TabsTrigger>
+          <TabsTrigger value="irpf">IRPF Anual</TabsTrigger>
         </TabsList>
 
         <TabsContent value="comissoes" className="space-y-6 mt-4">
@@ -1225,6 +1335,89 @@ export default function Comissoes() {
                       </TableRow>
                     </TableBody>
                   </Table>
+                )
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="irpf" className="space-y-6 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Relatório Anual IRPF — Rendimentos de Comissões</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-end gap-3">
+                <div className="space-y-1">
+                  <Label>Ano</Label>
+                  <Select value={String(irpfAno)} onValueChange={(v) => { setIrpfAno(Number(v)); setIrpfGerado(false); }}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={gerarRelatorioIRPF} disabled={irpfLoading}>
+                  {irpfLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
+                  Gerar
+                </Button>
+                {irpfGerado && irpfDados.length > 0 && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={exportarCSVIRPF}>
+                      <FileDown className="h-4 w-4 mr-1" /> CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportarPDFIRPF}>
+                      <FileDown className="h-4 w-4 mr-1" /> PDF
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {irpfGerado && (
+                irpfDados.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Nenhuma comissão encontrada para {irpfAno}.</p>
+                ) : (
+                  <ScrollArea className="w-full">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>CPF</TableHead>
+                          {["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"].map(m => (
+                            <TableHead key={m} className="text-right text-xs">{m}</TableHead>
+                          ))}
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {irpfDados.map((d, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium whitespace-nowrap">{d.nome}</TableCell>
+                            <TableCell className="font-mono text-sm">{d.cpf || "---"}</TableCell>
+                            {d.meses.map((v, mi) => (
+                              <TableCell key={mi} className="text-right text-sm">
+                                {v > 0 ? fmt(v) : <span className="text-muted-foreground">-</span>}
+                              </TableCell>
+                            ))}
+                            <TableCell className="text-right font-bold">{fmt(d.total)}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-muted/50 font-bold">
+                          <TableCell colSpan={2}>TOTAL</TableCell>
+                          {Array.from({ length: 12 }, (_, i) => (
+                            <TableCell key={i} className="text-right">
+                              {fmt(irpfDados.reduce((s, d) => s + d.meses[i], 0))}
+                            </TableCell>
+                          ))}
+                          <TableCell className="text-right">{fmt(irpfGrandTotal)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
                 )
               )}
             </CardContent>

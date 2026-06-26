@@ -80,6 +80,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { gerarReciboPagamento, downloadPDF } from "@/lib/rhPdfService";
 
 // ─────────────────────────────────────────────
 // Tipos locais
@@ -498,6 +499,30 @@ const FechamentoSemanal = () => {
       toast({
         title: `💰 Pagamento registrado — ${profParaPagar.profissional.nome}`,
         description: `${formatCurrency(valorPago)} marcado como ${statusPag === "pago" ? "pago" : "pago parcialmente"}.`,
+        action: (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                const blob = await gerarReciboPagamento({
+                  profissionalNome: profParaPagar.profissional.nome,
+                  profissionalCpf: "",
+                  valor: valorPago,
+                  periodo: `${format(currentWeekStart, "dd/MM/yyyy")} a ${format(weekEnd, "dd/MM/yyyy")}`,
+                  dataPagamento: format(new Date(), "dd/MM/yyyy"),
+                  descricao: `Pagamento de comissoes ref. periodo ${format(currentWeekStart, "dd/MM")} a ${format(weekEnd, "dd/MM/yyyy")}`,
+                  salonNome: "",
+                });
+                downloadPDF(blob, `recibo_${profParaPagar.profissional.nome.replace(/\s/g, "_")}_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+              } catch (err) {
+                console.error("Erro ao gerar recibo:", err);
+              }
+            }}
+          >
+            <FileText className="h-3 w-3 mr-1" /> Gerar Recibo
+          </Button>
+        ),
       });
       setShowPagarDialog(false);
       await fetchData();
@@ -765,8 +790,23 @@ const FechamentoSemanal = () => {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => {
-                                    toast({ title: "📄 Recibo", description: "Funcionalidade de geração de recibo em desenvolvimento." });
+                                  disabled={item.valor_pago <= 0}
+                                  onClick={async () => {
+                                    try {
+                                      const blob = await gerarReciboPagamento({
+                                        profissionalNome: item.profissional.nome,
+                                        profissionalCpf: "",
+                                        valor: item.valor_pago,
+                                        periodo: `${format(currentWeekStart, "dd/MM/yyyy")} a ${format(weekEnd, "dd/MM/yyyy")}`,
+                                        dataPagamento: item.data_pagamento ? format(parseISO(item.data_pagamento), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy"),
+                                        descricao: `Pagamento de comissoes ref. periodo ${format(currentWeekStart, "dd/MM")} a ${format(weekEnd, "dd/MM/yyyy")}`,
+                                        salonNome: "",
+                                      });
+                                      downloadPDF(blob, `recibo_${item.profissional.nome.replace(/\s/g, "_")}_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+                                      toast({ title: "Recibo gerado com sucesso!" });
+                                    } catch (err) {
+                                      toast({ title: "Erro ao gerar recibo", variant: "destructive" });
+                                    }
                                   }}
                                 >
                                   <FileText className="h-4 w-4 mr-1" /> Gerar Recibo
