@@ -173,8 +173,8 @@ export default function DadosSalaoSettings() {
             <div className="flex items-start gap-6">
               {/* Logo Preview */}
               <div className={cn(
-                "w-32 h-32 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden",
-                "bg-muted/50 transition-colors",
+                "h-24 w-24 md:h-32 md:w-32 rounded-xl border border-dashed flex items-center justify-center overflow-hidden",
+                "bg-muted/30 transition-colors",
                 salonData?.logo_url ? "border-primary/30" : "border-muted-foreground/30"
               )}>
                 {salonData?.logo_url ? (

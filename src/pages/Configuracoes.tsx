@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Database,
   Download,
@@ -61,6 +61,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { usePinAuth } from "@/contexts/PinAuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useSalonData } from "@/contexts/SalonSettingsContext";
 
 // Backup components
 import BackupManual from "@/components/configuracoes/backup/BackupManual";
@@ -1461,6 +1462,35 @@ function TemasCoresContent() {
 
 // Componente Logo do Sistema
 function LogoSistemaContent() {
+  const { salonData, uploadLogo } = useSalonData();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error("Por favor, selecione um arquivo de imagem.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("O arquivo deve ter no máximo 2MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      await uploadLogo(file);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <Card className="p-6">
       <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
@@ -1468,22 +1498,38 @@ function LogoSistemaContent() {
         Logo do Sistema
       </h2>
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleLogoUpload}
+        className="hidden"
+      />
+
       <div className="space-y-8">
         {/* Logo Principal */}
         <div className="space-y-4">
           <h3 className="font-medium">Logo Principal</h3>
           <p className="text-sm text-muted-foreground">Usado na barra lateral e cabeçalho do sistema</p>
           <div className="flex items-start gap-6">
-            <div className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
-              <div className="text-center">
-                <Image className="h-8 w-8 mx-auto text-muted-foreground" />
-                <p className="text-xs text-muted-foreground mt-2">180x180px</p>
-              </div>
+            <div className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50 overflow-hidden">
+              {salonData?.logo_url ? (
+                <img src={salonData.logo_url} alt="Logo" className="w-full h-full object-contain" />
+              ) : (
+                <div className="text-center">
+                  <Image className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground mt-2">180x180px</p>
+                </div>
+              )}
             </div>
             <div className="space-y-3">
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
                 <Upload className="h-4 w-4 mr-2" />
-                Carregar Logo
+                {isUploading ? "Enviando..." : "Carregar Logo"}
               </Button>
               <p className="text-xs text-muted-foreground">PNG ou SVG, máximo 2MB</p>
             </div>
@@ -1501,7 +1547,7 @@ function LogoSistemaContent() {
               </div>
             </div>
             <div className="space-y-3">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => toast.info("Favicon estará disponível em breve.")}>
                 <Upload className="h-4 w-4 mr-2" />
                 Carregar Ícone
               </Button>
@@ -1515,16 +1561,24 @@ function LogoSistemaContent() {
           <h3 className="font-medium">Logo para Impressão</h3>
           <p className="text-sm text-muted-foreground">Usado em cupons, relatórios e notas fiscais</p>
           <div className="flex items-start gap-6">
-            <div className="w-48 h-24 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50">
-              <div className="text-center">
-                <Image className="h-8 w-8 mx-auto text-muted-foreground" />
-                <p className="text-xs text-muted-foreground mt-2">300x150px</p>
-              </div>
+            <div className="w-48 h-24 border-2 border-dashed rounded-lg flex items-center justify-center bg-muted/50 overflow-hidden">
+              {salonData?.logo_url ? (
+                <img src={salonData.logo_url} alt="Logo impressão" className="w-full h-full object-contain" />
+              ) : (
+                <div className="text-center">
+                  <Image className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground mt-2">300x150px</p>
+                </div>
+              )}
             </div>
             <div className="space-y-3">
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
                 <Upload className="h-4 w-4 mr-2" />
-                Carregar Logo
+                {isUploading ? "Enviando..." : "Carregar Logo"}
               </Button>
               <p className="text-xs text-muted-foreground">PNG com fundo transparente</p>
             </div>
@@ -1537,7 +1591,7 @@ function LogoSistemaContent() {
           <div className="space-y-3">
             <div>
               <label className="text-sm text-muted-foreground">Nome exibido no sistema</label>
-              <Input defaultValue="Maicon Maksuel Salão" className="mt-1" />
+              <Input defaultValue={salonData?.nome_salao || ""} className="mt-1" />
             </div>
             <label className="flex items-center gap-2">
               <input type="checkbox" defaultChecked />

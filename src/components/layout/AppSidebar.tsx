@@ -34,6 +34,7 @@ import { useSidebarContext } from "./MainLayout";
 import { usePinAuth, ROUTE_PERMISSIONS } from "@/contexts/PinAuthContext";
 import logoMaicon from "@/assets/logo.svg";
 import { useEffect, useState } from "react";
+import { useSalonSettings } from "@/contexts/SalonSettingsContext";
 
 interface MenuItem {
   title: string;
@@ -73,6 +74,7 @@ const allMenuItems: MenuItem[] = [
 export function AppSidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebarContext();
   const { session, canAccessRoute } = usePinAuth();
+  const { settings } = useSalonSettings();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -124,7 +126,7 @@ export function AppSidebar() {
         )}>
           <div className="relative flex items-center justify-center w-full">
             <img
-              src={logoMaicon}
+              src={settings?.logo_url || logoMaicon}
               alt="Maicon Concept"
               className={cn(
                 "object-contain transition-all duration-300",
