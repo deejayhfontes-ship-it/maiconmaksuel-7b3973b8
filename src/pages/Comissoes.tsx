@@ -63,6 +63,8 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { gerarPDFRelatorioContador, downloadPDF } from "@/lib/rhPdfService";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -168,6 +170,14 @@ export default function Comissoes() {
   const [showPagarDialog, setShowPagarDialog] = useState(false);
   const [obsPagamento, setObsPagamento] = useState("");
   const [pagando, setPagando] = useState(false);
+
+  // Relatório Contador
+  const [relMes, setRelMes] = useState(() => format(new Date(), "yyyy-MM"));
+  const [relLoading, setRelLoading] = useState(false);
+  const [relDados, setRelDados] = useState<Array<{
+    nome: string; cpf: string; totalServicos: number; totalProdutos: number; totalComissao: number; status: string;
+  }>>([]);
+  const [relGerado, setRelGerado] = useState(false);
 
   // Seleção parcial
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -477,6 +487,87 @@ export default function Comissoes() {
       XLSX.writeFile(wb, `comissoes_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
     }
     toast({ title: "📥 Exportado com sucesso!" });
+  };
+
+  // ── Relatório Contador: Gerar ───────────────────────────────────────────
+  const gerarRelatorioContador = async () => {
+    setRelLoading(true);
+    try {
+      const db = supabase as any;
+      const { data: registros, error } = await db
+        .from("comissoes_registro")
+        .select("*")
+        .eq("periodo_ref", relMes);
+      if (error) throw error;
+
+      const { data: profs } = await supabase
+        .from("profissionais")
+        .select("id, nome, cpf")
+        .eq("ativo", true);
+
+      const profMap: Record<string, { nome: string; cpf: string }> = {};
+      (profs || []).forEach((p: any) => { profMap[p.id] = { nome: p.nome, cpf: p.cpf || "" }; });
+
+      const agrupado: Record<string, { servicos: number; produtos: number; comissao: number; pago: boolean }> = {};
+      ((registros as any[]) || []).forEach((r: any) => {
+        if (!agrupado[r.profissional_id]) agrupado[r.profissional_id] = { servicos: 0, produtos: 0, comissao: 0, pago: true };
+        const g = agrupado[r.profissional_id];
+        if (r.servico_id) g.servicos += Number(r.valor_comissao);
+        else g.produtos += Number(r.valor_comissao);
+        g.comissao += Number(r.valor_comissao);
+        if (r.status !== "pago") g.pago = false;
+      });
+
+      const dados = Object.entries(agrupado).map(([id, g]) => ({
+        nome: profMap[id]?.nome || "Desconhecido",
+        cpf: profMap[id]?.cpf || "",
+        totalServicos: g.servicos,
+        totalProdutos: g.produtos,
+        totalComissao: g.comissao,
+        status: g.pago ? "Pago" : "Pendente",
+      })).sort((a, b) => a.nome.localeCompare(b.nome));
+
+      setRelDados(dados);
+      setRelGerado(true);
+    } catch (err: any) {
+      toast({ title: "Erro ao gerar relatorio", description: err.message, variant: "destructive" });
+    } finally {
+      setRelLoading(false);
+    }
+  };
+
+  const relGrandTotal = useMemo(() => ({
+    servicos: relDados.reduce((s, d) => s + d.totalServicos, 0),
+    produtos: relDados.reduce((s, d) => s + d.totalProdutos, 0),
+    comissao: relDados.reduce((s, d) => s + d.totalComissao, 0),
+  }), [relDados]);
+
+  const exportarCSVContador = () => {
+    const bom = "﻿";
+    const header = "Profissional;CPF;Periodo;Total Servicos;Total Produtos;Total Comissao;Status";
+    const rows = relDados.map(d =>
+      `${d.nome};${d.cpf};${relMes};${d.totalServicos.toFixed(2).replace(".", ",")};${d.totalProdutos.toFixed(2).replace(".", ",")};${d.totalComissao.toFixed(2).replace(".", ",")};${d.status}`
+    );
+    const totalRow = `TOTAL;;;${relGrandTotal.servicos.toFixed(2).replace(".", ",")};${relGrandTotal.produtos.toFixed(2).replace(".", ",")};${relGrandTotal.comissao.toFixed(2).replace(".", ",")};`;
+    const csv = bom + [header, ...rows, totalRow].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `comissoes_${relMes}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "CSV exportado!" });
+  };
+
+  const exportarPDFContador = async () => {
+    try {
+      const blob = await gerarPDFRelatorioContador(relMes, relDados, relGrandTotal);
+      downloadPDF(blob, `comissoes_${relMes}.pdf`);
+      toast({ title: "PDF exportado!" });
+    } catch (err: any) {
+      toast({ title: "Erro ao gerar PDF", description: err.message, variant: "destructive" });
+    }
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -844,6 +935,14 @@ export default function Comissoes() {
         </div>
       </div>
 
+      <Tabs defaultValue="comissoes" className="w-full">
+        <TabsList>
+          <TabsTrigger value="comissoes">Comissões</TabsTrigger>
+          <TabsTrigger value="relatorio">Relatório Contador</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="comissoes" className="space-y-6 mt-4">
+
       {/* Cards totais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -1052,6 +1151,86 @@ export default function Comissoes() {
           </CardContent>
         </Card>
       )}
+
+        </TabsContent>
+
+        <TabsContent value="relatorio" className="space-y-6 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Relatório de Comissões para Contador</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-end gap-3">
+                <div className="space-y-1">
+                  <Label>Período (Mês/Ano)</Label>
+                  <Input
+                    type="month"
+                    value={relMes}
+                    onChange={(e) => { setRelMes(e.target.value); setRelGerado(false); }}
+                    className="w-[180px]"
+                  />
+                </div>
+                <Button onClick={gerarRelatorioContador} disabled={relLoading}>
+                  {relLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
+                  Gerar Relatório
+                </Button>
+                {relGerado && relDados.length > 0 && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={exportarCSVContador}>
+                      <FileDown className="h-4 w-4 mr-1" /> Exportar CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportarPDFContador}>
+                      <FileDown className="h-4 w-4 mr-1" /> Exportar PDF
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {relGerado && (
+                relDados.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Nenhuma comissão encontrada no período.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>CPF</TableHead>
+                        <TableHead className="text-right">Total Serviços (R$)</TableHead>
+                        <TableHead className="text-right">Total Produtos (R$)</TableHead>
+                        <TableHead className="text-right">Total Comissão (R$)</TableHead>
+                        <TableHead className="text-center">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {relDados.map((d, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{d.nome}</TableCell>
+                          <TableCell className="font-mono text-sm">{d.cpf || "---"}</TableCell>
+                          <TableCell className="text-right">{fmt(d.totalServicos)}</TableCell>
+                          <TableCell className="text-right">{fmt(d.totalProdutos)}</TableCell>
+                          <TableCell className="text-right font-bold">{fmt(d.totalComissao)}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={d.status === "Pago" ? "default" : "outline"} className={d.status === "Pago" ? "bg-emerald-100 text-emerald-700" : "text-amber-600 border-amber-300 bg-amber-50"}>
+                              {d.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="bg-muted/50 font-bold">
+                        <TableCell colSpan={2}>TOTAL</TableCell>
+                        <TableCell className="text-right">{fmt(relGrandTotal.servicos)}</TableCell>
+                        <TableCell className="text-right">{fmt(relGrandTotal.produtos)}</TableCell>
+                        <TableCell className="text-right">{fmt(relGrandTotal.comissao)}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                )
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Modal Pagamento (a partir da lista) */}
       <Dialog open={showPagarDialog} onOpenChange={setShowPagarDialog}>

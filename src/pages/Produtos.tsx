@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Package, Plus, Search, Edit, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { Package, Plus, Search, Edit, Trash2, AlertTriangle, RefreshCw, FileWarning } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,9 +35,31 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useProdutos, Produto } from "@/hooks/useProdutos";
+import { supabase } from "@/integrations/supabase/client";
 import ProdutoFormDialog from "@/components/produtos/ProdutoFormDialog";
+
+const suggestNcm = (nome: string): string => {
+  const n = nome.toLowerCase();
+  if (/shamp/.test(n)) return "3305.10.00";
+  if (/cond|mascara|oil|serum|curl|frizz|hair|blond|alisam|tratam|escova/.test(n)) return "3305.90.00";
+  if (/cerveja|budweiser|heineken/.test(n)) return "2203.00.00";
+  if (/coca|fanta|sprite|guarana|energe/.test(n)) return "2202.10.00";
+  if (/suco|del valle/.test(n)) return "2009.89.90";
+  if (/agua/.test(n)) return "2201.10.00";
+  if (/cafe|capsula|cappuc|espresso/.test(n)) return "0901.21.00";
+  if (/kit/.test(n)) return "3305.90.00";
+  return "";
+};
+
+const NCM_REGEX = /^\d{4}\.\d{2}\.\d{2}$/;
 
 const ITEMS_PER_PAGE = 10;
 
@@ -71,6 +93,65 @@ const Produtos = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const { toast } = useToast();
+
+  // NCM em Lote
+  const [ncmSheetOpen, setNcmSheetOpen] = useState(false);
+  const [ncmValues, setNcmValues] = useState<Record<string, string>>({});
+  const [ncmSaving, setNcmSaving] = useState(false);
+
+  const produtosSemNcm = useMemo(
+    () => produtos.filter((p) => !p.ncm || p.ncm.trim() === ""),
+    [produtos]
+  );
+
+  const openNcmSheet = useCallback(() => {
+    const initial: Record<string, string> = {};
+    produtosSemNcm.forEach((p) => {
+      initial[p.id] = suggestNcm(p.nome);
+    });
+    setNcmValues(initial);
+    setNcmSheetOpen(true);
+  }, [produtosSemNcm]);
+
+  const handleNcmSave = useCallback(async () => {
+    const entries = Object.entries(ncmValues).filter(([, v]) => v.trim() !== "");
+    const invalid = entries.filter(([, v]) => !NCM_REGEX.test(v.trim()));
+    if (invalid.length > 0) {
+      toast({
+        title: "NCM inválido",
+        description: `${invalid.length} NCM(s) com formato inválido. Use XXXX.XX.XX`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (entries.length === 0) {
+      toast({ title: "Nenhum NCM preenchido", description: "Preencha ao menos um NCM." });
+      return;
+    }
+
+    setNcmSaving(true);
+    try {
+      const db = supabase as any;
+      let successCount = 0;
+      for (const [id, ncm] of entries) {
+        const { error } = await db
+          .from("produtos")
+          .update({ ncm: ncm.trim(), updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (!error) successCount++;
+      }
+      toast({
+        title: "NCM atualizado",
+        description: `${successCount} produto(s) atualizado(s) com sucesso.`,
+      });
+      setNcmSheetOpen(false);
+      loadProdutos();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setNcmSaving(false);
+    }
+  }, [ncmValues, toast, loadProdutos]);
 
   const filteredProdutos = useMemo(() => {
     let result = [...produtos];
@@ -196,6 +277,23 @@ const Produtos = () => {
           </Button>
         </div>
       </div>
+
+      {/* Banner NCM */}
+      {produtosSemNcm.length > 0 && (
+        <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <FileWarning className="h-5 w-5 text-amber-600 shrink-0" />
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                {produtosSemNcm.length} produto(s) sem NCM — nao podem emitir nota fiscal
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="border-amber-500 text-amber-700 hover:bg-amber-100 shrink-0" onClick={openNcmSheet}>
+              Preencher NCM
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filtros */}
       <Card>
@@ -456,6 +554,61 @@ const Produtos = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* NCM em Lote Sheet */}
+      <Sheet open={ncmSheetOpen} onOpenChange={setNcmSheetOpen}>
+        <SheetContent className="sm:max-w-2xl w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>NCM em Lote — {produtosSemNcm.length} produto(s)</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Preencha o NCM (formato XXXX.XX.XX) para cada produto. Sugestoes automaticas foram aplicadas quando possivel.
+            </p>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produto</TableHead>
+                    <TableHead className="w-40">NCM</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {produtosSemNcm.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="text-sm font-medium">{p.nome}</TableCell>
+                      <TableCell>
+                        <Input
+                          placeholder="0000.00.00"
+                          value={ncmValues[p.id] || ""}
+                          onChange={(e) => {
+                            let v = e.target.value.replace(/[^0-9.]/g, "");
+                            if (v.length > 10) v = v.slice(0, 10);
+                            setNcmValues((prev) => ({ ...prev, [p.id]: v }));
+                          }}
+                          className={
+                            ncmValues[p.id] && !NCM_REGEX.test(ncmValues[p.id])
+                              ? "border-destructive"
+                              : ""
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setNcmSheetOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleNcmSave} disabled={ncmSaving}>
+                {ncmSaving ? "Salvando..." : "Salvar Todos"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

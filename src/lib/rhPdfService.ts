@@ -449,6 +449,59 @@ export async function salvarPDFNoHistorico(
 }
 
 /**
+ * Generate Accountant Commission Report PDF
+ */
+export async function gerarPDFRelatorioContador(
+  mesAno: string,
+  dados: Array<{
+    nome: string;
+    cpf: string;
+    totalServicos: number;
+    totalProdutos: number;
+    totalComissao: number;
+    status: string;
+  }>,
+  grandTotal: { servicos: number; produtos: number; comissao: number }
+): Promise<Blob> {
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const mesDate = new Date(mesAno + '-01');
+
+  const startY = await addHeader(doc, {
+    title: `Relatorio de Comissoes — ${format(mesDate, "MMMM yyyy", { locale: ptBR })}`,
+    subtitle: 'Relatorio para Contador',
+  });
+
+  autoTable(doc, {
+    startY,
+    head: [['Profissional', 'CPF', 'Total Servicos (R$)', 'Total Produtos (R$)', 'Total Comissao (R$)', 'Status']],
+    body: [
+      ...dados.map(d => [
+        d.nome,
+        d.cpf || '---',
+        formatCurrency(d.totalServicos),
+        formatCurrency(d.totalProdutos),
+        formatCurrency(d.totalComissao),
+        d.status,
+      ]),
+      [
+        { content: 'TOTAL', styles: { fontStyle: 'bold' as const } },
+        '',
+        { content: formatCurrency(grandTotal.servicos), styles: { fontStyle: 'bold' as const } },
+        { content: formatCurrency(grandTotal.produtos), styles: { fontStyle: 'bold' as const } },
+        { content: formatCurrency(grandTotal.comissao), styles: { fontStyle: 'bold' as const } },
+        '',
+      ],
+    ],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [80, 80, 80], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+  });
+
+  addFooter(doc);
+  return doc.output('blob');
+}
+
+/**
  * Download PDF directly
  */
 export function downloadPDF(blob: Blob, fileName: string) {
