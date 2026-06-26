@@ -49,6 +49,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
         "h-12 px-4 text-left align-middle text-[13px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 [&:has([role=checkbox])]:pr-0",
         className,
       )}
+      scope="col"
       {...props}
     />
   ),

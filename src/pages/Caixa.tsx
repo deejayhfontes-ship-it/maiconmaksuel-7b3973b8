@@ -360,7 +360,7 @@ const Caixa = () => {
           • Última sync: {format(lastSync, "HH:mm")}
         </span>
       )}
-      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refresh}>
+      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={refresh} aria-label="Atualizar">
         <RefreshCw className="h-3 w-3" />
       </Button>
     </div>

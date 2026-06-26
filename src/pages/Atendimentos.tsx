@@ -707,7 +707,10 @@ const Atendimentos = () => {
                     className={`cursor-pointer transition-all hover:shadow-md flex-shrink-0 w-[200px] ${
                       selectedAtendimento?.id === at.id ? "ring-2 ring-primary" : ""
                     }`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedAtendimento(at)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedAtendimento(at); } }}
                   >
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between mb-1">
@@ -745,7 +748,10 @@ const Atendimentos = () => {
                     className={`cursor-pointer transition-all hover:shadow-md ${
                       selectedAtendimento?.id === at.id ? "ring-2 ring-primary" : ""
                     }`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedAtendimento(at)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedAtendimento(at); } }}
                   >
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between mb-1">
@@ -1044,7 +1050,7 @@ const Atendimentos = () => {
                         <TableCell className="text-right">{formatPrice(Number(item.preco_unitario))}</TableCell>
                         <TableCell className="text-right font-medium">{formatPrice(Number(item.subtotal))}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveServico(item.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveServico(item.id)} aria-label="Remover serviço">
                             <X className="h-4 w-4 text-destructive" />
                           </Button>
                         </TableCell>
@@ -1068,7 +1074,7 @@ const Atendimentos = () => {
                         <TableCell className="text-right">{formatPrice(Number(item.preco_unitario))}</TableCell>
                         <TableCell className="text-right font-medium">{formatPrice(Number(item.subtotal))}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveProduto(item.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveProduto(item.id)} aria-label="Remover produto">
                             <X className="h-4 w-4 text-destructive" />
                           </Button>
                         </TableCell>

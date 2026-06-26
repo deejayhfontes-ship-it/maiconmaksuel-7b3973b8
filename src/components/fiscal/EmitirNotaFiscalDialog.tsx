@@ -423,7 +423,10 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
                     "cursor-pointer transition-all hover:shadow-lg",
                     tipoNota === "nfce" && "ring-2 ring-primary"
                   )}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setTipoNota("nfce")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTipoNota("nfce"); } }}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
@@ -453,7 +456,10 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
                     "cursor-pointer transition-all hover:shadow-lg",
                     tipoNota === "nfe" && "ring-2 ring-primary"
                   )}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setTipoNota("nfe")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTipoNota("nfe"); } }}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
@@ -506,6 +512,22 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
                           "p-3 cursor-pointer hover:bg-muted/50 transition-colors",
                           clienteId === cliente.id && "bg-primary/5 border-l-2 border-l-primary"
                         )}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setClienteId(cliente.id);
+                            setClienteNome(cliente.nome);
+                            setClienteCpfCnpj(cliente.cpf || "");
+                            setClienteEndereco(
+                              [cliente.endereco, cliente.bairro, cliente.cidade]
+                                .filter(Boolean)
+                                .join(", ")
+                            );
+                            setBuscaCliente("");
+                          }
+                        }}
                         onClick={() => {
                           setClienteId(cliente.id);
                           setClienteNome(cliente.nome);

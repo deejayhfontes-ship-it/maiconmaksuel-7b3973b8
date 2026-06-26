@@ -648,10 +648,10 @@ const Financeiro = () => {
                                 <Check className="h-3 w-3 mr-1" /> Pagar
                               </Button>
                             )}
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditPagar(conta)}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditPagar(conta)} aria-label="Editar conta">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setSelectedConta(conta); setDeleteType("pagar"); setIsDeleteOpen(true); }}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setSelectedConta(conta); setDeleteType("pagar"); setIsDeleteOpen(true); }} aria-label="Excluir conta">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -793,10 +793,10 @@ const Financeiro = () => {
                                 <Check className="h-3 w-3 mr-1" /> Receber
                               </Button>
                             )}
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditReceber(conta)}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditReceber(conta)} aria-label="Editar conta">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setSelectedConta(conta); setDeleteType("receber"); setIsDeleteOpen(true); }}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => { setSelectedConta(conta); setDeleteType("receber"); setIsDeleteOpen(true); }} aria-label="Excluir conta">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
