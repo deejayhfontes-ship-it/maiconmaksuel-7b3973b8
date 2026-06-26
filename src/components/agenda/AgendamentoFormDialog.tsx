@@ -172,9 +172,15 @@ export default function AgendamentoFormDialog({
         supabase.from("servicos").select("id, nome, duracao_minutos, preco, comissao_padrao").eq("ativo", true).order("nome"),
       ]);
 
+      if (clientesRes.error) console.error("[Agenda] clientes fetch:", clientesRes.error.message);
+      if (profissionaisRes.error) console.error("[Agenda] profissionais fetch:", profissionaisRes.error.message);
+      if (servicosRes.error) console.error("[Agenda] servicos fetch:", servicosRes.error.message);
       if (clientesRes.data) setClientes(clientesRes.data);
       if (profissionaisRes.data) setProfissionais(profissionaisRes.data);
       if (servicosRes.data) setServicos(servicosRes.data);
+      if (!profissionaisRes.data?.length && !profissionaisRes.error) {
+        console.warn("[Agenda] Nenhum profissional ativo encontrado");
+      }
     };
 
     if (open) {
@@ -378,9 +384,7 @@ export default function AgendamentoFormDialog({
         observacoes: data.observacoes || null,
       };
 
-      if (isEditing) {
-        payload.status = data.status;
-      }
+      payload.status = isEditing ? data.status : "agendado";
 
       if (isEditing && agendamento) {
         const { error } = await supabase
@@ -659,7 +663,7 @@ export default function AgendamentoFormDialog({
                         <div className="relative">
                           <Input
                             type="time"
-                            step={60}
+                            step={900}
                             className="w-full pl-9"
                             value={field.value}
                             onChange={(e) => field.onChange(e.target.value)}
