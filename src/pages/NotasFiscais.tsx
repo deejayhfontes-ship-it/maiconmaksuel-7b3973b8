@@ -23,6 +23,7 @@ import {
   FileDown, Loader2, Ban, FileEdit, Settings, RefreshCw,
   TrendingUp, Hash, DollarSign, Server
 } from "lucide-react";
+import { SkeletonTable } from "@/components/ui/skeleton";
 import { EmitirNotaFiscalDialog } from "@/components/fiscal/EmitirNotaFiscalDialog";
 import FiscalLogsDialog from "@/components/fiscal/FiscalLogsDialog";
 import { useNotaFiscalService } from "@/hooks/useNotaFiscal";
@@ -51,13 +52,13 @@ type NotaFiscal = {
   seq_carta_correcao?: number;
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  rascunho: { label: "Rascunho", color: "bg-info text-info-foreground", icon: FileText },
-  processando: { label: "Processando", color: "bg-warning text-warning-foreground", icon: Clock },
-  contingencia: { label: "Contingência", color: "bg-orange-500 text-white", icon: AlertTriangle },
-  autorizada: { label: "Autorizada", color: "bg-success text-success-foreground", icon: CheckCircle2 },
-  cancelada: { label: "Cancelada", color: "bg-muted text-muted-foreground", icon: X },
-  rejeitada: { label: "Rejeitada", color: "bg-destructive text-destructive-foreground", icon: XCircle },
+const STATUS_CONFIG: Record<string, { label: string; variant: "info" | "warning" | "success" | "secondary" | "destructive"; icon: any }> = {
+  rascunho: { label: "Rascunho", variant: "info", icon: FileText },
+  processando: { label: "Processando", variant: "warning", icon: Clock },
+  contingencia: { label: "Contingência", variant: "warning", icon: AlertTriangle },
+  autorizada: { label: "Autorizada", variant: "success", icon: CheckCircle2 },
+  cancelada: { label: "Cancelada", variant: "secondary", icon: X },
+  rejeitada: { label: "Rejeitada", variant: "destructive", icon: XCircle },
 };
 
 export default function NotasFiscais() {
@@ -414,8 +415,8 @@ export default function NotasFiscais() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="p-4">
+              <SkeletonTable rows={5} />
             </div>
           ) : notasFiltradas && notasFiltradas.length > 0 ? (
             <div className="overflow-x-auto">
@@ -457,7 +458,7 @@ export default function NotasFiscais() {
                           {formatarValor(nota.valor_total)}
                         </TableCell>
                         <TableCell>
-                          <Badge className={`gap-1 ${STATUS_CONFIG[nota.status].color}`}>
+                          <Badge variant={STATUS_CONFIG[nota.status].variant} className="gap-1">
                             <StatusIcon className="h-3 w-3" />
                             {STATUS_CONFIG[nota.status].label}
                           </Badge>

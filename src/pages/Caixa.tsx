@@ -52,6 +52,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -380,11 +381,14 @@ const Caixa = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Carregando caixa...</p>
+      <div className="space-y-4 p-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }

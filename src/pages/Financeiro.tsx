@@ -65,6 +65,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, addDays, subDays, parseISO, isBefore, startOfWeek, endOfWeek, addMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ContaPagar {
   id: string;
@@ -267,14 +268,14 @@ const Financeiro = () => {
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   const getStatusBadge = (status: string) => {
-    const configs: Record<string, { label: string; className: string }> = {
-      pendente: { label: "Pendente", className: "bg-amber-500/10 text-amber-600" },
-      pago: { label: "Pago", className: "bg-success/10 text-success" },
-      recebido: { label: "Recebido", className: "bg-success/10 text-success" },
-      atrasado: { label: "Atrasado", className: "bg-destructive/10 text-destructive" },
+    const configs: Record<string, { label: string; variant: "warning" | "success" | "destructive" }> = {
+      pendente: { label: "Pendente", variant: "warning" },
+      pago: { label: "Pago", variant: "success" },
+      recebido: { label: "Recebido", variant: "success" },
+      atrasado: { label: "Atrasado", variant: "destructive" },
     };
     const config = configs[status] || configs.pendente;
-    return <Badge className={config.className}>{config.label}</Badge>;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const handleSavePagar = async () => {
@@ -610,11 +611,17 @@ const Financeiro = () => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Carregando...
-                      </TableCell>
-                    </TableRow>
+                    <>
+                      {[1, 2, 3, 4].map((i) => (
+                        <TableRow key={i}>
+                          {[1, 2, 3, 4, 5, 6, 7].map((j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </>
                   ) : contasPagar.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
@@ -759,11 +766,17 @@ const Financeiro = () => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Carregando...
-                      </TableCell>
-                    </TableRow>
+                    <>
+                      {[1, 2, 3, 4].map((i) => (
+                        <TableRow key={i}>
+                          {[1, 2, 3, 4, 5, 6, 7].map((j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </>
                   ) : contasReceber.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
