@@ -418,17 +418,14 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
             <div className="space-y-6">
               <h3 className="text-lg font-semibold">Selecione o tipo de nota</h3>
               <div className="grid gap-4 md:grid-cols-2">
-                <Card
+                <button
+                  type="button"
                   className={cn(
-                    "cursor-pointer transition-all hover:shadow-lg",
-                    tipoNota === "nfce" && "ring-2 ring-primary"
+                    "w-full text-left rounded-xl border bg-card p-6 cursor-pointer transition-all hover:shadow-lg",
+                    tipoNota === "nfce" ? "ring-2 ring-primary border-primary" : "border-border"
                   )}
-                  role="button"
-                  tabIndex={0}
                   onClick={() => setTipoNota("nfce")}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTipoNota("nfce"); } }}
                 >
-                  <CardContent className="p-6">
                     <div className="flex items-start gap-4">
                       <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
                         <FileText className="h-6 w-6 text-primary" />
@@ -448,20 +445,16 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
                         </ul>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                </button>
 
-                <Card
+                <button
+                  type="button"
                   className={cn(
-                    "cursor-pointer transition-all hover:shadow-lg",
-                    tipoNota === "nfe" && "ring-2 ring-primary"
+                    "w-full text-left rounded-xl border bg-card p-6 cursor-pointer transition-all hover:shadow-lg",
+                    tipoNota === "nfe" ? "ring-2 ring-primary border-primary" : "border-border"
                   )}
-                  role="button"
-                  tabIndex={0}
                   onClick={() => setTipoNota("nfe")}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTipoNota("nfe"); } }}
                 >
-                  <CardContent className="p-6">
                     <div className="flex items-start gap-4">
                       <div className="h-12 w-12 rounded-xl bg-info/10 flex items-center justify-center">
                         <Building2 className="h-6 w-6 text-info" />
@@ -481,8 +474,7 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
                         </ul>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                </button>
               </div>
             </div>
           )}
