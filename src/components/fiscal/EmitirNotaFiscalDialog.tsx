@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { 
   FileText, Building2, ChevronLeft, ChevronRight, Plus, Trash2, 
   Search, User, Package, CheckCircle2, XCircle, Loader2, Download,
-  Send, Printer
+  Send, MessageCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotaFiscalService } from "@/hooks/useNotaFiscal";
@@ -65,7 +65,7 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
   const [itens, setItens] = useState<ItemNota[]>([]);
   const [observacoes, setObservacoes] = useState("");
   const [enviarEmail, setEnviarEmail] = useState(true);
-  const [imprimir, setImprimir] = useState(false);
+  const [enviarWhatsapp, setEnviarWhatsapp] = useState(false);
   const [emitindo, setEmitindo] = useState(false);
   const [resultadoEmissao, setResultadoEmissao] = useState<{
     sucesso: boolean;
@@ -283,9 +283,9 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
       tipo,
       codigo: itemOriginal.id.slice(0, 8),
       descricao: itemOriginal.nome,
-      ncm: "",
+      ncm: tipo === "produto" ? ((itemOriginal as any).ncm || "") : "",
       cfop: tipo === "servico" ? (configFiscal?.cfop_servicos || "5933") : (configFiscal?.cfop_produtos || "5102"),
-      unidade: "UN",
+      unidade: tipo === "produto" ? ((itemOriginal as any).unidade || "UN") : "UN",
       quantidade: 1,
       valor_unitario: tipo === "servico" ? (itemOriginal as typeof servicos[0]).preco : (itemOriginal as typeof produtos[0]).preco_venda,
       valor_desconto: 0,
@@ -774,12 +774,12 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    id="imprimir"
-                    checked={imprimir}
-                    onCheckedChange={(checked) => setImprimir(checked as boolean)}
+                    id="enviar_whatsapp"
+                    checked={enviarWhatsapp}
+                    onCheckedChange={(checked) => setEnviarWhatsapp(checked as boolean)}
                   />
-                  <Label htmlFor="imprimir" className="cursor-pointer">
-                    Imprimir após emissão
+                  <Label htmlFor="enviar_whatsapp" className="cursor-pointer">
+                    Enviar nota por WhatsApp para o cliente
                   </Label>
                 </div>
               </div>
@@ -806,8 +806,16 @@ export function EmitirNotaFiscalDialog({ open, onOpenChange, atendimentoId }: Em
                       Baixar XML
                     </Button>
                     <Button variant="outline" className="gap-2">
-                      <Printer className="h-4 w-4" />
+                      <Download className="h-4 w-4" />
                       Baixar PDF
+                    </Button>
+                    <Button variant="outline" className="gap-2">
+                      <Send className="h-4 w-4" />
+                      Enviar por Email
+                    </Button>
+                    <Button variant="outline" className="gap-2">
+                      <MessageCircle className="h-4 w-4" />
+                      Enviar por WhatsApp
                     </Button>
                     <Button onClick={() => handleClose(false)}>
                       Concluir
