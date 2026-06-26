@@ -128,6 +128,9 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
       // Sync from server if online
       if (isOnline) {
         const [serverClientes, serverProfissionais, serverServicos] = await Promise.all([
+          // NOTA: o servidor limita a 1000 linhas (db-max-rows do PostgREST).
+          // Clientes além de 1000 são resolvidos sob demanda por id no effect
+          // que busca os clientes faltantes dos agendamentos exibidos.
           supabase.from('clientes').select('id, nome, celular, telefone, data_nascimento').eq('ativo', true),
           // Buscar apenas profissionais que atendem clientes (têm agenda de atendimento)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -247,6 +250,34 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
   useEffect(() => {
     buildCompleteAgendamentos();
   }, [buildCompleteAgendamentos]);
+
+  // Garantir que todos os clientes dos agendamentos exibidos estão no cache.
+  // O cache geral de clientes é limitado a 1000 linhas pelo Supabase; se o
+  // salão tiver mais que isso, alguns agendamentos ficariam sem nome ("Cliente").
+  // Buscamos por id apenas os que faltam (poucos por dia) e mesclamos no Map.
+  useEffect(() => {
+    if (!isOnline || allAgendamentos.length === 0) return;
+    const faltando = Array.from(
+      new Set(allAgendamentos.map(a => a.cliente_id).filter(Boolean))
+    ).filter(id => !clientes.has(id));
+    if (faltando.length === 0) return;
+
+    let cancelled = false;
+    supabase
+      .from('clientes')
+      .select('id, nome, celular, telefone, data_nascimento')
+      .in('id', faltando)
+      .then(({ data: extra }) => {
+        if (cancelled || !extra || extra.length === 0) return;
+        setClientes(prev => {
+          const next = new Map(prev);
+          extra.forEach(c => next.set(c.id, c as unknown as Cliente));
+          return next;
+        });
+        localBulkPut('clientes', extra as unknown as (Cliente & { id: string })[]).catch(() => { });
+      });
+    return () => { cancelled = true; };
+  }, [allAgendamentos, clientes, isOnline]);
 
   // Create new agendamento
   const create = useCallback(async (data: Omit<Agendamento, 'id' | 'created_at' | 'updated_at'>): Promise<Agendamento> => {
