@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tutorial — Notas Fiscais, Produtos e Estoque | Maicon Maksuel Gestão</title>
+<style>
+  @page { margin: 2cm; size: A4; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #1a1a2e; line-height: 1.7; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; }
+
+  .cover { text-align: center; padding: 80px 20px; page-break-after: always; }
+  .cover h1 { font-size: 32px; color: #6C63FF; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 18px; color: #666; margin-bottom: 40px; }
+  .cover .logo-text { font-size: 48px; font-weight: 800; color: #6C63FF; margin-bottom: 20px; letter-spacing: -1px; }
+  .cover .version { color: #999; font-size: 13px; margin-top: 60px; }
+
+  h2 { font-size: 22px; color: #6C63FF; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #6C63FF20; page-break-after: avoid; }
+  h3 { font-size: 17px; color: #333; margin: 24px 0 12px; page-break-after: avoid; }
+  h4 { font-size: 15px; color: #555; margin: 16px 0 8px; }
+  p { margin-bottom: 12px; font-size: 14.5px; }
+
+  .info-box { background: #f0f0ff; border-left: 4px solid #6C63FF; padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 14px; }
+  .info-box strong { color: #6C63FF; }
+  .warning-box { background: #fff8e6; border-left: 4px solid #f5a623; padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 14px; }
+  .warning-box strong { color: #e69500; }
+  .success-box { background: #e8f8e8; border-left: 4px solid #22c55e; padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 14px; }
+
+  .step { display: flex; gap: 16px; margin: 16px 0; align-items: flex-start; }
+  .step-number { background: #6C63FF; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+  .step-content { flex: 1; }
+  .step-content strong { color: #333; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: #6C63FF; color: white; padding: 10px 14px; text-align: left; font-weight: 600; }
+  td { padding: 10px 14px; border-bottom: 1px solid #eee; }
+  tr:nth-child(even) { background: #fafafa; }
+
+  .section-divider { page-break-before: always; }
+
+  ul, ol { margin: 8px 0 16px 24px; font-size: 14.5px; }
+  li { margin-bottom: 6px; }
+
+  .highlight { background: #6C63FF15; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+  code { background: #f4f4f8; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 13px; }
+
+  .faq { margin: 12px 0; }
+  .faq-q { font-weight: 700; color: #333; margin-bottom: 4px; font-size: 14.5px; }
+  .faq-a { color: #555; margin-bottom: 16px; font-size: 14px; padding-left: 16px; border-left: 2px solid #ddd; }
+
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px; }
+
+  @media print {
+    body { padding: 0; }
+    .cover { padding: 120px 20px; }
+    h2 { page-break-after: avoid; }
+    .step, .info-box, .warning-box, table { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- CAPA -->
+<div class="cover">
+  <div class="logo-text">Maicon Maksuel</div>
+  <h1>Guia Completo</h1>
+  <p class="subtitle">Produtos, Estoque e Notas Fiscais</p>
+  <p style="color: #888; margin-top: 40px;">Passo a passo para cadastrar produtos,<br>controlar estoque e emitir notas fiscais</p>
+  <p class="version">Versão 1.0 — Junho 2026</p>
+</div>
+
+<!-- SUMÁRIO -->
+<h2>Sumário</h2>
+<ol style="font-size: 15px; line-height: 2.2;">
+  <li><strong>Cadastro de Produtos</strong> — Como cadastrar e editar produtos</li>
+  <li><strong>Controle de Estoque</strong> — Entradas, saídas e consultas</li>
+  <li><strong>Entrada de Compra (XML)</strong> — Importar notas de fornecedores</li>
+  <li><strong>Emissão de Nota Fiscal</strong> — NF-e e NFC-e passo a passo</li>
+  <li><strong>NF-e vs NFC-e</strong> — Diferenças e quando usar cada uma</li>
+  <li><strong>Envio ao Cliente</strong> — Email e WhatsApp</li>
+  <li><strong>Perguntas Frequentes</strong></li>
+</ol>
+
+<!-- SEÇÃO 1 -->
+<div class="section-divider"></div>
+<h2>1. Cadastro de Produtos</h2>
+<p>Antes de vender ou emitir nota fiscal, o produto precisa estar cadastrado no sistema com todas as informações preenchidas.</p>
+
+<h3>Como cadastrar um novo produto</h3>
+
+<div class="step">
+  <div class="step-number">1</div>
+  <div class="step-content">
+    <strong>Acesse o menu Produtos</strong><br>
+    No menu lateral, clique em <span class="highlight">Produtos</span>.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">2</div>
+  <div class="step-content">
+    <strong>Clique em "Novo Produto"</strong><br>
+    O botão fica no canto superior direito da tela.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">3</div>
+  <div class="step-content">
+    <strong>Preencha os dados básicos</strong><br>
+    <ul>
+      <li><strong>Nome</strong> — Nome do produto (ex: "Shampoo Profissional 500ml")</li>
+      <li><strong>Preço de Venda</strong> — Valor que o cliente vai pagar</li>
+      <li><strong>Preço de Custo</strong> — Quanto você pagou pelo produto</li>
+      <li><strong>Estoque Atual</strong> — Quantidade disponível agora</li>
+      <li><strong>Estoque Mínimo</strong> — Quantidade mínima antes de alertar</li>
+      <li><strong>Categoria</strong> — Para organização (ex: "Cabelo", "Unha", "Pele")</li>
+      <li><strong>Código de Barras</strong> — Se tiver (opcional)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">4</div>
+  <div class="step-content">
+    <strong>Preencha os dados fiscais (importante para nota fiscal!)</strong><br>
+    <ul>
+      <li><strong>NCM</strong> — Código do produto na tabela da Receita Federal (8 dígitos). Seu contador pode informar. Exemplo: <code>33051000</code> = Shampoo</li>
+      <li><strong>CFOP</strong> — Código da operação fiscal. O mais comum para venda é <code>5102</code> (venda de mercadoria). Seu contador pode orientar.</li>
+      <li><strong>Origem</strong> — De onde vem o produto (0 = Nacional, 1 = Importado)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">5</div>
+  <div class="step-content">
+    <strong>Clique em "Salvar"</strong><br>
+    O produto aparecerá na lista e já pode ser vendido.
+  </div>
+</div>
+
+<div class="warning-box">
+  <strong>⚠️ Atenção:</strong> Para emitir nota fiscal de um produto, é obrigatório ter o <strong>NCM</strong> preenchido. Sem ele, a SEFAZ (Secretaria da Fazenda) rejeita a nota. Peça ao seu contador a lista de NCMs dos seus produtos.
+</div>
+
+<!-- SEÇÃO 2 -->
+<div class="section-divider"></div>
+<h2>2. Controle de Estoque</h2>
+<p>O sistema controla o estoque automaticamente nas operações do dia a dia.</p>
+
+<h3>Quando o estoque AUMENTA</h3>
+<table>
+  <tr><th>Situação</th><th>Como acontece</th></tr>
+  <tr><td>Entrada de compra (XML ou manual)</td><td>Automático ao confirmar a entrada</td></tr>
+  <tr><td>Ajuste manual</td><td>Pelo menu Estoque > Movimentações</td></tr>
+</table>
+
+<h3>Quando o estoque DIMINUI</h3>
+<table>
+  <tr><th>Situação</th><th>Como acontece</th></tr>
+  <tr><td>Venda de produto em atendimento</td><td>Automático ao confirmar pagamento</td></tr>
+  <tr><td>Ajuste manual</td><td>Pelo menu Estoque > Movimentações</td></tr>
+</table>
+
+<div class="info-box">
+  <strong>💡 Dica:</strong> Quando um produto chega no estoque mínimo, o sistema mostra um alerta em vermelho. Fique atento para repor antes de acabar!
+</div>
+
+<h3>Como fazer ajuste manual de estoque</h3>
+
+<div class="step">
+  <div class="step-number">1</div>
+  <div class="step-content">Acesse <span class="highlight">Estoque > Movimentações</span></div>
+</div>
+<div class="step">
+  <div class="step-number">2</div>
+  <div class="step-content">Clique em <strong>"Nova Movimentação"</strong></div>
+</div>
+<div class="step">
+  <div class="step-number">3</div>
+  <div class="step-content">Selecione o produto, o tipo (entrada ou saída) e a quantidade</div>
+</div>
+<div class="step">
+  <div class="step-number">4</div>
+  <div class="step-content">Informe o motivo (ex: "Quebra", "Devolução", "Inventário")</div>
+</div>
+<div class="step">
+  <div class="step-number">5</div>
+  <div class="step-content">Confirme. O estoque será atualizado imediatamente.</div>
+</div>
+
+<!-- SEÇÃO 3 -->
+<div class="section-divider"></div>
+<h2>3. Entrada de Compra (XML de Fornecedor)</h2>
+<p>Quando você compra produtos de um fornecedor e recebe a nota fiscal (NF-e), pode importar o XML para dar entrada automaticamente no estoque.</p>
+
+<h3>Passo a passo</h3>
+
+<div class="step">
+  <div class="step-number">1</div>
+  <div class="step-content">
+    <strong>Acesse Entradas de Compra</strong><br>
+    Menu <span class="highlight">Notas Fiscais > Entradas (Compras)</span>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">2</div>
+  <div class="step-content">
+    <strong>Clique em "Importar XML"</strong><br>
+    Selecione o arquivo XML que o fornecedor enviou (por email ou junto com a mercadoria).
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">3</div>
+  <div class="step-content">
+    <strong>Confira os dados do fornecedor e da nota</strong><br>
+    O sistema lê automaticamente: nome do fornecedor, CNPJ, número da nota, data e valor total.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">4</div>
+  <div class="step-content">
+    <strong>Vincule cada item a um produto do estoque</strong><br>
+    Para cada item da nota, você precisa dizer qual produto do SEU cadastro corresponde. Se o produto não existir, pode criar na hora.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">5</div>
+  <div class="step-content">
+    <strong>Clique em "Confirmar Entrada"</strong><br>
+    O estoque de cada produto será atualizado automaticamente com as quantidades da nota.
+  </div>
+</div>
+
+<div class="success-box">
+  <strong>✅ Pronto!</strong> Os produtos entraram no estoque. Você pode conferir na tela de Produtos que as quantidades foram atualizadas.
+</div>
+
+<h3>Entrada Manual (sem XML)</h3>
+<p>Se não tiver o XML, use a opção <strong>"Entrada Manual"</strong>. Você vai digitar os dados manualmente: fornecedor, número da nota e cada item com quantidade e valor.</p>
+
+<!-- SEÇÃO 4 -->
+<div class="section-divider"></div>
+<h2>4. Emissão de Nota Fiscal — Passo a Passo</h2>
+<p>Após realizar um atendimento (serviço ou venda de produto), você pode emitir a nota fiscal eletrônica.</p>
+
+<h3>Quando emitir?</h3>
+<ul>
+  <li>Após fechar uma comanda/atendimento</li>
+  <li>Ao finalizar uma venda de produtos</li>
+  <li>Quando o cliente solicitar nota fiscal</li>
+</ul>
+
+<h3>Passo a passo da emissão</h3>
+
+<div class="step">
+  <div class="step-number">1</div>
+  <div class="step-content">
+    <strong>Escolha o tipo de nota</strong><br>
+    Na tela de emissão, selecione:
+    <ul>
+      <li><strong>NFC-e</strong> — Para consumidor final (pessoa física)</li>
+      <li><strong>NF-e</strong> — Para empresas (pessoa jurídica com CNPJ)</li>
+    </ul>
+    <em>(Veja a seção 5 para entender as diferenças)</em>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">2</div>
+  <div class="step-content">
+    <strong>Selecione o cliente</strong><br>
+    Busque o nome do cliente. Os dados (CPF/CNPJ, endereço) serão preenchidos automaticamente se estiverem cadastrados.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">3</div>
+  <div class="step-content">
+    <strong>Adicione os itens</strong><br>
+    Selecione os serviços e/ou produtos que farão parte da nota. O sistema preenche valores automaticamente.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">4</div>
+  <div class="step-content">
+    <strong>Confira os totais</strong><br>
+    Verifique se o valor total confere com o que foi cobrado. Confira também os impostos calculados.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">5</div>
+  <div class="step-content">
+    <strong>Escolha como enviar ao cliente</strong><br>
+    <ul>
+      <li>✅ <strong>Enviar por Email</strong> — O cliente recebe a nota no email cadastrado</li>
+      <li>✅ <strong>Enviar por WhatsApp</strong> — Envia o link da nota por WhatsApp</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">6</div>
+  <div class="step-content">
+    <strong>Clique em "Emitir Nota Fiscal"</strong><br>
+    O sistema envia a nota para a SEFAZ (Secretaria da Fazenda). Se tudo estiver correto, a nota é <strong>autorizada</strong> em segundos.
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">7</div>
+  <div class="step-content">
+    <strong>Resultado</strong><br>
+    Após autorização, você verá:
+    <ul>
+      <li>Número da nota</li>
+      <li>Chave de acesso (44 dígitos)</li>
+      <li>Protocolo de autorização</li>
+      <li>Botões para baixar XML, PDF, enviar por Email ou WhatsApp</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SEÇÃO 5 -->
+<div class="section-divider"></div>
+<h2>5. NF-e vs NFC-e — Qual a Diferença?</h2>
+<p>São dois tipos de nota fiscal eletrônica, cada uma para uma situação diferente.</p>
+
+<table>
+  <tr>
+    <th style="width: 30%;">Característica</th>
+    <th style="width: 35%;">NFC-e (Consumidor)</th>
+    <th style="width: 35%;">NF-e (Empresas)</th>
+  </tr>
+  <tr>
+    <td><strong>Para quem?</strong></td>
+    <td>Pessoa física (CPF)<br>Consumidor final</td>
+    <td>Pessoa jurídica (CNPJ)<br>Empresas</td>
+  </tr>
+  <tr>
+    <td><strong>Quando usar?</strong></td>
+    <td>Vendas no balcão, atendimentos normais</td>
+    <td>Quando o cliente é empresa e precisa de nota com CNPJ</td>
+  </tr>
+  <tr>
+    <td><strong>CPF obrigatório?</strong></td>
+    <td>Não (opcional)</td>
+    <td>Sim (CNPJ obrigatório)</td>
+  </tr>
+  <tr>
+    <td><strong>Modelo fiscal</strong></td>
+    <td>Modelo 65</td>
+    <td>Modelo 55</td>
+  </tr>
+  <tr>
+    <td><strong>Precisa de quê?</strong></td>
+    <td>Certificado digital + CSC configurado</td>
+    <td>Certificado digital</td>
+  </tr>
+  <tr>
+    <td><strong>Exemplo</strong></td>
+    <td>Cliente fez cabelo e quer nota</td>
+    <td>Empresa contratou serviço e precisa de NF para contabilidade</td>
+  </tr>
+</table>
+
+<div class="info-box">
+  <strong>💡 Por que a NFC-e pode não estar funcionando?</strong><br><br>
+  A NFC-e exige uma configuração extra chamada <strong>CSC</strong> (Código de Segurança do Contribuinte) e <strong>CSC_ID</strong>. Essas informações são fornecidas pela Secretaria da Fazenda do seu estado (SEFAZ).<br><br>
+  Já a <strong>NF-e não precisa de CSC</strong>, por isso pode funcionar mesmo sem essa configuração.<br><br>
+  <strong>O que fazer:</strong> Peça ao seu contador para solicitar o CSC junto à SEFAZ do estado. Com o CSC configurado, a NFC-e passa a funcionar normalmente.
+</div>
+
+<div class="warning-box">
+  <strong>⚠️ Importante:</strong> Para ambos os tipos, é necessário ter o <strong>token da API fiscal (Focus NFe)</strong> e os <strong>dados da empresa</strong> configurados em <span class="highlight">Configurações > Fiscal</span>.
+</div>
+
+<!-- SEÇÃO 6 -->
+<div class="section-divider"></div>
+<h2>6. Envio da Nota ao Cliente</h2>
+<p>Após emitir a nota fiscal, você tem três formas de entregar ao cliente:</p>
+
+<h3>Por Email</h3>
+<ul>
+  <li>Marque a opção <strong>"Enviar nota por email"</strong> antes de emitir</li>
+  <li>O cliente precisa ter o email cadastrado</li>
+  <li>A nota (PDF + XML) é enviada automaticamente</li>
+</ul>
+
+<h3>Por WhatsApp</h3>
+<ul>
+  <li>Marque a opção <strong>"Enviar nota por WhatsApp"</strong> antes de emitir</li>
+  <li>Após a emissão, clique no botão <strong>"Enviar por WhatsApp"</strong></li>
+  <li>O sistema abre o WhatsApp com o link da nota pronto para enviar</li>
+</ul>
+
+<h3>Download do PDF</h3>
+<ul>
+  <li>Na tela de resultado ou na lista de Notas Fiscais</li>
+  <li>Clique em <strong>"Baixar PDF"</strong> para salvar o DANFE (documento da nota)</li>
+  <li>Você pode enviar esse PDF manualmente por qualquer meio</li>
+</ul>
+
+<!-- SEÇÃO 7 -->
+<div class="section-divider"></div>
+<h2>7. Perguntas Frequentes</h2>
+
+<div class="faq">
+  <div class="faq-q">❓ O que é NCM e onde consigo?</div>
+  <div class="faq-a">NCM é o código que identifica o tipo do produto na Receita Federal. Todo produto tem um NCM. Peça ao seu contador — ele tem a tabela completa. Exemplo: Shampoo = 33051000, Esmalte = 33043000.</div>
+</div>
+
+<div class="faq">
+  <div class="faq-q">❓ A NFC-e não está funcionando. O que fazer?</div>
+  <div class="faq-a">A NFC-e precisa do código CSC configurado. Peça ao seu contador para solicitar o CSC e CSC_ID junto à SEFAZ do estado. Com esses dados configurados no sistema, a NFC-e passa a funcionar. Enquanto isso, use a NF-e para emitir notas para empresas (CNPJ).</div>
+</div>
+
+<div class="faq">
+  <div class="faq-q">❓ Posso vender produto sem estoque?</div>
+  <div class="faq-a">Sim, o sistema permite. Porém, vai aparecer um alerta em vermelho indicando que o estoque está zerado. Recomendamos manter o estoque atualizado para evitar vender o que não tem.</div>
+</div>
+
+<div class="faq">
+  <div class="faq-q">❓ O que é CFOP?</div>
+  <div class="faq-a">É o código da operação fiscal. Para vendas normais dentro do estado, o mais comum é <strong>5102</strong> (venda de mercadoria). Para serviços, o sistema usa <strong>5933</strong>. Seu contador pode confirmar qual usar.</div>
+</div>
+
+<div class="faq">
+  <div class="faq-q">❓ A nota fiscal foi rejeitada. O que fazer?</div>
+  <div class="faq-a">O sistema mostra a mensagem de erro da SEFAZ. Os motivos mais comuns são: NCM inválido, dados da empresa incompletos, ou certificado digital vencido. Corrija o problema indicado e tente reenviar.</div>
+</div>
+
+<div class="faq">
+  <div class="faq-q">❓ Preciso instalar impressora para emitir nota?</div>
+  <div class="faq-a"><strong>Não!</strong> A nota fiscal é eletrônica. Você pode enviar por email ou WhatsApp para o cliente. Não precisa imprimir nada. O PDF fica salvo no sistema para consulta a qualquer momento.</div>
+</div>
+
+<div class="faq">
+  <div class="faq-q">❓ Como vejo as notas já emitidas?</div>
+  <div class="faq-a">Acesse <strong>Notas Fiscais</strong> no menu lateral. Lá você vê todas as notas emitidas, pode filtrar por período, baixar PDF novamente ou reenviar ao cliente.</div>
+</div>
+
+<div class="faq">
+  <div class="faq-q">❓ Como dou entrada de produtos no estoque?</div>
+  <div class="faq-a">Há duas formas: (1) <strong>Importar XML</strong> — se o fornecedor mandou a nota fiscal eletrônica, importe o arquivo XML e vincule os itens. (2) <strong>Entrada Manual</strong> — digite os dados manualmente. Ambas atualizam o estoque automaticamente.</div>
+</div>
+
+<div class="faq">
+  <div class="faq-q">❓ Qual a diferença entre ambiente de homologação e produção?</div>
+  <div class="faq-a"><strong>Homologação</strong> = teste (notas não valem). <strong>Produção</strong> = real (notas válidas). Seu sistema pode estar em homologação inicialmente. Peça para mudar para produção quando estiver tudo configurado.</div>
+</div>
+
+<!-- RODAPÉ -->
+<div class="footer">
+  <p>Maicon Maksuel Gestão — Documento gerado em Junho de 2026</p>
+  <p>Em caso de dúvidas, entre em contato com o suporte técnico.</p>
+</div>
+
+</body>
+</html>

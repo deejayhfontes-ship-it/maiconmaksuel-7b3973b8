@@ -568,19 +568,30 @@ const Atendimentos = () => {
       }
     }
 
-    // Atualizar estoque dos produtos vendidos e alertar estoque baixo
+    // Atualizar estoque dos produtos vendidos e registrar movimentação
+    const db = supabase as any;
     for (const item of itemsProdutos) {
       const produto = produtos.find(p => p.id === item.produto_id);
       if (produto) {
-        const novoEstoque = Math.max(0, produto.estoque_atual - item.quantidade);
+        const estoqueAnterior = produto.estoque_atual;
+        const novoEstoque = Math.max(0, estoqueAnterior - item.quantidade);
         await supabase.from("produtos").update({
           estoque_atual: novoEstoque,
         }).eq("id", item.produto_id);
 
-        // Alerta de estoque baixo
+        await db.from("estoque_movimentacoes").insert([{
+          produto_id: item.produto_id,
+          tipo: "saida",
+          quantidade: item.quantidade,
+          quantidade_anterior: estoqueAnterior,
+          quantidade_posterior: novoEstoque,
+          motivo: `Venda - Comanda #${selectedAtendimento.numero_comanda}`,
+          usuario_nome: "Sistema",
+        }]);
+
         if (novoEstoque < (produto as any).estoque_minimo) {
-          toast({ 
-            title: "⚠️ Estoque baixo", 
+          toast({
+            title: "⚠️ Estoque baixo",
             description: `${produto.nome} está abaixo do estoque mínimo (${novoEstoque} restantes).`,
           });
         }

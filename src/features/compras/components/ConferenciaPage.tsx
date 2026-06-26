@@ -101,6 +101,33 @@ export function ConferenciaPage({ data, onCancel, onSuccess }: ConferenciaPagePr
 
       await comprasApi.processarEntrada(payload);
 
+      // Log movimentações de estoque para cada item vinculado
+      try {
+        const movDb = supabase as any;
+        for (const item of itens) {
+          if (!item.produto_id) continue;
+          const { data: prodAtual } = await supabase
+            .from("produtos")
+            .select("estoque_atual")
+            .eq("id", item.produto_id)
+            .single();
+          if (prodAtual) {
+            const qtdEntrada = item.quantidade_comercial * (item.fator_conversao || 1);
+            await movDb.from("estoque_movimentacoes").insert([{
+              produto_id: item.produto_id,
+              tipo: "entrada",
+              quantidade: qtdEntrada,
+              quantidade_anterior: Number(prodAtual.estoque_atual) - qtdEntrada,
+              quantidade_posterior: Number(prodAtual.estoque_atual),
+              motivo: `Entrada NF ${nota.numero} - ${item.descricao}`,
+              usuario_nome: "Sistema",
+            }]);
+          }
+        }
+      } catch (e) {
+        console.warn("[ConferenciaPage] Falha ao registrar movimentações de estoque:", e);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['historico-entradas'] });
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
 
