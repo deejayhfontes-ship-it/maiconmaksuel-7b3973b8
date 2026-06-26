@@ -111,6 +111,7 @@ const Agenda = () => {
     isOnline,
     pendingSync,
     refetch,
+    fullReload,
     remove,
     confirmAppointment,
     cancelAppointment,
@@ -331,7 +332,7 @@ const Agenda = () => {
     setFormInitialTime(undefined);
     setFormInitialProfissionalId(undefined);
     setIsEncaixe(false);
-    if (refresh) refetch();
+    if (refresh) fullReload();
   };
 
   // Verificar aniversário

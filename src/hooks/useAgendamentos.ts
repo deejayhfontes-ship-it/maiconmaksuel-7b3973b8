@@ -72,6 +72,7 @@ interface UseAgendamentosReturn {
   isOnline: boolean;
   pendingSync: number;
   refetch: () => Promise<void>;
+  fullReload: () => Promise<void>;
   create: (data: Omit<Agendamento, 'id' | 'created_at' | 'updated_at'>) => Promise<Agendamento>;
   update: (id: string, data: Partial<Agendamento>) => Promise<void>;
   remove: (id: string) => Promise<void>;
@@ -214,16 +215,13 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
         const prof = profissionais.find(p => p.id === ag.profissional_id);
         const servico = servicos.get(ag.servico_id);
 
-        if (!cliente || !prof || !servico) return null;
-
         return {
           ...ag,
-          cliente,
-          profissional: { nome: prof.nome, cor_agenda: prof.cor_agenda },
-          servico: { nome: servico.nome, preco: servico.preco },
+          cliente: cliente || { id: ag.cliente_id, nome: 'Cliente', celular: null, telefone: null, data_nascimento: null },
+          profissional: { nome: prof?.nome || 'Profissional', cor_agenda: prof?.cor_agenda || '#6366f1' },
+          servico: { nome: servico?.nome || 'Serviço', preco: servico?.preco || 0 },
         };
       })
-      .filter((ag): ag is AgendamentoCompleto => ag !== null)
       .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime());
 
     // Filter by profissional if specified
@@ -457,6 +455,7 @@ export function useAgendamentos(options: UseAgendamentosOptions = {}): UseAgenda
     isOnline,
     pendingSync,
     refetch,
+    fullReload,
     create,
     update,
     remove,
