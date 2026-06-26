@@ -282,10 +282,10 @@ const Clientes = () => {
               {searchTerm ? (
                 <>
                   <Search className="inline h-3 w-3 mr-1" />
-                  {filteredClientes.length} resultado(s) para "{searchTerm}"
+                  {filteredClientes.length} resultados para "{searchTerm}"
                 </>
               ) : (
-                <>{clientes.length} cliente(s) cadastrado(s)</>
+                <>{clientes.length} clientes cadastrados</>
               )}
             </p>
           </div>

@@ -180,7 +180,7 @@ const Profissionais = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Profissionais</h1>
             <p className="text-muted-foreground">
-              {filteredProfissionais.length} profissional(is) • {mesAtual}
+              {filteredProfissionais.length} profissionais • {mesAtual}
             </p>
           </div>
         </div>

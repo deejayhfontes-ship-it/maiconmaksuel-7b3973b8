@@ -361,7 +361,7 @@ const Atendimentos = () => {
     if (prod && prod.estoque_atual < produtoQtd) {
       toast({ 
         title: "Estoque insuficiente", 
-        description: `${prod.nome} tem apenas ${prod.estoque_atual} unidade(s) em estoque.`,
+        description: `${prod.nome} tem apenas ${prod.estoque_atual} unidades em estoque.`,
         variant: "destructive" 
       });
       return;

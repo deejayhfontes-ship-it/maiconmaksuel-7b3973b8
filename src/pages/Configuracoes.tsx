@@ -552,10 +552,10 @@ export default function Configuracoes() {
                               className={cn(
                                 "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
                                 isActive
-                                  ? "bg-primary text-primary-foreground"
+                                  ? "bg-primary/10 text-primary font-medium border border-primary/20"
                                   : item.danger
                                     ? "text-destructive hover:bg-destructive/10"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                               )}
                             >
                               {ItemIcon && <ItemIcon className="h-4 w-4" />}

@@ -392,6 +392,7 @@ export default function ConfiguracoesFiscais() {
                                 <SelectItem value="1">Produção (Real)</SelectItem>
                             </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground mt-1">Homologação = testes, Produção = notas reais</p>
                     </div>
                 </CardContent>
             </Card>
@@ -439,6 +440,7 @@ export default function ConfiguracoesFiscais() {
                                         placeholder="00.000.000/0000-00"
                                         maxLength={18}
                                     />
+                                    <p className="text-xs text-muted-foreground mt-1">Apenas números, sem pontos ou traços</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Inscrição Estadual</Label>
@@ -447,6 +449,7 @@ export default function ConfiguracoesFiscais() {
                                         onChange={(e) => updateField("inscricao_estadual", e.target.value)}
                                         placeholder="000000000"
                                     />
+                                    <p className="text-xs text-muted-foreground mt-1">Deixe em branco se isento</p>
                                 </div>
                             </div>
 
@@ -498,6 +501,7 @@ export default function ConfiguracoesFiscais() {
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    <p className="text-xs text-muted-foreground mt-1">1 = Simples Nacional, 2 = Simples Exc., 3 = Normal</p>
                                 </div>
                             </div>
 
@@ -643,6 +647,7 @@ export default function ConfiguracoesFiscais() {
                                                     onChange={(e) => updateField("proximo_numero_nfe", e.target.value)}
                                                     type="number" min="1"
                                                 />
+                                                <p className="text-xs text-muted-foreground mt-1">Geralmente é 1. Seu contador pode confirmar</p>
                                             </div>
                                         </div>
                                     </CardContent>
@@ -663,6 +668,7 @@ export default function ConfiguracoesFiscais() {
                                                     onChange={(e) => updateField("serie_nfce", e.target.value)}
                                                     type="number" min="1"
                                                 />
+                                                <p className="text-xs text-muted-foreground mt-1">Geralmente é 1. Seu contador pode confirmar</p>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label>Próximo Número</Label>
@@ -694,6 +700,7 @@ export default function ConfiguracoesFiscais() {
                                         onChange={(e) => updateField("csc_id", e.target.value)}
                                         placeholder="Ex: 000001"
                                     />
+                                    <p className="text-xs text-muted-foreground mt-1">Fornecido pela SEFAZ do estado. Obrigatório para NFC-e</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>CSC (Token)</Label>
@@ -711,6 +718,7 @@ export default function ConfiguracoesFiscais() {
                                             {mostrarCSC ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                         </Button>
                                     </div>
+                                    <p className="text-xs text-muted-foreground mt-1">Fornecido pela SEFAZ do estado. Obrigatório para NFC-e</p>
                                 </div>
                             </div>
                         </CardContent>
