@@ -34,8 +34,18 @@ export function ConferenciaPage({ data, onCancel, onSuccess }: ConferenciaPagePr
 
     setSalvando(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user?.id) {
+      // getSession lê a sessão local e dispara auto-refresh, sem o roundtrip
+      // de validação do getUser() (que falha se o token expirou enquanto o
+      // usuário vinculava os itens). Se mesmo assim não houver sessão válida,
+      // tentamos um refresh explícito antes de pedir novo login.
+      let userId: string | undefined;
+      const { data: sessionData } = await supabase.auth.getSession();
+      userId = sessionData?.session?.user?.id;
+      if (!userId) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        userId = refreshed?.session?.user?.id;
+      }
+      if (!userId) {
         toast.error("Sessão expirada. Faça login novamente.");
         return;
       }
@@ -92,7 +102,7 @@ export function ConferenciaPage({ data, onCancel, onSuccess }: ConferenciaPagePr
       });
 
       const payload: ProcessarEntradaPayload = {
-        salao_id: userData.user.id,
+        salao_id: userId,
         fornecedor,
         nota,
         itens,
