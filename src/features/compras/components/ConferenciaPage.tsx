@@ -6,6 +6,7 @@ import { NfeParseResult, FornecedorParse, NotaParse, ItemParse, ProcessarEntrada
 import { useProdutos } from "@/hooks/useProdutos";
 import { ItensConferenciaTable, VinculoItem } from "./ItensConferenciaTable";
 import { comprasApi } from "../services/comprasApi";
+import { SALAO_ID } from "../constants";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,21 +35,10 @@ export function ConferenciaPage({ data, onCancel, onSuccess }: ConferenciaPagePr
 
     setSalvando(true);
     try {
-      // getSession lê a sessão local e dispara auto-refresh, sem o roundtrip
-      // de validação do getUser() (que falha se o token expirou enquanto o
-      // usuário vinculava os itens). Se mesmo assim não houver sessão válida,
-      // tentamos um refresh explícito antes de pedir novo login.
-      let userId: string | undefined;
-      const { data: sessionData } = await supabase.auth.getSession();
-      userId = sessionData?.session?.user?.id;
-      if (!userId) {
-        const { data: refreshed } = await supabase.auth.refreshSession();
-        userId = refreshed?.session?.user?.id;
-      }
-      if (!userId) {
-        toast.error("Sessão expirada. Faça login novamente.");
-        return;
-      }
+      // App single-tenant sem login Supabase (roda na chave anon). Não há
+      // auth.getUser(), então usamos o SALAO_ID fixo como identificador do
+      // tenant para as tabelas de compras.
+      const userId = SALAO_ID;
 
       const fornecedor: FornecedorParse = {
         tipo_pessoa: data.fornecedor.cnpj.length > 11 ? "PJ" : "PF",
